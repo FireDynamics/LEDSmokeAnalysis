@@ -2,6 +2,21 @@ import numpy as np
 import scipy.optimize
 import matplotlib.pyplot as plt
 
+# IN WORK
+class ConfigData:
+    def __init__(self, data=False):
+        self.root_directory = '2018.11/V1_C1'
+        self.window_radius = 10
+
+# IN WORK        
+def load_config():
+    c = ConfigData([1])
+    return c
+
+#should handle all exception for opening files
+def open_file(filename):
+    None
+
 def read_file(filename, channel=0):
     data = plt.imread(filename)
     return data[:,:,channel]

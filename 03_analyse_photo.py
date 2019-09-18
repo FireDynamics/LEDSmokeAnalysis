@@ -58,5 +58,7 @@ def process_file(idata):
 
 from multiprocessing import Pool
 
-with Pool(4) as p:
-    p.map(process_file, data_indices)
+#with Pool(4) as p:
+#    p.map(process_file, data_indices)
+for i in data_indices:
+    process_file(i)
