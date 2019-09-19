@@ -7,19 +7,64 @@ class ConfigData:
     def __init__(self, data=False):
         self.root_directory = '2018.11/V1_C1'
         self.window_radius = 10
+        self.load_ignored_indices = True
+        self.shell_in_ignored_indices = False
+        self.load_line_edge_indices = True
 
+    def load(self):
+        None
+        
+    def save(self):
+        None
+"""
+------------------------------------
+File management
+------------------------------------
+"""
 # IN WORK        
 def load_config():
-    c = ConfigData([1])
+    c = ConfigData()
     return c
 
 #should handle all exception for opening files
-def open_file(filename):
-    None
+#when exception is thrown, ask if std conffile should be used or user input
+def load_file(filename,  delim= ' '):
+    try:
+        data = np.loadtxt(filename, delimiter = delim)
+    except OSError as e:
+        print('An operation system error occured while loading {}'.format(filename),
+              '. Maybe the file is not there or there is no reading ',
+              'permission.\n Error Message: ',e)
+    except FormattingError as e:
+        print('{} could not successfully be read, as it has '.format(filename),
+              'not the expected format. \n Error Message: ',e)
+    except Exception as e:
+        print('Some unknown error has occured. \n Error Message: ',e)
+    else:
+        print('{} successfully loaded.'.format(filename))
+    return data
 
 def read_file(filename, channel=0):
     data = plt.imread(filename)
     return data[:,:,channel]
+
+"""
+------------------------------------
+Input/Output
+------------------------------------
+"""
+
+def shell_in_ignored_indices():
+    None
+    
+def shell_in_line_edge_indices():
+    None
+
+"""
+------------------------------------
+Outsourced logic
+------------------------------------
+"""
 
 def led_fit(x, y, x0, y0, dx, dy, A, alpha, wx, wy, plot=False):
 
@@ -116,6 +161,87 @@ def find_search_areas(image, window_radius=10, skip=1):
     print("found {} leds".format(ixys.shape[0]))
 
     return ixys
+
+
+def analyse_position_man(search_areas, conf, line_indices):
+    nled = search_areas.shape[0]
+    
+    indices = .search_areas[:,0]
+    xs = .search_areas[:,2]
+    ys = .search_areas[:,1]
+          
+    #get indices of LEDs to ignore
+    ig_inds_filename = 'out/{}/ignore_indices.csv'.format(conf.root_directory)
+    if conf.load_ignored_indices:
+        ignore_indices = load_file(ig_inds_filename)
+    elif conf.shell_in_ignored_indices:
+        ignore_indices = in_ignored_indices()
+    else:
+        ignore_indices = np.array([])
+        
+    #get the edges of the LED arrays
+    if conf.load_line_edge_indices:
+        line_edge_indices = led.load_file('out/{}/line_indices.csv'.format(
+            conf.root_directory), delim=',')
+    else:
+        line_edge_indices = shell_in_line_edge_indices()
+    
+    #calculate lengths of the line arrays
+    line_distances = np.zeros((nled, len(line_edge_indices)))
+    
+    for il in range(len(line_edge_indices)):
+        i1 = int(line_edge_indices[il][0])
+        i2 = int(line_edge_indices[il][1])
+    
+        print(i1, i2)
+    
+        p1x = xs[i1]
+        p1y = ys[i1]
+        p2x = xs[i2]
+        p2y = ys[i2]
+    
+        pd = np.sqrt((p1x - p2x) ** 2 + (p1y - p2y) ** 2)
+        d = np.abs(((p2y - p1y) * xs - (p2x - p1x) * ys
+                    + p2x * p1y - p2y * p1x) / pd)
+    
+        line_distances[:,il] = d
+    
+    #construct 2D array for LED indices sorted by line
+    line_indices = []
+    for il in line_edge_indices:
+        line_indices.append([])
+    
+    #find for every LED the corresponding array
+    for iled in range(nled):
+        print(iled)
+    
+        if iled in ignore_indices: continue
+    
+        while True:
+            il = np.argmin(line_distances[iled,:])
+            i1 = int(line_edge_indices[il][0])
+            i2 = int(line_edge_indices[il][1])
+    
+            p1x = xs[i1]
+            p1y = ys[i1]
+            p2x = xs[i2]
+            p2y = ys[i2]
+    
+            cx = xs[iled]
+            cy = ys[iled]
+    
+            d1 = np.sqrt((p1x-cx)**2 + (p1y-cy)**2)
+            d2 = np.sqrt((p2x-cx)**2 + (p2y-cy)**2)
+            d12 = np.sqrt((p1x-p2x)**2 + (p1y-p2y)**2) + 1e-8
+    
+            print(d1, d2, d12)
+    
+            if d1 < d12 and d2 < d12: break
+    
+            line_distances[iled, il] *= 2
+    
+        line_indices[il].append(iled)
+        
 
 if __name__ == 'main':
 

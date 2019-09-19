@@ -6,29 +6,30 @@ import led_helper as led
 
 class LEDSA:
     
-#switch error handling to led_helper if possible!!!
-#by making led.open_file('path/filename')
-#when exception is thrown, ask if std conffile should be used
-    def __init__(self):
+    def __init__(self, use_config=True, root_directory = 'root', 
+                 window_radius = 10):
         #configuration class with variables:
         #root_directory
-        try:
+        #window_radius
+        
+        if use_config:
             self.conf = led.load_config()
-        except OSError as e:
-            print('An operation system error occured while loading the config ',
-                  'file. Maybe the file is not there or there is no reading ',
-                  'permission.\n Error Message: ',e)
-        except FormatError as e:
-            print('The config file could not successfully be red, as there are',
-                  ' some formatting errors inside. \n Error Message: ',e)
-        except Exception as e:
-            print('Some unknown error has occured. \n Error Message: ',e)
+            
         else:
-            print('Config file successfully loaded.')
+            self.config = ConfigData([root_directory, window_radius])
             
         #declarations of global variables
         self.search_areas = False
+        self.line_indices = False
 
+    """
+    ------------------------------------
+    LED area search
+    ------------------------------------
+    """
+    
+    """finds all LEDs in a single image file and defines the search areas, in
+    which future LEDs will be searched"""
     def find_search_areas(self, img_filename):
         filename = "data/{}/{}".format(self.conf.root_directory, img_filename)
         out_filename = 'out/{}/led_search_areas.csv'.format(self.conf.root_directory)
@@ -40,15 +41,15 @@ class LEDSA:
       
         np.savetxt(out_filename, self.search_areas,
                    header='LED id, pixel position x, pixel position y', fmt='%d')
-    
+
+
+    """loads the search areas from the csv file"""    
     def load_search_areas(self):
         filename = 'out/{}/led_search_areas.csv'.format(self.conf.root_directory)
-        try:
-            self.search_areas = np.loadtxt(filename, skiprows=1)
-        except Exception as e:
-            print('Could not load the search areas from{}'.format(filename))
-            print('Error Message: ', e)
-    
+        self.search_areas = led.load_file(filename)
+
+
+    """plots the search areas with their labels"""    
     def plot_search_areas(self, img_filename):
         if type(self.search_areas) == bool:
             self.load_search_areas()
@@ -72,3 +73,55 @@ class LEDSA:
         plt.colorbar()
         plt.savefig('out/{}/led_search_areas.plot.pdf'.format(
                     self.conf.root_directory))
+
+    """
+    ------------------------------------
+    LED array analysis
+    ------------------------------------
+    """
+
+    """analyses, which LED belongs to which LED line array"""
+    def analyse_positions(self):       
+        if type(self.search_areas) == bool:
+            self.load_search_areas() 
+        
+        led.analyse_position_man(self.search_areas, self.conf, self.line_indices)
+                
+        #plot the labeled LEDs
+        
+        #img_data = led.load_file('data/{}/{}'.format(self.conf.root_directory,img_filename))        
+        #fig = plt.figure(dpi=900)        
+        #plt.imshow(img_data, cmap='Greys')
+        for i in range(len(line_indices)):
+            plt.scatter(xs[line_indices[i]], ys[line_indices[i]], s=0.1, label='led strip {}'.format(i))
+        
+        plt.legend()
+        plt.savefig('out/{}/led_lines.pdf'.format(self.conf.root_directory))
+        
+        #save the labeled LEDs
+        for i in range(len(line_indices)):
+            out_file = open('out/{}/line_indices_{:03}.csv'.format(self.conf.root_directory, i), 'w')
+            for iled in line_indices[i]:
+                out_file.write('{}\n'.format(iled))
+            out_file.close()
+
+    """
+    -----------------------------------------
+    usufull functions from the helper module
+    -----------------------------------------
+    """
+
+    def shell_in_ignored_indices(self):
+        led.shell_in_ignored_indices()
+        
+    def shell_in_line_edge_indices(self):
+        led.shell_in_line_edge_indices()
+
+"""
+------------------------------------
+Default script
+------------------------------------
+"""
+    
+if __name__=='main':
+    None

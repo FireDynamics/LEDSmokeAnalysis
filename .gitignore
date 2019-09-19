@@ -97,6 +97,10 @@ venv.bak/
 # Rope project settings
 .ropeproject
 
+#Eclipse project settings
+.project
+.pydevproject
+
 # mkdocs documentation
 /site
 
@@ -106,3 +110,4 @@ venv.bak/
 #data & output
 data/
 out/
+test.py
