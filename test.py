@@ -3,4 +3,5 @@ from ledsa import LEDSA
 l = LEDSA()
 #l.find_search_areas('IMG_7460.JPG')
 #input()
-l.plot_search_areas('IMG_7460.JPG')
+#l.plot_search_areas('IMG_7460.JPG')
+l.analyse_positions()
