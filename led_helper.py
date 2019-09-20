@@ -4,12 +4,14 @@ import matplotlib.pyplot as plt
 
 # IN WORK
 class ConfigData:
-    def __init__(self, data=False):
+    def __init__(self, data=None):
         self.root_directory = '2018.11/V1_C1'
         self.window_radius = 10
         self.load_ignored_indices = True
         self.shell_in_ignored_indices = False
         self.load_line_edge_indices = True
+        self.num_of_arrays = 1
+        self.multicore_processing = False
 
     def load(self):
         None
@@ -28,9 +30,9 @@ def load_config():
 
 #should handle all exception for opening files
 #when exception is thrown, ask if std conffile should be used or user input
-def load_file(filename,  delim= ' '):
+def load_file(filename,  delim= ' ', type = 'float'):
     try:
-        data = np.loadtxt(filename, delimiter = delim)
+        data = np.loadtxt(filename, delimiter = delim, dtype = type)
     except OSError as e:
         print('An operation system error occured while loading {}'.format(filename),
               '. Maybe the file is not there or there is no reading ',
@@ -123,7 +125,7 @@ def find_leds(search_area):
                                   args=(search_area, mesh), method='nelder-mead',
                                   options={'xtol': 1e-8, 'disp': False,
                                            'adaptive': False, 'maxiter': 10000})
-    print(res)
+    #print(res)
     return res, mesh
 
 def find_search_areas(image, window_radius=10, skip=1):
@@ -163,12 +165,12 @@ def find_search_areas(image, window_radius=10, skip=1):
     return ixys
 
 
-def analyse_position_man(search_areas, conf, line_indices):
+def analyse_position_man(search_areas, conf):
     nled = search_areas.shape[0]
     
-    indices = .search_areas[:,0]
-    xs = .search_areas[:,2]
-    ys = .search_areas[:,1]
+    indices = search_areas[:,0]
+    xs = search_areas[:,2]
+    ys = search_areas[:,1]
           
     #get indices of LEDs to ignore
     ig_inds_filename = 'out/{}/ignore_indices.csv'.format(conf.root_directory)
@@ -181,7 +183,7 @@ def analyse_position_man(search_areas, conf, line_indices):
         
     #get the edges of the LED arrays
     if conf.load_line_edge_indices:
-        line_edge_indices = led.load_file('out/{}/line_indices.csv'.format(
+        line_edge_indices = load_file('out/{}/line_indices.csv'.format(
             conf.root_directory), delim=',')
     else:
         line_edge_indices = shell_in_line_edge_indices()
@@ -241,6 +243,47 @@ def analyse_position_man(search_areas, conf, line_indices):
             line_distances[iled, il] *= 2
     
         line_indices[il].append(iled)
+    return line_indices    
+
+def process_file(idata, search_areas, line_indices, conf):                
+    img_filename = 'IMG_{}.JPG'.format(idata)
+
+    #print(search_areas)
+    #print(len(search_areas))
+
+    data = read_file('data/{}/{}'.format(conf.root_directory, img_filename), channel=0)
+    #print(data)
+
+    out_file = open('out/{}/{}.led_positions.csv'.format(conf.root_directory,img_filename), 'w')
+    out_file.write("# id,         line,   x,         y,        dx,        dy,"
+                   "         A,     alpha,        wx,        wy, fit_success,"
+                   "   fit_fun, fit_nfev // all spatial quatities in pixel coordinates\n")
+
+    nled = search_areas.shape[0]
+    
+    for iline in range(conf.num_of_arrays):
+        for iled in line_indices[iline]:
+            
+            cx = int(search_areas[iled,1])
+            cy = int(search_areas[iled,2])
+            
+            s = np.index_exp[cx - conf.window_radius:cx + conf.window_radius,
+                             cy - conf.window_radius:cy + conf.window_radius]
+
+            maxA = np.max(data[s])
+
+            fit_res, mesh = find_leds(data[s])
+
+            x, y, dx, dy, A, alpha, wx, wy = fit_res.x
+
+            im_x = x + cx - conf.window_radius
+            im_y = y + cy - conf.window_radius
+
+            line_number = iline
+
+            out_file.write('{:4d}, {:2d}, {:10.4e}, {:10.4e}, {:10.4e}, {:10.4e}, {:10.4e}, {:10.4e}, {:10.4e}, {:10.4e}, {:12d}, {:10.4e}, {:9d}\n'.format(iled, line_number, im_x, im_y, dx, dy, A, alpha, wx, wy, fit_res.success, fit_res.fun, fit_res.nfev))
+
+    out_file.close()
         
 
 if __name__ == 'main':

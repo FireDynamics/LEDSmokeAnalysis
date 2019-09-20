@@ -6,20 +6,22 @@ import led_helper as led
 
 class LEDSA:
     
-    def __init__(self, use_config=True, root_directory = 'root', 
+    def __init__(self, use_config_file = True, root_directory = 'root', 
                  window_radius = 10):
         #configuration class with variables:
         #root_directory
         #window_radius
         
-        if use_config:
+        if use_config_file:
             self.conf = led.load_config()
             
         else:
             self.config = ConfigData([root_directory, window_radius])
             
         #declarations of global variables
+        #2D numpy array wit dimension (# of LEDs) x (LED_id, x, y)
         self.search_areas = False
+        #2D list with dimension (# of LED arrays) x (# of LEDs per array)
         self.line_indices = False
 
     """
@@ -85,25 +87,61 @@ class LEDSA:
         if type(self.search_areas) == bool:
             self.load_search_areas() 
         
-        led.analyse_position_man(self.search_areas, self.conf, self.line_indices)
-                
+        self.line_indices = led.analyse_position_man(self.search_areas, self.conf)
+                       
+        #save the labeled LEDs
+        for i in range(len(self.line_indices)):
+            out_file = open('out/{}/line_indices_{:03}.csv'.format(self.conf.root_directory, i), 'w')
+            for iled in self.line_indices[i]:
+                out_file.write('{}\n'.format(iled))
+            out_file.close()
+            
+    """loads the search areas from the csv file"""    
+    def load_line_indices(self):
+        self.line_indices = []
+        for i in range(self.conf.num_of_arrays):
+            filename = 'out/{}/line_indices_{:03}.csv'.format(self.conf.root_directory, i)
+            self.line_indices.append(led.load_file(filename, type = 'int'))
+            
+    """plot the labeled LEDs"""        
+    def plot_lines(self):
         #plot the labeled LEDs
-        
-        #img_data = led.load_file('data/{}/{}'.format(self.conf.root_directory,img_filename))        
-        #fig = plt.figure(dpi=900)        
-        #plt.imshow(img_data, cmap='Greys')
-        for i in range(len(line_indices)):
-            plt.scatter(xs[line_indices[i]], ys[line_indices[i]], s=0.1, label='led strip {}'.format(i))
+        for i in range(len(self.line_indices)):
+            plt.scatter(self.search_areas[self.line_indices[i],2], 
+                        self.search_areas[self.line_indices[i],1], 
+                        s=0.1, label='led strip {}'.format(i))
         
         plt.legend()
         plt.savefig('out/{}/led_lines.pdf'.format(self.conf.root_directory))
         
-        #save the labeled LEDs
-        for i in range(len(line_indices)):
-            out_file = open('out/{}/line_indices_{:03}.csv'.format(self.conf.root_directory, i), 'w')
-            for iled in line_indices[i]:
-                out_file.write('{}\n'.format(iled))
-            out_file.close()
+    """
+    ------------------------------------
+    LED smoke analysis
+    ------------------------------------
+    """
+    
+    """process the image data to find the changes in light intesity""" 
+    def process_image_data(self):
+        if type(self.search_areas) == bool:
+            self.load_search_areas() 
+        if type(self.line_indices) == bool:  
+            self.load_line_indices()  
+        data_indices = [7460 + 50*i for i in range(10)]           
+    
+        if self.conf.multicore_processing:
+            from multiprocessing import Pool
+    
+            with Pool(4) as p:
+                p.map(self.process_file, data_indices)
+        else:
+            for i in range(len(data_indices)):
+                led.process_file(data_indices[i], self.search_areas, self.line_indices, self.conf)
+                print('image ', i+1, '/', len(data_indices)+1, ' processed')
+
+    """workaround for pool map"""
+    def porcess_file(self,data_indices):
+        led.process_file(data_indices, self.search_areas, self.line_indices, self.conf)
+        
 
     """
     -----------------------------------------
