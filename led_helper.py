@@ -26,6 +26,9 @@ File management
 # IN WORK        
 def load_config():
     c = ConfigData()
+    '''except FormattingError as e:
+        print('{} could not successfully be read, as it has '.format(filename),
+              'not the expected format. \n Error Message: ',e)'''
     return c
 
 #should handle all exception for opening files
@@ -37,11 +40,9 @@ def load_file(filename,  delim= ' ', type = 'float'):
         print('An operation system error occured while loading {}'.format(filename),
               '. Maybe the file is not there or there is no reading ',
               'permission.\n Error Message: ',e)
-    except FormattingError as e:
-        print('{} could not successfully be read, as it has '.format(filename),
-              'not the expected format. \n Error Message: ',e)
     except Exception as e:
-        print('Some unknown error has occured. \n Error Message: ',e)
+        print('Some error has occured while loading {}'.format(filename),
+              '. \n Error Message: ',e)
     else:
         print('{} successfully loaded.'.format(filename))
     return data
@@ -57,10 +58,10 @@ Input/Output
 """
 
 def shell_in_ignored_indices():
-    None
+    return 0
     
 def shell_in_line_edge_indices():
-    None
+    return 0
 
 """
 ------------------------------------
@@ -177,7 +178,7 @@ def analyse_position_man(search_areas, conf):
     if conf.load_ignored_indices:
         ignore_indices = load_file(ig_inds_filename)
     elif conf.shell_in_ignored_indices:
-        ignore_indices = in_ignored_indices()
+        ignore_indices = shell_in_ignored_indices()
     else:
         ignore_indices = np.array([])
         
@@ -285,7 +286,7 @@ def process_file(idata, search_areas, line_indices, conf):
 
     out_file.close()
         
-
+'''
 if __name__ == 'main':
 
     filename = 'scn_experiments/IMG_7508.JPG'
@@ -308,3 +309,4 @@ if __name__ == 'main':
     plt.imshow(data, cmap='Greys')
     plt.colorbar()
     plt.savefig('{}.led_pos.plot.pdf'.format(filename))
+'''

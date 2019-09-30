@@ -101,6 +101,9 @@ venv.bak/
 .project
 .pydevproject
 
+#VSCode project settings
+.json
+
 # mkdocs documentation
 /site
 
@@ -111,3 +114,4 @@ venv.bak/
 data/
 out/
 test.py
+.vscode/settings.json
