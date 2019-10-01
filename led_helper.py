@@ -5,9 +5,9 @@ import matplotlib.pyplot as plt
 # IN WORK
 class ConfigData:
     def __init__(self, data=None):
-        self.root_directory = '2018.11/V1_C1'
+        self.root_directory = '2018.11.28_raw_data/Versuchsreihe_281118/V004/Cam_02'
         self.window_radius = 10
-        self.load_ignored_indices = True
+        self.load_ignored_indices = False
         self.shell_in_ignored_indices = False
         self.load_line_edge_indices = True
         self.num_of_arrays = 1
@@ -129,7 +129,7 @@ def find_leds(search_area):
     #print(res)
     return res, mesh
 
-def find_search_areas(image, window_radius=10, skip=1):
+def find_search_areas(image, window_radius=10, skip=10):
 
     im_mean = np.mean(image)
     im_max = np.max(image)
@@ -142,12 +142,13 @@ def find_search_areas(image, window_radius=10, skip=1):
     list_ixy = []
     led_id = 0
 
-    for ix in range(0, image.shape[0], skip):
-        for iy in range(0, image.shape[1], skip):
+    for ix in range(window_radius, image.shape[0]-window_radius, skip):
+        for iy in range(window_radius, image.shape[1]-window_radius, skip):
             if im_set[ix, iy] > 0.7:
                 s_radius = window_radius//2
                 s = np.index_exp[ix - s_radius:ix + s_radius,
                 iy - s_radius:iy + s_radius]
+                # print(s, image[s])
                 res = np.unravel_index(np.argmax(image[s]), image[s].shape)
                 # print(s, res)
                 max_x = ix - s_radius + res[0]
@@ -185,13 +186,16 @@ def analyse_position_man(search_areas, conf):
     #get the edges of the LED arrays
     if conf.load_line_edge_indices:
         line_edge_indices = load_file('out/{}/line_indices.csv'.format(
-            conf.root_directory), delim=',')
+            conf.root_directory), delim=',', type='int')
+        if len(line_edge_indices.shape) == 1:
+            line_edge_indices = [line_edge_indices]
     else:
         line_edge_indices = shell_in_line_edge_indices()
     
     #calculate lengths of the line arrays
     line_distances = np.zeros((nled, len(line_edge_indices)))
-    
+
+    print(line_edge_indices)
     for il in range(len(line_edge_indices)):
         i1 = int(line_edge_indices[il][0])
         i2 = int(line_edge_indices[il][1])
@@ -220,7 +224,7 @@ def analyse_position_man(search_areas, conf):
     
         if iled in ignore_indices: continue
     
-        while True:
+        for il_repeat in range(len(line_edge_indices)):
             il = np.argmin(line_distances[iled,:])
             i1 = int(line_edge_indices[il][0])
             i2 = int(line_edge_indices[il][1])

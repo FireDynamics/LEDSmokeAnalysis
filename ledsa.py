@@ -41,14 +41,14 @@ class LEDSA:
                                                   window_radius =
                                                   self.conf.window_radius)
       
-        np.savetxt(out_filename, self.search_areas,
+        np.savetxt(out_filename, self.search_areas, delimiter=',',
                    header='LED id, pixel position x, pixel position y', fmt='%d')
 
 
     """loads the search areas from the csv file"""    
     def load_search_areas(self):
         filename = 'out/{}/led_search_areas.csv'.format(self.conf.root_directory)
-        self.search_areas = led.load_file(filename)
+        self.search_areas = led.load_file(filename, delim=',')
 
 
     """plots the search areas with their labels"""    
@@ -106,6 +106,10 @@ class LEDSA:
     """plot the labeled LEDs"""        
     def plot_lines(self):
         #plot the labeled LEDs
+        if type(self.line_indices) == bool:
+            self.load_line_indices()
+        if type(self.search_areas) == bool:
+            self.load_search_areas()
         for i in range(len(self.line_indices)):
             plt.scatter(self.search_areas[self.line_indices[i],2], 
                         self.search_areas[self.line_indices[i],1], 
