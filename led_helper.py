@@ -2,37 +2,15 @@ import numpy as np
 import scipy.optimize
 import matplotlib.pyplot as plt
 
-# IN WORK
-class ConfigData:
-    def __init__(self, data=None):
-        self.root_directory = '2018.11.28_raw_data/Versuchsreihe_281118/V004/Cam_02'
-        self.window_radius = 10
-        self.load_ignored_indices = False
-        self.shell_in_ignored_indices = False
-        self.load_line_edge_indices = True
-        self.num_of_arrays = 1
-        self.multicore_processing = False
-
-    def load(self):
-        None
-        
-    def save(self):
-        None
 """
 ------------------------------------
 File management
 ------------------------------------
 """
-# IN WORK        
-def load_config():
-    c = ConfigData()
-    '''except FormattingError as e:
-        print('{} could not successfully be read, as it has '.format(filename),
-              'not the expected format. \n Error Message: ',e)'''
-    return c
 
-#should handle all exception for opening files
-#when exception is thrown, ask if std conffile should be used or user input
+
+# should handle all exception for opening files
+# when exception is thrown, ask if std conffile should be used or user input
 def load_file(filename,  delim= ' ', type = 'float'):
     try:
         data = np.loadtxt(filename, delimiter = delim, dtype = type)
@@ -47,6 +25,7 @@ def load_file(filename,  delim= ' ', type = 'float'):
         print('{} successfully loaded.'.format(filename))
     return data
 
+
 def read_file(filename, channel=0):
     data = plt.imread(filename)
     return data[:,:,channel]
@@ -57,9 +36,11 @@ Input/Output
 ------------------------------------
 """
 
-def shell_in_ignored_indices():
+
+def shell_in_ignore_indices():
     return 0
-    
+
+
 def shell_in_line_edge_indices():
     return 0
 
@@ -68,6 +49,7 @@ def shell_in_line_edge_indices():
 Outsourced logic
 ------------------------------------
 """
+
 
 def led_fit(x, y, x0, y0, dx, dy, A, alpha, wx, wy, plot=False):
 
@@ -84,6 +66,7 @@ def led_fit(x, y, x0, y0, dx, dy, A, alpha, wx, wy, plot=False):
     a = A * 0.5*(1 - np.tanh((r - dr)/dw))
     if plot: return dr
     return a
+
 
 def find_leds(search_area):
 
@@ -110,6 +93,7 @@ def find_leds(search_area):
         if np.abs(alpha) > np.pi/2:
             penality += (np.abs(alpha) - np.pi/2) * 1e6
 
+        # returns 12 every time...
         penality = 0
         return l2 + penality
 
@@ -126,8 +110,9 @@ def find_leds(search_area):
                                   args=(search_area, mesh), method='nelder-mead',
                                   options={'xtol': 1e-8, 'disp': False,
                                            'adaptive': False, 'maxiter': 10000})
-    #print(res)
+    # print(res)
     return res, mesh
+
 
 def find_search_areas(image, window_radius=10, skip=10):
 
@@ -167,32 +152,29 @@ def find_search_areas(image, window_radius=10, skip=10):
     return ixys
 
 
-def analyse_position_man(search_areas, conf):
+def analyse_position_man(search_areas, config):
     nled = search_areas.shape[0]
     
     indices = search_areas[:,0]
     xs = search_areas[:,2]
     ys = search_areas[:,1]
           
-    #get indices of LEDs to ignore
-    ig_inds_filename = 'out/{}/ignore_indices.csv'.format(conf.root_directory)
-    if conf.load_ignored_indices:
-        ignore_indices = load_file(ig_inds_filename)
-    elif conf.shell_in_ignored_indices:
-        ignore_indices = shell_in_ignored_indices()
+    # get indices of LEDs to ignore
+    print(config['ignore_indices'])
+    if config['ignore_indices'] != 'None':
+        ignore_indices = [int(i) for i in config['ignore_indices']]
     else:
         ignore_indices = np.array([])
         
-    #get the edges of the LED arrays
-    if conf.load_line_edge_indices:
-        line_edge_indices = load_file('out/{}/line_indices.csv'.format(
-            conf.root_directory), delim=',', type='int')
+    # get the edges of the LED arrays
+    if config['line_edge_indices'] != 'None':
+        line_edge_indices = [int(i) for i in config['ignore_indices']]
         if len(line_edge_indices.shape) == 1:
             line_edge_indices = [line_edge_indices]
     else:
         line_edge_indices = shell_in_line_edge_indices()
     
-    #calculate lengths of the line arrays
+    # calculate lengths of the line arrays
     line_distances = np.zeros((nled, len(line_edge_indices)))
 
     print(line_edge_indices)
@@ -213,12 +195,12 @@ def analyse_position_man(search_areas, conf):
     
         line_distances[:,il] = d
     
-    #construct 2D array for LED indices sorted by line
+    # construct 2D array for LED indices sorted by line
     line_indices = []
     for il in line_edge_indices:
         line_indices.append([])
     
-    #find for every LED the corresponding array
+    # find for every LED the corresponding array
     for iled in range(nled):
         print(iled)
     
@@ -250,14 +232,15 @@ def analyse_position_man(search_areas, conf):
         line_indices[il].append(iled)
     return line_indices    
 
+
 def process_file(idata, search_areas, line_indices, conf):                
     img_filename = 'IMG_{}.JPG'.format(idata)
 
-    #print(search_areas)
-    #print(len(search_areas))
+    # print(search_areas)
+    # print(len(search_areas))
 
     data = read_file('data/{}/{}'.format(conf.root_directory, img_filename), channel=0)
-    #print(data)
+    # print(data)
 
     out_file = open('out/{}/{}.led_positions.csv'.format(conf.root_directory,img_filename), 'w')
     out_file.write("# id,         line,   x,         y,        dx,        dy,"
@@ -289,7 +272,8 @@ def process_file(idata, search_areas, line_indices, conf):
             out_file.write('{:4d}, {:2d}, {:10.4e}, {:10.4e}, {:10.4e}, {:10.4e}, {:10.4e}, {:10.4e}, {:10.4e}, {:10.4e}, {:12d}, {:10.4e}, {:9d}\n'.format(iled, line_number, im_x, im_y, dx, dy, A, alpha, wx, wy, fit_res.success, fit_res.fun, fit_res.nfev))
 
     out_file.close()
-        
+
+
 '''
 if __name__ == 'main':
 
