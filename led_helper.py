@@ -41,8 +41,15 @@ def shell_in_ignore_indices():
     return 0
 
 
-def shell_in_line_edge_indices():
-    return 0
+def shell_in_line_edge_indices(config):
+    print('The edges of the LED arrays are needed. Please enter the labels of the top most and bottom most LED of each '
+          'array. Separate the two labels with a whitespace.')
+    labels = str()
+    for i in range(int(config['num_of_arrays'])):
+        line = input(str(i) + '. array: ')
+        labels += '\t    ' + line + '\n'
+    config['line_edge_indices'] = '\n' + labels
+
 
 """
 ------------------------------------
@@ -155,25 +162,27 @@ def find_search_areas(image, window_radius=10, skip=10):
 def analyse_position_man(search_areas, config):
     nled = search_areas.shape[0]
     
-    indices = search_areas[:,0]
-    xs = search_areas[:,2]
-    ys = search_areas[:,1]
+    indices = search_areas[:, 0]
+    xs = search_areas[:, 2]
+    ys = search_areas[:, 1]
           
     # get indices of LEDs to ignore
-    print(config['ignore_indices'])
-    if config['ignore_indices'] != 'None':
-        ignore_indices = [int(i) for i in config['ignore_indices']]
+    if config['analyse_positions']['ignore_indices'] != 'None':
+        ignore_indices = np.array([int(i) for i in config['analyse_positions']['ignore_indices']])
     else:
         ignore_indices = np.array([])
         
     # get the edges of the LED arrays
-    if config['line_edge_indices'] != 'None':
-        line_edge_indices = [int(i) for i in config['ignore_indices']]
-        if len(line_edge_indices.shape) == 1:
-            line_edge_indices = [line_edge_indices]
-    else:
-        line_edge_indices = shell_in_line_edge_indices()
-    
+    if config['analyse_positions']['line_edge_indices'] == 'None':
+        shell_in_line_edge_indices(config['analyse_positions'])
+        with open('config.ini', 'w') as configfile:
+            config.write(configfile)
+    line_edge_indices = config.get2dnparray('analyse_positions','line_edge_indices')
+
+    # makes sure that line_edge_indices is a 2d list
+    if len(line_edge_indices.shape) == 1:
+        line_edge_indices = [line_edge_indices]
+
     # calculate lengths of the line arrays
     line_distances = np.zeros((nled, len(line_edge_indices)))
 

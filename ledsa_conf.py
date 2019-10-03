@@ -1,4 +1,5 @@
 import configparser as cp
+import numpy as np
 
 
 class ConfigData(cp.ConfigParser):
@@ -36,6 +37,16 @@ class ConfigData(cp.ConfigParser):
         with open('config.ini', 'w') as configfile:
             self.write(configfile)
         print('config.ini saved')
+
+    def get2dnparray(self, section, option):
+        if self[section][option] == 'None':
+            return None
+        indices_tmp = [int(i) for i in self[section][option].split()]
+        indices = np.zeros((len(indices_tmp)//2, 2), dtype=int)
+        for i in range(len(indices_tmp)//2):
+            indices[i][0] = indices_tmp[2*i]
+            indices[i][1] = indices_tmp[2*i+1]
+        return indices
 
 
 if __name__ == 'main':

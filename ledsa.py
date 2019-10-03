@@ -46,7 +46,7 @@ class LEDSA:
         if self.search_areas is None:
             self.load_search_areas()
         
-        filename = "data/{}/{}".format(config['img_directory'], img_filename)
+        filename = "{}{}".format(config['img_directory'], img_filename)
         data = led.read_file(filename, channel=0)
             
         plt.figure(dpi=1200)
@@ -75,11 +75,11 @@ class LEDSA:
     def analyse_positions(self):       
         if self.search_areas is None:
             self.load_search_areas()
-        self.line_indices = led.analyse_position_man(self.search_areas, self.config['analyse_positions'])
+        self.line_indices = led.analyse_position_man(self.search_areas, self.config)
                        
         # save the labeled LEDs
         for i in range(len(self.line_indices)):
-            out_file = open('out/{}/line_indices_{:03}.csv'.format(self.config['DEFAULT']['img_directory'], i), 'w')
+            out_file = open('line_indices_{:03}.csv'.format(i), 'w')
             for iled in self.line_indices[i]:
                 out_file.write('{}\n'.format(iled))
             out_file.close()
@@ -88,7 +88,7 @@ class LEDSA:
     def load_line_indices(self):
         self.line_indices = []
         for i in range(int(self.config['DEFAULT']['num_of_arrays'])):
-            filename = 'out/{}/line_indices_{:03}.csv'.format(self.config['DEFAULT']['img_directory'], i)
+            filename = 'line_indices_{:03}.csv'.format(i)
             self.line_indices.append(led.load_file(filename, type='int'))
             
     """plot the labeled LEDs"""        
@@ -104,7 +104,7 @@ class LEDSA:
                         s=0.1, label='led strip {}'.format(i))
         
         plt.legend()
-        plt.savefig('out/{}/led_lines.pdf'.format(self.config['DEFAULT']['img_directory']))
+        plt.savefig('led_lines.pdf')
         
     """
     ------------------------------------
@@ -112,7 +112,7 @@ class LEDSA:
     ------------------------------------
     """
     
-    """process the image data to find the changes in light intesity""" 
+    """process the image data to find the changes in light intensity"""
     def process_image_data(self):
         config = self.config['analyse_photo']
         if self.search_areas is None:
@@ -145,7 +145,7 @@ class LEDSA:
         led.shell_in_ingore_indices()
         
     def shell_in_line_edge_indices(self):
-        led.shell_in_line_edge_indices()
+        led.shell_in_line_edge_indices(self.config)
 
 
 """
@@ -165,7 +165,7 @@ if __name__ == '__main__':
                         help='STEP3: finds the changes in light intensity')
     parser.add_argument('--config', '-c', nargs='*', default=None,
                         help='creates the default configuration file. optional arguments are are: img_directory, '
-                             'reference_img, num_of_cores. ')
+                             'reference_img, number_of_cores. ')
     args = parser.parse_args()
 
     print(args)
@@ -187,6 +187,7 @@ if __name__ == '__main__':
         ledsa.plot_search_areas(ledsa.config['find_search_areas']['reference_img'])
     if args.s2:
         ledsa.analyse_positions()
+        ledsa.plot_lines()
     if args.s3:
         ledsa.process_image_data()
 
