@@ -1,11 +1,15 @@
 #!/usr/bin/env python
 
 import argparse
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 
 import led_helper as led
 import ledsa_conf as lc
+
+# os path separator
+sep = os.path.sep
 
 
 class LEDSA:
@@ -18,6 +22,38 @@ class LEDSA:
         self.search_areas = None
         # 2D list with dimension (# of LED arrays) x (# of LEDs per array)
         self.line_indices = None
+
+        # creating needed directories
+        if not os.path.exists('plots'):
+            os.mkdir('plots')
+            print("Directory plots created ")
+        if not os.path.exists('analysis'):
+            os.mkdir('analysis')
+            print("Directory analysis created ")
+
+        # creating img_infos.csv
+        if self.config['DEFAULT']['time_img'] == 'None':
+            self.config.in_time_img()
+            self.config.save()
+        if self.config['DEFAULT']['time_diff_to_img_time'] == 'None':
+            self.config.in_time_diff_to_img_time()
+            self.config.save()
+        if self.config['DEFAULT']['img_name_string'] == 'None':
+            self.config.in_img_name_string()
+            self.config.save()
+        if self.config['DEFAULT']['img_name_string'] == 'None':
+            self.config.in_first_img()
+            self.config.save()
+        if self.config['DEFAULT']['img_name_string'] == 'None':
+            self.config.in_last_img()
+            self.config.save()
+        img_data = self.config.get_img_data()
+        out_file = open('img_infos.csv', 'w')
+        out_file.write("ID,Name,Time,Experiment_Time\n")
+        out_file.write(img_data)
+        out_file.close()
+
+
     """
     ------------------------------------
     LED area search
@@ -29,7 +65,7 @@ class LEDSA:
     def find_search_areas(self, img_filename):
         config = self.config['find_search_areas']
         filename = "{}{}".format(config['img_directory'], img_filename)
-        out_filename = 'led_search_areas.csv'
+        out_filename = 'analysis{}led_search_areas.csv'.format(sep)
         
         data = led.read_file(filename, channel=0)
         self.search_areas = led.find_search_areas(data, skip=1, window_radius=int(config['window_radius']))
@@ -39,7 +75,7 @@ class LEDSA:
 
     """loads the search areas from the csv file"""    
     def load_search_areas(self):
-        filename = 'led_search_areas.csv'
+        filename = 'analysis{}led_search_areas.csv'.format(sep)
         self.search_areas = led.load_file(filename, delim=',')
 
     """plots the search areas with their labels"""    
@@ -65,7 +101,7 @@ class LEDSA:
         
         plt.imshow(data, cmap='Greys')
         plt.colorbar()
-        plt.savefig('led_search_areas.plot.pdf')
+        plt.savefig('plots{}led_search_areas.plot.pdf'.format(sep))
 
     """
     ------------------------------------
@@ -81,7 +117,7 @@ class LEDSA:
                        
         # save the labeled LEDs
         for i in range(len(self.line_indices)):
-            out_file = open('line_indices_{:03}.csv'.format(i), 'w')
+            out_file = open('analysis{}line_indices_{:03}.csv'.format(sep, i), 'w')
             for iled in self.line_indices[i]:
                 out_file.write('{}\n'.format(iled))
             out_file.close()
@@ -90,8 +126,8 @@ class LEDSA:
     def load_line_indices(self):
         self.line_indices = []
         for i in range(int(self.config['DEFAULT']['num_of_arrays'])):
-            filename = 'line_indices_{:03}.csv'.format(i)
-            self.line_indices.append(led.load_file(filename, type='int'))
+            filename = 'analysis{}line_indices_{:03}.csv'.format(sep, i)
+            self.line_indices.append(led.load_file(filename, dtype='int'))
             
     """plot the labeled LEDs"""        
     def plot_lines(self):
@@ -106,7 +142,7 @@ class LEDSA:
                         s=0.1, label='led strip {}'.format(i))
         
         plt.legend()
-        plt.savefig('led_lines.pdf')
+        plt.savefig('plots{}led_lines.pdf'.format(sep))
         
     """
     ------------------------------------
@@ -120,26 +156,36 @@ class LEDSA:
         if self.search_areas is None:
             self.load_search_areas() 
         if self.line_indices is None:
-            self.load_line_indices()  
-        data_indices = [7460 + 50*i for i in range(10)]           
-    
+            self.load_line_indices()
+
+        image_data = []
+        image_infos = led.load_file('image_infos.csv', dtype=str, delim=',')
+        img_filenames = ['{}{}'.format(self.config['DEFAULT']['img_directory'], i) for i in image_infos[:][2]]
         if config.getboolean('multicore_processing'):
             from multiprocessing import Pool
-    
-            with Pool(int(config.num_of_cores)) as p:
-                p.map(self.process_file, data_indices)
-        else:
-            for i in range(len(data_indices)):
-                led.process_file(data_indices[i], self.search_areas, self.line_indices, config)
-                print('image ', i+1, '/', len(data_indices)+1, ' processed')
 
-    """workaround for pool map"""
-    def process_file(self, data_indices):
-        led.process_file(data_indices, self.search_areas, self.line_indices, self.config)
+            print('images are getting processed, this may take a while')
+            with Pool(int(config.num_of_cores)) as p:
+                image_data = p.map(self.process_file, img_filenames)
+        else:
+            for i in range(len(img_filenames)):
+                image_data.append(self.process_file(img_filenames[i]))
+                print('image ', i+1, '/', len(img_filenames)+1, ' processed')
+
+    """workaround for pool.map"""
+    def process_file(self, img_filename):
+        img_data = led.process_file(img_filename, self.search_areas, self.line_indices, self.config)
+
+        out_file = open('analysis{}{}_led_positions.csv'.format(sep, img_filename), 'w')
+        out_file.write("# id,         line,   x,         y,        dx,        dy,"
+                       "         A,     alpha,        wx,        wy, fit_success,"
+                       "   fit_fun, fit_nfev // all spatial quantities in pixel coordinates\n")
+        out_file.write(img_data)
+        out_file.close()
 
     """
     -----------------------------------------
-    usefull functions from the helper module
+    useful functions from the helper module
     -----------------------------------------
     """
 
@@ -184,12 +230,12 @@ if __name__ == '__main__':
                           multicore_processing=True, num_of_cores=args.config[2])
     if args.s1 or args.s2 or args.s3:
         ledsa = LEDSA()
-    if args.s1:
-        ledsa.find_search_areas(ledsa.config['find_search_areas']['reference_img'])
-        ledsa.plot_search_areas(ledsa.config['find_search_areas']['reference_img'])
-    if args.s2:
-        ledsa.analyse_positions()
-        ledsa.plot_lines()
-    if args.s3:
-        ledsa.process_image_data()
+        if args.s1:
+            ledsa.find_search_areas(ledsa.config['find_search_areas']['reference_img'])
+            ledsa.plot_search_areas(ledsa.config['find_search_areas']['reference_img'])
+        if args.s2:
+            ledsa.analyse_positions()
+            ledsa.plot_lines()
+        if args.s3:
+            ledsa.process_image_data()
 

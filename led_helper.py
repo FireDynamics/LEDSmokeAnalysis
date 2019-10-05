@@ -11,16 +11,18 @@ File management
 
 # should handle all exception for opening files
 # when exception is thrown, ask if std conffile should be used or user input
-def load_file(filename,  delim= ' ', type = 'float'):
+def load_file(filename,  delim=' ', dtype='float'):
     try:
-        data = np.loadtxt(filename, delimiter = delim, dtype = type)
+        data = np.loadtxt(filename, delimiter = delim, dtype=dtype)
     except OSError as e:
         print('An operation system error occured while loading {}'.format(filename),
               '. Maybe the file is not there or there is no reading ',
               'permission.\n Error Message: ',e)
+        exit(0)
     except Exception as e:
         print('Some error has occured while loading {}'.format(filename),
               '. \n Error Message: ',e)
+        exit(0)
     else:
         print('{} successfully loaded.'.format(filename))
     return data
@@ -85,24 +87,24 @@ def find_leds(search_area):
         mask = data > 0.05 * np.max(data)
         l2 = np.sum((data[mask] - led_fit(X, Y, *params)[mask]) ** 2)
         l2 = np.sqrt(l2) / data[mask].size
-        penality = 0
+        penalty = 0
 
         x0, y0, dx, dy, A, alpha, wx, wy = params
 
         if x0 < 0 or x0 > nx or y0 < 0 or y0 > ny:
-            penality += 1e3 * np.abs(x0 - nx) + 1e3 * np.abs(y0 - ny)
+            penalty += 1e3 * np.abs(x0 - nx) + 1e3 * np.abs(y0 - ny)
         if dx < 1 or dy < 1:
-            penality += 1. / (np.abs(dx)) ** 4 + 1. / (np.abs(dy)) ** 4
+            penalty += 1. / (np.abs(dx)) ** 4 + 1. / (np.abs(dy)) ** 4
         w0 = 0.001
         if wx < w0 or wy < w0:
-            penality += np.abs(wx-w0)*1e6 + np.abs(wy-w0)*1e6
+            penalty += np.abs(wx-w0)*1e6 + np.abs(wy-w0)*1e6
 
         if np.abs(alpha) > np.pi/2:
-            penality += (np.abs(alpha) - np.pi/2) * 1e6
+            penalty += (np.abs(alpha) - np.pi/2) * 1e6
 
         # returns 12 every time...
-        penality = 0
-        return l2 + penality
+        penalty = 0
+        return l2 + penalty
 
     nx = search_area.shape[0]
     ny = search_area.shape[1]
@@ -242,22 +244,16 @@ def analyse_position_man(search_areas, config):
     return line_indices    
 
 
-def process_file(idata, search_areas, line_indices, conf):                
-    img_filename = 'IMG_{}.JPG'.format(idata)
+def process_file(img_filename, search_areas, line_indices, conf):
 
     # print(search_areas)
     # print(len(search_areas))
 
-    data = read_file('data/{}/{}'.format(conf.root_directory, img_filename), channel=0)
+    data = read_file('{}{}'.format(conf.img_directory, img_filename), channel=0)
     # print(data)
 
-    out_file = open('out/{}/{}.led_positions.csv'.format(conf.root_directory,img_filename), 'w')
-    out_file.write("# id,         line,   x,         y,        dx,        dy,"
-                   "         A,     alpha,        wx,        wy, fit_success,"
-                   "   fit_fun, fit_nfev // all spatial quatities in pixel coordinates\n")
+    img_data = []
 
-    nled = search_areas.shape[0]
-    
     for iline in range(conf.num_of_arrays):
         for iled in line_indices[iline]:
             
@@ -266,8 +262,6 @@ def process_file(idata, search_areas, line_indices, conf):
             
             s = np.index_exp[cx - conf.window_radius:cx + conf.window_radius,
                              cy - conf.window_radius:cy + conf.window_radius]
-
-            maxA = np.max(data[s])
 
             fit_res, mesh = find_leds(data[s])
 
@@ -278,9 +272,11 @@ def process_file(idata, search_areas, line_indices, conf):
 
             line_number = iline
 
-            out_file.write('{:4d}, {:2d}, {:10.4e}, {:10.4e}, {:10.4e}, {:10.4e}, {:10.4e}, {:10.4e}, {:10.4e}, {:10.4e}, {:12d}, {:10.4e}, {:9d}\n'.format(iled, line_number, im_x, im_y, dx, dy, A, alpha, wx, wy, fit_res.success, fit_res.fun, fit_res.nfev))
+            img_data.append('{:4d},{:2d},{:10.4e},{:10.4e},{:10.4e},{:10.4e},{:10.4e},{:10.4e},{:10.4e},{:10.4e},'
+                             '{:12d},{:10.4e},{:9d}\n'.format(iled, line_number, im_x, im_y, dx, dy, A, alpha, wx, wy,
+                                                     fit_res.success, fit_res.fun, fit_res.nfev))
 
-    out_file.close()
+    return img_data
 
 
 '''
