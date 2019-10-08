@@ -31,9 +31,13 @@ class LEDSA:
             os.mkdir('analysis')
             print("Directory analysis created ")
 
-        # creating img_infos.csv
+        # request all unset parameters
+        # not complete
         if self.config['DEFAULT']['time_img'] == 'None':
             self.config.in_time_img()
+            self.config.save()
+        if self.config['find_search_areas']['reference_img'] == 'None':
+            self.config.in_ref_img()
             self.config.save()
         if self.config['DEFAULT']['time_diff_to_img_time'] == 'None':
             self.config.in_time_diff_to_img_time()
@@ -41,17 +45,19 @@ class LEDSA:
         if self.config['DEFAULT']['img_name_string'] == 'None':
             self.config.in_img_name_string()
             self.config.save()
-        if self.config['DEFAULT']['img_name_string'] == 'None':
+        if self.config['analyse_photo']['first_img'] == 'None':
             self.config.in_first_img()
             self.config.save()
-        if self.config['DEFAULT']['img_name_string'] == 'None':
+        if self.config['analyse_photo']['last_img'] == 'None':
             self.config.in_last_img()
             self.config.save()
-        img_data = self.config.get_img_data()
-        out_file = open('img_infos.csv', 'w')
-        out_file.write("ID,Name,Time,Experiment_Time\n")
-        out_file.write(img_data)
-        out_file.close()
+
+        if not os.path.isfile('image_infos.csv'):
+            img_data = self.config.get_img_data()
+            out_file = open('image_infos.csv', 'w')
+            out_file.write("#ID,Name,Time,Experiment_Time\n")
+            out_file.write(img_data)
+            out_file.close()
 
 
     """
@@ -160,7 +166,7 @@ class LEDSA:
 
         image_data = []
         image_infos = led.load_file('image_infos.csv', dtype=str, delim=',')
-        img_filenames = ['{}{}'.format(self.config['DEFAULT']['img_directory'], i) for i in image_infos[:][2]]
+        img_filenames = image_infos[:,1]
         if config.getboolean('multicore_processing'):
             from multiprocessing import Pool
 
@@ -170,11 +176,11 @@ class LEDSA:
         else:
             for i in range(len(img_filenames)):
                 image_data.append(self.process_file(img_filenames[i]))
-                print('image ', i+1, '/', len(img_filenames)+1, ' processed')
+                print('image ', i+1, '/', len(img_filenames), ' processed')
 
     """workaround for pool.map"""
     def process_file(self, img_filename):
-        img_data = led.process_file(img_filename, self.search_areas, self.line_indices, self.config)
+        img_data = led.process_file(img_filename, self.search_areas, self.line_indices, self.config['analyse_photo'])
 
         out_file = open('analysis{}{}_led_positions.csv'.format(sep, img_filename), 'w')
         out_file.write("# id,         line,   x,         y,        dx,        dy,"
