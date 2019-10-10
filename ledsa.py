@@ -30,6 +30,9 @@ class LEDSA:
         if not os.path.exists('analysis'):
             os.mkdir('analysis')
             print("Directory analysis created ")
+        if not os.path.exists('analysis{}channel{}'.format(sep, self.config['analyse_photo']['channel'])):
+            os.mkdir('analysis{}channel{}'.format(sep, self.config['analyse_photo']['channel']))
+            print("Directory analysis{}channel{} created".format(sep, self.config['analyse_photo']['channel']))
 
         # request all unset parameters
         # not complete
@@ -50,6 +53,9 @@ class LEDSA:
             self.config.save()
         if self.config['analyse_photo']['last_img'] == 'None':
             self.config.in_last_img()
+            self.config.save()
+        if self.config['DEFAULT']['num_of_arrays'] == 'None':
+            self.config.in_num_of_arrays()
             self.config.save()
 
         if not os.path.isfile('image_infos.csv'):
@@ -182,7 +188,8 @@ class LEDSA:
     def process_file(self, img_filename):
         img_data = led.process_file(img_filename, self.search_areas, self.line_indices, self.config['analyse_photo'])
 
-        out_file = open('analysis{}{}_led_positions.csv'.format(sep, img_filename), 'w')
+        out_file = open('analysis{}channel{}{}{}_led_positions.csv'.format(sep, self.config['analyse_photo']['channel'],
+                                                                           sep, img_filename), 'w')
         out_file.write("# id,         line,   x,         y,        dx,        dy,"
                        "         A,     alpha,        wx,        wy, fit_success,"
                        "   fit_fun, fit_nfev // all spatial quantities in pixel coordinates\n")

@@ -68,10 +68,16 @@ class ConfigData(cp.ConfigParser):
         return indices
 
     def in_ref_img(self):
-        self['find_search_areas']['reference_img'] = input('Please give the name of the reference image: ')
+        self['find_search_areas']['reference_img'] = input('Please give the name of the reference image, from where the'
+                                                           ' led positions are calculated and which will be the start '
+                                                           'of the experiment time calculation: ')
 
     def in_time_img(self):
-        self['DEFAULT']['time_img'] = input('Please give the name of the time reference image: ')
+        self['DEFAULT']['time_img'] = input('Please give the name of the time reference image, the image where a clock '
+                                            'is visible, to synchronyse multiple cameras in one experiment: ')
+
+    def in_num_of_arrays(self):
+        self['DEFAULT']['num_of_arrays'] = input('Please give the number of LED lines: ')
 
     def in_time_diff_to_img_time(self):
         time = input('Please give the time of the time reference image in hh:mm:ss: ')

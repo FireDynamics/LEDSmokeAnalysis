@@ -117,4 +117,5 @@ plots/
 analysis/
 test.py
 img_infos.csv
+config.ini
 .vscode/settings.json

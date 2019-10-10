@@ -135,6 +135,7 @@ def find_search_areas(image, window_radius=10, skip=10):
     list_ixy = []
     led_id = 0
 
+    print('finding led search areas')
     for ix in range(window_radius, image.shape[0] - window_radius, skip):
         for iy in range(window_radius, image.shape[1] - window_radius, skip):
             if im_set[ix, iy] > 0.7:
@@ -149,10 +150,11 @@ def find_search_areas(image, window_radius=10, skip=10):
                 led_id += 1
                 im_set[ix - window_radius:ix + window_radius, iy - window_radius:iy + window_radius] = 0
 
-                print("found led search area at: {} {}".format(max_x, max_y))
+                print('.', end='', flush=True)
 
     ixys = np.array(list_ixy)
 
+    print()
     print("found {} leds".format(ixys.shape[0]))
 
     return ixys
