@@ -113,5 +113,9 @@ venv.bak/
 #data & output
 data/
 out/
+plots/
+analysis/
 test.py
+img_infos.csv
+config.ini
 .vscode/settings.json
