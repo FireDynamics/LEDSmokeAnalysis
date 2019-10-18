@@ -177,7 +177,7 @@ class LEDSA:
             from multiprocessing import Pool
 
             print('images are getting processed, this may take a while')
-            with Pool(int(config.num_of_cores)) as p:
+            with Pool(int(self.config['DEFAULT']['num_of_cores'])) as p:
                 image_data = p.map(self.process_file, img_filenames)
         else:
             for i in range(len(img_filenames)):
