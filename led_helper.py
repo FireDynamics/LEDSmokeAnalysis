@@ -1,6 +1,10 @@
 import numpy as np
 import scipy.optimize
 import matplotlib.pyplot as plt
+import os
+
+# os path separator
+sep = os.path.sep
 
 """
 ------------------------------------
@@ -25,7 +29,7 @@ def load_file(filename, delim=' ', dtype='float'):
         exit(0)
     else:
         print('{} successfully loaded.'.format(filename))
-    return data
+    return np.atleast_1d(data)
 
 
 def read_file(filename, channel=0):
@@ -274,7 +278,19 @@ def process_file(img_filename, search_areas, line_indices, conf):
     return img_data
 
 
-def find_calculated_imgs():
+def find_calculated_imgs(config):
+    import re
+    image_infos = load_file('image_infos.csv', dtype=str, delim=',')
+    all_imgs = image_infos[:, 1]
+    processed_imgs = []
+    directory_content = os.listdir('.{}analysis{}channel{}'.format(sep, sep, config['channel']))
+    for i in directory_content:
+        processed_imgs.append(re.search(config['img_name_string'].format('.*'), i).group(0))
+    remaining_imgs = set(all_imgs)-set(processed_imgs)
+    out_file = open('images_to_process.csv', 'w')
+    for i in list(remaining_imgs):
+        out_file.write('{}\n'.format(i))
+    out_file.close()
 
 
 

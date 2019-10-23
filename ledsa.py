@@ -65,6 +65,13 @@ class LEDSA:
             out_file.write(img_data)
             out_file.close()
 
+        image_infos = led.load_file('image_infos.csv', dtype=str, delim=',')
+        img_filenames = image_infos[:, 1]
+        out_file = open('images_to_process.csv', 'w')
+        for img in img_filenames:
+            out_file.write('{}\n'.format(img))
+        out_file.close()
+
 
     """
     ------------------------------------
@@ -170,8 +177,7 @@ class LEDSA:
         if self.line_indices is None:
             self.load_line_indices()
 
-        image_infos = led.load_file('image_infos.csv', dtype=str, delim=',')
-        img_filenames = image_infos[:, 1]
+        img_filenames = led.load_file('images_to_process.csv', dtype=str)
         if config.getboolean('multicore_processing'):
             from multiprocessing import Pool
 
@@ -182,6 +188,8 @@ class LEDSA:
             for i in range(len(img_filenames)):
                 self.process_file(img_filenames[i])
                 print('image ', i+1, '/', len(img_filenames), ' processed')
+
+        os.remove('images_to_process.csv')
 
     """workaround for pool.map"""
     def process_file(self, img_filename):
@@ -201,7 +209,7 @@ class LEDSA:
     -----------------------------------------
     """
     def find_calculated_imgs(self):
-        led.find_calculated_imgs()
+        led.find_calculated_imgs(self.config['analyse_photo'])
 
     def shell_in_ingore_indices(self):
         led.shell_in_ingore_indices()
@@ -232,7 +240,12 @@ if __name__ == '__main__':
                         help='Restarts step 3 of the analysis after the program was terminated before it finished.')
     args = parser.parse_args()
 
+    print('ledsa runs with the following arguments:')
     print(args)
+
+    if args.config == None and args.s1 and not args.s2 and not args.s3 and not args.re:
+        args.config = []
+        args.s1 = args.s2 = args.s3 = True
 
     if args.config is not None:
         if len(args.config) == 0:
