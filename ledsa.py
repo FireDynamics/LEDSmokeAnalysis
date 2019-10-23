@@ -200,6 +200,8 @@ class LEDSA:
     useful functions from the helper module
     -----------------------------------------
     """
+    def find_calculated_imgs(self):
+        led.find_calculated_imgs()
 
     def shell_in_ingore_indices(self):
         led.shell_in_ingore_indices()
@@ -225,7 +227,9 @@ if __name__ == '__main__':
                         help='STEP3: finds the changes in light intensity')
     parser.add_argument('--config', '-c', nargs='*', default=None,
                         help='creates the default configuration file. optional arguments are are: img_directory, '
-                             'reference_img, number_of_cores. ')
+                             'reference_img, number_of_cores.')
+    parser.add_argument('--re', '-re', '--restart', action='store_true',
+                        help='Restarts step 3 of the analysis after the program was terminated before it finished.')
     args = parser.parse_args()
 
     print(args)
@@ -251,3 +255,7 @@ if __name__ == '__main__':
         if args.s3:
             ledsa.process_image_data()
 
+    if args.re:
+        ledsa = LEDSA()
+        ledsa.find_calculated_imgs()
+        ledsa.process_image_data()

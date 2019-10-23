@@ -20,7 +20,7 @@ def load_file(filename, delim=' ', dtype='float'):
               'permission.\n Error Message: ', e)
         exit(0)
     except Exception as e:
-        print('Some error has occured while loading {}'.format(filename),
+        print('Some error has occurred while loading {}'.format(filename),
               '. \n Error Message: ', e)
         exit(0)
     else:
@@ -272,6 +272,10 @@ def process_file(img_filename, search_areas, line_indices, conf):
                                                              fit_res.success, fit_res.fun, fit_res.nfev))
 
     return img_data
+
+
+def find_calculated_imgs():
+
 
 
 '''
