@@ -170,18 +170,17 @@ class LEDSA:
         if self.line_indices is None:
             self.load_line_indices()
 
-        image_data = []
         image_infos = led.load_file('image_infos.csv', dtype=str, delim=',')
-        img_filenames = image_infos[:,1]
+        img_filenames = image_infos[:, 1]
         if config.getboolean('multicore_processing'):
             from multiprocessing import Pool
 
             print('images are getting processed, this may take a while')
-            with Pool(int(config.num_of_cores)) as p:
-                image_data = p.map(self.process_file, img_filenames)
+            with Pool(int(config['num_of_cores'])) as p:
+                p.map(self.process_file, img_filenames)
         else:
             for i in range(len(img_filenames)):
-                image_data.append(self.process_file(img_filenames[i]))
+                self.process_file(img_filenames[i])
                 print('image ', i+1, '/', len(img_filenames), ' processed')
 
     """workaround for pool.map"""
