@@ -243,7 +243,7 @@ if __name__ == '__main__':
     print('ledsa runs with the following arguments:')
     print(args)
 
-    if args.config == None and args.s1 and not args.s2 and not args.s3 and not args.re:
+    if args.config is None and args.s1 and not args.s2 and not args.s3 and not args.re:
         args.config = []
         args.s1 = args.s2 = args.s3 = True
 
