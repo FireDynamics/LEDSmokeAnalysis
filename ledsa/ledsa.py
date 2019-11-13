@@ -15,7 +15,7 @@ sep = os.path.sep
 class LEDSA:
     
     def __init__(self, load_config_file=True):
-        self.config = lc.ConfigData(load_data=load_config_file)
+        self.config = lc.ConfigData(load_config_file=load_config_file)
             
         # declarations of global variables
         # 2D numpy array wit dimension (# of LEDs) x (LED_id, x, y)
