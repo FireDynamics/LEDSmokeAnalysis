@@ -130,7 +130,8 @@ class ConfigData(cp.ConfigParser):
                        self.getint('analyse_photo', 'skip_imgs') + 1):
 
             # get time from exif data
-            exif = _get_exif(self['DEFAULT']['img_directory'] + self['DEFAULT']['img_name_string'].format(i))
+            img_number = '{:04d}'.format(i)
+            exif = _get_exif(self['DEFAULT']['img_directory'] + self['DEFAULT']['img_name_string'].format(img_number))
             if not exif:
                 raise ValueError("No EXIF metadata found")
 
@@ -142,6 +143,7 @@ class ConfigData(cp.ConfigParser):
 
                     # calculate the experiment time and real time
                     experiment_time = _sub_times(time_meta, self['DEFAULT']['start_time'])
+                    experiment_time = _time_to_int(experiment_time)
                     time = _add_time_diff(time_meta, self['DEFAULT']['time_diff_to_img_time'])
                     img_data += (str(img_idx) + ',' + self['DEFAULT']['img_name_string'].format(i) + ',' + time + ',' +
                                  experiment_time + '\n')
@@ -177,7 +179,12 @@ def _add_time_diff(time, diff):
     t[2] = t[2] % 60
     t[1] = t[1] % 60
     # don't accounts for change in date
-    return '{}:{}:{}'.format(t[0], t[1], t[2])
+    return '{:02d}:{:02d}:{:02d}'.format(t[0], t[1], t[2])
+
+
+def _time_to_int(time):
+    t = time.split(':')
+    return t[0] * 3600 + t[1] * 60 + t[2]
 
 
 def _get_exif(filename):

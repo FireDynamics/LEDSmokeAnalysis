@@ -57,6 +57,8 @@ def shell_in_line_edge_indices(config):
         labels += '\t    ' + line + '\n'
     config['line_edge_indices'] = '\n' + labels
 
+def log_warnings(*argv):
+    open()
 
 """
 ------------------------------------
