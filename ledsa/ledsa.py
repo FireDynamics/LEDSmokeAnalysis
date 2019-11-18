@@ -65,7 +65,7 @@ class LEDSA:
             out_file.write(img_data)
             out_file.close()
 
-        image_infos = led.load_file('image_infos.csv', dtype=str, delim=',')
+        image_infos = led.load_file('image_infos.csv', dtype=str, delim=',', atleast_2d=True)
         img_filenames = image_infos[:, 1]
         out_file = open('images_to_process.csv', 'w')
         for img in img_filenames:

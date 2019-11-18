@@ -15,7 +15,7 @@ File management
 
 # should handle all exception for opening files
 # when exception is thrown, ask if std conffile should be used or user input
-def load_file(filename, delim=' ', dtype='float'):
+def load_file(filename, delim=' ', dtype='float', atleast_2d=False):
     try:
         data = np.loadtxt(filename, delimiter=delim, dtype=dtype)
     except OSError as e:
@@ -29,6 +29,8 @@ def load_file(filename, delim=' ', dtype='float'):
         exit(0)
     else:
         print('{} successfully loaded.'.format(filename))
+    if atleast_2d:
+        return np.atleast_2d(data)
     return np.atleast_1d(data)
 
 
@@ -57,8 +59,18 @@ def shell_in_line_edge_indices(config):
         labels += '\t    ' + line + '\n'
     config['line_edge_indices'] = '\n' + labels
 
+
+# switch to Lib/logging at some point
 def log_warnings(*argv):
-    open()
+    if not os.path.exists('.{}logfiles'.format(sep)):
+        os.makedirs('.{}logfiles'.format(sep))
+    logfile = open('.{}logfiles{}warnings.log'.format(sep, sep), 'a')
+    for info in argv:
+        logfile.write(str(info) + ' ')
+    logfile.write('\n')
+    logfile.close()
+
+
 
 """
 ------------------------------------
@@ -67,7 +79,7 @@ Outsourced logic
 """
 
 
-def led_fit(x, y, x0, y0, dx, dy, A, alpha, wx, wy, plot=False):
+def led_fit(x, y, x0, y0, dx, dy, A, alpha, wx, wy):
     nx = x - x0
     ny = y - y0
 
@@ -79,8 +91,7 @@ def led_fit(x, y, x0, y0, dx, dy, A, alpha, wx, wy, plot=False):
     dw = wx * wy / (np.sqrt((wx * np.cos(phi)) ** 2 + (wy * np.sin(phi)) ** 2))
 
     a = A * 0.5 * (1 - np.tanh((r - dr) / dw))
-    if plot:
-        return dr
+
     return a
 
 
@@ -109,7 +120,7 @@ def find_leds(search_area):
             penalty += (np.abs(alpha) - np.pi / 2) * 1e6
 
         # returns 12 every time...
-        penalty = 0
+        # penalty = 0
         return l2 + penalty
 
     nx = search_area.shape[0]
@@ -273,9 +284,14 @@ def process_file(img_filename, search_areas, line_indices, conf):
 
                 line_number = iline
 
-                img_data +=('{:4d},{:2d},{:10.4e},{:10.4e},{:10.4e},{:10.4e},{:10.4e},{:10.4e},{:10.4e},{:10.4e},'
-                            '{:12d},{:10.4e},{:9d}\n'.format(iled, line_number, im_x, im_y, dx, dy, A, alpha, wx, wy,
-                                                             fit_res.success, fit_res.fun, fit_res.nfev))
+                led_data = ('{:4d},{:2d},{:10.4e},{:10.4e},{:10.4e},{:10.4e},{:10.4e},{:10.4e},{:10.4e},{:10.4e},'
+                            '{:12d},{:10.4e},{:9d}'.format(iled, line_number, im_x, im_y, dx, dy, A, alpha, wx, wy,
+                                                           fit_res.success, fit_res.fun, fit_res.nfev))
+                img_data += led_data + '\n'
+                if not fit_res.success or A > 255:
+                    log_warnings('Irregularities while fitting:\n    ',
+                                 img_filename, iled, line_number, np.array_str(fit_res.x), fit_res.success, fit_res.fun,
+                                 fit_res.nfev, search_areas.shape[0], search_areas.shape[1], im_x, im_y, window_radius)
 
     return img_data
 

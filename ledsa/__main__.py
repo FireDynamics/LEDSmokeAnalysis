@@ -23,7 +23,7 @@ args = parser.parse_args()
 print('ledsa runs with the following arguments:')
 print(args)
 
-if args.config is None and args.s1 and not args.s2 and not args.s3 and not args.re:
+if args.config is None and not args.s1 and not args.s2 and not args.s3 and not args.re:
     args.config = []
     args.s1 = args.s2 = args.s3 = True
 

@@ -6,7 +6,8 @@ from os import path
 
 
 class ConfigData(cp.ConfigParser):
-    def __init__(self, load_config_file=False, img_directory='.', window_radius=10, num_of_arrays=None,
+    # dont give img_directory a standard value
+    def __init__(self, load_config_file=True, img_directory='.', window_radius=10, num_of_arrays=None,
                  multicore_processing=False, num_of_cores=1, reference_img=None, date=None, start_time=None,
                  time_diff_to_image_time=None, time_img=None, img_name_string=None, first_img=None, last_img=None,
                  skip_imgs=0, skip_leds=0, channel=0):
@@ -126,7 +127,7 @@ class ConfigData(cp.ConfigParser):
             self.save()
         img_data = ''
         img_idx = 1
-        for i in range(self.getint('analyse_photo', 'first_img'), self.getint('analyse_photo', 'last_img'),
+        for i in range(self.getint('analyse_photo', 'first_img'), self.getint('analyse_photo', 'last_img') + 1,
                        self.getint('analyse_photo', 'skip_imgs') + 1):
 
             # get time from exif data
@@ -146,7 +147,7 @@ class ConfigData(cp.ConfigParser):
                     experiment_time = _time_to_int(experiment_time)
                     time = _add_time_diff(time_meta, self['DEFAULT']['time_diff_to_img_time'])
                     img_data += (str(img_idx) + ',' + self['DEFAULT']['img_name_string'].format(i) + ',' + time + ',' +
-                                 experiment_time + '\n')
+                                 str(experiment_time) + '\n')
                     img_idx += 1
         return img_data
 
@@ -184,7 +185,7 @@ def _add_time_diff(time, diff):
 
 def _time_to_int(time):
     t = time.split(':')
-    return t[0] * 3600 + t[1] * 60 + t[2]
+    return int(t[0]) * 3600 + int(t[1]) * 60 + int(t[2])
 
 
 def _get_exif(filename):
