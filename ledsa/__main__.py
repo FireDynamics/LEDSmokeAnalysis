@@ -1,8 +1,8 @@
 # this file is executed if the package is run via python -m ledsa [arguments]
 
 import argparse
-from ledsa import LEDSA
-from ledsa import ledsa_conf as lc
+from .ledsa import LEDSA
+from .core import ledsa_conf as lc
 
 
 parser = argparse.ArgumentParser(description=

@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 from PIL import Image
 from ..core._led_helper import read_file
 from ..core._led_helper import led_fit
+from ..core._led_helper import process_file
+from ..ledsa import LEDSA
 
 
 class FitAnalyser:
@@ -16,46 +18,64 @@ class FitAnalyser:
         self.filename = params[0]
         self.id = int(params[1])
         self.line_number = int(params[2])
-        self.fit = np.array(params[3])
+        self.fit = np.fromstring(params[3].strip('[').strip(']'), sep=",")
         self.fit_success = bool(params[4])
         self.fit_fun = params[5]
-        self.fit_num_it = params[6]
-        self.nx = params[7]
-        self.ny = params[8]
-        self.im_x = params[9]
-        self.im_y = params[10]
-        self.window_radius = float(params[11])
+        self.fit_num_it = int(params[6])
+        self.nx = int(params[7])
+        self.ny = int(params[8])
+        self.im_x = float(params[9])
+        self.im_y = float(params[10])
+        self.window_radius = int(params[11])
+        self.cx = int(params[12])
+        self.cy = int(params[13])
+        self.channel = int(params[14])
 
     def plot_image(self):
+        data = read_file(self.filename, channel=self.channel)
+
+        s = np.index_exp[self.cx - self.window_radius:self.cx + self.window_radius,
+                         self.cy - self.window_radius:self.cy + self.window_radius]
+        print(s, '\n')
         im = Image.open(self.filename)
-        im = im.crop((self.im_x - 1.5 * self.window_radius,
-                      self.im_y + 1.5 * self.window_radius,
-                      self.im_x + 1.5 * self.window_radius,
-                      self.im_y - 1.5 * self.window_radius))
+        print('%s\n', self.filename)
+        im = im.crop((self.im_x - 1 * self.window_radius,
+                      self.im_y - 1 * self.window_radius,
+                      self.im_x + 1 * self.window_radius,
+                      self.im_y + 1 * self.window_radius))
+        plt.imshow(im)
+        plt.show()
 
         plt.figure(dpi=1200)
 
-        mesh = np.meshgrid(np.linspace(0.5, nx - 0.5, nx), np.linspace(0.5, ny - 0.5, ny))
+        mesh = np.meshgrid(np.linspace(0.5, self.nx - 0.5, self.nx), np.linspace(0.5, self.ny - 0.5, self.ny))
 
         led_model = led_fit(mesh[0], mesh[1], self.fit[0], self.fit[1], self.fit[2], self.fit[3], self.fit[4],
                             self.fit[5], self.fit[6], self.fit[7])
 
         fig, ax = plt.subplots(1, 2)
 
-        ax[0].imshow(im, cmap='Greys')
+        ax[0].imshow(data[s], cmap='Greys')
         ax[0].contour(mesh[0], mesh[1], led_model, levels=10, alpha=0.3)
         ax[0].scatter(self.fit[0], self.fit[1], color='Red')
 
-        # ax[1].imshow(led_model, cmap='Greys')
+        ax[1].imshow(led_model, cmap='Greys')
 
         ampl = 0.25 # np.max(np.abs(data[s] - led_model))
+        maxA = 255 # ????
 
-        #im2 = ax[1].imshow((data[s] - led_model)/maxA, cmap='seismic', vmin=-ampl, vmax=ampl)
+        im2 = ax[1].imshow((data[s] - led_model)/maxA, cmap='seismic', vmin=-ampl, vmax=ampl)
         plt.colorbar(mappable=im2)
-        plt.show()
         # plt.savefig('{}_ledanalysis_{:04d}.pdf'.format(filename, iled))
         # plt.clf()
 
-        plt.imshow(im, cmap='Greys')
-        plt.colorbar()
-        plt.plot()
+        plt.show()
+
+    def refit_image(self):
+        # maybe the import of process file here allows for change-test while loop
+        ledsa = LEDSA()
+        fit_res = process_file(self.filename[-12:], ledsa.search_areas, ledsa.line_indices, ledsa.config['analyse_photo'], True, self.id)
+        self.fit = fit_res.x
+        self.fit_success = fit_res.success
+        self.fit_fun = fit_res.fun
+        self.fit_num_it = fit_res.nfev

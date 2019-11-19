@@ -255,7 +255,7 @@ def analyse_position_man(search_areas, config):
     return line_indices
 
 
-def process_file(img_filename, search_areas, line_indices, conf):
+def process_file(img_filename, search_areas, line_indices, conf, debug=False, debug_led=None):
     # print(search_areas)
     # print(len(search_areas))
 
@@ -269,6 +269,10 @@ def process_file(img_filename, search_areas, line_indices, conf):
         print('processing LED array ', iline, '...')
         for iled in line_indices[iline]:
             if iled % (int(conf['skip_leds']) + 1) == 0:
+
+                if debug:
+                    iled = debug_led
+
                 cx = int(search_areas[iled, 1])
                 cy = int(search_areas[iled, 2])
 
@@ -276,6 +280,9 @@ def process_file(img_filename, search_areas, line_indices, conf):
                                  cy - window_radius:cy + window_radius]
 
                 fit_res, mesh = find_leds(data[s])
+
+                if debug:
+                    return fit_res
 
                 x, y, dx, dy, A, alpha, wx, wy = fit_res.x
 
@@ -288,10 +295,12 @@ def process_file(img_filename, search_areas, line_indices, conf):
                             '{:12d},{:10.4e},{:9d}'.format(iled, line_number, im_x, im_y, dx, dy, A, alpha, wx, wy,
                                                            fit_res.success, fit_res.fun, fit_res.nfev))
                 img_data += led_data + '\n'
-                if not fit_res.success or A > 255:
+                img_file_path = conf['img_directory'] + img_filename
+
+                if not fit_res.success or A > 1:
                     log_warnings('Irregularities while fitting:\n    ',
-                                 img_filename, iled, line_number, np.array_str(fit_res.x), fit_res.success, fit_res.fun,
-                                 fit_res.nfev, search_areas.shape[0], search_areas.shape[1], im_x, im_y, window_radius)
+                                 img_file_path, iled, line_number, ' '.join(np.array_str(fit_res.x).split()).replace('[ ','[').replace(' ]', ']').replace(' ', ','), fit_res.success, fit_res.fun,
+                                 fit_res.nfev, search_areas.shape[0], search_areas.shape[1], im_x, im_y, window_radius, cx, cy, conf['channel'])
 
     return img_data
 

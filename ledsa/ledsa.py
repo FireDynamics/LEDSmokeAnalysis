@@ -18,7 +18,7 @@ class LEDSA:
         self.config = lc.ConfigData(load_config_file=load_config_file)
             
         # declarations of global variables
-        # 2D numpy array wit dimension (# of LEDs) x (LED_id, x, y)
+        # 2D numpy array with dimension (# of LEDs) x (LED_id, x, y)
         self.search_areas = None
         # 2D list with dimension (# of LED arrays) x (# of LEDs per array)
         self.line_indices = None
