@@ -50,6 +50,7 @@ def shell_in_ignore_indices():
     return 0
 
 
+# switch to ledsa_conf
 def shell_in_line_edge_indices(config):
     print('The edges of the LED arrays are needed. Please enter the labels of the top most and bottom most LED of each '
           'array. Separate the two labels with a whitespace.')

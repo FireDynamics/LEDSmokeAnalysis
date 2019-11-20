@@ -37,6 +37,7 @@ class ConfigData(cp.ConfigParser):
             self['analyse_positions'] = {}
             self['analyse_positions']['ignore_indices'] = 'None'
             self['analyse_positions']['line_edge_indices'] = 'None'
+            self['analyse_positions']['line_edge_coordinates'] = 'None'
 
             self['analyse_photo'] = {}
             self['analyse_photo']['first_img'] = str(first_img)
@@ -58,14 +59,14 @@ class ConfigData(cp.ConfigParser):
             self.write(configfile)
         print('config.ini saved')
 
-    def get2dnparray(self, section, option):
+    def get2dnparray(self, section, option, num_col=2, dtype=int):
         if self[section][option] == 'None':
             return None
         indices_tmp = [int(i) for i in self[section][option].split()]
-        indices = np.zeros((len(indices_tmp) // 2, 2), dtype=int)
-        for i in range(len(indices_tmp) // 2):
-            indices[i][0] = indices_tmp[2 * i]
-            indices[i][1] = indices_tmp[2 * i + 1]
+        indices = np.zeros((len(indices_tmp) // num_col, num_col), dtype=dtype)
+        for i in range(len(indices_tmp) // num_col):
+            indices[i][:] = indices_tmp[num_col * i:num_col * i + num_col]
+            # indices[i][1] = indices_tmp[2 * i + 1]
         return indices
 
     def in_ref_img(self):
@@ -105,6 +106,15 @@ class ConfigData(cp.ConfigParser):
 
     def in_last_img(self):
         self['analyse_photo']['last_img'] = input('Please give the number of the last image file to use: ')
+
+    def in_line_edge_coordinates(self):
+        print('Please enter the coordinates of the top most and bottom most LED of each array corresponding to the '
+              'order of the line edge indices. Separate the two coordinates with a whitespace.')
+        coordinates = str()
+        for i in range(int(self['num_of_arrays'])):
+            line = input(str(i) + '. array: ')
+            coordinates += '\t    ' + line + '\n'
+        self['analyse_positions']['line_edge_coordinates'] = '\n' + coordinates
 
     # get the uncorrected start time from the reference image
     def get_start_time(self):
