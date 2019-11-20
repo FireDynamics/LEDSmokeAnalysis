@@ -43,16 +43,14 @@ class FitAnalyser:
                       self.im_x + 1 * self.window_radius,
                       self.im_y + 1 * self.window_radius))
         plt.imshow(im)
-        plt.show()
-
-        plt.figure(dpi=1200)
+        plt.show(block=False)
 
         mesh = np.meshgrid(np.linspace(0.5, self.nx - 0.5, self.nx), np.linspace(0.5, self.ny - 0.5, self.ny))
 
         led_model = led.led_fit(mesh[0], mesh[1], self.fit[0], self.fit[1], self.fit[2], self.fit[3], self.fit[4],
                             self.fit[5], self.fit[6], self.fit[7])
 
-        fig, ax = plt.subplots(1, 2)
+        fig, ax = plt.subplots(1, 2, dpi=600)
 
         ax[0].imshow(data[s], cmap='Greys')
         ax[0].contour(mesh[0], mesh[1], led_model, levels=10, alpha=0.3)
