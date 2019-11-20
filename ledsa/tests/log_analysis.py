@@ -2,10 +2,9 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+import importlib
 from PIL import Image
-from ..core._led_helper import read_file
-from ..core._led_helper import led_fit
-from ..core._led_helper import process_file
+import ledsa.core._led_helper as led
 from ..ledsa import LEDSA
 
 
@@ -32,7 +31,7 @@ class FitAnalyser:
         self.channel = int(params[14])
 
     def plot_image(self):
-        data = read_file(self.filename, channel=self.channel)
+        data = led.read_file(self.filename, channel=self.channel)
 
         s = np.index_exp[self.cx - self.window_radius:self.cx + self.window_radius,
                          self.cy - self.window_radius:self.cy + self.window_radius]
@@ -50,7 +49,7 @@ class FitAnalyser:
 
         mesh = np.meshgrid(np.linspace(0.5, self.nx - 0.5, self.nx), np.linspace(0.5, self.ny - 0.5, self.ny))
 
-        led_model = led_fit(mesh[0], mesh[1], self.fit[0], self.fit[1], self.fit[2], self.fit[3], self.fit[4],
+        led_model = led.led_fit(mesh[0], mesh[1], self.fit[0], self.fit[1], self.fit[2], self.fit[3], self.fit[4],
                             self.fit[5], self.fit[6], self.fit[7])
 
         fig, ax = plt.subplots(1, 2)
@@ -72,9 +71,12 @@ class FitAnalyser:
         plt.show()
 
     def refit_image(self):
-        # maybe the import of process file here allows for change-test while loop
+        importlib.reload(led)
+
         ledsa = LEDSA()
-        fit_res = process_file(self.filename[-12:], ledsa.search_areas, ledsa.line_indices, ledsa.config['analyse_photo'], True, self.id)
+        ledsa.load_line_indices()
+        ledsa.load_search_areas()
+        fit_res = led.process_file(self.filename[-12:], ledsa.search_areas, ledsa.line_indices, ledsa.config['analyse_photo'], True, self.id)
         self.fit = fit_res.x
         self.fit_success = fit_res.success
         self.fit_fun = fit_res.fun

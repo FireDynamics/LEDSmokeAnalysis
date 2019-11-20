@@ -126,8 +126,6 @@ def find_leds(search_area):
     nx = search_area.shape[0]
     ny = search_area.shape[1]
 
-    print(nx, ' ' ,ny, '\n')
-
     center_x = nx // 2
     center_y = ny // 2
     x0 = np.array([center_x, center_y, 2., 2., 200., 1.0, 1.0, 1.0])
@@ -138,7 +136,6 @@ def find_leds(search_area):
                                   args=(search_area, mesh), method='nelder-mead',
                                   options={'xtol': 1e-8, 'disp': False,
                                            'adaptive': False, 'maxiter': 10000})
-    # print(res)
     return res, mesh
 
 
@@ -258,8 +255,6 @@ def analyse_position_man(search_areas, config):
 
 
 def process_file(img_filename, search_areas, line_indices, conf, debug=False, debug_led=None):
-    # print(search_areas)
-    # print(len(search_areas))
 
     data = read_file('{}{}'.format(conf['img_directory'], img_filename),
                      channel=int(conf['channel']))
@@ -268,7 +263,8 @@ def process_file(img_filename, search_areas, line_indices, conf, debug=False, de
     img_data = ''
 
     for iline in range(int(conf['num_of_arrays'])):
-        print('processing LED array ', iline, '...')
+        if not debug:
+            print('processing LED array ', iline, '...')
         for iled in line_indices[iline]:
             if iled % (int(conf['skip_leds']) + 1) == 0:
 
@@ -292,8 +288,6 @@ def process_file(img_filename, search_areas, line_indices, conf, debug=False, de
                 im_y = y + cy - window_radius
 
                 line_number = iline
-
-                print('procsess_file:', search_areas.shape[0], search_areas.shape[1], '\n')
 
                 led_data = ('{:4d},{:2d},{:10.4e},{:10.4e},{:10.4e},{:10.4e},{:10.4e},{:10.4e},{:10.4e},{:10.4e},'
                             '{:12d},{:10.4e},{:9d}'.format(iled, line_number, im_x, im_y, dx, dy, A, alpha, wx, wy,
