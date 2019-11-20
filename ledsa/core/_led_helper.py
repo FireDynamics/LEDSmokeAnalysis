@@ -126,6 +126,8 @@ def find_leds(search_area):
     nx = search_area.shape[0]
     ny = search_area.shape[1]
 
+    print(nx, ' ' ,ny, '\n')
+
     center_x = nx // 2
     center_y = ny // 2
     x0 = np.array([center_x, center_y, 2., 2., 200., 1.0, 1.0, 1.0])
@@ -291,16 +293,18 @@ def process_file(img_filename, search_areas, line_indices, conf, debug=False, de
 
                 line_number = iline
 
+                print('procsess_file:', search_areas.shape[0], search_areas.shape[1], '\n')
+
                 led_data = ('{:4d},{:2d},{:10.4e},{:10.4e},{:10.4e},{:10.4e},{:10.4e},{:10.4e},{:10.4e},{:10.4e},'
                             '{:12d},{:10.4e},{:9d}'.format(iled, line_number, im_x, im_y, dx, dy, A, alpha, wx, wy,
                                                            fit_res.success, fit_res.fun, fit_res.nfev))
                 img_data += led_data + '\n'
                 img_file_path = conf['img_directory'] + img_filename
 
-                if not fit_res.success or A > 1:
+                if not fit_res.success or A > 255 or A < 0:
                     log_warnings('Irregularities while fitting:\n    ',
                                  img_file_path, iled, line_number, ' '.join(np.array_str(fit_res.x).split()).replace('[ ','[').replace(' ]', ']').replace(' ', ','), fit_res.success, fit_res.fun,
-                                 fit_res.nfev, search_areas.shape[0], search_areas.shape[1], im_x, im_y, window_radius, cx, cy, conf['channel'])
+                                 fit_res.nfev, data[s].shape[0], data[s].shape[1], im_x, im_y, window_radius, cx, cy, conf['channel'])
 
     return img_data
 
