@@ -66,7 +66,7 @@ class FitAnalyser:
         # plt.savefig('{}_ledanalysis_{:04d}.pdf'.format(filename, iled))
         # plt.clf()
 
-        plt.show(block=False)
+        plt.show(block=True)
 
     def refit_image(self):
         importlib.reload(led)

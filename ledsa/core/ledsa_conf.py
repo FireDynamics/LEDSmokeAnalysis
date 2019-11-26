@@ -62,7 +62,7 @@ class ConfigData(cp.ConfigParser):
     def get2dnparray(self, section, option, num_col=2, dtype=int):
         if self[section][option] == 'None':
             return None
-        indices_tmp = [int(i) for i in self[section][option].split()]
+        indices_tmp = [dtype(i) for i in self[section][option].split()]
         indices = np.zeros((len(indices_tmp) // num_col, num_col), dtype=dtype)
         for i in range(len(indices_tmp) // num_col):
             indices[i][:] = indices_tmp[num_col * i:num_col * i + num_col]
