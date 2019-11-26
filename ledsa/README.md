@@ -13,12 +13,12 @@ If you don't know, what a variable means or is used for or aren't sure of the fo
     
 It is a good idea to make a template configuration file if multiple, similar experiments are analysed.
 
-Run python -m ledsa.py -s1 from anywhere
+Run python -m ledsa -s1 from anywhere
 
-Run python -m ledsa.py -s2. You will be asked to write the different indices of the edges of the led arrays into the shell.
+Run python -m ledsa -s2. You will be asked to write the different indices of the edges of the led arrays into the shell.
 You can do it also after step1 directly in the config file. The information is found in ./plots/led_search_areas.plot.pdf
     
-Run python -m ledsa.py -s3. This will take quite a while, even on many cores. Grab something to eat.
+Run python -m ledsa -s3. This will take quite a while, even on many cores. Grab something to eat.
 
 
 
