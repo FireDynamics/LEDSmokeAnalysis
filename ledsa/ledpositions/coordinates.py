@@ -10,7 +10,7 @@ sep = os.path.sep
 
 
 class LED:
-    def __init__(self, id=None, pos=None, pix_pos = None):
+    def __init__(self, id=None, pos=None, pix_pos=None):
         self.id = id
         self.pos = pos
         self.pix_pos = pix_pos
@@ -25,14 +25,23 @@ class LED:
         return led2.pix_pos - self.pix_pos
 
 
-def orth_projection(point, line):
-    # factor = point.dot(line)/line.dot(line)
-    # result = np.asscalar(factor) * line
+# projects a point orthogonal onto a line
+# the arguments are numpy arrays with two elements with point and point_on_line containing the pixel coordinates of the
+# point to project and one point on the line respectively and line containing the direction of the line
+# (point B - point A)
+def orth_projection(point, line, point_on_line):
+    # normalized direction vector of line
     line_hat = (line / np.linalg.norm(line)).flatten()
-    projection = point.flatten().dot(line_hat)*line_hat
+    # vector between the line and the normalized direction vector of the line
+    line_pos = point_on_line.flatten() - point_on_line.flatten().dot(line_hat)*line_hat
+    # projection of the point onto the line
+    projection = point.flatten().dot(line_hat)*line_hat + line_pos
     return projection
 
 
+# calculates from the measured room coordinates of two points per led array the room coordinates of each other point by
+# calculating the linear transformation between pixel and room coordinates and applying it to the projection of each led
+# onto the corresponding line
 def calculate_coordinates():
     conf = lc.ConfigData()
     search_areas = ledh.load_file('.{}analysis{}led_search_areas.csv'.format(sep, sep), delim=',')
@@ -65,12 +74,9 @@ def calculate_coordinates():
         for led in line_indices:
             idx = np.where(search_areas[:, 0] == led)[0]
             pix_pos = np.array([search_areas[idx, 1], search_areas[idx, 2]])
-            # pix_pos = orth_projection(pix_pos, line) + top_led.pix_pos.flatten()
+            pix_pos = orth_projection(pix_pos, line, top_led.pix_pos)
             pos = np.transpose(x @ pix_pos)
             search_areas[idx, -3:] = pos
 
     np.savetxt('.{}analysis{}led_search_areas_with_coordinates.csv'.format(sep, sep), search_areas,
                header='LED id, pixel position x, pixel position y, x, y, z', fmt='%d,%d,%d,%f,%f,%f')
-    #out_file = open('.{}analysis{}led_search_areas_with_coordinates.csv'.format(sep, sep), 'w')
-    #out_file.write('# LED id, pixel position x, pixel position y, x, y, z\n')
-    #out_file.write(np.array2string(search_areas))
