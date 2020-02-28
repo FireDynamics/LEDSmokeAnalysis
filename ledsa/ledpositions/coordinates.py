@@ -43,7 +43,7 @@ def orth_projection(point, line, point_on_line):
 # calculating the linear transformation between pixel and room coordinates and applying it to the projection of each led
 # onto the corresponding line
 def calculate_coordinates():
-    conf = lc.ConfigData()
+    conf = lc.ConfigData(load_config_file=True)
     search_areas = ledh.load_file('.{}analysis{}led_search_areas.csv'.format(sep, sep), delim=',')
     search_areas = np.pad(search_areas, ((0, 0), (0, 3)), constant_values=(-1, -1))
     print(np.shape(search_areas))
