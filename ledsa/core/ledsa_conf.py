@@ -7,7 +7,7 @@ from os import path
 
 class ConfigData(cp.ConfigParser):
     # dont give img_directory a standard value
-    def __init__(self, load_config_file=True, img_directory='.', window_radius=10, num_of_arrays=None,
+    def __init__(self, load_config_file=False, img_directory='.', window_radius=10, num_of_arrays=None,
                  multicore_processing=False, num_of_cores=1, reference_img=None, date=None, start_time=None,
                  time_diff_to_image_time=None, time_img=None, img_name_string=None, first_img=None, last_img=None,
                  skip_imgs=0, skip_leds=0, channel=0):
