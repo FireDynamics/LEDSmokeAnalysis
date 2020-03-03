@@ -20,7 +20,7 @@ You can do it also after step1 directly in the config file. The information is f
     
 Run python -m ledsa -s3. This will take quite a while, even on many cores. Grab something to eat.
 
-Run python -m ledsa.ledpositions to calculate the 3D coordinates of the LEDs from the reference image. To be able to do
+Run python -m ledsa -coord to calculate the 3D coordinates of the LEDs from the reference image. To be able to do
 it,there must be the coordinates of the two outermost LEDs for each LED array saved in the variable
 line_edge_coordinates inside config.ini
 
@@ -35,9 +35,5 @@ whole script with UI for all steps and parameters
 change path operations to pathlib
 
 LOGIC:
-
-Hough transformation -> get lines
-
-find xyz-space (from plane) (median of all cameras? seems complicated if leds are not labeled the same[missing led from one angle])
 
 write module to access raw data
