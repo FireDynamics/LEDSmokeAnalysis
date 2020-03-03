@@ -2,6 +2,10 @@ import numpy as np
 import scipy.optimize
 import matplotlib.pyplot as plt
 import os
+from PIL import Image
+from PIL.ExifTags import TAGS
+
+import ledsa.core._times as times
 
 # os path separator
 sep = os.path.sep
@@ -14,7 +18,7 @@ File management
 
 
 # should handle all exception for opening files
-# when exception is thrown, ask if std conffile should be used or user input
+# when exception is thrown, ask if std conf-file should be used or user input
 def load_file(filename, delim=' ', dtype='float', atleast_2d=False):
     try:
         data = np.loadtxt(filename, delimiter=delim, dtype=dtype)
@@ -37,6 +41,46 @@ def load_file(filename, delim=' ', dtype='float', atleast_2d=False):
 def read_file(filename, channel=0):
     data = plt.imread(filename)
     return data[:, :, channel]
+
+
+def get_img_data(config, build_experiment_infos=False, build_analysis_infos=False):
+    config_switch = []
+    if build_experiment_infos:
+        config_switch.append('DEFAULT')
+    if build_analysis_infos:
+        config_switch.append('analyse_photo')
+    for build_type in config_switch:
+        # TODO: make it work for both statements
+        # if config['build_type']['start_time'] == 'None':
+        #     config.get_start_time()
+        #     config.save()
+        img_data = ''
+        img_idx = 1
+        first_img = config.getint(build_type, 'first_img')
+        last_img = config.getint(build_type, 'last_img')
+        img_increment = config.getint(build_type, 'skip_imgs') + 1 if build_type == 'analyse_photo' else 1
+        for i in range(first_img, last_img+1, img_increment):
+    
+            # get time from exif data
+            img_number = '{:04d}'.format(i)
+            exif = _get_exif(config['DEFAULT']['img_directory'] + config['DEFAULT']['img_name_string'].format(img_number))
+            if not exif:
+                raise ValueError("No EXIF metadata found")
+    
+            for (idx, tag) in TAGS.items():
+                if tag == 'DateTimeOriginal':
+                    if idx not in exif:
+                        raise ValueError("No EXIF time found")
+                    _, time_meta = exif[idx].split(' ')
+    
+                    # calculate the experiment time and real time
+                    experiment_time = times.sub_times(time_meta, config[build_type]['start_time'])
+                    experiment_time = times.time_to_int(experiment_time)
+                    time = times.add_time_diff(time_meta, config[build_type]['time_diff_to_img_time'])
+                    img_data += (str(img_idx) + ',' + config[build_type]['img_name_string'].format(i) + ',' + time + ',' +
+                                 str(experiment_time) + '\n')
+                    img_idx += 1
+    return img_data
 
 
 """
@@ -70,7 +114,6 @@ def log_warnings(*argv):
         logfile.write(str(info) + ' ')
     logfile.write('\n')
     logfile.close()
-
 
 
 """
@@ -254,6 +297,14 @@ def analyse_position_man(search_areas, config):
         line_indices[il].append(iled)
     return line_indices
 
+# def create_process_file():
+#     if not os.path.isfile('processed_images.csv'):
+#         img_data = self.config.get_img_data()
+#         out_file = open('processed_images.csv', 'w')
+#         out_file.write("#ID,Name,Time,Experiment_Time\n")
+#         out_file.write(img_data)
+#         out_file.close()
+
 
 def process_file(img_filename, search_areas, line_indices, conf, debug=False, debug_led=None):
 
@@ -298,7 +349,7 @@ def process_file(img_filename, search_areas, line_indices, conf, debug=False, de
 
                 if not fit_res.success or A > 255 or A < 0:
                     log_warnings('Irregularities while fitting:\n    ',
-                                 img_file_path, iled, line_number, ' '.join(np.array_str(fit_res.x).split()).replace('[ ','[').replace(' ]', ']').replace(' ', ','), fit_res.success, fit_res.fun,
+                                 img_file_path, iled, line_number, ' '.join(np.array_str(fit_res.x).split()).replace('[ ', '[').replace(' ]', ']').replace(' ', ','), fit_res.success, fit_res.fun,
                                  fit_res.nfev, data[s].shape[0], data[s].shape[1], im_x, im_y, window_radius, cx, cy, conf['channel'])
 
     return img_data
@@ -306,7 +357,7 @@ def process_file(img_filename, search_areas, line_indices, conf, debug=False, de
 
 def find_calculated_imgs(config):
     import re
-    image_infos = load_file('image_infos.csv', dtype=str, delim=',')
+    image_infos = load_file('.{}analysis{}image_infos_analysis.csv'.format(sep, sep), dtype=str, delim=',')
     all_imgs = image_infos[:, 1]
     processed_imgs = []
     directory_content = os.listdir('.{}analysis{}channel{}'.format(sep, sep, config['channel']))
@@ -321,6 +372,36 @@ def find_calculated_imgs(config):
     out_file.close()
 
 
+def create_img_infos_analysis(config):
+
+    # create image info file for all images which are analysed
+    img_data = get_img_data(config, build_analysis_infos=True)
+    out_file = open('.{}analysis{}image_infos_analysis.csv'.format(sep, sep), 'w')
+    out_file.write("#ID,Name,Time,Experiment_Time\n")
+    out_file.write(img_data)
+
+
+def create_imgs_to_process():
+    image_infos = load_file('.{}analysis{}image_infos_analysis.csv'.format(sep, sep), dtype=str, delim=',',
+                            atleast_2d=True)
+    img_filenames = image_infos[:, 1]
+    out_file = open('images_to_process.csv', 'w')
+    for img in img_filenames:
+        out_file.write('{}\n'.format(img))
+    out_file.close()
+
+
+"""
+------------------------------------
+private functions
+------------------------------------
+"""
+
+
+def _get_exif(filename):
+    image = Image.open(filename)
+    image.verify()
+    return image._getexif()
 
 '''
 if __name__ == 'main':

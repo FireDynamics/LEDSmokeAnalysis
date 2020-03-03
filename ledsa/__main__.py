@@ -46,9 +46,10 @@ if args.s1 or args.s2 or args.s3:
         ledsa.analyse_positions()
         ledsa.plot_lines()
     if args.s3:
+        ledsa.setup_step3()
         ledsa.process_image_data()
 
 if args.re:
     ledsa = LEDSA()
-    ledsa.find_calculated_imgs()
+    ledsa.setup_restart()
     ledsa.process_image_data()

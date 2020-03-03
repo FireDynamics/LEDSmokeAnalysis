@@ -38,10 +38,10 @@ class FitAnalyser:
         print(s, '\n')
         im = Image.open(self.filename)
         print('%s\n', self.filename)
-        im = im.crop((self.im_x - 1 * self.window_radius,
-                      self.im_y - 1 * self.window_radius,
-                      self.im_x + 1 * self.window_radius,
-                      self.im_y + 1 * self.window_radius))
+        im = im.crop((self.cy - 1 * self.window_radius,
+                      self.cx - 1 * self.window_radius,
+                      self.cy + 1 * self.window_radius,
+                      self.cx + 1 * self.window_radius))
         plt.imshow(im)
         plt.show(block=False)
 

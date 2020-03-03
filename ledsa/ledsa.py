@@ -34,7 +34,7 @@ class LEDSA:
             os.mkdir('analysis{}channel{}'.format(sep, self.config['analyse_photo']['channel']))
             print("Directory analysis{}channel{} created".format(sep, self.config['analyse_photo']['channel']))
 
-        # request all unset parameters
+        # request all unset default parameters
         # not complete
         if self.config['DEFAULT']['time_img'] == 'None':
             self.config.in_time_img()
@@ -48,30 +48,24 @@ class LEDSA:
         if self.config['DEFAULT']['img_name_string'] == 'None':
             self.config.in_img_name_string()
             self.config.save()
-        if self.config['analyse_photo']['first_img'] == 'None':
+        if self.config['DEFAULT']['first_img'] == 'None':
             self.config.in_first_img()
             self.config.save()
-        if self.config['analyse_photo']['last_img'] == 'None':
+        if self.config['DEFAULT']['last_img'] == 'None':
             self.config.in_last_img()
             self.config.save()
         if self.config['DEFAULT']['num_of_arrays'] == 'None':
             self.config.in_num_of_arrays()
             self.config.save()
 
-        if not os.path.isfile('image_infos.csv'):
-            img_data = self.config.get_img_data()
-            out_file = open('image_infos.csv', 'w')
-            out_file.write("#ID,Name,Time,Experiment_Time\n")
-            out_file.write(img_data)
-            out_file.close()
-
-        image_infos = led.load_file('image_infos.csv', dtype=str, delim=',', atleast_2d=True)
-        img_filenames = image_infos[:, 1]
-        out_file = open('images_to_process.csv', 'w')
-        for img in img_filenames:
-            out_file.write('{}\n'.format(img))
+        # global über alle bilder
+        # erstelle die eigentliche datei erst bei step 3
+        # creates an info file with infos to all images of the experiment
+        img_data = led.get_img_data(self.config, build_experiment_infos=True)
+        out_file = open('image_infos.csv', 'w')
+        out_file.write("#ID,Name,Time,Experiment_Time\n")
+        out_file.write(img_data)
         out_file.close()
-
 
     """
     ------------------------------------
@@ -171,6 +165,7 @@ class LEDSA:
     
     """process the image data to find the changes in light intensity"""
     def process_image_data(self):
+
         config = self.config['analyse_photo']
         if self.search_areas is None:
             self.load_search_areas() 
@@ -203,14 +198,18 @@ class LEDSA:
         out_file.write(img_data)
         out_file.close()
 
+    def setup_step3(self):
+        led.create_img_infos_analysis(self.config)
+        led.create_imgs_to_process()
+
+    def setup_restart(self):
+        led.find_calculated_imgs(self.config['analyse_photo'])
+
     """
     -----------------------------------------
     useful functions from the helper module
     -----------------------------------------
     """
-    def find_calculated_imgs(self):
-        led.find_calculated_imgs(self.config['analyse_photo'])
-
     def shell_in_ingore_indices(self):
         led.shell_in_ingore_indices()
         
@@ -249,13 +248,13 @@ if __name__ == '__main__':
 
     if args.config is not None:
         if len(args.config) == 0:
-            lc.ConfigData()
+            lc.ConfigData(load_config_file=False)
         if len(args.config) == 1:
-            lc.ConfigData(img_directory=args.config[0])
+            lc.ConfigData(load_config_file=False, img_directory=args.config[0])
         if len(args.config) == 2:
-            lc.ConfigData(img_directory=args.config[0], reference_img=args.config[1])
+            lc.ConfigData(laod_config_file=False, img_directory=args.config[0], reference_img=args.config[1])
         if len(args.config) == 3:
-            lc.ConfigData(img_directory=args.config[0], reference_img=args.config[1],
+            lc.ConfigData(load_config_file=False, img_directory=args.config[0], reference_img=args.config[1],
                           multicore_processing=True, num_of_cores=args.config[2])
     if args.s1 or args.s2 or args.s3:
         ledsa = LEDSA()
@@ -266,9 +265,10 @@ if __name__ == '__main__':
             ledsa.analyse_positions()
             ledsa.plot_lines()
         if args.s3:
+            ledsa.setup_step3()
             ledsa.process_image_data()
 
     if args.re:
         ledsa = LEDSA()
-        ledsa.find_calculated_imgs()
+        ledsa.setup_restart()
         ledsa.process_image_data()
