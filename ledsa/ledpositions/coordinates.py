@@ -1,7 +1,7 @@
 from ..core import _led_helper as ledh
 from ..core import ledsa_conf as lc
 import os
-from math import *
+# from math import *
 from scipy import linalg
 import numpy as np
 
@@ -46,8 +46,8 @@ def calculate_coordinates():
     conf = lc.ConfigData(load_config_file=True)
     search_areas = ledh.load_file('.{}analysis{}led_search_areas.csv'.format(sep, sep), delim=',')
     search_areas = np.pad(search_areas, ((0, 0), (0, 3)), constant_values=(-1, -1))
-    print(np.shape(search_areas))
     led_coordinates = conf.get2dnparray('analyse_positions', 'line_edge_coordinates', 6, float)
+    print("Loaded coordinates from config.ini:")
     print(led_coordinates)
     edge_leds = conf.get2dnparray('analyse_positions', 'line_edge_indices')
 
@@ -56,7 +56,6 @@ def calculate_coordinates():
         line_indices = ledh.load_file('.{}analysis{}line_indices_{:03d}.csv'.format(sep, sep, ledarray))
 
         # get the edge leds of an array to calculate from them the conversion matrix for this array
-        print(np.shape(search_areas), np.shape(edge_leds))
         idx = np.where(search_areas[:, 0] == edge_leds[ledarray, 0])[0]
         pos = led_coordinates[ledarray][0:3]
         pix_pos = np.array([search_areas[idx, 1], search_areas[idx, 2]])
@@ -80,3 +79,4 @@ def calculate_coordinates():
 
     np.savetxt('.{}analysis{}led_search_areas_with_coordinates.csv'.format(sep, sep), search_areas,
                header='LED id, pixel position x, pixel position y, x, y, z', fmt='%d,%d,%d,%f,%f,%f')
+    print("\nCoordinates successfully saved in analysis{}led_search_areas_with_coordinates.csv".format(sep))

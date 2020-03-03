@@ -18,12 +18,15 @@ parser.add_argument('--config', '-c', nargs='*', default=None,
                          'reference_img, number_of_cores.')
 parser.add_argument('--re', '-re', '--restart', action='store_true',
                     help='Restarts step 3 of the analysis after the program was terminated before it finished.')
+parser.add_argument('--coordinates', '-coord', action='store_true',
+                    help='Calculates the 3D coordinates from the coordinates given in the configfile and the '
+                         'reference image.')
 args = parser.parse_args()
 
 print('ledsa runs with the following arguments:')
 print(args)
 
-if args.config is None and not args.s1 and not args.s2 and not args.s3 and not args.re:
+if args.config is None and not args.s1 and not args.s2 and not args.s3 and not args.re and not args.coordinates:
     args.config = []
     args.s1 = args.s2 = args.s3 = True
 
@@ -37,6 +40,7 @@ if args.config is not None:
     if len(args.config) == 3:
         lc.ConfigData(img_directory=args.config[0], reference_img=args.config[1],
                       multicore_processing=True, num_of_cores=args.config[2])
+
 if args.s1 or args.s2 or args.s3:
     ledsa = LEDSA()
     if args.s1:
@@ -53,3 +57,7 @@ if args.re:
     ledsa = LEDSA()
     ledsa.setup_restart()
     ledsa.process_image_data()
+
+if args.coordinates:
+    from ledsa.ledpositions.coordinates import calculate_coordinates
+    calculate_coordinates()
