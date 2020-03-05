@@ -67,39 +67,41 @@ class LEDSA:
         out_file.write(img_data)
         out_file.close()
 
-    """
-    ------------------------------------
-    LED area search
-    ------------------------------------
-    """
+    # """
+    # ------------------------------------
+    # LED area search
+    # ------------------------------------
+    # """
     
-    """finds all LEDs in a single image file and defines the search areas, in
-    which future LEDs will be searched"""
     def find_search_areas(self, img_filename):
+        """
+        finds all LEDs in a single image file and defines the search areas, in
+        which future LEDs will be searched
+        """
         config = self.config['find_search_areas']
         filename = "{}{}".format(config['img_directory'], img_filename)
         out_filename = 'analysis{}led_search_areas.csv'.format(sep)
-        
+
         data = led.read_file(filename, channel=0)
         self.search_areas = led.find_search_areas(data, skip=1, window_radius=int(config['window_radius']))
-      
+
         np.savetxt(out_filename, self.search_areas, delimiter=',',
                    header='LED id, pixel position x, pixel position y', fmt='%d')
 
-    """loads the search areas from the csv file"""    
     def load_search_areas(self):
+        """loads the search areas from the csv file"""
         filename = 'analysis{}led_search_areas.csv'.format(sep)
         self.search_areas = led.load_file(filename, delim=',')
 
-    """plots the search areas with their labels"""    
     def plot_search_areas(self, img_filename):
+        """plots the search areas with their labels"""
         config = self.config['find_search_areas']
         if self.search_areas is None:
             self.load_search_areas()
-        
+
         filename = "{}{}".format(config['img_directory'], img_filename)
         data = led.read_file(filename, channel=0)
-            
+
         plt.figure(dpi=1200)
         ax = plt.gca()
 
@@ -111,23 +113,23 @@ class LEDSA:
             ax.text(self.search_areas[i, 2] + int(config['window_radius']),
                     self.search_areas[i, 1] + int(config['window_radius'])//2,
                     '{}'.format(self.search_areas[i, 0]), fontsize=1)
-        
+
         plt.imshow(data, cmap='Greys')
         plt.colorbar()
         plt.savefig('plots{}led_search_areas.plot.pdf'.format(sep))
 
-    """
-    ------------------------------------
-    LED array analysis
-    ------------------------------------
-    """
+    # """
+    # ------------------------------------
+    # LED array analysis
+    # ------------------------------------
+    # """
 
-    """analyses, which LED belongs to which LED line array"""
-    def analyse_positions(self):       
+    def analyse_positions(self):
+        """analyses, which LED belongs to which LED line array"""
         if self.search_areas is None:
             self.load_search_areas()
         self.line_indices = led.analyse_position_man(self.search_areas, self.config)
-                       
+
         # save the labeled LEDs
         for i in range(len(self.line_indices)):
             out_file = open('analysis{}line_indices_{:03}.csv'.format(sep, i), 'w')
@@ -135,15 +137,15 @@ class LEDSA:
                 out_file.write('{}\n'.format(iled))
             out_file.close()
             
-    """loads the search areas from the csv file"""    
     def load_line_indices(self):
+        """loads the search areas from the csv file"""
         self.line_indices = []
         for i in range(int(self.config['DEFAULT']['num_of_arrays'])):
             filename = 'analysis{}line_indices_{:03}.csv'.format(sep, i)
             self.line_indices.append(led.load_file(filename, dtype='int'))
             
-    """plot the labeled LEDs"""        
     def plot_lines(self):
+        """plot the labeled LEDs"""
         # plot the labeled LEDs
         if self.line_indices is None:
             self.load_line_indices()
@@ -153,22 +155,21 @@ class LEDSA:
             plt.scatter(self.search_areas[self.line_indices[i], 2],
                         self.search_areas[self.line_indices[i], 1],
                         s=0.1, label='led strip {}'.format(i))
-        
+
         plt.legend()
         plt.savefig('plots{}led_lines.pdf'.format(sep))
         
-    """
-    ------------------------------------
-    LED smoke analysis
-    ------------------------------------
-    """
+    # """
+    # ------------------------------------
+    # LED smoke analysis
+    # ------------------------------------
+    # """
     
-    """process the image data to find the changes in light intensity"""
     def process_image_data(self):
-
+        """process the image data to find the changes in light intensity"""
         config = self.config['analyse_photo']
         if self.search_areas is None:
-            self.load_search_areas() 
+            self.load_search_areas()
         if self.line_indices is None:
             self.load_line_indices()
 
@@ -186,8 +187,8 @@ class LEDSA:
 
         os.remove('images_to_process.csv')
 
-    """workaround for pool.map"""
     def process_file(self, img_filename):
+        """workaround for pool.map"""
         img_data = led.process_file(img_filename, self.search_areas, self.line_indices, self.config['analyse_photo'])
 
         out_file = open('analysis{}channel{}{}{}_led_positions.csv'.format(sep, self.config['analyse_photo']['channel'],
@@ -205,11 +206,12 @@ class LEDSA:
     def setup_restart(self):
         led.find_calculated_imgs(self.config['analyse_photo'])
 
-    """
-    -----------------------------------------
-    useful functions from the helper module
-    -----------------------------------------
-    """
+    # """
+    # -----------------------------------------
+    # useful functions from the helper module
+    # -----------------------------------------
+    # """
+
     def shell_in_ingore_indices(self):
         led.shell_in_ingore_indices()
         
@@ -217,12 +219,12 @@ class LEDSA:
         led.shell_in_line_edge_indices(self.config)
 
 
-"""
-------------------------------------
-Default script
-------------------------------------
-"""
-    
+# """
+# ------------------------------------
+# Default script
+# ------------------------------------
+# """
+#
 # if __name__ == '__main__':
 #     parser = argparse.ArgumentParser(description=
 #                                      'Allows the analysis of light dampening of LEDs behind a smoke screen.')

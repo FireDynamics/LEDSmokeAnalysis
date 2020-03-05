@@ -10,11 +10,11 @@ import ledsa.core._times as times
 # os path separator
 sep = os.path.sep
 
-"""
-------------------------------------
-File management
-------------------------------------
-"""
+# """
+# ------------------------------------
+# File management
+# ------------------------------------
+# """
 
 
 # should handle all exception for opening files
@@ -83,11 +83,11 @@ def get_img_data(config, build_experiment_infos=False, build_analysis_infos=Fals
     return img_data
 
 
-"""
-------------------------------------
-Input/Output
-------------------------------------
-"""
+# """
+# ------------------------------------
+# Input/Output
+# ------------------------------------
+# """
 
 
 def shell_in_ignore_indices():
@@ -116,11 +116,11 @@ def log_warnings(*argv):
     logfile.close()
 
 
-"""
-------------------------------------
-Outsourced logic
-------------------------------------
-"""
+# """
+# ------------------------------------
+# Outsourced logic
+# ------------------------------------
+# """
 
 
 def led_fit(x, y, x0, y0, dx, dy, A, alpha, wx, wy):
@@ -391,11 +391,11 @@ def create_imgs_to_process():
     out_file.close()
 
 
-"""
-------------------------------------
-private functions
-------------------------------------
-"""
+# """
+# ------------------------------------
+# private functions
+# ------------------------------------
+# """
 
 
 def _get_exif(filename):
@@ -403,27 +403,26 @@ def _get_exif(filename):
     image.verify()
     return image._getexif()
 
-'''
-if __name__ == 'main':
 
-    filename = 'scn_experiments/IMG_7508.JPG'
-    data = read_file(filename, channel=0)
-    window_radius=10
-    xys = find_leds(data, window_radius=window_radius)
-
-    np.savetxt('{}.led_pos.csv'.format(filename), xys,
-               header='pixel position x, y', fmt='%d')
-
-    fig = plt.figure(dpi=900)
-    ax = plt.gca()
-
-    for i in range(xys.shape[0]):
-        ax.add_patch(plt.Circle((xys[i,1], xys[i,0]), radius=window_radius,
-                                color='Red', fill=False, alpha=0.5,
-                                linewidth=0.1))
-
-
-    plt.imshow(data, cmap='Greys')
-    plt.colorbar()
-    plt.savefig('{}.led_pos.plot.pdf'.format(filename))
-'''
+# if __name__ == 'main':
+#
+#     filename = 'scn_experiments/IMG_7508.JPG'
+#     data = read_file(filename, channel=0)
+#     window_radius=10
+#     xys = find_leds(data, window_radius=window_radius)
+#
+#     np.savetxt('{}.led_pos.csv'.format(filename), xys,
+#                header='pixel position x, y', fmt='%d')
+#
+#     fig = plt.figure(dpi=900)
+#     ax = plt.gca()
+#
+#     for i in range(xys.shape[0]):
+#         ax.add_patch(plt.Circle((xys[i,1], xys[i,0]), radius=window_radius,
+#                                 color='Red', fill=False, alpha=0.5,
+#                                 linewidth=0.1))
+#
+#
+#     plt.imshow(data, cmap='Greys')
+#     plt.colorbar()
+#     plt.savefig('{}.led_pos.plot.pdf'.format(filename))
