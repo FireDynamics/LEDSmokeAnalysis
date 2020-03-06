@@ -19,7 +19,7 @@ sep = os.path.sep
 
 # should handle all exception for opening files
 # when exception is thrown, ask if std conf-file should be used or user input
-def load_file(filename, delim=' ', dtype='float', atleast_2d=False):
+def load_file(filename, delim=' ', dtype='float', atleast_2d=False, silent=False):
     try:
         data = np.loadtxt(filename, delimiter=delim, dtype=dtype)
     except OSError as e:
@@ -32,7 +32,8 @@ def load_file(filename, delim=' ', dtype='float', atleast_2d=False):
               '. \n Error Message: ', e)
         exit(0)
     else:
-        print('{} successfully loaded.'.format(filename))
+        if not silent:
+            print('{} successfully loaded.'.format(filename))
     if atleast_2d:
         return np.atleast_2d(data)
     return np.atleast_1d(data)
