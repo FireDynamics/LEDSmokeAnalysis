@@ -25,7 +25,6 @@ par_dic = {
 def plot_z_fitpar(fig: plt.figure, fit_par: str, image_id: str, channel: int,
                   led_arrays: Union[Tuple[int, ...], int]) -> None:
     """plots the height of a LED array against one fit parameter"""
-
     # make led_arrays a tuple
     if type(led_arrays) == int:
         led_arrays = (led_arrays,)
@@ -60,22 +59,31 @@ def plot_z_fitpar(fig: plt.figure, fit_par: str, image_id: str, channel: int,
     plt.title('Image ID: {} - Channel: {}'.format(image_id, channel))
 
 
-# TODO: when switch to ids happens switch to the one below
+# TODO: update when switching to image ids
 def plot_t_fitpar(fig, led_id, fit_par, channel, image_id_start, image_id_finish, skip_images=0):
-    times = led.load_file(".{}analysis{}image_info_analysis.csv".format(sep, sep), delim=',')
+    """Plots the time development of a fit parameter"""
+    times = led.load_file(".{}analysis{}image_infos_analysis.csv".format(sep, sep), delim=',', dtype=str)
+    plot_info = np.array([[0, 0]])
 
-    plot_info = np.array([[0,0]])
-    for image_id in range(image_id_start, image_id_finish, skip_images + 1):
+    # find time and fit parameter for every image
+    for image_id in range(image_id_start, image_id_finish+1, skip_images + 1):
         img_name = "IMG_{}.JPG".format(image_id)
-
-        parameters = led.load_file(".{}analysis{}channel{}{}_led_positions.csv".format(
+        parameters = led.load_file(".{}analysis{}channel{}{}{}_led_positions.csv".format(
             sep, sep, channel, sep, img_name), delim=',', silent=True)
-        led_info = parameters[parameters[0] == led_id]
-        time = times[times[1] == img_name]
-        np.append(plot_info, [time[3], led_info[par_dic[fit_par]]])
 
+        # get the row of parameters corresponding to the led_id
+        led_info = parameters[parameters[:, 0] == led_id].flatten()
+
+        # get the time corresponding to the image name
+        time = times[times[:, 1] == img_name]
+        plot_info = np.append(plot_info, [[time[0, 3], led_info[par_dic[fit_par]]]], axis=0)
+
+    # delete the row used for initialization
+    plot_info = np.delete(plot_info, 0, 0)
+
+    # make the plot
     ax = fig.gca(xlabel='time[s]', ylabel=fit_par)
-    plot, = ax.plot(plot_info[0], plot_info[1])
+    plot, = ax.plot(plot_info[:, 0], plot_info[:, 1])
     plot.set_label('LED {}'.format(led_id))
     ax.legend()
     plt.title('Time plot of Fit Parameter {} for Channel {}'.format(fit_par, channel))

@@ -23,8 +23,8 @@ def load_file(filename, delim=' ', dtype='float', atleast_2d=False, silent=False
     try:
         data = np.loadtxt(filename, delimiter=delim, dtype=dtype)
     except OSError as e:
-        print('An operation system error occurred while loading {}'.format(filename),
-              '. Maybe the file is not there or there is no reading ',
+        print('An operation system error occurred while loading {}.'.format(filename),
+              'Maybe the file does not exist or there is no reading ',
               'permission.\n Error Message: ', e)
         exit(0)
     except Exception as e:
