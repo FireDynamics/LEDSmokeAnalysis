@@ -85,7 +85,7 @@ def get_img_data(config, build_experiment_infos=False, build_analysis_infos=Fals
 
 
 def get_img_name(img_id):
-    infos = load_file('image_infos.csv', ',', str)
+    infos = load_file('.{}analysis{}image_infos_analysis.csv'.format(sep, sep), ',', str, silent=True)
     for i in range(infos.shape[0]):
         if int(infos[i, 0]) == int(img_id):
             return infos[i, 1]
