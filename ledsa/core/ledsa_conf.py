@@ -74,11 +74,6 @@ class ConfigData(cp.ConfigParser):
             # indices[i][1] = indices_tmp[2 * i + 1]
         return indices
 
-    def get_img_name_id(self, relative_img_id):
-        img_id_range = range(int(self['analyse_photo']['first_img']), int(self['analyse_photo']['last_img']), 
-                             int(self['analyse_photo']['skip_img']) + 1)
-        return img_id_range[relative_img_id]
-
     def in_ref_img(self):
         self['find_search_areas']['reference_img'] = input('Please give the name of the reference image, from where the'
                                                            ' led positions are calculated and which will be the start '
