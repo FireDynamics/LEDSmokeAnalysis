@@ -63,7 +63,7 @@ class LEDSA:
         # creates an info file with infos to all images of the experiment
         img_data = led.get_img_data(self.config, build_experiment_infos=True)
         out_file = open('image_infos.csv', 'w')
-        out_file.write("#ID,Name,Time,Experiment_Time\n")
+        out_file.write("#Count,Name,Time,Experiment_Time\n")
         out_file.write(img_data)
         out_file.close()
 
@@ -191,8 +191,9 @@ class LEDSA:
         """workaround for pool.map"""
         img_data = led.process_file(img_filename, self.search_areas, self.line_indices, self.config['analyse_photo'])
 
+        img_id = led.get_img_id(img_filename)
         out_file = open('analysis{}channel{}{}{}_led_positions.csv'.format(sep, self.config['analyse_photo']['channel'],
-                                                                           sep, img_filename), 'w')
+                                                                           sep, img_id), 'w')
         out_file.write("# id,         line,   x,         y,        dx,        dy,"
                        "         A,     alpha,        wx,        wy, fit_success,"
                        "   fit_fun, fit_nfev // all spatial quantities in pixel coordinates\n")

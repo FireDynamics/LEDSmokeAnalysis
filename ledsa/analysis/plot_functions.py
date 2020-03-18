@@ -22,7 +22,7 @@ par_dic = {
 }
 
 
-def plot_z_fitpar(fig: plt.figure, fit_par: str, image_id: str, channel: int,
+def plot_z_fitpar(fig: plt.figure, fit_par: str, image_id: int, channel: int,
                   led_arrays: Union[Tuple[int, ...], int]) -> None:
     """plots the height of a LED array against one fit parameter"""
     # make led_arrays a tuple
@@ -59,7 +59,6 @@ def plot_z_fitpar(fig: plt.figure, fit_par: str, image_id: str, channel: int,
     plt.title('Image ID: {} - Channel: {}'.format(image_id, channel))
 
 
-# TODO: update when switching to image ids
 def plot_t_fitpar(fig, led_id, fit_par, channel, image_id_start, image_id_finish, skip_images=0):
     """Plots the time development of a fit parameter"""
     times = led.load_file(".{}analysis{}image_infos_analysis.csv".format(sep, sep), delim=',', dtype=str)
@@ -67,15 +66,19 @@ def plot_t_fitpar(fig, led_id, fit_par, channel, image_id_start, image_id_finish
 
     # find time and fit parameter for every image
     for image_id in range(image_id_start, image_id_finish+1, skip_images + 1):
-        img_name = "IMG_{}.JPG".format(image_id)
-        parameters = led.load_file(".{}analysis{}channel{}{}{}_led_positions.csv".format(
-            sep, sep, channel, sep, img_name), delim=',', silent=True)
+        try:
+            parameters = led.load_file(".{}analysis{}channel{}{}{}_led_positions.csv".format(
+                sep, sep, channel, sep, image_id), delim=',', silent=True)
+        except Exception as err:
+            print('Warning:', err)
+            print('Will only use the files loaded before.')
+            break
 
         # get the row of parameters corresponding to the led_id
         led_info = parameters[parameters[:, 0] == led_id].flatten()
 
-        # get the time corresponding to the image name
-        time = times[times[:, 1] == img_name]
+        # get the time corresponding to the image id
+        time = times[times[:, 0] == str(image_id)]
         plot_info = np.append(plot_info, [[time[0, 3], led_info[par_dic[fit_par]]]], axis=0)
 
     # delete the row used for initialization

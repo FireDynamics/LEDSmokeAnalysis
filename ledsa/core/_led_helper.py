@@ -26,11 +26,11 @@ def load_file(filename, delim=' ', dtype='float', atleast_2d=False, silent=False
         print('An operation system error occurred while loading {}.'.format(filename),
               'Maybe the file does not exist or there is no reading ',
               'permission.\n Error Message: ', e)
-        exit(0)
+        raise
     except Exception as e:
         print('Some error has occurred while loading {}'.format(filename),
               '. \n Error Message: ', e)
-        exit(0)
+        raise
     else:
         if not silent:
             print('{} successfully loaded.'.format(filename))
@@ -90,6 +90,14 @@ def get_img_name(img_id):
         if int(infos[i, 0]) == int(img_id):
             return infos[i, 1]
     raise NameError("Could not find an image name to id {}.".format(img_id))
+
+
+def get_img_id(img_name):
+    infos = load_file('.{}analysis{}image_infos_analysis.csv'.format(sep, sep), ',', str, silent=True)
+    for i in range(infos.shape[0]):
+        if infos[i, 1] == img_name:
+            return infos[i, 0]
+    raise NameError("Could not find an image id for {}.".format(img_name))
 
 # """
 # ------------------------------------
@@ -364,16 +372,28 @@ def process_file(img_filename, search_areas, line_indices, conf, debug=False, de
 
 
 def find_calculated_imgs(config):
+    """searches for the already analysed images and writes into images_to_process.csv the ones
+    that are not yet analysed because the analysis was canceled
+    """
     import re
+
+    # find all images, which should be analysed
     image_infos = load_file('.{}analysis{}image_infos_analysis.csv'.format(sep, sep), dtype=str, delim=',')
     all_imgs = image_infos[:, 1]
     processed_imgs = []
+
+    # find the images, which are already analysed
     directory_content = os.listdir('.{}analysis{}channel{}'.format(sep, sep, config['channel']))
-    for i in directory_content:
-        img = re.search(config['img_name_string'].format('.*'), i)
+
+    # create and compare the two sets
+    img_id = image_infos[0, 0]
+    for file_name in directory_content:
+        img = re.search(r"([0-9]+)_led_positions.csv", file_name)
         if img is not None:
-            processed_imgs.append(img.group(0))
+            processed_imgs.append(get_img_name(int(img.group(1))))
     remaining_imgs = set(all_imgs)-set(processed_imgs)
+
+    # save the result
     out_file = open('images_to_process.csv', 'w')
     for i in list(remaining_imgs):
         out_file.write('{}\n'.format(i))
