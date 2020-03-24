@@ -51,16 +51,17 @@ def get_img_data(config, build_experiment_infos=False, build_analysis_infos=Fals
     if build_analysis_infos:
         config_switch.append('analyse_photo')
     for build_type in config_switch:
-        # TODO: make it work for both statements
-        # if config['build_type']['start_time'] == 'None':
-        #     config.get_start_time()
-        #     config.save()
+        if config['DEFAULT']['start_time'] == 'None':
+            config.get_start_time()
+            config.save()
         img_data = ''
         img_idx = 1
         first_img = config.getint(build_type, 'first_img')
         last_img = config.getint(build_type, 'last_img')
         img_increment = config.getint(build_type, 'skip_imgs') + 1 if build_type == 'analyse_photo' else 1
-        for i in range(first_img, last_img+1, img_increment):
+        img_number_list = _find_img_number_list(first_img, last_img, img_increment)
+
+        for i in img_number_list:
     
             # get time from exif data
             img_number = '{:04d}'.format(i)
@@ -430,6 +431,23 @@ def _get_exif(filename):
     image = Image.open(filename)
     image.verify()
     return image._getexif()
+
+
+# TODO: check if after the overflow the counting starts at 0000 or 0001. at the moment it is implemented with 0001
+def _find_img_number_list(first, last, increment, number_string_length=4):
+    if last >= first:
+        return range(first, last + 1, increment)
+
+    largest_number = 0
+    for i in range(number_string_length):
+        largest_number += 9*10**i
+    print(largest_number)
+    num_list = list(range(first, largest_number+1, increment))
+    num_list.extend(list(range(increment-(largest_number-num_list[-1]), last+1, increment)))
+    return num_list
+
+# def _fit_plane(points: np.array):
+
 
 
 # if __name__ == 'main':
