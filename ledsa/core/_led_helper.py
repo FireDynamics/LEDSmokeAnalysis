@@ -379,7 +379,7 @@ def find_calculated_imgs(config):
     import re
 
     # find all images, which should be analysed
-    image_infos = load_file('.{}analysis{}image_infos_analysis.csv'.format(sep, sep), dtype=str, delim=',')
+    image_infos = load_file('.{}analysis{}image_infos_analysis.csv'.format(sep, sep), dtype='str', delim=',')
     all_imgs = image_infos[:, 1]
     processed_imgs = []
 

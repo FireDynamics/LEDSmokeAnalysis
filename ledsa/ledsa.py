@@ -63,7 +63,7 @@ class LEDSA:
         # creates an info file with infos to all images of the experiment
         img_data = led.get_img_data(self.config, build_experiment_infos=True)
         out_file = open('image_infos.csv', 'w')
-        out_file.write("#Count,Name,Time,Experiment_Time\n")
+        out_file.write("#Count,Name,Time,Experiment_Time[s]\n")
         out_file.write(img_data)
         out_file.close()
 
@@ -194,9 +194,20 @@ class LEDSA:
         img_id = led.get_img_id(img_filename)
         out_file = open('analysis{}channel{}{}{}_led_positions.csv'.format(sep, self.config['analyse_photo']['channel'],
                                                                            sep, img_id), 'w')
+
+        # find the root and the experiment time
+        root = os.getcwd()
+        root = root.split(sep)
+        img_infos = led.load_file('analysis{}image_infos_analysis.csv'.format(sep), dtype='str', delim=',', silent=True)
+        print(img_infos)
+
+        # create the header
+        out_file.write('# image root = {}, photo file name = {}, channel = {}, time[s] = {}\n'.format
+                       (root[-1], img_filename, self.config['analyse_photo']['channel'], img_infos[int(img_id)-1][3]))
         out_file.write("# id,         line,   x,         y,        dx,        dy,"
                        "         A,     alpha,        wx,        wy, fit_success,"
                        "   fit_fun, fit_nfev // all spatial quantities in pixel coordinates\n")
+
         out_file.write(img_data)
         out_file.close()
 

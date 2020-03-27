@@ -28,6 +28,7 @@ class ConfigData(cp.ConfigParser):
 
             self['DEFAULT']['date'] = str(date)
             self['DEFAULT']['start_time'] = str(start_time)
+            self['DEFAULT']['time_ref_img_time'] = 'None'
             self['DEFAULT']['time_diff_to_img_time'] = str(time_diff_to_image_time)
             self['DEFAULT']['time_img'] = str(time_img)
 
@@ -57,7 +58,7 @@ class ConfigData(cp.ConfigParser):
 
     def load(self):
         self.read('config.ini')
-        print('Config.ini loaded')
+        print('config.ini loaded')
 
     def save(self):
         with open('config.ini', 'w') as configfile:
@@ -88,6 +89,7 @@ class ConfigData(cp.ConfigParser):
 
     def in_time_diff_to_img_time(self):
         time = input('Please give the time shown on the clock in the time reference image in hh:mm:ss: ')
+        self['DEFAULT']['time_ref_img_time'] = str(time)
 
         exif = _get_exif(self['DEFAULT']['img_directory'] + self['DEFAULT']['time_img'])
         if not exif:
