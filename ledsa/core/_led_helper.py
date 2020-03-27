@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import os
 from PIL import Image
 from PIL.ExifTags import TAGS
+from typing import Any
 
 import ledsa.core._times as times
 
@@ -445,8 +446,6 @@ def _find_img_number_list(first, last, increment, number_string_length=4):
     num_list = list(range(first, largest_number+1, increment))
     num_list.extend(list(range(increment-(largest_number-num_list[-1]), last+1, increment)))
     return num_list
-
-# def _fit_plane(points: np.array):
 
 
 
