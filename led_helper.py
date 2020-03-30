@@ -285,9 +285,7 @@ def find_calculated_imgs(config):
     processed_imgs = []
     directory_content = os.listdir('.{}analysis{}channel{}'.format(sep, sep, config['channel']))
     for i in directory_content:
-        img = re.search(config['img_name_string'].format('.*'), i)
-        if img is not None:
-            processed_imgs.append(img.group(0))
+        processed_imgs.append(re.search(config['img_name_string'].format('.*'), i).group(0))
     remaining_imgs = set(all_imgs)-set(processed_imgs)
     out_file = open('images_to_process.csv', 'w')
     for i in list(remaining_imgs):
