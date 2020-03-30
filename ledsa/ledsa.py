@@ -58,8 +58,6 @@ class LEDSA:
             self.config.in_num_of_arrays()
             self.config.save()
 
-        # global über alle bilder
-        # erstelle die eigentliche datei erst bei step 3
         # creates an info file with infos to all images of the experiment
         img_data = led.get_img_data(self.config, build_experiment_infos=True)
         out_file = open('image_infos.csv', 'w')
@@ -199,7 +197,6 @@ class LEDSA:
         root = os.getcwd()
         root = root.split(sep)
         img_infos = led.load_file('analysis{}image_infos_analysis.csv'.format(sep), dtype='str', delim=',', silent=True)
-        print(img_infos)
 
         # create the header
         out_file.write('# image root = {}, photo file name = {}, channel = {}, time[s] = {}\n'.format
@@ -210,6 +207,7 @@ class LEDSA:
 
         out_file.write(img_data)
         out_file.close()
+        print('Image {} processed'.format(img_id))
 
     def setup_step3(self):
         led.create_img_infos_analysis(self.config)
@@ -217,75 +215,3 @@ class LEDSA:
 
     def setup_restart(self):
         led.find_calculated_imgs(self.config['analyse_photo'])
-
-    # """
-    # -----------------------------------------
-    # useful functions from the helper module
-    # -----------------------------------------
-    # """
-
-    def shell_in_ingore_indices(self):
-        led.shell_in_ingore_indices()
-        
-    def shell_in_line_edge_indices(self):
-        led.shell_in_line_edge_indices(self.config)
-
-
-# """
-# ------------------------------------
-# Default script
-# ------------------------------------
-# """
-#
-# if __name__ == '__main__':
-#     parser = argparse.ArgumentParser(description=
-#                                      'Allows the analysis of light dampening of LEDs behind a smoke screen.')
-#     parser.add_argument('--s1', '-s1', '--find_search_areas', action='store_true',
-#                         help='STEP1: analyse a reference image to find the LED positions and their labels')
-#     parser.add_argument('--s2', '-s2', '--analyse_positions', action='store_true',
-#                         help='STEP2: finds the LED array to which each LED belongs')
-#     parser.add_argument('--s3', '-s3', '--analyse_photo', action='store_true',
-#                         help='STEP3: finds the changes in light intensity')
-#     parser.add_argument('--config', '-c', nargs='*', default=None,
-#                         help='creates the default configuration file. optional arguments are are: img_directory, '
-#                              'reference_img, number_of_cores.')
-#     parser.add_argument('--re', '-re', '--restart', action='store_true',
-#                         help='Restarts step 3 of the analysis after the program was terminated before it finished.')
-#     parser.add_argument('--coordinates', '-coord', action='store_true',
-#                         help='Calculates the 3D coordinates from the coordinates given in the configfile and the '
-#                              'reference image.')
-#     args = parser.parse_args()
-#
-#     print('ledsa runs with the following arguments:')
-#     print(args)
-#
-#     if args.config is None and args.s1 and not args.s2 and not args.s3 and not args.re:
-#         args.config = []
-#         args.s1 = args.s2 = args.s3 = True
-#
-#     if args.config is not None:
-#         if len(args.config) == 0:
-#             lc.ConfigData(load_config_file=False)
-#         if len(args.config) == 1:
-#             lc.ConfigData(load_config_file=False, img_directory=args.config[0])
-#         if len(args.config) == 2:
-#             lc.ConfigData(laod_config_file=False, img_directory=args.config[0], reference_img=args.config[1])
-#         if len(args.config) == 3:
-#             lc.ConfigData(load_config_file=False, img_directory=args.config[0], reference_img=args.config[1],
-#                           multicore_processing=True, num_of_cores=args.config[2])
-#     if args.s1 or args.s2 or args.s3:
-#         ledsa = LEDSA()
-#         if args.s1:
-#             ledsa.find_search_areas(ledsa.config['find_search_areas']['reference_img'])
-#             ledsa.plot_search_areas(ledsa.config['find_search_areas']['reference_img'])
-#         if args.s2:
-#             ledsa.analyse_positions()
-#             ledsa.plot_lines()
-#         if args.s3:
-#             ledsa.setup_step3()
-#             ledsa.process_image_data()
-#
-#     if args.re:
-#         ledsa = LEDSA()
-#         ledsa.setup_restart()
-#         ledsa.process_image_data()
