@@ -1,7 +1,6 @@
 from ..core import _led_helper as ledh
 from ..core import ledsa_conf as lc
 import os
-# from math import *
 from scipy import linalg
 from scipy.optimize import curve_fit
 import numpy as np
@@ -95,13 +94,16 @@ def calculate_2d_coordinates(points):
 def _orth_projection(point, line, point_on_line):
     # normalized direction vector of line
     line_hat = (line / np.linalg.norm(line)).flatten()
+
     # vector between the line and the normalized direction vector of the line
     line_pos = point_on_line.flatten() - point_on_line.flatten().dot(line_hat)*line_hat
+
     # projection of the point onto the line
     projection = point.flatten().dot(line_hat)*line_hat + line_pos
     return projection
 
 
+# Uses least squares to fit a plane through an array of points. The fitted plane is orthogonal to the xy-plane.
 def _fit_plane(points: np.ndarray):
     def plane_func(point, a, b, d):
         return -1./b * (a*point[0]+d)
@@ -120,6 +122,7 @@ def _project_points_to_plane(points: np.ndarray, plane: np.ndarray):
     return projection
 
 
+# Transforms the coordinate system of points on a plane orthogonal to the xy-plane from 3D to 2D.
 def _get_plane_coordinates(points: np.ndarray, plane: np.ndarray):
     plane_coordinates = np.ndarray((2, points.shape[1]))
 
