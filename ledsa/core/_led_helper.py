@@ -246,7 +246,7 @@ def analyse_position_man(search_areas, config):
 
     # get indices of LEDs to ignore
     if config['analyse_positions']['ignore_indices'] != 'None':
-        ignore_indices = np.array([int(i) for i in config['analyse_positions']['ignore_indices']])
+        ignore_indices = np.array([int(i) for i in config['analyse_positions']['ignore_indices'].split(' ')])
     else:
         ignore_indices = np.array([])
 
