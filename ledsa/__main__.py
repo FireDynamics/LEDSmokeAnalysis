@@ -32,13 +32,13 @@ if args.config is None and not args.s1 and not args.s2 and not args.s3 and not a
 
 if args.config is not None:
     if len(args.config) == 0:
-        lc.ConfigData()
+        lc.ConfigData(load_config_file=False)
     if len(args.config) == 1:
-        lc.ConfigData(img_directory=args.config[0])
+        lc.ConfigData(load_config_file=False, img_directory=args.config[0])
     if len(args.config) == 2:
-        lc.ConfigData(img_directory=args.config[0], reference_img=args.config[1])
+        lc.ConfigData(load_config_file=False, img_directory=args.config[0], reference_img=args.config[1])
     if len(args.config) == 3:
-        lc.ConfigData(img_directory=args.config[0], reference_img=args.config[1],
+        lc.ConfigData(load_config_file=False, img_directory=args.config[0], reference_img=args.config[1],
                       multicore_processing=True, num_of_cores=args.config[2])
 
 if args.s1 or args.s2 or args.s3:
