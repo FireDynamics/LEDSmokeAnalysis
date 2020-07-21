@@ -58,13 +58,16 @@ class FitAnalyser:
 
         ax[1].imshow(led_model, cmap='Greys')
 
-        ampl = 0.25 # np.max(np.abs(data[s] - led_model))
-        maxA = 255 # ????
+        ampl = np.max(np.abs(data[s] - led_model))  # 0.25
+        maxA = 255 # np.max(np.abs(data[s]))
 
-        im2 = ax[1].imshow((data[s] - led_model)/maxA, cmap='seismic', vmin=-ampl, vmax=ampl)
+        im2 = ax[1].imshow((data[s] - led_model)/maxA, cmap='seismic', vmin=-ampl/maxA, vmax=ampl/maxA)
         plt.colorbar(mappable=im2)
         # plt.savefig('{}_ledanalysis_{:04d}.pdf'.format(filename, iled))
         # plt.clf()
+
+        ax[0].set_title('Fit', fontsize=3)
+        ax[1].set_title('difference between fit and data \nrelative to a max luminosity of 255', fontsize=3)
 
         plt.show(block=True)
 
