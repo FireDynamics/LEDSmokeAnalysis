@@ -365,7 +365,7 @@ def process_file(img_filename, search_areas, line_indices, conf, debug=False, de
                 img_data += led_data + '\n'
                 img_file_path = conf['img_directory'] + img_filename
 
-                if not fit_res.success or A > 255 or A < 0:
+                if not fit_res.success or A != 0:  # A > 255 or A < 0:
                     log_warnings('Irregularities while fitting:\n    ',
                                  img_file_path, iled, line_number, ' '.join(np.array_str(fit_res.x).split()).replace('[ ', '[').replace(' ]', ']').replace(' ', ','), fit_res.success, fit_res.fun,
                                  fit_res.nfev, data[s].shape[0], data[s].shape[1], im_x, im_y, window_radius, cx, cy, conf['channel'])
