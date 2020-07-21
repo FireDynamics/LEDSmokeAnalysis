@@ -36,7 +36,7 @@ class LEDSA:
 
         # request all unset default parameters
         # not complete
-        if self.config['DEFAULT']['time_img'] == 'None':
+        if self.config['DEFAULT']['time_img'] == 'None' and self.config['DEFAULT']['time_diff_to_img_time'] == 'None':
             self.config.in_time_img()
             self.config.save()
         if self.config['find_search_areas']['reference_img'] == 'None':
