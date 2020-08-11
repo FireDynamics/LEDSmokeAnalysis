@@ -51,11 +51,11 @@ def get_img_data(config, build_experiment_infos=False, build_analysis_infos=Fals
         config_switch.append('DEFAULT')
     if build_analysis_infos:
         config_switch.append('analyse_photo')
+    img_data = ''
     for build_type in config_switch:
         if config['DEFAULT']['start_time'] == 'None':
             config.get_start_time()
             config.save()
-        img_data = ''
         img_idx = 1
         first_img = config.getint(build_type, 'first_img')
         last_img = config.getint(build_type, 'last_img')
@@ -66,7 +66,8 @@ def get_img_data(config, build_experiment_infos=False, build_analysis_infos=Fals
     
             # get time from exif data
             img_number = '{:04d}'.format(i)
-            exif = _get_exif(config['DEFAULT']['img_directory'] + config['DEFAULT']['img_name_string'].format(img_number))
+            exif = _get_exif(config['DEFAULT']['img_directory'] +
+                             config['DEFAULT']['img_name_string'].format(img_number))
             if not exif:
                 raise ValueError("No EXIF metadata found")
     
@@ -80,14 +81,14 @@ def get_img_data(config, build_experiment_infos=False, build_analysis_infos=Fals
                     experiment_time = times.sub_times(time_meta, config[build_type]['start_time'])
                     experiment_time = times.time_to_int(experiment_time)
                     time = times.add_time_diff(time_meta, config[build_type]['time_diff_to_img_time'])
-                    img_data += (str(img_idx) + ',' + config[build_type]['img_name_string'].format(i) + ',' + time + ',' +
-                                 str(experiment_time) + '\n')
+                    img_data += (str(img_idx) + ',' + config[build_type]['img_name_string'].format(i) + ',' + time +
+                                 ',' + str(experiment_time) + '\n')
                     img_idx += 1
     return img_data
 
 
 def get_img_name(img_id):
-    infos = load_file('.{}analysis{}image_infos_analysis.csv'.format(sep, sep), ',', str, silent=True)
+    infos = load_file('.{}analysis{}image_infos_analysis.csv'.format(sep, sep), ',', 'str', silent=True)
     for i in range(infos.shape[0]):
         if int(infos[i, 0]) == int(img_id):
             return infos[i, 1]
@@ -95,7 +96,7 @@ def get_img_name(img_id):
 
 
 def get_img_id(img_name):
-    infos = load_file('.{}analysis{}image_infos_analysis.csv'.format(sep, sep), ',', str, silent=True)
+    infos = load_file('.{}analysis{}image_infos_analysis.csv'.format(sep, sep), ',', 'str', silent=True)
     for i in range(infos.shape[0]):
         if infos[i, 1] == img_name:
             return infos[i, 0]
@@ -158,33 +159,6 @@ def led_fit(x, y, x0, y0, dx, dy, A, alpha, wx, wy):
 
 
 def find_leds(search_area):
-    def target_function(params, *args):
-        data, mesh = args
-        X, Y = mesh
-        nx = np.max(X)
-        ny = np.max(Y)
-        mask = data > 0.05 * np.max(data)
-        l2 = np.sum((data[mask] - led_fit(X, Y, *params)[mask]) ** 2)
-        l2 = np.sqrt(l2) / data[mask].size
-        penalty = 0
-
-        x0, y0, dx, dy, A, alpha, wx, wy = params
-
-        if x0 < 0 or x0 > nx or y0 < 0 or y0 > ny:
-            penalty += 1e3 * np.abs(x0 - nx) + 1e3 * np.abs(y0 - ny)
-        if dx < 1 or dy < 1:
-            penalty += 1. / (np.abs(dx)) ** 4 + 1. / (np.abs(dy)) ** 4
-        w0 = 0.001
-        if wx < w0 or wy < w0:
-            penalty += np.abs(wx - w0) * 1e6 + np.abs(wy - w0) * 1e6
-
-        if np.abs(alpha) > np.pi / 2:
-            penalty += (np.abs(alpha) - np.pi / 2) * 1e6
-
-        # returns 12 every time...
-        # penalty = 0
-        return l2 + penalty
-
     nx = search_area.shape[0]
     ny = search_area.shape[1]
 
@@ -238,8 +212,9 @@ def find_search_areas(image, window_radius=10, skip=10):
     return ixys
 
 
+# calculates for every led, to which array it belongs
 def analyse_position_man(search_areas, config):
-    nled = search_areas.shape[0]
+    num_leds = search_areas.shape[0]
 
     xs = search_areas[:, 2]
     ys = search_areas[:, 1]
@@ -262,7 +237,7 @@ def analyse_position_man(search_areas, config):
         line_edge_indices = [line_edge_indices]
 
     # calculate lengths of the line arrays
-    line_distances = np.zeros((nled, len(line_edge_indices)))
+    line_distances = np.zeros((num_leds, len(line_edge_indices)))
 
     for il in range(len(line_edge_indices)):
         i1 = int(line_edge_indices[il][0])
@@ -285,11 +260,12 @@ def analyse_position_man(search_areas, config):
         line_indices.append([])
 
     # find for every LED the corresponding array
-    for iled in range(nled):
+    for iled in range(num_leds):
 
         if iled in ignore_indices:
             continue
 
+        #TODO: il should not be used here, as it is the loop variable from the loop before...
         for il_repeat in range(len(line_edge_indices)):
             il = np.argmin(line_distances[iled, :])
             i1 = int(line_edge_indices[il][0])
@@ -314,14 +290,6 @@ def analyse_position_man(search_areas, config):
 
         line_indices[il].append(iled)
     return line_indices
-
-# def create_process_file():
-#     if not os.path.isfile('processed_images.csv'):
-#         img_data = self.config.get_img_data()
-#         out_file = open('processed_images.csv', 'w')
-#         out_file.write("#ID,Name,Time,Experiment_Time\n")
-#         out_file.write(img_data)
-#         out_file.close()
 
 
 def process_file(img_filename, search_areas, line_indices, conf, debug=False, debug_led=None):
@@ -367,8 +335,10 @@ def process_file(img_filename, search_areas, line_indices, conf, debug=False, de
 
                 if not fit_res.success or A != 0:  # A > 255 or A < 0:
                     log_warnings('Irregularities while fitting:\n    ',
-                                 img_file_path, iled, line_number, ' '.join(np.array_str(fit_res.x).split()).replace('[ ', '[').replace(' ]', ']').replace(' ', ','), fit_res.success, fit_res.fun,
-                                 fit_res.nfev, data[s].shape[0], data[s].shape[1], im_x, im_y, window_radius, cx, cy, conf['channel'])
+                                 img_file_path, iled, line_number, ' '.join(np.array_str(fit_res.x).split()).
+                                 replace('[ ', '[').replace(' ]', ']').replace(' ', ','), fit_res.success, fit_res.fun,
+                                 fit_res.nfev, data[s].shape[0], data[s].shape[1], im_x, im_y, window_radius, cx, cy,
+                                 conf['channel'])
 
     return img_data
 
@@ -388,7 +358,6 @@ def find_calculated_imgs(config):
     directory_content = os.listdir('.{}analysis{}channel{}'.format(sep, sep, config['channel']))
 
     # create and compare the two sets
-    img_id = image_infos[0, 0]
     for file_name in directory_content:
         img = re.search(r"([0-9]+)_led_positions.csv", file_name)
         if img is not None:
@@ -412,7 +381,7 @@ def create_img_infos_analysis(config):
 
 
 def create_imgs_to_process():
-    image_infos = load_file('.{}analysis{}image_infos_analysis.csv'.format(sep, sep), dtype=str, delim=',',
+    image_infos = load_file('.{}analysis{}image_infos_analysis.csv'.format(sep, sep), dtype='str', delim=',',
                             atleast_2d=True)
     img_filenames = image_infos[:, 1]
     out_file = open('images_to_process.csv', 'w')
@@ -448,26 +417,27 @@ def _find_img_number_list(first, last, increment, number_string_length=4):
     return num_list
 
 
+def target_function(params, *args):
+    data, mesh = args
+    X, Y = mesh
+    nx = np.max(X)
+    ny = np.max(Y)
+    mask = data > 0.05 * np.max(data)
+    l2 = np.sum((data[mask] - led_fit(X, Y, *params)[mask]) ** 2)
+    l2 = np.sqrt(l2) / data[mask].size
+    penalty = 0
 
-# if __name__ == 'main':
-#
-#     filename = 'scn_experiments/IMG_7508.JPG'
-#     data = read_file(filename, channel=0)
-#     window_radius=10
-#     xys = find_leds(data, window_radius=window_radius)
-#
-#     np.savetxt('{}.led_pos.csv'.format(filename), xys,
-#                header='pixel position x, y', fmt='%d')
-#
-#     fig = plt.figure(dpi=900)
-#     ax = plt.gca()
-#
-#     for i in range(xys.shape[0]):
-#         ax.add_patch(plt.Circle((xys[i,1], xys[i,0]), radius=window_radius,
-#                                 color='Red', fill=False, alpha=0.5,
-#                                 linewidth=0.1))
-#
-#
-#     plt.imshow(data, cmap='Greys')
-#     plt.colorbar()
-#     plt.savefig('{}.led_pos.plot.pdf'.format(filename))
+    x0, y0, dx, dy, A, alpha, wx, wy = params
+
+    if x0 < 0 or x0 > nx or y0 < 0 or y0 > ny:
+        penalty += 1e3 * np.abs(x0 - nx) + 1e3 * np.abs(y0 - ny)
+    if dx < 1 or dy < 1:
+        penalty += 1. / (np.abs(dx)) ** 4 + 1. / (np.abs(dy)) ** 4
+    w0 = 0.001
+    if wx < w0 or wy < w0:
+        penalty += np.abs(wx - w0) * 1e6 + np.abs(wy - w0) * 1e6
+
+    if np.abs(alpha) > np.pi / 2:
+        penalty += (np.abs(alpha) - np.pi / 2) * 1e6
+
+    return l2 + penalty
