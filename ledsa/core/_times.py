@@ -1,4 +1,5 @@
 # some functions for doing calculations with time strings
+# -> make a new class or use time class together with dates
 
 
 def sub_times(time1, time2):
@@ -7,12 +8,15 @@ def sub_times(time1, time2):
     for i in range(3):
         t1[i] = int(t1[i])
         t2[i] = int(t2[i])
-    s = (t1[2] - t2[2]) % 60
-    s_r = (t1[2] - t2[2]) // 60
-    m = (t1[1] - t2[1] + s_r) % 60
-    m_r = (t1[1] - t2[1] + s_r) // 60
-    h = t1[0] - t2[0] + m_r
-    return '{}:{}:{}'.format(h, m, s)
+    if t1[0] > t2[0] or (t1[0] == t2[0] and t1[1] > t2[1]) or (t1[0] == t2[0] and t1[1] == t2[1] and t1[2] >= t2[2]):
+        s = (t1[2] - t2[2]) % 60
+        s_r = (t1[2] - t2[2]) // 60
+        m = (t1[1] - t2[1] + s_r) % 60
+        m_r = (t1[1] - t2[1] + s_r) // 60
+        h = t1[0] - t2[0] + m_r
+        return '{:02d}:{:02d}:{:02d}'.format(h, m, s)
+    else:
+        return '-' + sub_times(time2, time1)
 
 
 def time_diff(time1, time2):
