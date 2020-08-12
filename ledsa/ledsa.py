@@ -42,7 +42,7 @@ class LEDSA:
         if self.config['find_search_areas']['reference_img'] == 'None':
             self.config.in_ref_img()
             self.config.save()
-        if self.config['DEFAULT']['time_diff_to_img_time'] == 'None':
+        if self.config['DEFAULT']['exif_time_infront_real_time'] == 'None':
             self.config.in_time_diff_to_img_time()
             self.config.save()
         if self.config['DEFAULT']['img_name_string'] == 'None':

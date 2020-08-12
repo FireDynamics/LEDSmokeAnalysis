@@ -3,8 +3,7 @@ import numpy as np
 from os import path
 from PIL import Image
 from PIL.ExifTags import TAGS
-
-import ledsa.core._times as times
+from datetime import datetime, timedelta
 
 
 class ConfigData(cp.ConfigParser):
@@ -36,11 +35,11 @@ class ConfigData(cp.ConfigParser):
             self.set('DEFAULT', '   # in DEFAULT')
             self['DEFAULT']['   start_time'] = str(start_time)
             self.set('DEFAULT', '   # Image with a clock to calculate the offset of the camera time. Can be None,')
-            self.set('DEFAULT', '   # if time_diff_to_img_time is given')
+            self.set('DEFAULT', '   # if time_diff_to_img_time in seconds is given')
             self['DEFAULT']['   time_img'] = str(time_img)
             self.set('DEFAULT', '   # Time shown on the time_img')
             self['DEFAULT']['   time_ref_img_time'] = 'None'
-            self['DEFAULT']['   time_diff_to_img_time'] = str(time_diff_to_image_time)
+            self['DEFAULT']['   exif_time_infront_real_time'] = str(time_diff_to_image_time)
 
             self.set('DEFAULT', ' ')
             self.set('DEFAULT', '# String representing the naming convention of the image files')
@@ -100,6 +99,17 @@ class ConfigData(cp.ConfigParser):
             # indices[i][1] = indices_tmp[2 * i + 1]
         return indices
 
+    def get_datetime(self, option='start_time'):
+        time = self['DEFAULT'][option]
+        date = self['DEFAULT']['date']
+        try:
+            date_time = _get_datetime_from_str(date, time)
+        except:
+            print('Could not acquire a datetime object. Date or time are not set properly.')
+            exit(1)
+        else:
+            return date_time
+
     def in_ref_img(self):
         self['find_search_areas']['reference_img'] = input('Please give the name of the reference image, from where the'
                                                            ' led positions are calculated and which will be the start '
@@ -128,7 +138,10 @@ class ConfigData(cp.ConfigParser):
                     raise ValueError("No EXIF time found")
                 date, time_meta = exif[idx].split(' ')
                 self['DEFAULT']['date'] = date
-                self['DEFAULT']['time_diff_to_img_time'] = str(times.time_diff(time_meta, time))
+                img_time = _get_datetime_from_str(date, time_meta)
+                real_time = _get_datetime_from_str(date, time)
+                time_diff = img_time - real_time
+                self['DEFAULT']['exif_time_infront_real_time'] = str(time_diff.total_seconds())
 
     def in_img_name_string(self):
         self['DEFAULT']['img_name_string'] = input(
@@ -145,15 +158,15 @@ class ConfigData(cp.ConfigParser):
         print('Please enter the coordinates of the top most and bottom most LED of each array corresponding to the '
               'order of the line edge indices. Separate the two coordinates with a whitespace.')
         coordinates = str()
-        for i in range(int(self['num_of_arrays'])):
+        for i in range(int(self['DEFAULT']['num_of_arrays'])):
             line = input(str(i) + '. array: ')
             coordinates += '\t    ' + line + '\n'
         self['analyse_positions']['line_edge_coordinates'] = '\n' + coordinates
 
     # get the start time from the first experiment image
     def get_start_time(self):
-        from . import _times
-        exif = _get_exif(self['DEFAULT']['img_directory'] + self['DEFAULT']['img_name_string'].format(self['DEFAULT']['first_img']))
+        exif = _get_exif(self['DEFAULT']['img_directory'] + self['DEFAULT']['img_name_string'].format(
+            self['DEFAULT']['first_img']))
         if not exif:
             raise ValueError("No EXIF metadata found")
 
@@ -161,8 +174,15 @@ class ConfigData(cp.ConfigParser):
             if tag == 'DateTimeOriginal':
                 if idx not in exif:
                     raise ValueError("No EXIF time found")
-                _, time_meta = exif[idx].split(' ')
-                self['DEFAULT']['start_time'] = _times.add_time_diff(time_meta, self['DEFAULT'].getint('time_diff_to_img_time'))
+                date, time_meta = exif[idx].split(' ')
+                time_img = _get_datetime_from_str(date, time_meta)
+                start_time = time_img - timedelta(seconds=self['DEFAULT'].getint('exif_time_infront_real_time'))
+                self['DEFAULT']['start_time'] = start_time.strftime('%H:%M:%S')
+
+
+def _get_datetime_from_str(date, time):
+    date_time = datetime.strptime(date + ' ' + time, '%Y:%m:%d %H:%M:%S')
+    return date_time
 
 
 def _get_exif(filename):

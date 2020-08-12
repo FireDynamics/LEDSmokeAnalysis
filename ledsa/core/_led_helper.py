@@ -4,9 +4,7 @@ import matplotlib.pyplot as plt
 import os
 from PIL import Image
 from PIL.ExifTags import TAGS
-from typing import Any
-
-import ledsa.core._times as times
+from datetime import datetime, timedelta
 
 # os path separator
 sep = os.path.sep
@@ -75,14 +73,16 @@ def get_img_data(config, build_experiment_infos=False, build_analysis_infos=Fals
                 if tag == 'DateTimeOriginal':
                     if idx not in exif:
                         raise ValueError("No EXIF time found")
-                    _, time_meta = exif[idx].split(' ')
+                    date, time_meta = exif[idx].split(' ')
+                    date_time_img = _get_datetime_from_str(date, time_meta)
     
                     # calculate the experiment time and real time
-                    experiment_time = times.sub_times(time_meta, config[build_type]['start_time'])
-                    experiment_time = times.time_to_int(experiment_time)
-                    time = times.add_time_diff(time_meta, config[build_type]['time_diff_to_img_time'])
-                    img_data += (str(img_idx) + ',' + config[build_type]['img_name_string'].format(i) + ',' + time +
-                                 ',' + str(experiment_time) + '\n')
+                    experiment_time = date_time_img - config.get_datetime()
+                    experiment_time = experiment_time.total_seconds()
+                    time_diff = config[build_type]['exif_time_infront_real_time'].split('.')
+                    time = date_time_img - timedelta(seconds=int(time_diff[0]), milliseconds=int(time_diff[1]))
+                    img_data += (str(img_idx) + ',' + config[build_type]['img_name_string'].format(i) + ',' +
+                                 time.strftime('%H:%M:%S') + ',' + str(experiment_time) + '\n')
                     img_idx += 1
     return img_data
 
@@ -265,7 +265,7 @@ def analyse_position_man(search_areas, config):
         if iled in ignore_indices:
             continue
 
-        #TODO: il should not be used here, as it is the loop variable from the loop before...
+        # TODO: il should not be used here, as it is the loop variable from the loop before...
         for il_repeat in range(len(line_edge_indices)):
             il = np.argmin(line_distances[iled, :])
             i1 = int(line_edge_indices[il][0])
@@ -401,6 +401,11 @@ def _get_exif(filename):
     image = Image.open(filename)
     image.verify()
     return image._getexif()
+
+
+def _get_datetime_from_str(date, time):
+    date_time = datetime.strptime(date + ' ' + time, '%Y:%m:%d %H:%M:%S')
+    return date_time
 
 
 # TODO: check if after the overflow the counting starts at 0000 or 0001. at the moment it is implemented with 0001
