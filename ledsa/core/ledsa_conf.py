@@ -104,8 +104,8 @@ class ConfigData(cp.ConfigParser):
         date = self['DEFAULT']['date']
         try:
             date_time = _get_datetime_from_str(date, time)
-        except:
-            print('Could not acquire a datetime object. Date or time are not set properly.')
+        except Exception as e:
+            print(e)
             exit(1)
         else:
             return date_time
@@ -181,7 +181,10 @@ class ConfigData(cp.ConfigParser):
 
 
 def _get_datetime_from_str(date, time):
-    date_time = datetime.strptime(date + ' ' + time, '%Y:%m:%d %H:%M:%S')
+    if date.find(":") != -1:
+        date_time = datetime.strptime(date + ' ' + time, '%Y:%m:%d %H:%M:%S')
+    else:
+        date_time = datetime.strptime(date + ' ' + time, '%d.%m.%Y %H:%M:%S')
     return date_time
 
 

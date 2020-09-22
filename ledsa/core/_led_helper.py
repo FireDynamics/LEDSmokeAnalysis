@@ -22,13 +22,15 @@ def load_file(filename, delim=' ', dtype='float', atleast_2d=False, silent=False
     try:
         data = np.loadtxt(filename, delimiter=delim, dtype=dtype)
     except OSError as e:
-        print('An operation system error occurred while loading {}.'.format(filename),
-              'Maybe the file does not exist or there is no reading ',
-              'permission.\n Error Message: ', e)
+        if not silent:
+            print('An operation system error occurred while loading {}.'.format(filename),
+                  'Maybe the file does not exist or there is no reading ',
+                  'permission.\n Error Message: ', e)
         raise
     except Exception as e:
-        print('Some error has occurred while loading {}'.format(filename),
-              '. \n Error Message: ', e)
+        if not silent:
+            print('Some error has occurred while loading {}'.format(filename),
+                  '. \n Error Message: ', e)
         raise
     else:
         if not silent:
@@ -316,6 +318,8 @@ def process_file(img_filename, search_areas, line_indices, conf, debug=False, de
                                  cy - window_radius:cy + window_radius]
 
                 fit_res, mesh = find_leds(data[s])
+                mean_color_value = np.mean(data[s])
+                sum_color_value = np.sum(data[s])
 
                 if debug:
                     return fit_res
@@ -327,13 +331,13 @@ def process_file(img_filename, search_areas, line_indices, conf, debug=False, de
 
                 line_number = iline
 
-                led_data = ('{:4d},{:2d},{:10.4e},{:10.4e},{:10.4e},{:10.4e},{:10.4e},{:10.4e},{:10.4e},{:10.4e},'
-                            '{:12d},{:10.4e},{:9d}'.format(iled, line_number, im_x, im_y, dx, dy, A, alpha, wx, wy,
-                                                           fit_res.success, fit_res.fun, fit_res.nfev))
+                led_data = (f'{iled:4d},{line_number:2d},{im_x:10.4e},{im_y:10.4e},{dx:10.4e},{dy:10.4e},{A:10.4e},'
+                            f'{alpha:10.4e},{wx:10.4e},{wy:10.4e},{fit_res.success:12d},{fit_res.fun:10.4e},'
+                            f'{fit_res.nfev:9d},{sum_color_value:10.4e},{mean_color_value:10.4e}')
                 img_data += led_data + '\n'
                 img_file_path = conf['img_directory'] + img_filename
 
-                if not fit_res.success or A != 0:  # A > 255 or A < 0:
+                if not fit_res.success:  # A > 255 or A < 0:
                     log_warnings('Irregularities while fitting:\n    ',
                                  img_file_path, iled, line_number, ' '.join(np.array_str(fit_res.x).split()).
                                  replace('[ ', '[').replace(' ]', ']').replace(' ', ','), fit_res.success, fit_res.fun,
@@ -404,7 +408,10 @@ def _get_exif(filename):
 
 
 def _get_datetime_from_str(date, time):
-    date_time = datetime.strptime(date + ' ' + time, '%Y:%m:%d %H:%M:%S')
+    if date.find(":") != -1:
+        date_time = datetime.strptime(date + ' ' + time, '%Y:%m:%d %H:%M:%S')
+    else:
+        date_time = datetime.strptime(date + ' ' + time, '%d.%m.%Y %H:%M:%S')
     return date_time
 
 

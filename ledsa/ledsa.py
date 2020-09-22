@@ -14,7 +14,7 @@ sep = os.path.sep
 
 class LEDSA:
     
-    def __init__(self, load_config_file=True):
+    def __init__(self, load_config_file=True, build_experiment_infos=True):
         self.config = lc.ConfigData(load_config_file=load_config_file)
             
         # declarations of global variables
@@ -36,7 +36,7 @@ class LEDSA:
 
         # request all unset default parameters
         # not complete
-        if self.config['DEFAULT']['time_img'] == 'None' and self.config['DEFAULT']['time_diff_to_img_time'] == 'None':
+        if self.config['DEFAULT']['time_img'] == 'None' and self.config['DEFAULT']['exif_time_infront_real_time'] == 'None':
             self.config.in_time_img()
             self.config.save()
         if self.config['find_search_areas']['reference_img'] == 'None':
@@ -59,7 +59,7 @@ class LEDSA:
             self.config.save()
 
         # creates an info file with infos to all images of the experiment
-        img_data = led.get_img_data(self.config, build_experiment_infos=True)
+        img_data = led.get_img_data(self.config, build_experiment_infos=build_experiment_infos)
         out_file = open('image_infos.csv', 'w')
         out_file.write("#Count,Name,Time,Experiment_Time[s]\n")
         out_file.write(img_data)

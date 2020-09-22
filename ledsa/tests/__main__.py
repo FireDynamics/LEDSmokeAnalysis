@@ -5,6 +5,9 @@ if len(sys.argv) == 1:
     from .plot_coordinates import plot_coordinates
     plot_coordinates()
 
+elif len(sys.argv) == 2:
+    from .plot_coordinates import compare_coordinates
+    compare_coordinates()
 else:
     arguments = ''
     for argument in sys.argv[1:]:
