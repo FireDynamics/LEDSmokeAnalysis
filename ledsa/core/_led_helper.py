@@ -62,10 +62,9 @@ def get_img_data(config, build_experiment_infos=False, build_analysis_infos=Fals
         img_increment = config.getint(build_type, 'skip_imgs') + 1 if build_type == 'analyse_photo' else 1
         img_number_list = _find_img_number_list(first_img, last_img, img_increment)
 
-        for i in img_number_list:
+        for img_number in img_number_list:
     
             # get time from exif data
-            img_number = '{:04d}'.format(i)
             exif = _get_exif(config['DEFAULT']['img_directory'] +
                              config['DEFAULT']['img_name_string'].format(img_number))
             if not exif:
@@ -83,7 +82,7 @@ def get_img_data(config, build_experiment_infos=False, build_analysis_infos=Fals
                     experiment_time = experiment_time.total_seconds()
                     time_diff = config[build_type]['exif_time_infront_real_time'].split('.')
                     time = date_time_img - timedelta(seconds=int(time_diff[0]), milliseconds=int(time_diff[1]))
-                    img_data += (str(img_idx) + ',' + config[build_type]['img_name_string'].format(i) + ',' +
+                    img_data += (str(img_idx) + ',' + config[build_type]['img_name_string'].format(img_number) + ',' +
                                  time.strftime('%H:%M:%S') + ',' + str(experiment_time) + '\n')
                     img_idx += 1
     return img_data
@@ -103,6 +102,11 @@ def get_img_id(img_name):
         if infos[i, 1] == img_name:
             return infos[i, 0]
     raise NameError("Could not find an image id for {}.".format(img_name))
+
+
+def get_last_img_id():
+    infos = load_file('.{}analysis{}image_infos_analysis.csv'.format(sep, sep), ',', 'str', silent=True)
+    return int(infos[-1, 0])
 
 # """
 # ------------------------------------
@@ -135,6 +139,21 @@ def log_warnings(*argv):
         logfile.write(str(info) + ' ')
     logfile.write('\n')
     logfile.close()
+
+
+# """
+# ------------------------------------
+#
+# ------------------------------------
+# """
+
+
+def get_img_id_from_time(time):
+    infos = load_file('.{}analysis{}image_infos_analysis.csv'.format(sep, sep), ',', 'str', silent=True)
+    for i in range(infos.shape[0]):
+        if float(infos[i, 3]) == time:
+            return int(infos[i, 0])
+    raise NameError("Could not find an image id at {}s.".format(time))
 
 
 # """
@@ -415,17 +434,17 @@ def _get_datetime_from_str(date, time):
     return date_time
 
 
-# TODO: check if after the overflow the counting starts at 0000 or 0001. at the moment it is implemented with 0001
 def _find_img_number_list(first, last, increment, number_string_length=4):
     if last >= first:
-        return range(first, last + 1, increment)
+        return [str(ele).zfill(number_string_length) for ele in range(first, last + 1, increment)]
 
     largest_number = 0
     for i in range(number_string_length):
         largest_number += 9*10**i
     print(largest_number)
-    num_list = list(range(first, largest_number+1, increment))
-    num_list.extend(list(range(increment-(largest_number-num_list[-1]), last+1, increment)))
+    num_list = [str(ele).zfill(number_string_length) for ele in range(first, largest_number+1, increment)]
+    num_list.extend([str(ele).zfill(number_string_length) for ele in
+                     range(increment-(largest_number-int(num_list[-1])), last+1, increment)])
     return num_list
 
 
