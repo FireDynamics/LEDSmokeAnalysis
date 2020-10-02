@@ -1,8 +1,12 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from PIL import Image
+
+from ledsa import LEDSA
 from ..core import _led_helper as led
 import ledsa.analysis.calculations as calc
+from ..core.ledsa_conf import ConfigData as CD
 import os
 from typing import Union, Tuple
 
@@ -56,10 +60,7 @@ def plot_z_fitpar_from_average(fig, fit_par, img_id, channel, led_arrays, window
     fit_parameters = calc.include_column_if_nonexistent(fit_parameters, fit_par, channel)
     cropped_parameters = fit_parameters.loc[(float(img_id-(window_size-1)//2), ):
                                             (float(img_id+(window_size-1)//2), )][['line', fit_par, 'height']]
-    mean = cropped_parameters.mean(axis=0, level='led_id')      # .to_numpy()
-
-    print(cropped_parameters)
-    print(mean)
+    mean = cropped_parameters.mean(axis=0, level='led_id')
 
     ax = fig.gca(xlabel=fit_par, ylabel='height/m')
     for line in led_arrays:
@@ -109,4 +110,77 @@ def _calc_t_fitpar_plot_info(led_id, fit_par, channel, image_id_start, image_id_
     return plot_info[plot_info['img_id'] <= image_id_finish]
 
 
+def plot_led_with_fit(channel, time, led_id, window_radius=10):
+    fig = plt.figure()
 
+    img_id = led.get_img_id_from_time(time)
+    plot_led(fig, img_id, led_id, window_radius)
+    plot_model(fig, channel, img_id, led_id, window_radius)
+
+    plt.title(f'Channel {channel}, Image {img_id}, LED {led_id}')
+
+    # plt.savefig(model.png)
+    plt.show()
+
+
+def plot_led(fig, img_id, led_id, window_radius):
+    filename = led.get_img_name(img_id)
+    path = get_img_path()
+    x, y = get_led_pos(led_id)
+
+    img = Image.open(path + filename)
+    img = img.crop((y - window_radius,
+                    x - window_radius,
+                    y + window_radius,
+                    x + window_radius))
+
+    current_fig = plt.gcf()
+
+    plt.figure(fig.number)
+    ax = plt.gca()
+    ax.imshow(img)
+
+    plt.figure(current_fig.number)
+
+
+def plot_model(fig, channel, img_id, led_id, window_radius):
+    mesh = np.meshgrid(np.linspace(0.5, 2 * window_radius - 0.5, 2 * window_radius),
+                       np.linspace(0.5, 2 * window_radius - 0.5, 2 * window_radius))
+
+    model_params = fit_led(img_id, led_id, channel)
+    led_model = led.led_fit(mesh[0], mesh[1], model_params[0], model_params[1], model_params[2], model_params[3],
+                            model_params[4], model_params[5], model_params[6], model_params[7])
+
+    current_fig = plt.gcf()
+
+    plt.figure(fig.number)
+    ax = plt.gca()
+    con = ax.contour(mesh[0], mesh[1], led_model, levels=10, alpha=0.9)
+    fig.colorbar(mappable=con, ax=ax)
+    ax.scatter(model_params[0], model_params[1], color='Red')
+
+    plt.figure(current_fig.number)
+
+
+def get_img_path():
+    conf = CD()
+    return conf['DEFAULT']['img_directory']
+
+
+def get_led_pos(led_id):
+    positions = led.load_file(".{}analysis{}led_search_areas.csv".format(sep, sep), delim=',', dtype=int)
+    for i in range(positions.shape[0]):
+        if positions[i, 0] == led_id:
+            return float(positions[i, 1]), float(positions[i, 2])
+    raise NameError("Could not find the positions of led {}.".format(led_id))
+
+
+def fit_led(img_id, led_id, channel):
+    ledsa = LEDSA()
+    ledsa.load_line_indices()
+    ledsa.load_search_areas()
+    ledsa.config['analyse_photo']['channel'] = str(channel)
+    filename = led.get_img_name(img_id)
+    fit_res = led.process_file(filename, ledsa.search_areas, ledsa.line_indices, ledsa.config['analyse_photo'], True,
+                               led_id)
+    return fit_res.x
