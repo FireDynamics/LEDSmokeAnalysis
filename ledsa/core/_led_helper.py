@@ -66,7 +66,7 @@ def get_img_data(config, build_experiment_infos=False, build_analysis_infos=Fals
     
             # get time from exif data
             exif = _get_exif(config['DEFAULT']['img_directory'] +
-                             config['DEFAULT']['img_name_string'].format(img_number))
+                             config['DEFAULT']['img_name_string'].format(int(img_number)))
             if not exif:
                 raise ValueError("No EXIF metadata found")
     
@@ -82,7 +82,7 @@ def get_img_data(config, build_experiment_infos=False, build_analysis_infos=Fals
                     experiment_time = experiment_time.total_seconds()
                     time_diff = config[build_type]['exif_time_infront_real_time'].split('.')
                     time = date_time_img - timedelta(seconds=int(time_diff[0]), milliseconds=int(time_diff[1]))
-                    img_data += (str(img_idx) + ',' + config[build_type]['img_name_string'].format(img_number) + ',' +
+                    img_data += (str(img_idx) + ',' + config[build_type]['img_name_string'].format(int(img_number)) + ',' +
                                  time.strftime('%H:%M:%S') + ',' + str(experiment_time) + '\n')
                     img_idx += 1
     return img_data
@@ -154,6 +154,14 @@ def get_img_id_from_time(time):
         if float(infos[i, 3]) == time:
             return int(infos[i, 0])
     raise NameError("Could not find an image id at {}s.".format(time))
+
+
+def get_time_from_img_id(img_id):
+    infos = load_file('.{}analysis{}image_infos_analysis.csv'.format(sep, sep), ',', 'str', silent=True)
+    for i in range(infos.shape[0]):
+        if float(infos[i, 0]) == img_id:
+            return int(infos[i, 3])
+    raise NameError("Could not find a time to image {}.".format(img_id))
 
 
 # """
@@ -286,7 +294,6 @@ def analyse_position_man(search_areas, config):
         if iled in ignore_indices:
             continue
 
-        # TODO: il should not be used here, as it is the loop variable from the loop before...
         for il_repeat in range(len(line_edge_indices)):
             il = np.argmin(line_distances[iled, :])
             i1 = int(line_edge_indices[il][0])

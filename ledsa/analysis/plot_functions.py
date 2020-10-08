@@ -99,22 +99,22 @@ def plot_t_fitpar_with_moving_average(fig, led_id, fit_par, channel, image_id_st
 def _calc_t_fitpar_plot_info(led_id, fit_par, channel, image_id_start, image_id_finish):
     times = led.load_file(".{}analysis{}image_infos_analysis.csv".format(sep, sep), delim=',', dtype=str)
     times = pd.DataFrame(times[:, [0, 3]], columns=['img_id', 'experiment_time'], dtype=np.float64)
-    times.set_index('img_id')
+    times.set_index('img_id', inplace=True)
     fit_parameters = calc.read_hdf(channel)
     fit_parameters = calc.include_column_if_nonexistent(fit_parameters, fit_par, channel)
     idx = pd.IndexSlice
     fit_parameters = fit_parameters.loc[idx[:, led_id], fit_par]
-    fit_parameters = fit_parameters.reset_index()[fit_par]
+    fit_parameters.reset_index(drop=True, level=1, inplace=True)
     plot_info = pd.concat([times, fit_parameters], axis=1, sort=False)
-    plot_info = plot_info[plot_info['img_id'] >= image_id_start]
-    return plot_info[plot_info['img_id'] <= image_id_finish]
+    plot_info = plot_info.loc[idx[image_id_start:image_id_finish+1]]
+    return plot_info
 
 
 def plot_led_with_fit(channel, time, led_id, window_radius=10):
     fig = plt.figure()
 
     img_id = led.get_img_id_from_time(time)
-    plot_led(fig, img_id, led_id, window_radius)
+    plot_led(fig, img_id, led_id, channel, window_radius)
     plot_model(fig, channel, img_id, led_id, window_radius)
 
     plt.title(f'Channel {channel}, Image {img_id}, LED {led_id}')
@@ -123,22 +123,14 @@ def plot_led_with_fit(channel, time, led_id, window_radius=10):
     plt.show()
 
 
-def plot_led(fig, img_id, led_id, window_radius):
-    filename = led.get_img_name(img_id)
-    path = get_img_path()
-    x, y = get_led_pos(led_id)
-
-    img = Image.open(path + filename)
-    img = img.crop((y - window_radius,
-                    x - window_radius,
-                    y + window_radius,
-                    x + window_radius))
+def plot_led(fig, img_id, led_id, channel, window_radius):
+    img = get_led_img(led.get_time_from_img_id(img_id), led_id, window_radius)
 
     current_fig = plt.gcf()
 
     plt.figure(fig.number)
     ax = plt.gca()
-    ax.imshow(img)
+    ax.imshow(img.split()[channel])
 
     plt.figure(current_fig.number)
 
@@ -148,6 +140,7 @@ def plot_model(fig, channel, img_id, led_id, window_radius):
                        np.linspace(0.5, 2 * window_radius - 0.5, 2 * window_radius))
 
     model_params = fit_led(img_id, led_id, channel)
+    print(model_params)
     led_model = led.led_fit(mesh[0], mesh[1], model_params[0], model_params[1], model_params[2], model_params[3],
                             model_params[4], model_params[5], model_params[6], model_params[7])
 
@@ -158,6 +151,44 @@ def plot_model(fig, channel, img_id, led_id, window_radius):
     con = ax.contour(mesh[0], mesh[1], led_model, levels=10, alpha=0.9)
     fig.colorbar(mappable=con, ax=ax)
     ax.scatter(model_params[0], model_params[1], color='Red')
+
+    plt.figure(current_fig.number)
+
+
+def show_img(img_id=-1, time=-1):
+    if img_id == -1 and time == -1:
+        print('Need Image ID or time to show an image')
+        return
+    if img_id != -1 and time != -1:
+        print('Set either img_id or time to show the image')
+        return
+    path = get_img_path()
+    if img_id != -1:
+        filename = led.get_img_name(img_id)
+    else:
+        filename = led.get_img_name(led.get_img_id_from_time(time))
+
+    img = Image.open(path + filename)
+    current_fig = plt.gcf()
+
+    plt.figure()
+    ax = plt.gca()
+    ax.imshow(img)
+
+    plt.figure(current_fig.number)
+
+
+def show_led_diff(channel, led_id, time1, time2, window_radius=10):
+    led1 = get_led_img(time1, led_id, window_radius)
+    led2 = get_led_img(time2, led_id, window_radius)
+
+    current_fig = plt.gcf()
+
+    fig = plt.figure()
+    ax = plt.gca()
+    im = ax.imshow(np.array(led1, dtype='int16')[:, :, channel] - np.array(led2, dtype='int16')[:, :, channel])
+    fig.colorbar(mappable=im, ax=ax)
+    plt.title(f'LED diff between LED {led_id} at {time1} and {time2} seconds')
 
     plt.figure(current_fig.number)
 
@@ -176,7 +207,7 @@ def get_led_pos(led_id):
 
 
 def fit_led(img_id, led_id, channel):
-    ledsa = LEDSA()
+    ledsa = LEDSA(build_experiment_infos=False)
     ledsa.load_line_indices()
     ledsa.load_search_areas()
     ledsa.config['analyse_photo']['channel'] = str(channel)
@@ -184,3 +215,19 @@ def fit_led(img_id, led_id, channel):
     fit_res = led.process_file(filename, ledsa.search_areas, ledsa.line_indices, ledsa.config['analyse_photo'], True,
                                led_id)
     return fit_res.x
+
+
+def get_led_img(time, led_id, window_radius=10):
+    filename = led.get_img_name(led.get_img_id_from_time(time))
+    print(filename)
+    path = get_img_path()
+    led_im = Image.open(path + filename)
+
+    x, y = get_led_pos(led_id)
+    print(x, y)
+    led_im = led_im.crop((y - window_radius,
+                          x - window_radius,
+                          y + window_radius,
+                          x + window_radius))
+    return led_im
+
