@@ -160,7 +160,7 @@ def get_time_from_img_id(img_id):
     infos = load_file('.{}analysis{}image_infos_analysis.csv'.format(sep, sep), ',', 'str', silent=True)
     for i in range(infos.shape[0]):
         if float(infos[i, 0]) == img_id:
-            return int(infos[i, 3])
+            return int(float(infos[i, 3]))
     raise NameError("Could not find a time to image {}.".format(img_id))
 
 
@@ -460,9 +460,13 @@ def target_function(params, *args):
     X, Y = mesh
     nx = np.max(X)
     ny = np.max(Y)
-    mask = data > 0.05 * np.max(data)
-    l2 = np.sum((data[mask] - led_fit(X, Y, *params)[mask]) ** 2)
-    l2 = np.sqrt(l2) / data[mask].size
+    # mask = data > 0.05 * np.max(data)
+    data = np.array(data)   # convert to array to allow change of pixel values
+    data[data < 0.05 * np.max(data)] = 0
+    # l2 = np.sum((data[mask] - led_fit(X, Y, *params)[mask]) ** 2)
+    # l2 = np.sqrt(l2) / data[mask].size
+    l2 = np.sum((data - led_fit(X, Y, *params)) ** 2)
+    l2 = np.sqrt(l2) / data.size
     penalty = 0
 
     x0, y0, dx, dy, A, alpha, wx, wy = params

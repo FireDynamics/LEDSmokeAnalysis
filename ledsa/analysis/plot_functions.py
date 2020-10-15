@@ -139,8 +139,11 @@ def plot_model(fig, channel, img_id, led_id, window_radius):
     mesh = np.meshgrid(np.linspace(0.5, 2 * window_radius - 0.5, 2 * window_radius),
                        np.linspace(0.5, 2 * window_radius - 0.5, 2 * window_radius))
 
-    model_params = fit_led(img_id, led_id, channel)
+    fit_results = fit_led(img_id, led_id, channel)
+    model_params = fit_results.x
     print(model_params)
+    print(fit_results.keys())
+    print(fit_results)
     led_model = led.led_fit(mesh[0], mesh[1], model_params[0], model_params[1], model_params[2], model_params[3],
                             model_params[4], model_params[5], model_params[6], model_params[7])
 
@@ -151,6 +154,8 @@ def plot_model(fig, channel, img_id, led_id, window_radius):
     con = ax.contour(mesh[0], mesh[1], led_model, levels=10, alpha=0.9)
     fig.colorbar(mappable=con, ax=ax)
     ax.scatter(model_params[0], model_params[1], color='Red')
+    plt.text(0, window_radius * 2.2, f'Num. of Iterations: {fit_results.nit} -/- l2 + penalty: {fit_results.fun:.4}',
+             ha='left')
 
     plt.figure(current_fig.number)
 
@@ -214,7 +219,7 @@ def fit_led(img_id, led_id, channel):
     filename = led.get_img_name(img_id)
     fit_res = led.process_file(filename, ledsa.search_areas, ledsa.line_indices, ledsa.config['analyse_photo'], True,
                                led_id)
-    return fit_res.x
+    return fit_res
 
 
 def get_led_img(time, led_id, window_radius=10):
