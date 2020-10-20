@@ -82,8 +82,8 @@ def get_img_data(config, build_experiment_infos=False, build_analysis_infos=Fals
                     experiment_time = experiment_time.total_seconds()
                     time_diff = config[build_type]['exif_time_infront_real_time'].split('.')
                     time = date_time_img - timedelta(seconds=int(time_diff[0]), milliseconds=int(time_diff[1]))
-                    img_data += (str(img_idx) + ',' + config[build_type]['img_name_string'].format(int(img_number)) + ',' +
-                                 time.strftime('%H:%M:%S') + ',' + str(experiment_time) + '\n')
+                    img_data += (str(img_idx) + ',' + config[build_type]['img_name_string'].format(int(img_number)) +
+                                 ',' + time.strftime('%H:%M:%S') + ',' + str(experiment_time) + '\n')
                     img_idx += 1
     return img_data
 

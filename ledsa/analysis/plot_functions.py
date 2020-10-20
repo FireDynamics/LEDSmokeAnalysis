@@ -14,6 +14,7 @@ from typing import Union, Tuple
 sep = os.path.sep
 
 # dictionary of the fit parameter positions
+# only used as reference
 par_dic = {
     "x": 2,
     "y": 3,
@@ -85,7 +86,8 @@ def plot_t_fitpar(fig, led_id, fit_par, channel, image_id_start, image_id_finish
 def plot_t_fitpar_with_moving_average(fig, led_id, fit_par, channel, image_id_start, image_id_finish, box_size=61):
     """Plots the time development of a fit parameter and its moving average"""
     plot_info = _calc_t_fitpar_plot_info(led_id, fit_par, channel, image_id_start, image_id_finish)
-    average = plot_info[fit_par].rolling(box_size, center=True, win_type='gaussian').sum(std=10) / 10 / np.sqrt(2 * np.pi)
+    average = plot_info[fit_par].rolling(box_size, center=True, win_type='gaussian').sum(std=10) / (10 *
+                                                                                                    np.sqrt(2 * np.pi))
 
     ax = fig.gca(xlabel='time[s]', ylabel=fit_par)
     plot, = ax.plot(plot_info['experiment_time'], plot_info[fit_par], alpha=0.2)
@@ -119,7 +121,6 @@ def plot_led_with_fit(channel, time, led_id, window_radius=10):
 
     plt.title(f'Channel {channel}, Image {img_id}, LED {led_id}')
 
-    # plt.savefig(model.png)
     plt.show()
 
 
@@ -139,11 +140,13 @@ def plot_model(fig, channel, img_id, led_id, window_radius):
     mesh = np.meshgrid(np.linspace(0.5, 2 * window_radius - 0.5, 2 * window_radius),
                        np.linspace(0.5, 2 * window_radius - 0.5, 2 * window_radius))
 
-    fit_results = fit_led(img_id, led_id, channel)
-    model_params = fit_results.x
-    print(model_params)
-    print(fit_results.keys())
-    print(fit_results)
+    # fit model
+    # fit_results = fit_led(img_id, led_id, channel)
+    # model_params = fit_results.x
+
+    # load model
+    model_params = load_model(img_id, led_id, channel, window_radius)
+
     led_model = led.led_fit(mesh[0], mesh[1], model_params[0], model_params[1], model_params[2], model_params[3],
                             model_params[4], model_params[5], model_params[6], model_params[7])
 
@@ -154,8 +157,8 @@ def plot_model(fig, channel, img_id, led_id, window_radius):
     con = ax.contour(mesh[0], mesh[1], led_model, levels=10, alpha=0.9)
     fig.colorbar(mappable=con, ax=ax)
     ax.scatter(model_params[0], model_params[1], color='Red')
-    plt.text(0, window_radius * 2.2, f'Num. of Iterations: {fit_results.nit} -/- l2 + penalty: {fit_results.fun:.4}',
-             ha='left')
+    # plt.text(0, window_radius * 2.2, f'Num. of Iterations: {fit_results.nit} -/- l2 + penalty: {fit_results.fun:.4}',
+    #          ha='left')
 
     plt.figure(current_fig.number)
 
@@ -222,17 +225,22 @@ def fit_led(img_id, led_id, channel):
     return fit_res
 
 
+def load_model(img_id, led_id, channel, window_radius=10):
+    fit_parameters = calc.read_hdf(channel)
+    model_params = np.array(fit_parameters.loc[img_id, led_id])[1:9]
+    pix_pos = get_led_pos(led_id)
+    model_params[0:2] = model_params[0:2] - pix_pos + window_radius
+    return model_params
+
+
 def get_led_img(time, led_id, window_radius=10):
     filename = led.get_img_name(led.get_img_id_from_time(time))
-    print(filename)
     path = get_img_path()
     led_im = Image.open(path + filename)
 
     x, y = get_led_pos(led_id)
-    print(x, y)
     led_im = led_im.crop((y - window_radius,
                           x - window_radius,
                           y + window_radius,
                           x + window_radius))
     return led_im
-
