@@ -4,9 +4,7 @@ import matplotlib.pyplot as plt
 import os
 from PIL import Image
 from PIL.ExifTags import TAGS
-from typing import Any
-
-import ledsa.core._times as times
+from datetime import datetime, timedelta
 
 # os path separator
 sep = os.path.sep
@@ -24,13 +22,15 @@ def load_file(filename, delim=' ', dtype='float', atleast_2d=False, silent=False
     try:
         data = np.loadtxt(filename, delimiter=delim, dtype=dtype)
     except OSError as e:
-        print('An operation system error occurred while loading {}.'.format(filename),
-              'Maybe the file does not exist or there is no reading ',
-              'permission.\n Error Message: ', e)
+        if not silent:
+            print('An operation system error occurred while loading {}.'.format(filename),
+                  'Maybe the file does not exist or there is no reading ',
+                  'permission.\n Error Message: ', e)
         raise
     except Exception as e:
-        print('Some error has occurred while loading {}'.format(filename),
-              '. \n Error Message: ', e)
+        if not silent:
+            print('Some error has occurred while loading {}'.format(filename),
+                  '. \n Error Message: ', e)
         raise
     else:
         if not silent:
@@ -51,22 +51,22 @@ def get_img_data(config, build_experiment_infos=False, build_analysis_infos=Fals
         config_switch.append('DEFAULT')
     if build_analysis_infos:
         config_switch.append('analyse_photo')
+    img_data = ''
     for build_type in config_switch:
         if config['DEFAULT']['start_time'] == 'None':
             config.get_start_time()
             config.save()
-        img_data = ''
         img_idx = 1
         first_img = config.getint(build_type, 'first_img')
         last_img = config.getint(build_type, 'last_img')
         img_increment = config.getint(build_type, 'skip_imgs') + 1 if build_type == 'analyse_photo' else 1
         img_number_list = _find_img_number_list(first_img, last_img, img_increment)
 
-        for i in img_number_list:
+        for img_number in img_number_list:
     
             # get time from exif data
-            img_number = '{:04d}'.format(i)
-            exif = _get_exif(config['DEFAULT']['img_directory'] + config['DEFAULT']['img_name_string'].format(img_number))
+            exif = _get_exif(config['DEFAULT']['img_directory'] +
+                             config['DEFAULT']['img_name_string'].format(int(img_number)))
             if not exif:
                 raise ValueError("No EXIF metadata found")
     
@@ -74,20 +74,23 @@ def get_img_data(config, build_experiment_infos=False, build_analysis_infos=Fals
                 if tag == 'DateTimeOriginal':
                     if idx not in exif:
                         raise ValueError("No EXIF time found")
-                    _, time_meta = exif[idx].split(' ')
+                    date, time_meta = exif[idx].split(' ')
+                    date_time_img = _get_datetime_from_str(date, time_meta)
     
                     # calculate the experiment time and real time
-                    experiment_time = times.sub_times(time_meta, config[build_type]['start_time'])
-                    experiment_time = times.time_to_int(experiment_time)
-                    time = times.add_time_diff(time_meta, config[build_type]['time_diff_to_img_time'])
-                    img_data += (str(img_idx) + ',' + config[build_type]['img_name_string'].format(i) + ',' + time + ',' +
-                                 str(experiment_time) + '\n')
+                    experiment_time = date_time_img - config.get_datetime()
+                    experiment_time = experiment_time.total_seconds()
+                    time_diff = config[build_type]['exif_time_infront_real_time'].split('.')
+                    time = date_time_img - timedelta(seconds=int(time_diff[0]), milliseconds=int(time_diff[1]))
+                    img_data += (str(img_idx) + ',' + config[build_type]['img_name_string'].format(int(img_number)) +
+                                 ',' + time.strftime('%H:%M:%S') + ',' + str(experiment_time) + '\n')
                     img_idx += 1
     return img_data
 
 
 def get_img_name(img_id):
-    infos = load_file('.{}analysis{}image_infos_analysis.csv'.format(sep, sep), ',', str, silent=True)
+    infos = load_file('.{}analysis{}image_infos_analysis.csv'.format(sep, sep), ',', 'str',
+                      silent=True, atleast_2d=True)
     for i in range(infos.shape[0]):
         if int(infos[i, 0]) == int(img_id):
             return infos[i, 1]
@@ -95,11 +98,18 @@ def get_img_name(img_id):
 
 
 def get_img_id(img_name):
-    infos = load_file('.{}analysis{}image_infos_analysis.csv'.format(sep, sep), ',', str, silent=True)
+    infos = load_file('.{}analysis{}image_infos_analysis.csv'.format(sep, sep), ',', 'str',
+                      silent=True, atleast_2d=True)
     for i in range(infos.shape[0]):
         if infos[i, 1] == img_name:
             return infos[i, 0]
     raise NameError("Could not find an image id for {}.".format(img_name))
+
+
+def get_last_img_id():
+    infos = load_file('.{}analysis{}image_infos_analysis.csv'.format(sep, sep), ',', 'str',
+                      silent=True, atleast_2d=True)
+    return int(infos[-1, 0])
 
 # """
 # ------------------------------------
@@ -136,6 +146,29 @@ def log_warnings(*argv):
 
 # """
 # ------------------------------------
+#
+# ------------------------------------
+# """
+
+
+def get_img_id_from_time(time):
+    infos = load_file('.{}analysis{}image_infos_analysis.csv'.format(sep, sep), ',', 'str', silent=True)
+    for i in range(infos.shape[0]):
+        if float(infos[i, 3]) == time:
+            return int(infos[i, 0])
+    raise NameError("Could not find an image id at {}s.".format(time))
+
+
+def get_time_from_img_id(img_id):
+    infos = load_file('.{}analysis{}image_infos_analysis.csv'.format(sep, sep), ',', 'str', silent=True)
+    for i in range(infos.shape[0]):
+        if float(infos[i, 0]) == img_id:
+            return int(float(infos[i, 3]))
+    raise NameError("Could not find a time to image {}.".format(img_id))
+
+
+# """
+# ------------------------------------
 # Outsourced logic
 # ------------------------------------
 # """
@@ -158,33 +191,6 @@ def led_fit(x, y, x0, y0, dx, dy, A, alpha, wx, wy):
 
 
 def find_leds(search_area):
-    def target_function(params, *args):
-        data, mesh = args
-        X, Y = mesh
-        nx = np.max(X)
-        ny = np.max(Y)
-        mask = data > 0.05 * np.max(data)
-        l2 = np.sum((data[mask] - led_fit(X, Y, *params)[mask]) ** 2)
-        l2 = np.sqrt(l2) / data[mask].size
-        penalty = 0
-
-        x0, y0, dx, dy, A, alpha, wx, wy = params
-
-        if x0 < 0 or x0 > nx or y0 < 0 or y0 > ny:
-            penalty += 1e3 * np.abs(x0 - nx) + 1e3 * np.abs(y0 - ny)
-        if dx < 1 or dy < 1:
-            penalty += 1. / (np.abs(dx)) ** 4 + 1. / (np.abs(dy)) ** 4
-        w0 = 0.001
-        if wx < w0 or wy < w0:
-            penalty += np.abs(wx - w0) * 1e6 + np.abs(wy - w0) * 1e6
-
-        if np.abs(alpha) > np.pi / 2:
-            penalty += (np.abs(alpha) - np.pi / 2) * 1e6
-
-        # returns 12 every time...
-        # penalty = 0
-        return l2 + penalty
-
     nx = search_area.shape[0]
     ny = search_area.shape[1]
 
@@ -238,15 +244,16 @@ def find_search_areas(image, window_radius=10, skip=10):
     return ixys
 
 
+# calculates for every led, to which array it belongs
 def analyse_position_man(search_areas, config):
-    nled = search_areas.shape[0]
+    num_leds = search_areas.shape[0]
 
     xs = search_areas[:, 2]
     ys = search_areas[:, 1]
 
     # get indices of LEDs to ignore
     if config['analyse_positions']['ignore_indices'] != 'None':
-        ignore_indices = np.array([int(i) for i in config['analyse_positions']['ignore_indices']])
+        ignore_indices = np.array([int(i) for i in config['analyse_positions']['ignore_indices'].split(' ')])
     else:
         ignore_indices = np.array([])
 
@@ -262,7 +269,7 @@ def analyse_position_man(search_areas, config):
         line_edge_indices = [line_edge_indices]
 
     # calculate lengths of the line arrays
-    line_distances = np.zeros((nled, len(line_edge_indices)))
+    line_distances = np.zeros((num_leds, len(line_edge_indices)))
 
     for il in range(len(line_edge_indices)):
         i1 = int(line_edge_indices[il][0])
@@ -285,7 +292,7 @@ def analyse_position_man(search_areas, config):
         line_indices.append([])
 
     # find for every LED the corresponding array
-    for iled in range(nled):
+    for iled in range(num_leds):
 
         if iled in ignore_indices:
             continue
@@ -315,14 +322,6 @@ def analyse_position_man(search_areas, config):
         line_indices[il].append(iled)
     return line_indices
 
-# def create_process_file():
-#     if not os.path.isfile('processed_images.csv'):
-#         img_data = self.config.get_img_data()
-#         out_file = open('processed_images.csv', 'w')
-#         out_file.write("#ID,Name,Time,Experiment_Time\n")
-#         out_file.write(img_data)
-#         out_file.close()
-
 
 def process_file(img_filename, search_areas, line_indices, conf, debug=False, debug_led=None):
 
@@ -348,6 +347,8 @@ def process_file(img_filename, search_areas, line_indices, conf, debug=False, de
                                  cy - window_radius:cy + window_radius]
 
                 fit_res, mesh = find_leds(data[s])
+                mean_color_value = np.mean(data[s])
+                sum_color_value = np.sum(data[s])
 
                 if debug:
                     return fit_res
@@ -359,16 +360,18 @@ def process_file(img_filename, search_areas, line_indices, conf, debug=False, de
 
                 line_number = iline
 
-                led_data = ('{:4d},{:2d},{:10.4e},{:10.4e},{:10.4e},{:10.4e},{:10.4e},{:10.4e},{:10.4e},{:10.4e},'
-                            '{:12d},{:10.4e},{:9d}'.format(iled, line_number, im_x, im_y, dx, dy, A, alpha, wx, wy,
-                                                           fit_res.success, fit_res.fun, fit_res.nfev))
+                led_data = (f'{iled:4d},{line_number:2d},{im_x:10.4e},{im_y:10.4e},{dx:10.4e},{dy:10.4e},{A:10.4e},'
+                            f'{alpha:10.4e},{wx:10.4e},{wy:10.4e},{fit_res.success:12d},{fit_res.fun:10.4e},'
+                            f'{fit_res.nfev:9d},{sum_color_value:10.4e},{mean_color_value:10.4e}')
                 img_data += led_data + '\n'
                 img_file_path = conf['img_directory'] + img_filename
 
-                if not fit_res.success or A > 255 or A < 0:
+                if not fit_res.success:  # A > 255 or A < 0:
                     log_warnings('Irregularities while fitting:\n    ',
-                                 img_file_path, iled, line_number, ' '.join(np.array_str(fit_res.x).split()).replace('[ ', '[').replace(' ]', ']').replace(' ', ','), fit_res.success, fit_res.fun,
-                                 fit_res.nfev, data[s].shape[0], data[s].shape[1], im_x, im_y, window_radius, cx, cy, conf['channel'])
+                                 img_file_path, iled, line_number, ' '.join(np.array_str(fit_res.x).split()).
+                                 replace('[ ', '[').replace(' ]', ']').replace(' ', ','), fit_res.success, fit_res.fun,
+                                 fit_res.nfev, data[s].shape[0], data[s].shape[1], im_x, im_y, window_radius, cx, cy,
+                                 conf['channel'])
 
     return img_data
 
@@ -388,7 +391,6 @@ def find_calculated_imgs(config):
     directory_content = os.listdir('.{}analysis{}channel{}'.format(sep, sep, config['channel']))
 
     # create and compare the two sets
-    img_id = image_infos[0, 0]
     for file_name in directory_content:
         img = re.search(r"([0-9]+)_led_positions.csv", file_name)
         if img is not None:
@@ -412,7 +414,7 @@ def create_img_infos_analysis(config):
 
 
 def create_imgs_to_process():
-    image_infos = load_file('.{}analysis{}image_infos_analysis.csv'.format(sep, sep), dtype=str, delim=',',
+    image_infos = load_file('.{}analysis{}image_infos_analysis.csv'.format(sep, sep), dtype='str', delim=',',
                             atleast_2d=True)
     img_filenames = image_infos[:, 1]
     out_file = open('images_to_process.csv', 'w')
@@ -434,40 +436,53 @@ def _get_exif(filename):
     return image._getexif()
 
 
-# TODO: check if after the overflow the counting starts at 0000 or 0001. at the moment it is implemented with 0001
+def _get_datetime_from_str(date, time):
+    if date.find(":") != -1:
+        date_time = datetime.strptime(date + ' ' + time, '%Y:%m:%d %H:%M:%S')
+    else:
+        date_time = datetime.strptime(date + ' ' + time, '%d.%m.%Y %H:%M:%S')
+    return date_time
+
+
 def _find_img_number_list(first, last, increment, number_string_length=4):
     if last >= first:
-        return range(first, last + 1, increment)
+        return [str(ele).zfill(number_string_length) for ele in range(first, last + 1, increment)]
 
     largest_number = 0
     for i in range(number_string_length):
         largest_number += 9*10**i
     print(largest_number)
-    num_list = list(range(first, largest_number+1, increment))
-    num_list.extend(list(range(increment-(largest_number-num_list[-1]), last+1, increment)))
+    num_list = [str(ele).zfill(number_string_length) for ele in range(first, largest_number+1, increment)]
+    num_list.extend([str(ele).zfill(number_string_length) for ele in
+                     range(increment-(largest_number-int(num_list[-1])), last+1, increment)])
     return num_list
 
 
+def target_function(params, *args):
+    data, mesh = args
+    X, Y = mesh
+    nx = np.max(X)
+    ny = np.max(Y)
+    # mask = data > 0.05 * np.max(data)
+    data = np.array(data)   # convert to array to allow change of pixel values
+    data[data < 0.05 * np.max(data)] = 0
+    # l2 = np.sum((data[mask] - led_fit(X, Y, *params)[mask]) ** 2)
+    # l2 = np.sqrt(l2) / data[mask].size
+    l2 = np.sum((data - led_fit(X, Y, *params)) ** 2)
+    l2 = np.sqrt(l2) / data.size
+    penalty = 0
 
-# if __name__ == 'main':
-#
-#     filename = 'scn_experiments/IMG_7508.JPG'
-#     data = read_file(filename, channel=0)
-#     window_radius=10
-#     xys = find_leds(data, window_radius=window_radius)
-#
-#     np.savetxt('{}.led_pos.csv'.format(filename), xys,
-#                header='pixel position x, y', fmt='%d')
-#
-#     fig = plt.figure(dpi=900)
-#     ax = plt.gca()
-#
-#     for i in range(xys.shape[0]):
-#         ax.add_patch(plt.Circle((xys[i,1], xys[i,0]), radius=window_radius,
-#                                 color='Red', fill=False, alpha=0.5,
-#                                 linewidth=0.1))
-#
-#
-#     plt.imshow(data, cmap='Greys')
-#     plt.colorbar()
-#     plt.savefig('{}.led_pos.plot.pdf'.format(filename))
+    x0, y0, dx, dy, A, alpha, wx, wy = params
+
+    if x0 < 0 or x0 > nx or y0 < 0 or y0 > ny:
+        penalty += 1e3 * np.abs(x0 - nx) + 1e3 * np.abs(y0 - ny)
+    if dx < 1 or dy < 1:
+        penalty += 1. / (np.abs(dx)) ** 4 + 1. / (np.abs(dy)) ** 4
+    w0 = 0.001
+    if wx < w0 or wy < w0:
+        penalty += np.abs(wx - w0) * 1e6 + np.abs(wy - w0) * 1e6
+
+    if np.abs(alpha) > np.pi / 2:
+        penalty += (np.abs(alpha) - np.pi / 2) * 1e6
+
+    return l2 + penalty

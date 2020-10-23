@@ -48,7 +48,7 @@ class FitAnalyser:
         mesh = np.meshgrid(np.linspace(0.5, self.nx - 0.5, self.nx), np.linspace(0.5, self.ny - 0.5, self.ny))
 
         led_model = led.led_fit(mesh[0], mesh[1], self.fit[0], self.fit[1], self.fit[2], self.fit[3], self.fit[4],
-                            self.fit[5], self.fit[6], self.fit[7])
+                                self.fit[5], self.fit[6], self.fit[7])
 
         fig, ax = plt.subplots(1, 2, dpi=600)
 
@@ -58,13 +58,16 @@ class FitAnalyser:
 
         ax[1].imshow(led_model, cmap='Greys')
 
-        ampl = 0.25 # np.max(np.abs(data[s] - led_model))
-        maxA = 255 # ????
+        ampl = np.max(np.abs(data[s] - led_model))  # 0.25
+        maxA = 255  # np.max(np.abs(data[s]))
 
-        im2 = ax[1].imshow((data[s] - led_model)/maxA, cmap='seismic', vmin=-ampl, vmax=ampl)
+        im2 = ax[1].imshow((data[s] - led_model)/maxA, cmap='seismic', vmin=-ampl/maxA, vmax=ampl/maxA)
         plt.colorbar(mappable=im2)
         # plt.savefig('{}_ledanalysis_{:04d}.pdf'.format(filename, iled))
         # plt.clf()
+
+        ax[0].set_title('Fit', fontsize=3)
+        ax[1].set_title('difference between fit and data \nrelative to a max luminosity of 255', fontsize=3)
 
         plt.show(block=True)
 

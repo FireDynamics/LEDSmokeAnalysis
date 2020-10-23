@@ -32,29 +32,31 @@ if args.config is None and not args.s1 and not args.s2 and not args.s3 and not a
 
 if args.config is not None:
     if len(args.config) == 0:
-        lc.ConfigData()
+        lc.ConfigData(load_config_file=False)
     if len(args.config) == 1:
-        lc.ConfigData(img_directory=args.config[0])
+        lc.ConfigData(load_config_file=False, img_directory=args.config[0])
     if len(args.config) == 2:
-        lc.ConfigData(img_directory=args.config[0], reference_img=args.config[1])
+        lc.ConfigData(load_config_file=False, img_directory=args.config[0], reference_img=args.config[1])
     if len(args.config) == 3:
-        lc.ConfigData(img_directory=args.config[0], reference_img=args.config[1],
+        lc.ConfigData(load_config_file=False, img_directory=args.config[0], reference_img=args.config[1],
                       multicore_processing=True, num_of_cores=args.config[2])
 
-if args.s1 or args.s2 or args.s3:
-    ledsa = LEDSA()
+if args.s1 or args.s2:
+    ledsa = LEDSA(build_experiment_infos=False)
     if args.s1:
         ledsa.find_search_areas(ledsa.config['find_search_areas']['reference_img'])
         ledsa.plot_search_areas(ledsa.config['find_search_areas']['reference_img'])
     if args.s2:
         ledsa.analyse_positions()
         ledsa.plot_lines()
-    if args.s3:
-        ledsa.setup_step3()
-        ledsa.process_image_data()
+
+if args.s3:
+    ledsa = LEDSA(build_experiment_infos=True)
+    ledsa.setup_step3()
+    ledsa.process_image_data()
 
 if args.re:
-    ledsa = LEDSA()
+    ledsa = LEDSA(build_experiment_infos=False)
     ledsa.setup_restart()
     ledsa.process_image_data()
 
