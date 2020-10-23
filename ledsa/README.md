@@ -23,17 +23,3 @@ Run python -m ledsa -s3. This will take quite a while, even on many cores. Grab 
 Run python -m ledsa -coord to calculate the 3D coordinates of the LEDs from the reference image. To be able to do
 it,there must be the coordinates of the two outermost LEDs for each LED array saved in the variable
 line_edge_coordinates inside config.ini
-
-
-
-
-
-TODO:
-
-whole script with UI for all steps and parameters
-
-change path operations to pathlib
-
-LOGIC:
-
-write module to access raw data
