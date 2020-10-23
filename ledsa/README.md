@@ -23,3 +23,13 @@ Run python -m ledsa -s3. This will take quite a while, even on many cores. Grab 
 Run python -m ledsa -coord to calculate the 3D coordinates of the LEDs from the reference image. To be able to do
 it,there must be the coordinates of the two outermost LEDs for each LED array saved in the variable
 line_edge_coordinates inside config.ini
+
+
+How this git repo is structured:
+
+To introduce new, tested and stable changes, push requests to the development branch are used.
+If the master branch is not ahead of the push and no other push request to master is open, the request can go directly to master instead.
+Push request drafts to the development branch can be used to communicate about changes and new functionality.
+After reviewing the changes, they will be merged into the branch.
+Merges to development must be tested again after merging master into it before merging it to master. If there is an open push request to master, it must be merged with development and tested as well before pushing development to master.
+Every merge with master is followed by introducing a new version tag corresponding to the semantic versioning pradigm.
