@@ -39,13 +39,12 @@ def plot_z_fitpar(fig: plt.figure, fit_par: str, img_id: int, channel: int,
 
     fit_parameters = calc.read_hdf(channel)
     fit_parameters = calc.include_column_if_nonexistent(fit_parameters, fit_par, channel)
-    print(fit_parameters)
     fit_parameters = fit_parameters.loc[img_id, :]
 
     ax = fig.gca(xlabel=fit_par, ylabel='height/m')
     for line in led_arrays:
-        plot, = ax.plot(fit_parameters[fit_parameters['line'] == line][fit_par],
-                        fit_parameters[fit_parameters['line'] == line]['height'])
+        plot, = ax.plot(np.array(fit_parameters[fit_parameters['line'] == line][fit_par]),
+                        np.array(fit_parameters[fit_parameters['line'] == line]['height']))
         plot.set_label(f'LED_Array{line}, C{channel}')
     ax.legend()
     plt.title(f'Plot of fit parameter {fit_par} against the height.\n'
@@ -65,7 +64,7 @@ def plot_z_fitpar_from_average(fig, fit_par, img_id, channel, led_arrays, window
 
     ax = fig.gca(xlabel=fit_par, ylabel='height/m')
     for line in led_arrays:
-        plot, = ax.plot(mean[mean['line'] == line][fit_par], mean[mean['line'] == line]['height'])
+        plot, = ax.plot(np.array(mean[mean['line'] == line][fit_par]), np.array(mean[mean['line'] == line]['height']))
         plot.set_label(f'LED_Array{line}, C{channel}')
     ax.legend()
     plt.title(f'Plot of averaged fit parameter {fit_par} over time against the height.\n'
@@ -77,7 +76,7 @@ def plot_t_fitpar(fig, led_id, fit_par, channel, image_id_start, image_id_finish
     plot_info = _calc_t_fitpar_plot_info(led_id, fit_par, channel, image_id_start, image_id_finish)
 
     ax = fig.gca(xlabel='time[s]', ylabel=fit_par)
-    plot, = ax.plot(plot_info['experiment_time'], plot_info[fit_par])
+    plot, = ax.plot(np.array(plot_info['experiment_time']), np.array(plot_info[fit_par]))
     plot.set_label(f'LED{led_id}, C{channel}')
     ax.legend()
     plt.title(f'Time plot of Fit Parameter {fit_par}')
@@ -92,7 +91,7 @@ def plot_t_fitpar_with_moving_average(fig, led_id, fit_par, channel, image_id_st
     ax = fig.gca(xlabel='time[s]', ylabel=fit_par)
     plot, = ax.plot(plot_info['experiment_time'], plot_info[fit_par], alpha=0.2)
     plot.set_label(f'LED{led_id}, C{channel}')
-    plot, = ax.plot(plot_info['experiment_time'], average, c=plot.get_color())
+    plot, = ax.plot(np.array(plot_info['experiment_time']), average, c=plot.get_color())
     plot.set_label(f'average')
     ax.legend()
     plt.title(f'Time plot of Fit Parameter {fit_par}')
