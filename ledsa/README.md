@@ -27,14 +27,10 @@ line_edge_coordinates inside config.ini
 
 <b>How this git repo is structured:</b>
 
-To introduce new, tested and stable changes, push requests to the development branch are used.
+To introduce new, tested and stable changes, pull/ merge requests into the master branch are used.
 
-If the master branch is not ahead of the push and no other push request to master is open, the request can go directly to master instead.
+Pull request drafts can be used to communicate about changes and new functionality.
 
-Push request drafts to the development branch can be used to communicate about changes and new functionality.
-
-After reviewing the changes, they will be merged into the branch.
-
-Merges to development must be tested again after merging master into it before merging it to master. If there is an open push request to master, it must be merged with development and tested as well before pushing development to master.
+After reviewing and testing the changes, they will be merged into master.
 
 Every merge with master is followed by introducing a new version tag corresponding to the semantic versioning pradigm.
