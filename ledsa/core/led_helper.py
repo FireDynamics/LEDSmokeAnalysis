@@ -1,7 +1,9 @@
 import matplotlib.pyplot as plt
 from ledsa.core._led_helper_functions import *
+from ledsa.core._led_helper_functions_s1 import *
+from ledsa.core._led_helper_functions_s2 import *
+from ledsa.core._led_helper_functions_s3 import *
 
-# os path separator
 sep = os.path.sep
 
 
