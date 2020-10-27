@@ -21,7 +21,7 @@ class LEDSA:
         # 2D list with dimension (# of LED arrays) x (# of LEDs per array)
         self.line_indices = None
 
-        led.create_directories(self.config)
+        led.create_needed_directories(self.config)
         led.request_config_parameters(self.config)
 
         led.generate_image_infos_csv(self.config, build_experiment_infos=build_experiment_infos)

@@ -1,8 +1,11 @@
-import matplotlib.pyplot as plt
 from ledsa.core._led_helper_functions import *
 from ledsa.core._led_helper_functions_s1 import *
 from ledsa.core._led_helper_functions_s2 import *
 from ledsa.core._led_helper_functions_s3 import *
+
+import os
+import numpy as np
+import matplotlib.pyplot as plt
 
 sep = os.path.sep
 
@@ -94,7 +97,7 @@ def get_time_from_img_id(img_id):
 # ------------------------------------
 # """
 
-def create_directories(config):
+def create_needed_directories(config):
     if not os.path.exists('plots'):
         os.mkdir('plots')
         print("Directory plots created ")
@@ -260,11 +263,6 @@ def create_imgs_to_process():
 # """
 
 def find_not_analysed_imgs(config):
-    """searches for the already analysed images and writes into images_to_process.csv the ones
-    that are not yet analysed because the analysis was canceled
-    """
-
-    # find all images, which should be analysed
     image_infos = load_file('.{}analysis{}image_infos_analysis.csv'.format(sep, sep), dtype='str', delim=',',
                             atleast_2d=True)
     all_imgs = image_infos[:, 1]
