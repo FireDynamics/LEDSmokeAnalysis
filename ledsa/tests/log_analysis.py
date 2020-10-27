@@ -1,10 +1,11 @@
 # tools for analysing problems with the LED fitting
-
+import ledsa.core.model
 import numpy as np
 import matplotlib.pyplot as plt
 import importlib
 from PIL import Image
-import ledsa.core._led_helper as led
+import ledsa.core.led_helper as led
+from ledsa.core.model import led_fit
 from ..ledsa import LEDSA
 
 
@@ -47,8 +48,8 @@ class FitAnalyser:
 
         mesh = np.meshgrid(np.linspace(0.5, self.nx - 0.5, self.nx), np.linspace(0.5, self.ny - 0.5, self.ny))
 
-        led_model = led.led_fit(mesh[0], mesh[1], self.fit[0], self.fit[1], self.fit[2], self.fit[3], self.fit[4],
-                                self.fit[5], self.fit[6], self.fit[7])
+        led_model = led_fit(mesh[0], mesh[1], self.fit[0], self.fit[1], self.fit[2], self.fit[3], self.fit[4],
+                            self.fit[5], self.fit[6], self.fit[7])
 
         fig, ax = plt.subplots(1, 2, dpi=600)
 

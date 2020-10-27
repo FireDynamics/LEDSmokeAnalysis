@@ -1,7 +1,7 @@
 from ..core.ledsa_conf import ConfigData
 import numpy as np
 import pandas as pd
-from ..core import _led_helper as led
+from ..core import led_helper as led
 import os
 
 # os path separator

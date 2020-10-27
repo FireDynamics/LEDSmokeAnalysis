@@ -1,6 +1,8 @@
 # this file is executed if the package is run via python -m ledsa [arguments]
 
 import argparse
+import sys
+
 from .ledsa import LEDSA
 from .core import ledsa_conf as lc
 
@@ -21,14 +23,15 @@ parser.add_argument('--re', '-re', '--restart', action='store_true',
 parser.add_argument('--coordinates', '-coord', action='store_true',
                     help='Calculates the 3D coordinates from the coordinates given in the configfile and the '
                          'reference image.')
+parser.add_argument('--atest', '-atest', action='store_true',
+                    help='Runs the acceptance test suit')
 args = parser.parse_args()
 
 print('ledsa runs with the following arguments:')
 print(args)
 
-if args.config is None and not args.s1 and not args.s2 and not args.s3 and not args.re and not args.coordinates:
-    args.config = []
-    args.s1 = args.s2 = args.s3 = True
+if len(sys.argv) == 1:
+    print('Please give an argument. Get help with --h')
 
 if args.config is not None:
     if len(args.config) == 0:
@@ -63,3 +66,7 @@ if args.re:
 if args.coordinates:
     from ledsa.ledpositions.coordinates import calculate_coordinates
     calculate_coordinates()
+
+if args.atest:
+    # noinspection PyUnresolvedReferences
+    import ledsa.tests.AcceptanceTests.__main__
