@@ -1,7 +1,7 @@
 import ledsa.analysis.plot_functions as pf
 import matplotlib.pyplot as plt
 import matplotlib
-import ledsa.core._led_helper as led
+import ledsa.core.led_helper as led
 import tkinter as tk
 import subprocess
 import os

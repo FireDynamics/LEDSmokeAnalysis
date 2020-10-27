@@ -154,6 +154,15 @@ class ConfigData(cp.ConfigParser):
     def in_last_img(self):
         self['DEFAULT']['last_img'] = input('Please give the number of the last image file of the experiment:  ')
 
+    def in_line_edge_indices(self):
+        print('The edges of the LED arrays are needed. Please enter the labels of the top most and bottom most LED of '
+              'each array. Separate the two labels with a whitespace.')
+        labels = str()
+        for i in range(int(self['DEFAULT']['num_of_arrays'])):
+            line = input(str(i) + '. array: ')
+            labels += '\t    ' + line + '\n'
+        self['analyse_positions']['line_edge_indices'] = '\n' + labels
+
     def in_line_edge_coordinates(self):
         print('Please enter the coordinates of the top most and bottom most LED of each array corresponding to the '
               'order of the line edge indices. Separate the two coordinates with a whitespace.')

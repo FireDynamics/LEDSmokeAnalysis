@@ -1,4 +1,4 @@
-from ..core import _led_helper as ledh
+from ..core import led_helper as ledh
 from ..core import ledsa_conf as lc
 import os
 from scipy import linalg

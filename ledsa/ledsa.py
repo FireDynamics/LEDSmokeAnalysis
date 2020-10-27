@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 
-import argparse
 import os
 import numpy as np
 import matplotlib.pyplot as plt
 
-from .core import _led_helper as led
+from .core import led_helper as led
 from .core import ledsa_conf as lc
 
 # os path separator
@@ -59,11 +58,7 @@ class LEDSA:
             self.config.save()
 
         # creates an info file with infos to all images of the experiment
-        img_data = led.get_img_data(self.config, build_experiment_infos=build_experiment_infos)
-        out_file = open('image_infos.csv', 'w')
-        out_file.write("#Count,Name,Time,Experiment_Time[s]\n")
-        out_file.write(img_data)
-        out_file.close()
+        led.generate_image_infos_csv(self.config, build_experiment_infos=build_experiment_infos)
 
     # """
     # ------------------------------------
@@ -126,7 +121,7 @@ class LEDSA:
         """analyses, which LED belongs to which LED line array"""
         if self.search_areas is None:
             self.load_search_areas()
-        self.line_indices = led.analyse_position_man(self.search_areas, self.config)
+        self.line_indices = led.match_leds_to_led_arrays(self.search_areas, self.config)
 
         # save the labeled LEDs
         for i in range(len(self.line_indices)):
@@ -196,22 +191,24 @@ class LEDSA:
         # find the root and the experiment time
         root = os.getcwd()
         root = root.split(sep)
-        img_infos = led.load_file('analysis{}image_infos_analysis.csv'.format(sep), dtype='str', delim=',', silent=True)
+        img_infos = led.load_file('analysis{}image_infos_analysis.csv'.format(sep), dtype='str', delim=',', silent=True,
+                                  atleast_2d=True)
 
         # create the header
-        out_file.write('# image root = {}, photo file name = {}, channel = {}, time[s] = {}\n'.format
-                       (root[-1], img_filename, self.config['analyse_photo']['channel'], img_infos[int(img_id)-1][3]))
-        out_file.write("# id,         line,   x,         y,        dx,        dy,"
-                       "         A,     alpha,        wx,        wy, fit_success,"
-                       "   fit_fun, fit_nfev // all spatial quantities in pixel coordinates\n")
+        out_file.write(f'# image root = {root[-1]}, photo file name = {img_filename}, ')
+        out_file.write(f"channel = {self.config['analyse_photo']['channel']}, ")
+        out_file.write(f"time[s] = {img_infos[int(img_id)-1][3]}\n")
+        out_file.write("# id,         line,   x,         y,        dx,        dy,")
+        out_file.write("         A,     alpha,        wx,        wy, fit_success,")
+        out_file.write("   fit_fun, fit_nfev // all spatial quantities in pixel coordinates\n")
 
         out_file.write(img_data)
         out_file.close()
         print('Image {} processed'.format(img_id))
 
     def setup_step3(self):
-        led.create_img_infos_analysis(self.config)
+        led.generate_image_infos_csv(self.config, build_analysis_infos=True)
         led.create_imgs_to_process()
 
     def setup_restart(self):
-        led.find_calculated_imgs(self.config['analyse_photo'])
+        led.find_not_analysed_imgs(self.config['analyse_photo'])
