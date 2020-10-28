@@ -45,6 +45,7 @@ class LEDSA:
         config = self.config['find_search_areas']
         ref_img_name = "{}{}".format(config['img_directory'], img_filename)
         data = led.read_file(ref_img_name, channel=0)
+
         self.search_areas = led.find_search_areas(data, skip=1, window_radius=int(config['window_radius']))
 
         out_filename = 'analysis{}led_search_areas.csv'.format(sep)
@@ -62,9 +63,7 @@ class LEDSA:
 
         plt.figure(dpi=1200)
         ax = plt.gca()
-
         led.add_search_areas_to_plot(self.search_areas, ax, config)
-
         plt.imshow(data, cmap='Greys')
         plt.colorbar()
         plt.savefig('plots{}led_search_areas.plot.pdf'.format(sep))
@@ -128,7 +127,7 @@ class LEDSA:
 
     def setup_step3(self):
         led.generate_image_infos_csv(self.config, build_analysis_infos=True)
-        led.create_imgs_to_process()
+        led.create_imgs_to_process_file()
 
     def setup_restart(self):
         led.find_not_analysed_imgs(self.config['analyse_photo'])

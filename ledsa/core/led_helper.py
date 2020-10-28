@@ -206,7 +206,7 @@ def generate_labeled_led_arrays_plot(line_indices, search_areas):
                     s=0.1, label='led strip {}'.format(i))
 
     plt.legend()
-    plt.savefig('plots{}led_lines.pdf'.format(sep))
+    plt.savefig('plots{}led_arrays.pdf'.format(sep))
 
 
 # """
@@ -246,7 +246,7 @@ def create_fit_result_file(img_data, img_id, channel):
     save_results_in_file(channel, img_data, img_filename, img_id, img_infos, root)
     
     
-def create_imgs_to_process():
+def create_imgs_to_process_file():
     image_infos = load_file('.{}analysis{}image_infos_analysis.csv'.format(sep, sep), dtype='str', delim=',',
                             atleast_2d=True)
     img_filenames = image_infos[:, 1]
