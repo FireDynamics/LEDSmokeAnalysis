@@ -11,7 +11,7 @@ def target_function(params, *args):
     data[data < 0.05 * np.max(data)] = 0
     # l2 = np.sum((data[mask] - led_fit(X, Y, *params)[mask]) ** 2)
     # l2 = np.sqrt(l2) / data[mask].size
-    l2 = np.sum((data - led_fit(X, Y, *params)) ** 2)
+    l2 = np.sum((data - led_model(X, Y, *params)) ** 2)
     l2 = np.sqrt(l2) / data.size
     penalty = 0
 
@@ -31,7 +31,7 @@ def target_function(params, *args):
     return l2 + penalty
 
 
-def led_fit(x, y, x0, y0, dx, dy, A, alpha, wx, wy):
+def led_model(x, y, x0, y0, dx, dy, A, alpha, wx, wy):
     nx = x - x0
     ny = y - y0
 

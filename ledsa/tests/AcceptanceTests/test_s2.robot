@@ -19,7 +19,7 @@ Start Step Two
     Execute Ledsa   -s2
 
 Pdf with lines should be created
-    File Should Exist   ${WORKDIR}${/}plots${/}led_lines.pdf
+    File Should Exist   ${WORKDIR}${/}plots${/}led_arrays.pdf
 
 Line indice tabels should be created
     File Should Exist   ${WORKDIR}${/}analysis${/}line_indices_000.csv

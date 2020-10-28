@@ -50,8 +50,7 @@ if args.s1 or args.s2:
         ledsa.find_search_areas(ledsa.config['find_search_areas']['reference_img'])
         ledsa.plot_search_areas(ledsa.config['find_search_areas']['reference_img'])
     if args.s2:
-        ledsa.analyse_positions()
-        ledsa.plot_lines()
+        ledsa.match_leds_to_led_arrays()
 
 if args.s3:
     ledsa = LEDSA(build_experiment_infos=True)

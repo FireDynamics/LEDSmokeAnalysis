@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import importlib
 from PIL import Image
 import ledsa.core.led_helper as led
-from ledsa.core.model import led_fit
+from ledsa.core.model import led_model
 from ..ledsa import LEDSA
 
 
@@ -48,8 +48,8 @@ class FitAnalyser:
 
         mesh = np.meshgrid(np.linspace(0.5, self.nx - 0.5, self.nx), np.linspace(0.5, self.ny - 0.5, self.ny))
 
-        led_model = led_fit(mesh[0], mesh[1], self.fit[0], self.fit[1], self.fit[2], self.fit[3], self.fit[4],
-                            self.fit[5], self.fit[6], self.fit[7])
+        led_model = led_model(mesh[0], mesh[1], self.fit[0], self.fit[1], self.fit[2], self.fit[3], self.fit[4],
+                              self.fit[5], self.fit[6], self.fit[7])
 
         fig, ax = plt.subplots(1, 2, dpi=600)
 
@@ -78,7 +78,7 @@ class FitAnalyser:
         ledsa = LEDSA()
         ledsa.load_line_indices()
         ledsa.load_search_areas()
-        fit_res = led.process_file(self.filename[-12:], ledsa.search_areas, ledsa.line_indices, ledsa.config['analyse_photo'], True, self.id)
+        fit_res = led.generate_analysis_data(self.filename[-12:], ledsa.search_areas, ledsa.line_indices, ledsa.config['analyse_photo'], True, self.id)
         self.fit = fit_res.x
         self.fit_success = fit_res.success
         self.fit_fun = fit_res.fun
