@@ -34,7 +34,7 @@ jobs:
               -v ${PWD}/ledsa/reports:/opt/robotframework/reports:Z \
               -v ${PWD}/ledsa/tests/AcceptanceTests:/opt/robotframework/tests:Z \
               --user $(id -u):$(id -g) \
-              ppodgorsek/robot-framework:latest
+              O-Sven/robot-framework:latest
         # upload test reports as a zip file
         - name: Upload reports
           uses: actions/upload-artifact@v1
