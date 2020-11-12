@@ -33,6 +33,7 @@ jobs:
             docker run \
               -v ${PWD}/ledsa/reports:/opt/robotframework/reports:Z \
               -v ${PWD}/ledsa/tests/AcceptanceTests:/opt/robotframework/tests:Z \
+              -v &{PWD}/ledsa:/usr/local/lib/python3.8/site-packages/ledsa
               --user $(id -u):$(id -g) \
               svor/docker-robot-framework-ledsa:latest
         # upload test reports as a zip file
