@@ -1,10 +1,10 @@
 import numpy as np
 
 
-def generate_mask_of_led_areas(image):
+def generate_mask_of_led_areas(image, threshold_factor):
     im_mean = np.mean(image)
     im_max = np.max(image)
-    th = 0.25 * (im_max - im_mean)
+    th = threshold_factor * (im_max - im_mean)
     print("mean pixel value:", im_mean)
     print("max pixel value:", im_max)
     im_set = np.zeros_like(image)

@@ -46,7 +46,8 @@ class LEDSA:
         ref_img_name = "{}{}".format(config['img_directory'], img_filename)
         data = led.read_file(ref_img_name, channel=0)
 
-        self.search_areas = led.find_search_areas(data, skip=1, window_radius=int(config['window_radius']))
+        self.search_areas = led.find_search_areas(data, skip=1, window_radius=int(config['window_radius']),
+                                                  threshold_factor=float(config['threshold_factor']))
 
         out_filename = 'analysis{}led_search_areas.csv'.format(sep)
         np.savetxt(out_filename, self.search_areas, delimiter=',',
