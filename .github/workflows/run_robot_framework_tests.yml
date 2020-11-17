@@ -48,7 +48,7 @@ jobs:
         - name: Get Repository Name
           run: |
             export REPO="$(echo "${{ github.repository }}" | awk -F / '{print $2}' | sed -e "s/:refs//")"
-            echo "::set-env name=REPOSITORY_NAME::$REPO"
+            echo "name=REPOSITORY_NAME::$REPO" >> $GITHUB_ENV
         # when test are run for a commit, post results as a comment
         # note: comment is not posted for tests triggered for pull requests, only for a main branch (master)
         - name: Send test report as comment to commit

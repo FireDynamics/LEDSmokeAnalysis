@@ -1,7 +1,10 @@
 from robot.api.deco import keyword, library
 from robot.libraries.BuiltIn import BuiltIn
 import os
-from PIL import Image
+try:
+    from PIL import Image
+except ImportError:
+    import Image
 import numpy as np
 from scipy.stats import norm
 from ledsa.core.ledsa_conf import ConfigData
