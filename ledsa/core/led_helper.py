@@ -47,8 +47,8 @@ def read_file(filename, channel, colordepth=14):
     8bit is default range for JPG. Bayer array is a 2D array where
     all channel values except the selected channel are masked.
     """
-    extension = os.path.splitext(filename)[1]
-    if extension in ['.JPG','.JPEG', '.jpg', '.jpeg']:
+    extension = os.path.splitext(filename)[-1]
+    if extension in ['.JPG','.JPEG', '.jpg', '.jpeg', '.PNG', '.png']:
         data = plt.imread(filename)
     elif extension in ['.CR2']:
         with rawpy.imread(filename) as raw:

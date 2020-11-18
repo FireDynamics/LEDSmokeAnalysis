@@ -24,7 +24,7 @@ class LedsaATestLibrary:
 
     @keyword
     def create_and_fill_config(self):
-        conf = ConfigData(False, '.', 10, 1, False, 1, 'test_img_0.png', None, None, 0, None, 'test_img_{}.png',
+        conf = ConfigData(False, '.', 10, 0.25, 1, False, 1, 'test_img_0.png', None, None, 0, None, 'test_img_{}.png',
                           0, 0, 0, 0)
         conf.set('analyse_positions', '   line_edge_indices', '0 2')
         conf.set('DEFAULT', '   date', '2018:11:27')
