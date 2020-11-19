@@ -6,6 +6,7 @@ from ledsa.core._led_helper_functions_s3 import *
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+import rawpy
 
 sep = os.path.sep
 
@@ -40,8 +41,30 @@ def load_file(filename, delim=' ', dtype='float', atleast_2d=False, silent=False
     return np.atleast_1d(data)
 
 
-def read_file(filename, channel=0):
-    data = plt.imread(filename)
+def read_file(filename, channel, colordepth=14):
+    """
+    Returns a 2D array of channel values depending on the colordepth.
+    8bit is default range for JPG. Bayer array is a 2D array where
+    all channel values except the selected channel are masked.
+    """
+    extension = os.path.splitext(filename)[-1]
+    if extension in ['.JPG','.JPEG', '.jpg', '.jpeg', '.PNG', '.png']:
+        data = plt.imread(filename)
+    elif extension in ['.CR2']:
+        with rawpy.imread(filename) as raw:
+            data = raw.raw_image_visible.copy()
+            filter_array = raw.raw_colors_visible
+            black_level = raw.black_level_per_channel[channel]
+            white_level = raw.white_level
+        channel_range = 2**colordepth - 1
+        channel_array = data.astype(np.int16) - black_level
+        channel_array *= int(channel_range / (white_level - black_level))
+        channel_array = np.clip(channel_array, 0, channel_range)
+        if channel == 0 or channel == 2:
+            channel_array = np.where(filter_array == channel, channel_array, 0)
+        elif channel == 1:
+            channel_array = np.where((filter_array == 1) | (filter_array == 3), channel_array, 0)
+        return channel_array
     return data[:, :, channel]
 
 
@@ -158,9 +181,9 @@ def generate_image_infos_csv(config, build_experiment_infos=False, build_analysi
 # ------------------------------------
 # """
 
-def find_search_areas(image, window_radius=10, skip=10):
+def find_search_areas(image, window_radius=10, skip=10, threshold_factor=0.25):
     print('finding led search areas')
-    led_mask = generate_mask_of_led_areas(image)
+    led_mask = generate_mask_of_led_areas(image, threshold_factor)
     search_areas = find_pos_of_max_col_val_per_area(image, led_mask, skip, window_radius)
     print("\nfound {} leds".format(search_areas.shape[0]))
     return search_areas
