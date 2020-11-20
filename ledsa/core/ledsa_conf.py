@@ -11,7 +11,7 @@ class ConfigData(cp.ConfigParser):
     def __init__(self, load_config_file=True, img_directory='.', window_radius=10, threshold_factor=0.25,
                  num_of_arrays=None, multicore_processing=False, num_of_cores=1, reference_img=None, date=None,
                  start_time=None, time_diff_to_image_time=None, time_img=None, img_name_string=None, first_img=None,
-                 last_img=None, first_analyse_img=None, last_analyse_img=None, skip_imgs=0, skip_leds=0, channel=0):
+                 last_img=None, first_analyse_img=None, last_analyse_img=None, skip_imgs=0, skip_leds=0):
         cp.ConfigParser.__init__(self, allow_no_value=True)
         if img_directory[-1] != path.sep:
             img_directory += path.sep
@@ -73,9 +73,6 @@ class ConfigData(cp.ConfigParser):
             self['analyse_photo']['   skip_imgs'] = str(skip_imgs)
             self.set('analyse_photo', '   # Will only fit leds with id dividable by skip_leds + 1. Used for testing')
             self['analyse_photo']['   skip_leds'] = str(skip_leds)
-            self.set('analyse_photo', ' ')
-            self.set('analyse_photo', '# Specifies the color channel with 0=?, 1=?, 2=?')
-            self['analyse_photo']['   channel'] = str(channel)
 
             with open('config.ini', 'w') as configfile:
                 self.write(configfile)
