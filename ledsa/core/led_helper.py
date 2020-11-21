@@ -239,23 +239,23 @@ def generate_labeled_led_arrays_plot(line_indices, search_areas):
 # ------------------------------------
 # """
 
-def generate_analysis_data(img_filename, channel, search_areas, line_indices, conf, debug=False, debug_led=None):
+def generate_analysis_data(img_filename, channel, search_areas, line_indices, conf, fit_leds=True, debug=False, debug_led=None):
     data = read_file('{}{}'.format(conf['img_directory'], img_filename), channel=channel)
     window_radius = int(conf['window_radius'])
-    img_analysis_data = ''
+    img_analysis_data = []
 
     if debug:
-        fit_res = generate_led_analysis_data(conf, channel, data, debug, debug_led, img_filename, 0, search_areas,
-                                             window_radius)
-        return fit_res
+        analysis_res = generate_led_analysis_data(conf, channel, data, debug, debug_led, img_filename, 0, search_areas,
+                                                  window_radius, fit_leds)
+        return analysis_res
 
     for led_array_idx in range(int(conf['num_of_arrays'])):
         print('processing LED array ', led_array_idx, '...')
         for iled in line_indices[led_array_idx]:
             if iled % (int(conf['skip_leds']) + 1) == 0:
                 led_analysis_data = generate_led_analysis_data(conf, channel, data, debug, iled, img_filename,
-                                                               led_array_idx, search_areas, window_radius)
-                img_analysis_data += led_analysis_data
+                                                               led_array_idx, search_areas, window_radius, fit_leds)
+                img_analysis_data.append(led_analysis_data)
     return img_analysis_data
 
 

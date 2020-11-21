@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 from .core import led_helper as led
 from .core import ledsa_conf as lc
 
-# os path separator
 sep = os.path.sep
 
 
@@ -99,7 +98,7 @@ class LEDSA:
     # ------------------------------------
     # """
     
-    def process_image_data(self):
+    def process_image_data(self, fit_leds=True):
         """process the image data to find the changes in light intensity"""
         config = self.config['analyse_photo']
         if self.search_areas is None:
@@ -113,20 +112,20 @@ class LEDSA:
 
             print('images are getting processed, this may take a while')
             with Pool(int(config['num_of_cores'])) as p:
-                p.map(self.process_img_file, img_filenames)
+                p.map(self.process_img_file, img_filenames, fit_leds)
         else:
             for i in range(len(img_filenames)):
-                self.process_img_file(img_filenames[i])
+                self.process_img_file(img_filenames[i], fit_leds)
                 print('image ', i+1, '/', len(img_filenames), ' processed')
 
         os.remove('images_to_process.csv')
 
-    def process_img_file(self, img_filename):
+    def process_img_file(self, img_filename, fit_leds):
         """workaround for pool.map"""
         img_id = led.get_img_id(img_filename)
         for channel in self.channels:
             img_data = led.generate_analysis_data(img_filename, channel, self.search_areas, self.line_indices,
-                                                  self.config['analyse_photo'])
+                                                  self.config['analyse_photo'], fit_leds)
             led.create_fit_result_file(img_data, img_id, channel)
         print('Image {} processed'.format(img_id))
 

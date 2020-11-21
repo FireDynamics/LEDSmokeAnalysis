@@ -15,6 +15,8 @@ parser.add_argument('--s2', '-s2', '--analyse_positions', action='store_true',
                     help='STEP2: finds the LED array to which each LED belongs')
 parser.add_argument('--s3', '-s3', '--analyse_photo', action='store_true',
                     help='STEP3: finds the changes in light intensity')
+parser.add_argument('--s3_fast', '-s3_fast', action='store_true',
+                    help='Step 3 but without the fits.')
 parser.add_argument('--config', '-conf', nargs='*', default=None,
                     help='creates the default configuration file. optional arguments are are: img_directory, '
                          'reference_img, number_of_cores.')
@@ -56,6 +58,11 @@ if args.s3:
     ledsa = LEDSA(build_experiment_infos=True)
     ledsa.setup_step3()
     ledsa.process_image_data()
+
+if args.s3_fast:
+    ledsa = LEDSA(build_experiment_infos=True)
+    ledsa.setup_step3()
+    ledsa.process_image_data(fit_leds=False)
 
 if args.re:
     ledsa = LEDSA(build_experiment_infos=False)

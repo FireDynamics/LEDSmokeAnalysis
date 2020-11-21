@@ -10,6 +10,10 @@ Step Three
     Start Step Three
     Result table should be generated
 
+Step Three Wihtout Fit
+    Start Step Three Without Fit
+    Result table should be generated
+
 Repeat Step Three After Interruption
     Restart Step Three
     Result table should be generated
@@ -18,6 +22,10 @@ Repeat Step Three After Interruption
 Start Step Three
     Log     Starting python -m ledsa -s3
     Execute Ledsa   -s3
+
+Start Step Three Without Fit
+    Log     Starting python -m ledsa -s3 -fast
+    Execute Ledsa   -s3_fast
 
 Restart Step Three
     Log     Starting python -m ledsa -re
