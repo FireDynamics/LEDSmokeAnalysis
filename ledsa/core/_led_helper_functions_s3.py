@@ -103,8 +103,9 @@ def create_header(channel, img_id, img_filename, img_infos, root, fit_leds):
     out_str = f'# image root = {root[-1]}, photo file name = {img_filename}, '
     out_str += f"channel = {channel}, "
     out_str += f"time[s] = {img_infos[int(img_id) - 1][3]}\n"
-    out_str += "# id,line,x,y,sum_col_value,average_col_value,"
+    out_str += "# id,line,sum_col_value,average_col_value,"
     if fit_leds:
-        out_str += "x,y,dx,dy,A,alpha,wx,wy,fit_success,fit_fun,fit_nfev,fit_time,"
-    out_str += "// all spatial quantities in pixel coordinates\n"
+        out_str += "led_center_x, led_center_y"
+        out_str += "x,y,dx,dy,A,alpha,wx,wy,fit_success,fit_fun,fit_nfev,fit_time"
+        out_str += "// all spatial quantities in pixel coordinates\n"
     return out_str

@@ -27,7 +27,8 @@ class LEDAnalysisData:
     def get_fit_data_string(self):
         x, y, dx, dy, A, alpha, wx, wy = self.fit_results.x
 
-        out_str = f'{self.led_center_x:10.4e},{self.led_center_y:10.4e},{dx:10.4e},{dy:10.4e},{A:10.4e},'
+        out_str = f'{self.led_center_x:10.4e}, {self.led_center_y:10.4e},'
+        out_str += f'{x:10.4e},{y:10.4e},{dx:10.4e},{dy:10.4e},{A:10.4e},'
         out_str += f'{alpha:10.4e},{wx:10.4e},{wy:10.4e},{self.fit_results.success:12d},{self.fit_results.fun:10.4e},'
         out_str += f'{self.fit_results.nfev:9d},{self.fit_time:10.4e}'
         return out_str
