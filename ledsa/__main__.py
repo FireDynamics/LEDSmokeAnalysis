@@ -22,11 +22,11 @@ parser.add_argument('--config', '-conf', nargs='*', default=None,
                          'reference_img, number_of_cores.')
 parser.add_argument('--re', '-re', '--restart', action='store_true',
                     help='Restarts step 3 of the analysis after the program was terminated before it finished.')
-parser.add_argument('-r', '--red', action='store_true',
+parser.add_argument('--r', '-r', '--red', action='store_true',
                     help='Use the red channel for the analysis. Default value.')
-parser.add_argument('-g', '--green', action='store_true',
+parser.add_argument('--g', '-g', '--green', action='store_true',
                     help='Use the green channel for the analysis')
-parser.add_argument('-b', '--blue', action='store_true',
+parser.add_argument('--b', '-b', '--blue', action='store_true',
                     help='Use the blue channel for the analysis.')
 parser.add_argument('-rgb', '--rgb', action='store_true',
                     help='Make the analysis for each channel.')
@@ -67,7 +67,7 @@ else:
 if len(channels) == 0:
     channels.append(0)
 
-if args.r or args.g or args.b or args.rgb:
+if args.r or args.g or args.b or args.rgb and not args.s3_fast:
     args.s3 = True
 
 if args.s1 or args.s2:
@@ -84,7 +84,7 @@ if args.s3:
     ledsa.process_image_data()
 
 if args.s3_fast:
-    ledsa = LEDSA(build_experiment_infos=True)
+    ledsa = LEDSA(build_experiment_infos=True, channels=channels)
     ledsa.setup_step3()
     ledsa.process_image_data(fit_leds=False)
 
