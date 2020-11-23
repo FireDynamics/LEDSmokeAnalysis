@@ -215,10 +215,9 @@ def get_led_pos(led_id):
 
 
 def fit_led(img_id, led_id, channel):
-    ledsa = LEDSA(build_experiment_infos=False)
+    ledsa = LEDSA(channels=channel, build_experiment_infos=False)
     ledsa.load_line_indices()
     ledsa.load_search_areas()
-    ledsa.config['analyse_photo']['channel'] = str(channel)
     filename = led.get_img_name(img_id)
     fit_res = led.generate_analysis_data(filename, ledsa.search_areas, ledsa.line_indices, ledsa.config['analyse_photo'], True,
                                          led_id)
