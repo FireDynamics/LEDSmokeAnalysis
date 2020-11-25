@@ -122,12 +122,12 @@ def _append_coordinates_to_params(params, coord):
     return p_with_c
 
 
-def read_hdf(channel):
+def read_hdf(channel, path='.'):
     try:
-        fit_parameters = pd.read_hdf(f".{sep}analysis{sep}channel{channel}{sep}all_parameters.h5", 'table')
+        fit_parameters = pd.read_hdf(f"{path}{sep}analysis{sep}channel{channel}{sep}all_parameters.h5", 'table')
     except FileNotFoundError:
         create_binary_data(channel)
-        fit_parameters = pd.read_hdf(f".{sep}analysis{sep}channel{channel}{sep}all_parameters.h5", 'table')
+        fit_parameters = pd.read_hdf(f"{path}{sep}analysis{sep}channel{channel}{sep}all_parameters.h5", 'table')
     return fit_parameters
 
 

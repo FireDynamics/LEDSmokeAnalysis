@@ -55,18 +55,32 @@ class Experiment:
             self.set_leds()
         horizontal_dist = np.sqrt((self.camera.pos_x-led.pos_x)**2 + (self.camera.pos_y-led.pos_y)**2)
         alpha = np.arctan((led.pos_z - self.camera.pos_z) / horizontal_dist)
-        distance_per_layer = np.zeros(self.layers.amount)
+        if alpha == 0:
+            distance_per_layer = self.calc_traversed_dist_in_plane(led)
+        else:
+            distance_per_layer = self.calc_traversed_dist_per_layer_with_nonzero_alpha(alpha, led)
 
+        if not self.distance_calculation_is_consistent(distance_per_layer, led):
+            distance_per_layer = None
+        return distance_per_layer
+
+    def calc_traversed_dist_in_plane(self, led: LED) -> np.ndarray:
+        distance_per_layer = np.zeros(self.layers.amount)
+        horizontal_dist = np.sqrt((self.camera.pos_x - led.pos_x) ** 2 + (self.camera.pos_y - led.pos_y) ** 2)
+        for layer in range(self.layers.amount):
+            layer_bottom = self.layers.borders[layer]
+            layer_top = self.layers.borders[layer + 1]
+            if layer_bottom <= self.camera.pos_z < layer_top:
+                distance_per_layer[layer] = horizontal_dist
+        return distance_per_layer
+
+    def calc_traversed_dist_per_layer_with_nonzero_alpha(self, alpha: float, led: LED) -> np.ndarray:
+        distance_per_layer = np.zeros(self.layers.amount)
         for layer in range(self.layers.amount):
             layer_bottom = self.layers.borders[layer]
             layer_top = self.layers.borders[layer + 1]
             th = self.calc_traversed_height_in_layer(led.pos_z, layer_bottom, layer_top)
-
             distance_per_layer[layer] = np.abs(th / np.sin(alpha))
-
-        if not self.distance_calculation_is_consistent(distance_per_layer, led):
-            distance_per_layer = None
-
         return distance_per_layer
 
     def distance_calculation_is_consistent(self, distance_per_layer: np.ndarray, led: LED) -> bool:
@@ -98,5 +112,3 @@ class Experiment:
             search_areas_led_array.append(search_areas_all[led_id, :])
         search_areas_led_array = np.array(search_areas_led_array)
         return [search_areas_led_array[:, 3], search_areas_led_array[:, 4], search_areas_led_array[:, 5]]
-
-

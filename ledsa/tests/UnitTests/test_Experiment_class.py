@@ -54,10 +54,16 @@ class DistConsistencyMethodTestCase(TestExperiment):
         self.assertFalse(self.experiment.distance_calculation_is_consistent(dist_array, self.experiment.leds[0]))
 
 
-class TraversedDistMethodTestCase(TestExperiment):
+class CalcTraversedDistTestCase(TestExperiment):
     def test_calc_traversed_dist_per_layer(self):
         dists = self.experiment.calc_traversed_dist_per_layer(self.experiment.leds[4])
         self.assertTrue(self.experiment.distance_calculation_is_consistent(dists, self.experiment.leds[4]))
+
+    def test_calc_traversed_dist_in_plane(self):
+        dists = self.experiment.calc_traversed_dist_in_plane(LED(0, 5, 3, 1))
+        self.assertAlmostEqual(5, dists[2])
+        self.assertAlmostEqual(0, dists[1])
+        self.assertAlmostEqual(0, dists[3])
 
 
 class GetLEDPositions(TestExperiment):
