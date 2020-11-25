@@ -1,3 +1,4 @@
+import shutil
 import tempfile
 from unittest import TestCase, mock
 from unittest.mock import MagicMock
@@ -39,12 +40,12 @@ class TestAbsorptionCoefficients(TestCase):
 
 class ComputeReferenceIntensitiesTestCase(TestAbsorptionCoefficients):
     def test_num_of_ref_intensities_are_right(self):
-        ref_intensities = self.ac.calc_ref_intensities()
-        self.assertEqual(self.ac.experiment.led_number, len(ref_intensities))
+        self.ac.calc_and_set_ref_intensities()
+        self.assertEqual(self.ac.experiment.led_number, len(self.ac.ref_intensities))
 
     def test_ref_intensities_are_right(self):
-        ref_intensities = self.ac.calc_ref_intensities()
-        self.assertAlmostEqual(1, ref_intensities[0])
+        self.ac.calc_and_set_ref_intensities()
+        self.assertAlmostEqual(1, self.ac.ref_intensities[0])
 
 
 class ComputeIntensitiesTestCase(TestAbsorptionCoefficients):
@@ -62,10 +63,13 @@ class ComputeIntensitiesTestCase(TestAbsorptionCoefficients):
 class SaveTestCase(TestAbsorptionCoefficients):
     def setUp(self):
         super().setUp()
-        self.temp_dir = tempfile.TemporaryDirectory()
-        self.ac.experiment.path = Path(self.temp_dir.name)
+        self.temp_dir = tempfile.mkdtemp()
+        self.ac.experiment.path = Path(self.temp_dir)
         self.path = self.ac.experiment.path / 'analysis' / 'AbsorptionCoefficients'
         self.ac.save()
+
+    def tearDown(self):
+        shutil.rmtree(self.temp_dir)
 
     def test_path_was_created(self):
         self.assertTrue(self.path.exists())

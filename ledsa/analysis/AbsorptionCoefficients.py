@@ -11,21 +11,21 @@ class AbsorptionCoefficients:
                                              led_array=3, channel=0),
                  reference_property='sum_col_val', num_ref_imgs=10):
         self.coefficients_per_image_and_layer = []
-        self.calculated_img_data = pd.DataFrame()
         self.experiment = experiment
-        self.distances_per_led_and_layer = []
         self.reference_property = reference_property
         self.num_ref_imgs = num_ref_imgs
 
+        self.calculated_img_data = pd.DataFrame()
+        self.distances_per_led_and_layer = []
+        self.ref_intensities = np.array([])
+
     def calc_and_set_coefficients(self) -> None:
-        if len(self.distances_per_led_and_layer) == 0:
-            self.distances_per_led_and_layer = self.calc_distance_array()
-        ref_intensities = self.calc_ref_intensities()
+        self.set_all_member_variables()
         kappa0 = np.zeros(self.experiment.layers.amount)
         bounds = [(0, 10) for _ in range(self.experiment.layers.amount)]
         for img_id, single_img_data in self.calculated_img_data.groupby(level=0):
             single_img_array = single_img_data[self.reference_property].to_numpy()
-            rel_intensities = single_img_array / ref_intensities
+            rel_intensities = single_img_array / self.ref_intensities
 
             res = minimize(self.cost_function, kappa0, args=rel_intensities,
                            method='TNC', bounds=tuple(bounds),
@@ -34,6 +34,14 @@ class AbsorptionCoefficients:
             kappa0[:] = res.x
             self.coefficients_per_image_and_layer.append(res.x)
         return None
+
+    def set_all_member_variables(self):
+        if len(self.distances_per_led_and_layer) == 0:
+            self.distances_per_led_and_layer = self.calc_distance_array()
+        if self.calculated_img_data.empty:
+            self.load_img_data()
+        if self.ref_intensities.shape[0] == 0:
+            self.calc_and_set_ref_intensities()
 
     def save(self) -> None:
         path = self.experiment.path / 'analysis' / 'AbsorptionCoefficients'
@@ -71,7 +79,7 @@ class AbsorptionCoefficients:
         low_values = - np.sum(kappas) / len(kappas) * 6e-3
         return rmse + curvature + low_values
 
-    def calc_ref_intensities(self) -> np.ndarray:
+    def calc_and_set_ref_intensities(self) -> None:
         ref_img_data = self.calculated_img_data.query(f'img_id <= {self.num_ref_imgs}')
         ref_intensities = ref_img_data.mean(0, level='led_id')
-        return ref_intensities[self.reference_property].to_numpy()
+        self.ref_intensities = ref_intensities[self.reference_property].to_numpy()

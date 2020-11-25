@@ -83,13 +83,14 @@ class Experiment:
             distance_per_layer[layer] = np.abs(th / np.sin(alpha))
         return distance_per_layer
 
-    def distance_calculation_is_consistent(self, distance_per_layer: np.ndarray, led: LED) -> bool:
+    def distance_calculation_is_consistent(self, distance_per_layer: np.ndarray, led: LED, silent=True) -> bool:
         if np.abs(np.sum(distance_per_layer) - np.sqrt((self.camera.pos_x - led.pos_x) ** 2 +
                                                        (self.camera.pos_y - led.pos_y) ** 2 +
                                                        (self.camera.pos_z - led.pos_z) ** 2)) > 1e-6:
-            print(
-                "error in distance computation, camera_x: {}, camera_y: {} camera_z: {}, led_height: {}".format(
-                    self.camera.pos_x, self.camera.pos_y, self.camera.pos_z, led.pos_z))
+            if not silent:
+                print("error in distance computation, camera_x: {}, camera_y: {} camera_z: {}, led_x: {}, led_y: {}, "
+                      "led_z: {}".format(
+                        self.camera.pos_x, self.camera.pos_y, self.camera.pos_z, led.pos_x, led.pos_y, led.pos_z))
             return False
         return True
 
