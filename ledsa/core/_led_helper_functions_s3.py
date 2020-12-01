@@ -4,7 +4,7 @@ import re
 import numpy as np
 import scipy.optimize
 from ledsa.core.model import target_function
-from ledsa.core.analysis_data import LEDAnalysisData
+from ledsa.core.LEDAnalysisData import LEDAnalysisData
 
 import time
 
@@ -36,6 +36,7 @@ def generate_led_analysis_data(conf, channel, data, debug, iled, img_filename, l
 
     led_data.mean_color_value = np.mean(data[search_area])
     led_data.sum_color_value = np.sum(data[search_area])
+    led_data.max_color_value = np.amax(data[search_area])
 
     return led_data
 
@@ -103,9 +104,9 @@ def create_header(channel, img_id, img_filename, img_infos, root, fit_leds):
     out_str = f'# image root = {root[-1]}, photo file name = {img_filename}, '
     out_str += f"channel = {channel}, "
     out_str += f"time[s] = {img_infos[int(img_id) - 1][3]}\n"
-    out_str += "# id,line,sum_col_value,average_col_value,"
+    out_str += "# id,line,sum_col_value,average_col_value,max_col_value"
     if fit_leds:
-        out_str += "led_center_x, led_center_y"
-        out_str += "x,y,dx,dy,A,alpha,wx,wy,fit_success,fit_fun,fit_nfev,fit_time"
+        out_str += ",led_center_x, led_center_y"
+        out_str += ",x,y,dx,dy,A,alpha,wx,wy,fit_success,fit_fun,fit_nfev,fit_time"
         out_str += "// all spatial quantities in pixel coordinates\n"
     return out_str

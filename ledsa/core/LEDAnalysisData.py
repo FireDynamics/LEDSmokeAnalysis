@@ -7,6 +7,7 @@ class LEDAnalysisData:
         self.led_center_y = None
         self.mean_color_value = None
         self.sum_color_value = None
+        self.max_color_value = None
 
         self.fit_leds = fit_leds
         self.fit_results = None
@@ -21,7 +22,7 @@ class LEDAnalysisData:
 
     def get_main_data_string(self):
         out_str = f'{self.led_id:4d},{self.led_array:2d},'
-        out_str += f'{self.sum_color_value:10.4e},{self.mean_color_value:10.4e}'
+        out_str += f'{self.sum_color_value:10.4e},{self.mean_color_value:10.4e},{self.max_color_value}'
         return out_str
 
     def get_fit_data_string(self):
