@@ -7,21 +7,22 @@ import matplotlib.pyplot as plt
 from .core import led_helper as led
 from .core import ledsa_conf as lc
 
-# os path separator
 sep = os.path.sep
 
 
 class LEDSA:
     
-    def __init__(self, load_config_file=True, build_experiment_infos=True):
+    def __init__(self, channels=[0], load_config_file=True, build_experiment_infos=True):
         self.config = lc.ConfigData(load_config_file=load_config_file)
+
+        self.channels = list(channels)
 
         # 2D numpy array with dimension (# of LEDs) x (LED_id, x, y)
         self.search_areas = None
         # 2D list with dimension (# of LED arrays) x (# of LEDs per array)
         self.line_indices = None
 
-        led.create_needed_directories(self.config)
+        led.create_needed_directories(self.channels)
         led.request_config_parameters(self.config)
 
         led.generate_image_infos_csv(self.config, build_experiment_infos=build_experiment_infos)
@@ -36,6 +37,7 @@ class LEDSA:
         """loads the search areas from the csv file"""
         filename = 'analysis{}led_search_areas.csv'.format(sep)
         self.search_areas = led.load_file(filename, delim=',')
+        # self.last_fit_results = self.search_areas.shape[0] * [[10, 10, 2., 2., 200., 1.0, 1.0, 1.0]]
     
     def find_search_areas(self, img_filename):
         """
@@ -96,7 +98,7 @@ class LEDSA:
     # ------------------------------------
     # """
     
-    def process_image_data(self):
+    def process_image_data(self, fit_leds=True):
         """process the image data to find the changes in light intensity"""
         config = self.config['analyse_photo']
         if self.search_areas is None:
@@ -110,20 +112,21 @@ class LEDSA:
 
             print('images are getting processed, this may take a while')
             with Pool(int(config['num_of_cores'])) as p:
-                p.map(self.process_img_file, img_filenames)
+                p.map(self.process_img_file, img_filenames, fit_leds)
         else:
             for i in range(len(img_filenames)):
-                self.process_img_file(img_filenames[i])
+                self.process_img_file(img_filenames[i], fit_leds)
                 print('image ', i+1, '/', len(img_filenames), ' processed')
 
         os.remove('images_to_process.csv')
 
-    def process_img_file(self, img_filename):
+    def process_img_file(self, img_filename, fit_leds):
         """workaround for pool.map"""
         img_id = led.get_img_id(img_filename)
-        img_data = led.generate_analysis_data(img_filename, self.search_areas, self.line_indices,
-                                              self.config['analyse_photo'])
-        led.create_fit_result_file(img_data, img_id, self.config['analyse_photo']['channel'])
+        for channel in self.channels:
+            img_data = led.generate_analysis_data(img_filename, channel, self.search_areas, self.line_indices,
+                                                  self.config['analyse_photo'], fit_leds)
+            led.create_fit_result_file(img_data, img_id, channel)
         print('Image {} processed'.format(img_id))
 
     def setup_step3(self):
@@ -131,4 +134,7 @@ class LEDSA:
         led.create_imgs_to_process_file()
 
     def setup_restart(self):
-        led.find_not_analysed_imgs(self.config['analyse_photo'])
+        if len(self.channels) > 1:
+            print('Restart of a run currently only supports one channel. \nExiting...')
+            exit(1)
+        led.find_not_analysed_imgs(self.channels[0])
