@@ -5,14 +5,32 @@ from pathlib import Path
 
 
 @dataclass
+class Layer:
+    bottom_border: float
+    top_border: float
+
+    def __contains__(self, obj):
+        if self.bottom_border <= obj.pos_z < self.top_border:
+            return True
+        return False
+
+@dataclass
 class Layers:
     amount: int
     bottom_border: float
     top_border: float
+    layers: [Layer] = field(init=False)
     borders: np.ndarray = field(init=False)
 
     def __post_init__(self):
-        self.borders = np.linspace(self.bottom_border, self.top_border, self.amount+1)
+        self.layers = []
+        self.borders = np.linspace(self.bottom_border, self.top_border, self.amount + 1)
+        for i in range(self.amount):
+            self.layers.append(Layer(self.borders[i], self.borders[i+1]))
+
+    def __getitem__(self, layer):
+        return self.layers[layer]
+
 
 
 @dataclass
@@ -39,16 +57,6 @@ class Experiment:
         self.led_number = 0
         self.path = path
         self.channel = channel
-
-    def calc_traversed_height_in_layer(self, led_height: float, layer_bot: float, layer_top: float) -> float:
-        top_end = max(self.camera.pos_z, led_height)
-        bot_end = min(self.camera.pos_z, led_height)
-        bot = max(bot_end, layer_bot)
-        top = min(top_end, layer_top)
-        h = top - bot
-        if h < 0:
-            h = 0
-        return h
 
     def calc_traversed_dist_per_layer(self, led: LED) -> np.ndarray:
         if self.led_number == 0:
@@ -82,6 +90,16 @@ class Experiment:
             th = self.calc_traversed_height_in_layer(led.pos_z, layer_bottom, layer_top)
             distance_per_layer[layer] = np.abs(th / np.sin(alpha))
         return distance_per_layer
+
+    def calc_traversed_height_in_layer(self, led_height: float, layer_bot: float, layer_top: float) -> float:
+        top_end = max(self.camera.pos_z, led_height)
+        bot_end = min(self.camera.pos_z, led_height)
+        bot = max(bot_end, layer_bot)
+        top = min(top_end, layer_top)
+        h = top - bot
+        if h < 0:
+            h = 0
+        return h
 
     def distance_calculation_is_consistent(self, distance_per_layer: np.ndarray, led: LED, silent=True) -> bool:
         if np.abs(np.sum(distance_per_layer) - np.sqrt((self.camera.pos_x - led.pos_x) ** 2 +
