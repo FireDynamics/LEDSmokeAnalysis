@@ -8,15 +8,15 @@ import pandas as pd
 from pathlib import Path
 import os
 
-from ledsa.analysis.ExtinctionCoefficients import ExtinctionCoefficients
+from ledsa.analysis.ExtinctionCoefficientsNumeric import ExtinctionCoefficientsNumeric
 from ledsa.analysis.Experiment import Layers, Experiment, Camera, LED
 
 
-class TestExtinctionCoefficients(TestCase):
+class TestExtinctionCoefficientsNumeric(TestCase):
     def setUp(self):
         layers = Layers(5, 0, 5)
-        self.ec = ExtinctionCoefficients(num_ref_imgs=2, experiment=Experiment(layers=layers, led_array=1,
-                                                                               camera=Camera(2, 0, 2)))
+        self.ec = ExtinctionCoefficientsNumeric(num_ref_imgs=2, experiment=Experiment(layers=layers, led_array=1,
+                                                                                      camera=Camera(2, 0, 2)))
         self.set_leds()
         self.set_dist_array()
         self.set_calculated_img_data()
@@ -37,7 +37,7 @@ class TestExtinctionCoefficients(TestCase):
                                                    columns=['line', self.ec.reference_property])
 
 
-class ComputeReferenceIntensitiesTestCase(TestExtinctionCoefficients):
+class ComputeReferenceIntensitiesTestCase(TestExtinctionCoefficientsNumeric):
     def test_num_of_ref_intensities_are_right(self):
         self.ec.calc_and_set_ref_intensities()
         self.assertEqual(self.ec.experiment.led_number, len(self.ec.ref_intensities))
@@ -47,7 +47,7 @@ class ComputeReferenceIntensitiesTestCase(TestExtinctionCoefficients):
         self.assertAlmostEqual(1, self.ec.ref_intensities[0])
 
 
-class ComputeIntensitiesTestCase(TestExtinctionCoefficients):
+class ComputeIntensitiesTestCase(TestExtinctionCoefficientsNumeric):
     def test_num_of_intensities_are_right(self):
         kappas = np.zeros(self.ec.experiment.layers.amount)
         intensities = self.ec.calc_intensities(kappas)
@@ -59,7 +59,7 @@ class ComputeIntensitiesTestCase(TestExtinctionCoefficients):
         self.assertEqual(intensities[0], 1)
 
 
-class SaveTestCase(TestExtinctionCoefficients):
+class SaveTestCase(TestExtinctionCoefficientsNumeric):
     def setUp(self):
         super().setUp()
         self.temp_dir = tempfile.mkdtemp()
@@ -77,7 +77,7 @@ class SaveTestCase(TestExtinctionCoefficients):
         self.assertEqual(1, len(os.listdir(self.path)))
 
 
-class CostFunctionTestCase(TestExtinctionCoefficients):
+class CostFunctionTestCase(TestExtinctionCoefficientsNumeric):
     def setUp(self):
         super().setUp()
         intensities = np.ones(self.ec.experiment.led_number)
@@ -97,14 +97,14 @@ class CostFunctionTestCase(TestExtinctionCoefficients):
         self.assertTrue(cost <= 0)
 
 
-class CalcDistArrayTestCase(TestExtinctionCoefficients):
+class CalcDistArrayTestCase(TestExtinctionCoefficientsNumeric):
     def test_amount_of_distances_equals_amount_of_layers(self):
         self.ec.experiment.calc_traversed_dist_per_layer = MagicMock(return_value=np.ones(5))
         dist = self.ec.calc_distance_array()
         self.assertEqual(self.ec.experiment.layers.amount, len(dist))
 
 
-class CoefficientCalculationTestCase(TestExtinctionCoefficients):
+class CoefficientCalculationTestCase(TestExtinctionCoefficientsNumeric):
     class MockMinimizeResult:
         def __init__(self):
             self.x = np.ones(5)

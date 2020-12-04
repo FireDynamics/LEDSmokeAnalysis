@@ -1,10 +1,10 @@
 from unittest import TestCase, mock
-from ledsa.analysis.ExtinctionCoefficientsAlgebraic import ExtinctionCoefficientsAlgebraic
+from ledsa.analysis.ExtinctionCoefficientsAnalytic import ExtinctionCoefficientsAnalytic
 from ledsa.analysis.Experiment import Layers, Experiment, Camera, LED
 import numpy as np
 
 
-class TestExtinctionCoefficientsAlgebraic(TestCase):
+class TestExtinctionCoefficientsAnalytic(TestCase):
     def setUp(self) -> None:
         def set_leds(exp: Experiment) -> None:
             exp.led_number = 5
@@ -16,14 +16,13 @@ class TestExtinctionCoefficientsAlgebraic(TestCase):
         experiment = Experiment(layers=layers, led_array=1, camera=Camera(2, 0, 2.5))
         set_leds(experiment)
         self.rel_intensities = np.array([.1, .2, .5, .2, .1])
-        self.ec = ExtinctionCoefficientsAlgebraic(experiment=experiment,
-                                                  rel_intensities=self.rel_intensities)
+        self.ec = ExtinctionCoefficientsAnalytic(experiment=experiment)
         self.kappas = np.array([0, 0, 0.1, 0, 0])
         self.dist_per_led_and_layer = np.array([[0, 1, 1, 1, 1], [2, 2, 2, 2, 2], [3, 3, 3, 3, 3], [4, 4, 4, 4, 4],
                                                [5, 5, 5, 5, 5]])
 
 
-class SingleCoefficientTestCase(TestExtinctionCoefficientsAlgebraic):
+class SingleCoefficientTestCase(TestExtinctionCoefficientsAnalytic):
     def test_calculation_is_right(self):
         rel_intensity = 0.5
         kappa = self.ec.calc_kappa(self.kappas, 1, self.dist_per_led_and_layer[1], rel_intensity)
@@ -36,14 +35,14 @@ class SingleCoefficientTestCase(TestExtinctionCoefficientsAlgebraic):
         self.assertTrue(np.isnan(kappa))
 
 
-class AllCoefficientsTestCase(TestExtinctionCoefficientsAlgebraic):
+class AllCoefficientsTestCase(TestExtinctionCoefficientsAnalytic):
     def setUp(self) -> None:
         super().setUp()
-        self.mean_dist_per_led_and_layer = np.array([[1, 1, 1, 0, 0], [0, 1, 1, 0, 0], [0, 0, 1, 0, 0],
-                                                     [0, 0, 1, 1, 0], [0, 0, 1, 1, 1]])
-        self.kappas = self.ec.calc_kappas(self.mean_dist_per_led_and_layer, self.rel_intensities,
-                                          self.rel_intensities)
-        self.calculated_intensities = np.exp(np.dot(-self.kappas, self.mean_dist_per_led_and_layer.T))
+        mean_dist_per_led_and_layer = np.array([[1, 1, 1, 0, 0], [0, 1, 1, 0, 0], [0, 0, 1, 0, 0],
+                                                [0, 0, 1, 1, 0], [0, 0, 1, 1, 1]])
+        self.ec.calc_mean_dist_per_dummy_led_and_layer = mock.MagicMock(return_value=mean_dist_per_led_and_layer)
+        self.kappas = self.ec.calc_coefficients_of_img(self.rel_intensities)
+        self.calculated_intensities = np.exp(np.dot(-self.kappas, mean_dist_per_led_and_layer.T))
 
     def test_all_coefficients_are_calculated(self):
         for i in range(5):
@@ -54,7 +53,7 @@ class AllCoefficientsTestCase(TestExtinctionCoefficientsAlgebraic):
             self.assertAlmostEqual(self.rel_intensities[i], self.calculated_intensities[i], msg=f'layer: {i}')
 
 
-class TestMeanCalculations(TestExtinctionCoefficientsAlgebraic):
+class TestMeanCalculations(TestExtinctionCoefficientsAnalytic):
     def setUp(self) -> None:
         super().setUp()
         self.ec.experiment.leds[0].pos_x = 0

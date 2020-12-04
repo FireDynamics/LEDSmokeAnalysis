@@ -58,9 +58,12 @@ class Experiment:
         self.path = path
         self.channel = channel
 
-    def calc_traversed_dist_per_layer(self, led: LED) -> np.ndarray:
-        if self.led_number == 0:
+        try:
             self.set_leds()
+        except IOError as err:
+            print(err)
+
+    def calc_traversed_dist_per_layer(self, led: LED) -> np.ndarray:
         horizontal_dist = np.sqrt((self.camera.pos_x-led.pos_x)**2 + (self.camera.pos_y-led.pos_y)**2)
         alpha = np.arctan((led.pos_z - self.camera.pos_z) / horizontal_dist)
         if alpha == 0:
@@ -121,13 +124,13 @@ class Experiment:
         return
 
     def get_led_ids(self) -> np.ndarray:
-        line_indices = np.loadtxt(self.path / 'analysis' / f'line_indices_{self.led_array:03d}.csv')
+        line_indices = np.loadtxt(self.path / 'analysis' / f'line_indices_{self.led_array:03d}.csv', dtype=int)
         return line_indices
 
     def get_led_positions(self, ids: np.ndarray) -> List[np.ndarray]:
-        search_areas_all = np.loadtxt(self.path / 'analysis' / 'led_search_areas_with_coordinates.csv')
+        search_areas_all = np.loadtxt(self.path / 'analysis' / 'led_search_areas_with_coordinates.csv', delimiter=',')
         search_areas_led_array = []
         for led_id in ids:
-            search_areas_led_array.append(search_areas_all[led_id, :])
+            search_areas_led_array.append(search_areas_all[led_id])
         search_areas_led_array = np.array(search_areas_led_array)
         return [search_areas_led_array[:, 3], search_areas_led_array[:, 4], search_areas_led_array[:, 5]]
