@@ -68,7 +68,7 @@ def create_binary_data(channel):
         fit_params = fit_params.append(_param_array_to_dataframe(parameters, image_id), ignore_index=True, sort=False)
 
     print(f'{number_of_images - exception_counter} of {number_of_images} loaded.')
-    fit_params.set_index(['img_id', 'led_id'], inplace=True)
+    # fit_params.set_index(['img_id', 'led_id'], inplace=True)
     fit_params.to_hdf(f".{sep}analysis{sep}channel{channel}{sep}all_parameters.h5", 'table', append=True)
 
 
@@ -122,12 +122,13 @@ def _append_coordinates_to_params(params, coord):
     return p_with_c
 
 
-def read_hdf(channel):
+def read_hdf(channel, path='.'):
     try:
-        fit_parameters = pd.read_hdf(f".{sep}analysis{sep}channel{channel}{sep}all_parameters.h5", 'table')
+        fit_parameters = pd.read_hdf(f"{path}{sep}analysis{sep}channel{channel}{sep}all_parameters.h5", 'table')
     except FileNotFoundError:
         create_binary_data(channel)
-        fit_parameters = pd.read_hdf(f".{sep}analysis{sep}channel{channel}{sep}all_parameters.h5", 'table')
+        fit_parameters = pd.read_hdf(f"{path}{sep}analysis{sep}channel{channel}{sep}all_parameters.h5", 'table')
+    fit_parameters.set_index(['img_id', 'led_id'], inplace=True)
     return fit_parameters
 
 

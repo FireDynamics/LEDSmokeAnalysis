@@ -22,6 +22,14 @@ parser.add_argument('--config', '-conf', nargs='*', default=None,
                          'reference_img, number_of_cores.')
 parser.add_argument('--re', '-re', '--restart', action='store_true',
                     help='Restarts step 3 of the analysis after the program was terminated before it finished.')
+parser.add_argument('--r', '-r', '--red', action='store_true',
+                    help='Use the red channel for the analysis. Default value.')
+parser.add_argument('--g', '-g', '--green', action='store_true',
+                    help='Use the green channel for the analysis')
+parser.add_argument('--b', '-b', '--blue', action='store_true',
+                    help='Use the blue channel for the analysis.')
+parser.add_argument('-rgb', '--rgb', action='store_true',
+                    help='Make the analysis for each channel.')
 parser.add_argument('--coordinates', '-coord', action='store_true',
                     help='Calculates the 3D coordinates from the coordinates given in the configfile and the '
                          'reference image.')
@@ -46,8 +54,24 @@ if args.config is not None:
         lc.ConfigData(load_config_file=False, img_directory=args.config[0], reference_img=args.config[1],
                       multicore_processing=True, num_of_cores=args.config[2])
 
+channels = []
+if args.rgb:
+    channels = [0, 1, 2]
+else:
+    if args.r:
+        channels.append(0)
+    if args.g:
+        channels.append(1)
+    if args.b:
+        channels.append(2)
+if len(channels) == 0:
+    channels.append(0)
+
+if args.r or args.g or args.b or args.rgb and not args.s3_fast:
+    args.s3 = True
+
 if args.s1 or args.s2:
-    ledsa = LEDSA(build_experiment_infos=False)
+    ledsa = LEDSA(build_experiment_infos=False, channels=channels)
     if args.s1:
         ledsa.find_search_areas(ledsa.config['find_search_areas']['reference_img'])
         ledsa.plot_search_areas(ledsa.config['find_search_areas']['reference_img'])
@@ -55,17 +79,17 @@ if args.s1 or args.s2:
         ledsa.match_leds_to_led_arrays()
 
 if args.s3:
-    ledsa = LEDSA(build_experiment_infos=True)
+    ledsa = LEDSA(build_experiment_infos=True, channels=channels)
     ledsa.setup_step3()
     ledsa.process_image_data()
 
 if args.s3_fast:
-    ledsa = LEDSA(build_experiment_infos=True)
+    ledsa = LEDSA(build_experiment_infos=True, channels=channels)
     ledsa.setup_step3()
     ledsa.process_image_data(fit_leds=False)
 
 if args.re:
-    ledsa = LEDSA(build_experiment_infos=False)
+    ledsa = LEDSA(build_experiment_infos=False, channels=channels)
     ledsa.setup_restart()
     ledsa.process_image_data()
 
