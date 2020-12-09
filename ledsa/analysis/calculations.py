@@ -151,7 +151,11 @@ def include_column_if_nonexistent(fit_parameters, fit_par, channel):
 
 def multiindex_series_to_nparray(multi_series: pd.Series) -> np.ndarray:
     index = multi_series.index
-    array = np.zeros(index.levshape)
-    for i in range(index.levshape[0]):
+    print(index.levshape)
+    print(index.shape)
+    num_leds = pd.Series(multi_series.groupby(level=0).size()).iloc[0]
+    num_imgs = pd.Series(multi_series.groupby(level=1).size()).iloc[0]
+    array = np.zeros((num_imgs, num_leds))
+    for i in range(num_imgs):
         array[i] = multi_series.loc[i+1]
     return array

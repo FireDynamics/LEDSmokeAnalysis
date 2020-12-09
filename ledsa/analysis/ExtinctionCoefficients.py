@@ -57,8 +57,6 @@ class ExtinctionCoefficients(ABC):
     def load_img_data(self) -> None:
         img_data = read_hdf(self.experiment.channel, path=self.experiment.path)
         img_data_cropped = img_data[['line', self.reference_property]]
-        idx = pd.IndexSlice
-        img_data_cropped = img_data_cropped.loc[idx[0.0:500.0, :]]
         self.calculated_img_data = img_data_cropped[img_data_cropped['line'] == self.experiment.led_array]
 
     def save(self) -> None:
