@@ -1,8 +1,18 @@
 from abc import ABC, abstractmethod
 import numpy as np
 import pandas as pd
+from multiprocessing import Pool
 from ledsa.analysis.Experiment import Experiment, Layers, Camera
 from ledsa.analysis.calculations import read_hdf
+
+
+def multiindex_series_to_nparray(multi_series: pd.Series) -> np.ndarray:
+    index = multi_series.index
+    array = np.zeros(index.levshape)
+    for i in range(index.levshape[0]):
+        array[i] = multi_series.loc[i+1]
+    return array
+
 
 class ExtinctionCoefficients(ABC):
     def __init__(self, experiment=Experiment(layers=Layers(10, 1.0, 3.35), camera=Camera(pos_x=4.4, pos_y=2, pos_z=2.3),
@@ -19,6 +29,11 @@ class ExtinctionCoefficients(ABC):
 
         self.type = None
 
+    def __str__(self):
+        out = str(self.experiment) + \
+              f'reference_property: {self.reference_property}, num_ref_imgs: {self.num_ref_imgs}\n'
+        return out
+
     def calc_and_set_coefficients(self) -> None:
         self.set_all_member_variables()
         for img_id, single_img_data in self.calculated_img_data.groupby(level=0):
@@ -28,6 +43,17 @@ class ExtinctionCoefficients(ABC):
             kappas = self.calc_coefficients_of_img(rel_intensities)
             self.coefficients_per_image_and_layer.append(kappas)
         return None
+
+    def calc_and_set_coefficients_mp(self, cores=4) -> None:
+        self.set_all_member_variables()
+        #img_ids, img_data = self.calculated_img_data.groupby(level=0)
+        img_property_array = multiindex_series_to_nparray(self.calculated_img_data[self.reference_property])
+        rel_intensities = img_property_array / self.ref_intensities
+
+        pool = Pool(processes=cores)
+        kappas = pool.map(self.calc_coefficients_of_img, rel_intensities)
+        pool.close()
+        self.coefficients_per_image_and_layer = kappas
 
     def set_all_member_variables(self):
         if len(self.distances_per_led_and_layer) == 0:
@@ -48,8 +74,12 @@ class ExtinctionCoefficients(ABC):
         path = self.experiment.path / 'analysis' / 'AbsorptionCoefficients'
         if not path.exists():
             path.mkdir(parents=True)
-        path = path / f'absorption_coefs_{self.type}_channel_{self.experiment.channel}.csv'
-        np.savetxt(path, self.coefficients_per_image_and_layer, delimiter=',')
+        path = path / f'absorption_coefs_{self.type}_channel_{self.experiment.channel}_{self.reference_property}_led_array_{self.experiment.led_array}.csv'
+        header = str(self)
+        header += 'layer0'
+        for i in range(self.experiment.layers.amount-1):
+            header += f',layer{i+1}'
+        np.savetxt(path, self.coefficients_per_image_and_layer, delimiter=',', header=header)
 
     def calc_distance_array(self) -> np.ndarray:
         distances = []
@@ -62,6 +92,7 @@ class ExtinctionCoefficients(ABC):
         ref_img_data = self.calculated_img_data.query(f'img_id <= {self.num_ref_imgs}')
         ref_intensities = ref_img_data.mean(0, level='led_id')
         self.ref_intensities = ref_intensities[self.reference_property].to_numpy()
+
 
     @abstractmethod
     def calc_coefficients_of_img(self, rel_intensities: np.ndarray) -> np.ndarray:
