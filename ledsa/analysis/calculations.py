@@ -147,3 +147,11 @@ def include_column_if_nonexistent(fit_parameters, fit_par, channel):
             raise Exception(f'Can not handle fit parameter: {fit_par}')
         return read_hdf(channel)
     return fit_parameters
+
+
+def multiindex_series_to_nparray(multi_series: pd.Series) -> np.ndarray:
+    index = multi_series.index
+    array = np.zeros(index.levshape)
+    for i in range(index.levshape[0]):
+        array[i] = multi_series.loc[i+1]
+    return array

@@ -9,7 +9,7 @@ from pathlib import Path
 import os
 
 from ledsa.analysis.ExtinctionCoefficientsNumeric import ExtinctionCoefficientsNumeric
-from ledsa.analysis.ExtinctionCoefficients import multiindex_series_to_nparray
+from ledsa.analysis.calculations import multiindex_series_to_nparray
 from ledsa.analysis.Experiment import Layers, Experiment, Camera, LED
 
 

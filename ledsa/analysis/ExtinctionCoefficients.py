@@ -3,15 +3,7 @@ import numpy as np
 import pandas as pd
 from multiprocessing import Pool
 from ledsa.analysis.Experiment import Experiment, Layers, Camera
-from ledsa.analysis.calculations import read_hdf
-
-
-def multiindex_series_to_nparray(multi_series: pd.Series) -> np.ndarray:
-    index = multi_series.index
-    array = np.zeros(index.levshape)
-    for i in range(index.levshape[0]):
-        array[i] = multi_series.loc[i+1]
-    return array
+from ledsa.analysis.calculations import read_hdf, multiindex_series_to_nparray
 
 
 class ExtinctionCoefficients(ABC):
