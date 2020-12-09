@@ -38,7 +38,6 @@ class ExtinctionCoefficients(ABC):
 
     def calc_and_set_coefficients_mp(self, cores=4) -> None:
         self.set_all_member_variables()
-        #img_ids, img_data = self.calculated_img_data.groupby(level=0)
         img_property_array = multiindex_series_to_nparray(self.calculated_img_data[self.reference_property])
         rel_intensities = img_property_array / self.ref_intensities
 
