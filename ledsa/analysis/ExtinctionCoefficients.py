@@ -71,11 +71,13 @@ class ExtinctionCoefficients(ABC):
         np.savetxt(path, self.coefficients_per_image_and_layer, delimiter=',', header=header)
 
     def calc_distance_array(self) -> np.ndarray:
-        distances = []
+        distances = np.zeros((self.experiment.led_number, self.experiment.layers.amount))
+        count = 0
         for led in self.experiment.leds:
             d = self.experiment.calc_traversed_dist_per_layer(led)
-            distances.append(d)
-        return np.array(distances)
+            distances[count] = d
+            count += 1
+        return distances
 
     def calc_and_set_ref_intensities(self) -> None:
         ref_img_data = self.calculated_img_data.query(f'img_id <= {self.num_ref_imgs}')
