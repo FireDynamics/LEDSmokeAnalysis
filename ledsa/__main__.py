@@ -84,9 +84,9 @@ if args.s3:
     ledsa.process_image_data()
 
 if args.s3_fast:
-    ledsa = LEDSA(build_experiment_infos=True, channels=channels)
+    ledsa = LEDSA(build_experiment_infos=True, channels=channels, fit_leds=False)
     ledsa.setup_step3()
-    ledsa.process_image_data(fit_leds=False)
+    ledsa.process_image_data()
 
 if args.re:
     ledsa = LEDSA(build_experiment_infos=False, channels=channels)

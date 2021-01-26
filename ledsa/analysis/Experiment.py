@@ -31,6 +31,9 @@ class Layers:
     def __getitem__(self, layer):
         return self.layers[layer]
 
+    def __str__(self):
+        return f'num_of_layers: {self.amount}, bottom_border: {self.bottom_border}, top_border: {self.top_border}\n'
+
 
 
 @dataclass
@@ -38,6 +41,9 @@ class Camera:
     pos_x: float
     pos_y: float
     pos_z: float
+
+    def __str__(self):
+        return f'Camera: ({self.pos_x}, {self.pos_y}, {self.pos_z})\n'
 
 
 @dataclass
@@ -62,6 +68,12 @@ class Experiment:
             self.set_leds()
         except IOError as err:
             print(err)
+
+    def __str__(self):
+        out = f'channel: {self.channel}, led_array: {self.led_array}\n' + \
+              str(self.layers) + \
+              str(self.camera)
+        return out
 
     def calc_traversed_dist_per_layer(self, led: LED) -> np.ndarray:
         horizontal_dist = np.sqrt((self.camera.pos_x-led.pos_x)**2 + (self.camera.pos_y-led.pos_y)**2)

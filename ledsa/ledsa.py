@@ -12,10 +12,11 @@ sep = os.path.sep
 
 class LEDSA:
     
-    def __init__(self, channels=[0], load_config_file=True, build_experiment_infos=True):
+    def __init__(self, channels=[0], load_config_file=True, build_experiment_infos=True, fit_leds=True):
         self.config = lc.ConfigData(load_config_file=load_config_file)
 
         self.channels = list(channels)
+        self.fit_leds = fit_leds
 
         # 2D numpy array with dimension (# of LEDs) x (LED_id, x, y)
         self.search_areas = None
@@ -98,7 +99,7 @@ class LEDSA:
     # ------------------------------------
     # """
     
-    def process_image_data(self, fit_leds=True):
+    def process_image_data(self):
         """process the image data to find the changes in light intensity"""
         config = self.config['analyse_photo']
         if self.search_areas is None:
@@ -112,20 +113,20 @@ class LEDSA:
 
             print('images are getting processed, this may take a while')
             with Pool(int(config['num_of_cores'])) as p:
-                p.map(self.process_img_file, img_filenames, fit_leds)
+                p.map(self.process_img_file, img_filenames)
         else:
             for i in range(len(img_filenames)):
-                self.process_img_file(img_filenames[i], fit_leds)
+                self.process_img_file(img_filenames[i])
                 print('image ', i+1, '/', len(img_filenames), ' processed')
 
         os.remove('images_to_process.csv')
 
-    def process_img_file(self, img_filename, fit_leds):
+    def process_img_file(self, img_filename):
         """workaround for pool.map"""
         img_id = led.get_img_id(img_filename)
         for channel in self.channels:
             img_data = led.generate_analysis_data(img_filename, channel, self.search_areas, self.line_indices,
-                                                  self.config['analyse_photo'], fit_leds)
+                                                  self.config['analyse_photo'], self.fit_leds)
             led.create_fit_result_file(img_data, img_id, channel)
         print('Image {} processed'.format(img_id))
 

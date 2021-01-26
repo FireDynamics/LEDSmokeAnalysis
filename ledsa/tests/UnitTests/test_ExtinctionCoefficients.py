@@ -9,6 +9,7 @@ from pathlib import Path
 import os
 
 from ledsa.analysis.ExtinctionCoefficientsNumeric import ExtinctionCoefficientsNumeric
+from ledsa.analysis.calculations import multiindex_series_to_nparray
 from ledsa.analysis.Experiment import Layers, Experiment, Camera, LED
 
 
@@ -109,10 +110,30 @@ class CoefficientCalculationTestCase(TestExtinctionCoefficientsNumeric):
         def __init__(self):
             self.x = np.ones(5)
 
-    @mock.patch('ledsa.analysis.ExtinctionCoefficients.minimize', return_value=MockMinimizeResult())
+    @mock.patch('ledsa.analysis.ExtinctionCoefficientsNumeric.minimize', return_value=MockMinimizeResult())
     def test_calculated_coefficient_matrix_has_right_dim(self, mocked_minimize):
         self.ec.calc_and_set_coefficients()
         self.assertEqual(len(self.ec.calculated_img_data.groupby(level='img_id')),
                          len(self.ec.coefficients_per_image_and_layer), msg='Test Image Dimension')
         self.assertEqual(self.ec.experiment.layers.amount, len(self.ec.coefficients_per_image_and_layer[0]),
                          msg='Test Layer Dim')
+
+
+class CoefficientCalculationMPTestCase(CoefficientCalculationTestCase):
+    class MockMinimizeResult:
+        def __init__(self):
+            self.x = np.ones(5)
+
+    @mock.patch('ledsa.analysis.ExtinctionCoefficientsNumeric.minimize', return_value=MockMinimizeResult())
+    def test_calculated_coefficient_matrix_has_right_dim(self, mocked_minimize):
+        self.ec.calc_and_set_coefficients_mp()
+        self.assertEqual(len(self.ec.calculated_img_data.groupby(level='img_id')),
+                         len(self.ec.coefficients_per_image_and_layer), msg='Test Image Dimension')
+        self.assertEqual(self.ec.experiment.layers.amount, len(self.ec.coefficients_per_image_and_layer[0]),
+                         msg='Test Layer Dim')
+
+
+class MultiSeriesArrayTransformTestCase(TestExtinctionCoefficientsNumeric):
+    def test_array_has_right_dim(self):
+        array = multiindex_series_to_nparray(self.ec.calculated_img_data[self.ec.reference_property])
+        self.assertEqual(self.ec.calculated_img_data.index.levshape, array.shape)
