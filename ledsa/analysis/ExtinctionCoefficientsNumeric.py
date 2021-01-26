@@ -21,7 +21,7 @@ class ExtinctionCoefficientsNumeric(ExtinctionCoefficients):
         fit = minimize(self.cost_function, kappa0, args=rel_intensities,
                        method='TNC', bounds=tuple(self.bounds),
                        options={'maxiter': 200, 'gtol': 1e-5, 'disp': True})
-        kappas = fit.x
+        kappas = np.flip(fit.x)
         return kappas
 
     def calc_intensities(self, kappas: np.ndarray) -> np.ndarray:

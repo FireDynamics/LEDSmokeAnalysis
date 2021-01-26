@@ -25,25 +25,9 @@ def calculate_average_fitpar_without_smoke(fitpar, channel, num_of_imgs=20):
 
 def create_binary_data(channel):
     conf = ConfigData()
-    fit_params = pd.DataFrame({"img_id": [],
-                               "led_id": [],
-                               "line": [],
-                               "x": [],
-                               "y": [],
-                               "dx": [],
-                               "dy": [],
-                               "A": [],
-                               "alpha": [],
-                               "wx": [],
-                               "wy": [],
-                               "fit_success": [],
-                               "fit_fun": [],
-                               "fit_nfev": [],
-                               "sum_col_val": [],
-                               "mean_col_val": [],
-                               "width": [],
-                               "height": []
-                               })
+    columns = _get_column_names(channel)
+
+    fit_params = pd.DataFrame(columns=columns)
 
     # find time and fit parameter for every image
     first_img = int(conf['analyse_photo']['first_img'])
@@ -58,14 +42,16 @@ def create_binary_data(channel):
             parameters = led.load_file(".{}analysis{}channel{}{}{}_led_positions.csv".format(
                 sep, sep, channel, sep, image_id), delim=',', silent=True)
         except (FileNotFoundError, IOError):
-            fit_params = fit_params.append(_param_array_to_dataframe([[np.nan] * (fit_params.shape[1] - 1)], image_id),
+            fit_params = fit_params.append(_param_array_to_dataframe([[np.nan] * (fit_params.shape[1] - 1)], image_id,
+                                                                     columns),
                                            ignore_index=True, sort=False)
             exception_counter += 1
             continue
 
         parameters = parameters[parameters[:, 0].argsort()]     # sort for led_id
         parameters = _append_coordinates(parameters)
-        fit_params = fit_params.append(_param_array_to_dataframe(parameters, image_id), ignore_index=True, sort=False)
+        fit_params = fit_params.append(_param_array_to_dataframe(parameters, image_id, columns),
+                                       ignore_index=True, sort=False)
 
     print(f'{number_of_images - exception_counter} of {number_of_images} loaded.')
     # fit_params.set_index(['img_id', 'led_id'], inplace=True)
@@ -76,13 +62,34 @@ def clean_bin_data(channel=-1):
     exit('clean_bin_data not implemented')
 
 
-def _param_array_to_dataframe(array, img_id):
+def _get_column_names(channel):
+    parameters = led.load_file(f".{sep}analysis{sep}channel{channel}{sep}1_led_positions.csv", delim=',', silent=True)
+    columns = ["img_id", "led_id", "line",
+               "sum_col_val", "mean_col_val", "max_col_val"]
+    if parameters.shape[1] > len(columns):
+        columns.extend(["led_center_x", "led_center_y"])
+        columns.extend(["x", "y", "dx", "dy", "A", "alpha", "wx", "wy", "fit_success", "fit_fun", "fit_nfev"])
+    if parameters.shape[1] != len(columns)-1:
+        columns = _get_old_columns(parameters)
+    columns.extend(["width", "height"])
+    return columns
+
+
+def _get_old_columns(params):
+    if params.shape[1] == 15:
+        columns = ["img_id", "led_id", "line",
+                   "x", "y", "dx", "dy", "A", "alpha", "wx", "wy", "fit_success", "fit_fun", "fit_nfev",
+                   "sum_col_val", "mean_col_val"]
+    if params.shape[1] == 4:
+        columns = ["img_id", "led_id", "line",
+                   "sum_col_val", "mean_col_val"]
+    return columns
+
+def _param_array_to_dataframe(array, img_id, column_names):
     appended_array = np.empty((np.shape(array)[0], np.shape(array)[1] + 1))
     appended_array[:, 0] = img_id
     appended_array[:, 1:] = array
-    fit_params = pd.DataFrame(appended_array, columns=["img_id", "led_id", "line", "x", "y", "dx", "dy", "A", "alpha",
-                                                       "wx", "wy", "fit_success", "fit_fun", "fit_nfev", "sum_col_val",
-                                                       "mean_col_val", "width", "height"])
+    fit_params = pd.DataFrame(appended_array, columns=column_names)
     return fit_params
 
 
@@ -140,3 +147,15 @@ def include_column_if_nonexistent(fit_parameters, fit_par, channel):
             raise Exception(f'Can not handle fit parameter: {fit_par}')
         return read_hdf(channel)
     return fit_parameters
+
+
+def multiindex_series_to_nparray(multi_series: pd.Series) -> np.ndarray:
+    index = multi_series.index
+    print(index.levshape)
+    print(index.shape)
+    num_leds = pd.Series(multi_series.groupby(level=0).size()).iloc[0]
+    num_imgs = pd.Series(multi_series.groupby(level=1).size()).iloc[0]
+    array = np.zeros((num_imgs, num_leds))
+    for i in range(num_imgs):
+        array[i] = multi_series.loc[i+1]
+    return array
