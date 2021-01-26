@@ -69,7 +69,7 @@ def _get_column_names(channel):
     if parameters.shape[1] > len(columns):
         columns.extend(["led_center_x", "led_center_y"])
         columns.extend(["x", "y", "dx", "dy", "A", "alpha", "wx", "wy", "fit_success", "fit_fun", "fit_nfev"])
-    if parameters.shape[1] != len(columns):
+    if parameters.shape[1] != len(columns)-1:
         columns = _get_old_columns(parameters)
     columns.extend(["width", "height"])
     return columns

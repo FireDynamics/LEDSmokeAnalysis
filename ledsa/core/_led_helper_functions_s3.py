@@ -109,4 +109,6 @@ def create_header(channel, img_id, img_filename, img_infos, root, fit_leds):
         out_str += ",led_center_x, led_center_y"
         out_str += ",x,y,dx,dy,A,alpha,wx,wy,fit_success,fit_fun,fit_nfev,fit_time"
         out_str += "// all spatial quantities in pixel coordinates\n"
+    else:
+        out_str += "\n"
     return out_str
