@@ -76,7 +76,6 @@ class MainPage(tk.Frame):
         img_l = tk.Label(self, text='Show a whole Image')
         img_b = tk.Button(self, text='Open', command=lambda: InputArgumentWindowShowImg(self))
 
-        # TODO: open pdf without specifying the program
         led_ids_l = tk.Label(self, text='Show PDF with LED Labels')
         led_ids_b = tk.Button(self, text='Open',
                               command=lambda: subprocess.Popen('evince ' + os.sep.join([os.curdir, 'plots',
