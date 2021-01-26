@@ -27,8 +27,6 @@ def calc_experiment_and_real_time(build_type, config, tag, img_number):
 
 
 def get_exif(filename, tag):
-    image = Image.open(filename)
-    image.verify()
     with open(filename, 'rb') as f:
         exif = exifread.process_file(f, details=False, stop_tag=tag)
     return exif
