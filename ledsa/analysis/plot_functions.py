@@ -7,7 +7,7 @@ from PIL import Image
 from ledsa import LEDSA
 from ..core import led_helper as led
 import ledsa.analysis.calculations as calc
-from ..core.ledsa_conf import ConfigData as CD
+from ..core.ConfigData import ConfigData as CD
 import os
 from typing import Union, Tuple
 

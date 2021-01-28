@@ -1,4 +1,4 @@
-from ..core.ledsa_conf import ConfigData
+from ..core.ConfigData import ConfigData
 import numpy as np
 import pandas as pd
 from ..core import led_helper as led

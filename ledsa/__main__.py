@@ -4,7 +4,7 @@ import argparse
 import sys
 
 from .ledsa import LEDSA
-from .core import ledsa_conf as lc
+from .core import ConfigData as lc
 
 
 parser = argparse.ArgumentParser(description=

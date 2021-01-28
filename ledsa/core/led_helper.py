@@ -2,7 +2,7 @@ from ledsa.core._led_helper_functions import *
 from ledsa.core._led_helper_functions_s1 import *
 from ledsa.core._led_helper_functions_s2 import *
 from ledsa.core._led_helper_functions_s3 import *
-from ledsa.core.ledsa_conf import ConfigData
+from ledsa.core.ConfigData import ConfigData
 from ledsa.core.LEDAnalysisData import LEDAnalysisData
 
 import os

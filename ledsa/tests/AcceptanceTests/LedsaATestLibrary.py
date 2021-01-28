@@ -7,7 +7,7 @@ except ImportError:
     import Image
 import numpy as np
 from scipy.stats import norm
-from ledsa.core.ledsa_conf import ConfigData
+from ledsa.core.ConfigData import ConfigData
 from subprocess import Popen, PIPE
 import piexif
 

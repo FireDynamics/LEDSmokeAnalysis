@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from .core import led_helper as led
-from .core import ledsa_conf as lc
+from .core import ConfigData as lc
 
 sep = os.path.sep
 
