@@ -1,6 +1,7 @@
 class LEDAnalysisData:
+    """Data class for step 3 for one led and image. Includes string conversion."""
 
-    def __init__(self, led_id, led_array, fit_leds):
+    def __init__(self, led_id: int, led_array: int, fit_leds: bool):
         self.led_id = led_id
         self.led_array = led_array
         self.led_center_x = None

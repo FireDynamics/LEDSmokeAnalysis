@@ -33,17 +33,11 @@ class LEDSA:
     # Step 1 - find LED search areas
     # ------------------------------------
     # """
-
-    def load_search_areas(self):
-        """loads the search areas from the csv file"""
-        filename = 'analysis{}led_search_areas.csv'.format(sep)
-        self.search_areas = led.load_file(filename, delim=',')
-        # self.last_fit_results = self.search_areas.shape[0] * [[10, 10, 2., 2., 200., 1.0, 1.0, 1.0]]
     
-    def find_search_areas(self, img_filename):
+    def find_search_areas(self, img_filename: str):
         """
-        finds all LEDs in a single image file and defines the search areas, in
-        which future LEDs will be searched
+        Find all LEDs in a single image file and define the search areas, in
+        which future LEDs will be searched. The resultes are saved in a csv file.
         """
         config = self.config['find_search_areas']
         ref_img_name = "{}{}".format(config['img_directory'], img_filename)
@@ -56,8 +50,13 @@ class LEDSA:
         np.savetxt(out_filename, self.search_areas, delimiter=',',
                    header='LED id, pixel position x, pixel position y', fmt='%d')
 
-    def plot_search_areas(self, img_filename):
-        """plots the search areas with their labels"""
+    def load_search_areas(self):
+        """Load the search areas from a priviously generated csv file."""
+        filename = 'analysis{}led_search_areas.csv'.format(sep)
+        self.search_areas = led.load_file(filename, delim=',')
+
+    def plot_search_areas(self, img_filename: str):
+        """Generate a plot with the search areas and their labels."""
         config = self.config['find_search_areas']
         if self.search_areas is None:
             self.load_search_areas()
@@ -79,7 +78,10 @@ class LEDSA:
     # """
 
     def match_leds_to_led_arrays(self):
-        """analyses, which LED belongs to which LED line array"""
+        """
+        Find for each led line array the corresponding leds.
+        Save the results in a csv file and a plot.
+        """
         if self.search_areas is None:
             self.load_search_areas()
         self.line_indices = led.match_leds_to_led_arrays(self.search_areas, self.config)
@@ -87,7 +89,7 @@ class LEDSA:
         led.generate_labeled_led_arrays_plot(self.line_indices, self.search_areas)
 
     def load_line_indices(self):
-        """loads the line indices from the csv file"""
+        """Load line indices from a priviously generated csv file"""
         self.line_indices = []
         for i in range(int(self.config['DEFAULT']['num_of_arrays'])):
             filename = 'analysis{}line_indices_{:03}.csv'.format(sep, i)
@@ -98,9 +100,21 @@ class LEDSA:
     # Step 3 - LED smoke analysis
     # ------------------------------------
     # """
-    
+
+    def setup_step3(self):
+        """Generate files needed for the smoke analysis step."""
+        led.generate_image_infos_csv(self.config, build_analysis_infos=True)
+        led.create_imgs_to_process_file()
+
+    def setup_restart(self):
+        """Generate file needed to continue the smoke analysis step after stopping it."""
+        if len(self.channels) > 1:
+            print('Restart of a run currently only supports one channel. \nExiting...')
+            exit(1)
+        led.find_not_analysed_imgs(self.channels[0])
+
     def process_image_data(self):
-        """process the image data to find the changes in light intensity"""
+        """Process the image data to find the changes in light intensity."""
         config = self.config['analyse_photo']
         if self.search_areas is None:
             self.load_search_areas()
@@ -113,29 +127,19 @@ class LEDSA:
 
             print('images are getting processed, this may take a while')
             with Pool(int(config['num_of_cores'])) as p:
-                p.map(self.process_img_file, img_filenames)
+                p.map(self._process_img_file, img_filenames)
         else:
             for i in range(len(img_filenames)):
-                self.process_img_file(img_filenames[i])
+                self._process_img_file(img_filenames[i])
                 print('image ', i+1, '/', len(img_filenames), ' processed')
 
         os.remove('images_to_process.csv')
 
-    def process_img_file(self, img_filename):
-        """workaround for pool.map"""
+    # workaround for pool.map
+    def _process_img_file(self, img_filename):
         img_id = led.get_img_id(img_filename)
         for channel in self.channels:
             img_data = led.generate_analysis_data(img_filename, channel, self.search_areas, self.line_indices,
                                                   self.config['analyse_photo'], self.fit_leds)
             led.create_fit_result_file(img_data, img_id, channel)
         print('Image {} processed'.format(img_id))
-
-    def setup_step3(self):
-        led.generate_image_infos_csv(self.config, build_analysis_infos=True)
-        led.create_imgs_to_process_file()
-
-    def setup_restart(self):
-        if len(self.channels) > 1:
-            print('Restart of a run currently only supports one channel. \nExiting...')
-            exit(1)
-        led.find_not_analysed_imgs(self.channels[0])
