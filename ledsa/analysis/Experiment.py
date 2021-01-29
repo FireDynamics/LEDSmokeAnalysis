@@ -55,6 +55,7 @@ class LED:
 
 
 class Experiment:
+    """Physical structure info about the experiment and distance calculations."""
     def __init__(self, layers: Layers, led_array: int, camera: Camera, path=Path('.'), channel=0):
         self.layers = layers
         self.led_array = led_array

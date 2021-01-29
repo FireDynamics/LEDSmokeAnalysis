@@ -40,23 +40,23 @@ class TestExtinctionCoefficientsNumeric(TestCase):
 
 class ComputeReferenceIntensitiesTestCase(TestExtinctionCoefficientsNumeric):
     def test_num_of_ref_intensities_are_right(self):
-        self.ec.calc_and_set_ref_intensities()
+        self.ec._calc_and_set_ref_intensities()
         self.assertEqual(self.ec.experiment.led_number, len(self.ec.ref_intensities))
 
     def test_ref_intensities_are_right(self):
-        self.ec.calc_and_set_ref_intensities()
+        self.ec._calc_and_set_ref_intensities()
         self.assertAlmostEqual(1, self.ec.ref_intensities[0])
 
 
 class ComputeIntensitiesTestCase(TestExtinctionCoefficientsNumeric):
     def test_num_of_intensities_are_right(self):
         kappas = np.zeros(self.ec.experiment.layers.amount)
-        intensities = self.ec.calc_intensities(kappas)
+        intensities = self.ec._calc_intensities(kappas)
         self.assertEqual(len(intensities), self.ec.experiment.layers.amount)
 
     def test_intensities_are_right(self):
         kappas = np.zeros(self.ec.experiment.layers.amount)
-        intensities = self.ec.calc_intensities(kappas)
+        intensities = self.ec._calc_intensities(kappas)
         self.assertEqual(intensities[0], 1)
 
 
@@ -83,25 +83,25 @@ class CostFunctionTestCase(TestExtinctionCoefficientsNumeric):
         super().setUp()
         intensities = np.ones(self.ec.experiment.led_number)
         intensities /= 2
-        self.ec.calc_intensities = MagicMock(return_value=intensities)
+        self.ec._calc_intensities = MagicMock(return_value=intensities)
 
     def test_returns_pos_value(self):
         kappas = np.zeros(self.ec.experiment.layers.amount)
         target = np.ones(self.ec.experiment.led_number)
-        cost = self.ec.cost_function(kappas, target)
+        cost = self.ec._cost_function(kappas, target)
         self.assertTrue(cost >= 0)
 
     def test_target_same_as_intensities_returns_cost_smaller_equal_zero(self):
         kappas = np.zeros(self.ec.experiment.layers.amount)
         target = np.ones(self.ec.experiment.led_number) / 2
-        cost = self.ec.cost_function(kappas, target)
+        cost = self.ec._cost_function(kappas, target)
         self.assertTrue(cost <= 0)
 
 
 class CalcDistArrayTestCase(TestExtinctionCoefficientsNumeric):
     def test_amount_of_distances_equals_amount_of_layers(self):
         self.ec.experiment.calc_traversed_dist_per_layer = MagicMock(return_value=np.ones(5))
-        dist = self.ec.calc_distance_array()
+        dist = self.ec._calc_distance_array()
         self.assertEqual(self.ec.experiment.layers.amount, len(dist))
 
 

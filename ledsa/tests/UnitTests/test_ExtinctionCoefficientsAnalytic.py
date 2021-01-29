@@ -25,13 +25,13 @@ class TestExtinctionCoefficientsAnalytic(TestCase):
 class SingleCoefficientTestCase(TestExtinctionCoefficientsAnalytic):
     def test_calculation_is_right(self):
         rel_intensity = 0.5
-        kappa = self.ec.calc_kappa(self.kappas, 1, self.dist_per_led_and_layer[1], rel_intensity)
+        kappa = self.ec._calc_kappa(self.kappas, 1, self.dist_per_led_and_layer[1], rel_intensity)
         calculated_intensity = np.exp(-kappa*self.dist_per_led_and_layer[1, 1] -
                                       self.kappas[2]*self.dist_per_led_and_layer[1, 2])
         self.assertAlmostEqual(0.5, calculated_intensity)
 
     def test_div_by_0_returns_nan(self):
-        kappa = self.ec.calc_kappa(self.kappas, 0, self.dist_per_led_and_layer[0], 1)
+        kappa = self.ec._calc_kappa(self.kappas, 0, self.dist_per_led_and_layer[0], 1)
         self.assertTrue(np.isnan(kappa))
 
 
@@ -40,8 +40,8 @@ class AllCoefficientsTestCase(TestExtinctionCoefficientsAnalytic):
         super().setUp()
         mean_dist_per_led_and_layer = np.array([[1, 1, 1, 0, 0], [0, 1, 1, 0, 0], [0, 0, 1, 0, 0],
                                                 [0, 0, 1, 1, 0], [0, 0, 1, 1, 1]])
-        self.ec.calc_mean_dist_per_dummy_led_and_layer = mock.MagicMock(return_value=mean_dist_per_led_and_layer)
-        self.kappas = self.ec.calc_coefficients_of_img(self.rel_intensities)
+        self.ec._calc_mean_dist_per_dummy_led_and_layer = mock.MagicMock(return_value=mean_dist_per_led_and_layer)
+        self.kappas = self.ec._calc_coefficients_of_img(self.rel_intensities)
         self.calculated_intensities = np.exp(np.dot(-self.kappas, mean_dist_per_led_and_layer.T))
 
     def test_all_coefficients_are_calculated(self):
@@ -66,31 +66,31 @@ class TestMeanCalculations(TestExtinctionCoefficientsAnalytic):
 
 class MeanPositionCalculationsTestCase(TestMeanCalculations):
     def test_mean_position_calculation(self):
-        mean_positions = self.ec.calc_mean_led_positions_per_layer()
+        mean_positions = self.ec._calc_mean_led_positions_per_layer()
         self.assertAlmostEqual(mean_positions[0, 0], 0.25)
         self.assertAlmostEqual(mean_positions[0, 1], 0.5)
         self.assertAlmostEqual(mean_positions[0, 2], 0.6)
 
     def test_layers_without_leds_have_nan_positions(self):
-        mean_position = self.ec.calc_mean_led_positions_per_layer()
+        mean_position = self.ec._calc_mean_led_positions_per_layer()
         self.assertTrue(np.isnan(mean_position[3, 0]))
 
 
 class MeanIntensitiesCalculationsTestCase(TestMeanCalculations):
     def test_mean_intensity_calculation(self):
-        intensities = self.ec.calc_mean_relative_intensities_per_layer(self.rel_intensities)
+        intensities = self.ec._calc_mean_relative_intensities_per_layer(self.rel_intensities)
         self.assertAlmostEqual(0.15, intensities[0])
 
     def test_layers_without_leds_have_nan_intensities(self):
-        intensities = self.ec.calc_mean_relative_intensities_per_layer(self.rel_intensities)
+        intensities = self.ec._calc_mean_relative_intensities_per_layer(self.rel_intensities)
         self.assertTrue(np.isnan(intensities[3]))
 
 
 class MeanDistanceCalculationTestCase(TestMeanCalculations):
     def setUp(self) -> None:
         super().setUp()
-        positions = self.ec.calc_mean_led_positions_per_layer()
-        self.dists = self.ec.calc_mean_dist_per_dummy_led_and_layer(positions)
+        positions = self.ec._calc_mean_led_positions_per_layer()
+        self.dists = self.ec._calc_mean_dist_per_dummy_led_and_layer(positions)
 
     def test_mean_distances_are_set(self):
         dists_are_bigger_0 = np.sum(self.dists, axis=1) >= 0
