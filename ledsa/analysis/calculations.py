@@ -8,22 +8,25 @@ import os
 sep = os.path.sep
 
 
-def normalize_fitpar(fitpar, channel):
+def normalize_parameter(parameter: str, channel: int) -> None:
+    """Add a normalized version of parameter to the parameter binary file."""
     fit_parameters = read_hdf(channel)
-    average = calculate_average_fitpar_without_smoke(fitpar, channel)
-    fit_parameters[f'normalized_{fitpar}'] = fit_parameters[fitpar].div(average)
+    average = calculate_average_fitpar_without_smoke(parameter, channel)
+    fit_parameters[f'normalized_{parameter}'] = fit_parameters[parameter].div(average)
     os.remove(f".{sep}analysis{sep}channel{channel}{sep}all_parameters.h5")
     fit_parameters.to_hdf(f".{sep}analysis{sep}channel{channel}{sep}all_parameters.h5", 'table')
 
 
-def calculate_average_fitpar_without_smoke(fitpar, channel, num_of_imgs=20):
+def calculate_average_fitpar_without_smoke(parameter: str, channel: int, num_of_imgs=20) -> pd.Series:
+    """Calculate the average of parameter over the first num_of_imgs images for every led."""
     fit_parameters = read_hdf(channel)
     idx = pd.IndexSlice
     fit_parameters = fit_parameters.loc[idx[1:num_of_imgs, :]]
-    return fit_parameters[fitpar].mean(0, level='led_id')
+    return fit_parameters[parameter].mean(0, level='led_id')
 
 
-def create_binary_data(channel):
+def create_binary_data(channel: int) -> None:
+    """Compress all generated parameter csv files into a binary data object."""
     conf = ConfigData()
     columns = _get_column_names(channel)
 
@@ -54,12 +57,12 @@ def create_binary_data(channel):
                                        ignore_index=True, sort=False)
 
     print(f'{number_of_images - exception_counter} of {number_of_images} loaded.')
-    # fit_params.set_index(['img_id', 'led_id'], inplace=True)
     fit_params.to_hdf(f".{sep}analysis{sep}channel{channel}{sep}all_parameters.h5", 'table', append=True)
 
 
-def clean_bin_data(channel=-1):
-    exit('clean_bin_data not implemented')
+def clean_bin_data(channel):
+    """Remove the binary parameter file for channel."""
+    os.remove(f".{sep}analysis{sep}channel{channel}{sep}all_parameters.h5")
 
 
 def _get_column_names(channel):
@@ -129,27 +132,37 @@ def _append_coordinates_to_params(params, coord):
     return p_with_c
 
 
-def read_hdf(channel, path='.'):
+def read_hdf(channel: int, path='.') -> pd.DataFrame:
+    """
+    Read the parameter binary file or create it, if the file is not found.
+    :returns DataFrame with all Parameters and multiindex ['img_id', 'led_id']
+    """
     try:
-        fit_parameters = pd.read_hdf(f"{path}{sep}analysis{sep}channel{channel}{sep}all_parameters.h5", 'table')
+        parameters = pd.read_hdf(f"{path}{sep}analysis{sep}channel{channel}{sep}all_parameters.h5", 'table')
     except FileNotFoundError:
         create_binary_data(channel)
-        fit_parameters = pd.read_hdf(f"{path}{sep}analysis{sep}channel{channel}{sep}all_parameters.h5", 'table')
-    fit_parameters.set_index(['img_id', 'led_id'], inplace=True)
-    return fit_parameters
+        parameters = pd.read_hdf(f"{path}{sep}analysis{sep}channel{channel}{sep}all_parameters.h5", 'table')
+    parameters.set_index(['img_id', 'led_id'], inplace=True)
+    return parameters
 
 
-def include_column_if_nonexistent(fit_parameters, fit_par, channel):
-    if fit_par not in fit_parameters.columns:
-        if fit_par.split('_')[0] == 'normalized':
-            normalize_fitpar(fit_par.split('normalized_')[1], channel)
+def include_column_if_nonexistent(parameters: pd.DataFrame, parameter: str, channel: int) -> pd.DataFrame:
+    """
+    Check if paramerter is in the parameter DF and add it if it is not.
+    Only parameters in the form of normalized_$PARAMETER can be added.
+    :returns old or updated parameter DataFrame.
+    """
+    if parameter not in parameters.columns:
+        if parameter.split('_')[0] == 'normalized':
+            normalize_parameter(parameter.split('normalized_')[1], channel)
         else:
-            raise Exception(f'Can not handle fit parameter: {fit_par}')
+            raise Exception(f'Can not handle fit parameter: {parameter}')
         return read_hdf(channel)
-    return fit_parameters
+    return parameters
 
 
 def multiindex_series_to_nparray(multi_series: pd.Series) -> np.ndarray:
+    """Convert pd multi-index series to numpy array."""
     index = multi_series.index
     print(index.levshape)
     print(index.shape)

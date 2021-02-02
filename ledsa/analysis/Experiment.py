@@ -66,7 +66,7 @@ class Experiment:
         self.channel = channel
 
         try:
-            self.set_leds()
+            self._set_leds()
         except IOError as err:
             print(err)
 
@@ -77,18 +77,19 @@ class Experiment:
         return out
 
     def calc_traversed_dist_per_layer(self, led: LED) -> np.ndarray:
+        """Calculate array of size layer with line segment length per layer for a line between led and camera."""
         horizontal_dist = np.sqrt((self.camera.pos_x-led.pos_x)**2 + (self.camera.pos_y-led.pos_y)**2)
         alpha = np.arctan((led.pos_z - self.camera.pos_z) / horizontal_dist)
         if alpha == 0:
-            distance_per_layer = self.calc_traversed_dist_in_plane(led)
+            distance_per_layer = self._calc_traversed_dist_in_plane(led)
         else:
-            distance_per_layer = self.calc_traversed_dist_per_layer_with_nonzero_alpha(alpha, led)
+            distance_per_layer = self._calc_traversed_dist_per_layer_with_nonzero_alpha(alpha, led)
 
-        if not self.distance_calculation_is_consistent(distance_per_layer, led):
+        if not self._distance_calculation_is_consistent(distance_per_layer, led):
             distance_per_layer = None
         return distance_per_layer
 
-    def calc_traversed_dist_in_plane(self, led: LED) -> np.ndarray:
+    def _calc_traversed_dist_in_plane(self, led: LED) -> np.ndarray:
         distance_per_layer = np.zeros(self.layers.amount)
         horizontal_dist = np.sqrt((self.camera.pos_x - led.pos_x) ** 2 + (self.camera.pos_y - led.pos_y) ** 2)
         for layer in range(self.layers.amount):
@@ -98,16 +99,16 @@ class Experiment:
                 distance_per_layer[layer] = horizontal_dist
         return distance_per_layer
 
-    def calc_traversed_dist_per_layer_with_nonzero_alpha(self, alpha: float, led: LED) -> np.ndarray:
+    def _calc_traversed_dist_per_layer_with_nonzero_alpha(self, alpha: float, led: LED) -> np.ndarray:
         distance_per_layer = np.zeros(self.layers.amount)
         for layer in range(self.layers.amount):
             layer_bottom = self.layers.borders[layer]
             layer_top = self.layers.borders[layer + 1]
-            th = self.calc_traversed_height_in_layer(led.pos_z, layer_bottom, layer_top)
+            th = self._calc_traversed_height_in_layer(led.pos_z, layer_bottom, layer_top)
             distance_per_layer[layer] = np.abs(th / np.sin(alpha))
         return distance_per_layer
 
-    def calc_traversed_height_in_layer(self, led_height: float, layer_bot: float, layer_top: float) -> float:
+    def _calc_traversed_height_in_layer(self, led_height: float, layer_bot: float, layer_top: float) -> float:
         top_end = max(self.camera.pos_z, led_height)
         bot_end = min(self.camera.pos_z, led_height)
         bot = max(bot_end, layer_bot)
@@ -117,7 +118,7 @@ class Experiment:
             h = 0
         return h
 
-    def distance_calculation_is_consistent(self, distance_per_layer: np.ndarray, led: LED, silent=True) -> bool:
+    def _distance_calculation_is_consistent(self, distance_per_layer: np.ndarray, led: LED, silent=True) -> bool:
         if np.abs(np.sum(distance_per_layer) - np.sqrt((self.camera.pos_x - led.pos_x) ** 2 +
                                                        (self.camera.pos_y - led.pos_y) ** 2 +
                                                        (self.camera.pos_z - led.pos_z) ** 2)) > 1e-6:
@@ -128,19 +129,19 @@ class Experiment:
             return False
         return True
 
-    def set_leds(self) -> None:
-        ids = self.get_led_ids()
-        x, y, z = self.get_led_positions(ids)
+    def _set_leds(self) -> None:
+        ids = self._get_led_ids()
+        x, y, z = self._get_led_positions(ids)
         for i in range(len(ids)):
             self.leds.append(LED(ids[i], x[i], y[i], z[i]))
         self.led_number = len(ids)
         return
 
-    def get_led_ids(self) -> np.ndarray:
+    def _get_led_ids(self) -> np.ndarray:
         line_indices = np.loadtxt(self.path / 'analysis' / f'line_indices_{self.led_array:03d}.csv', dtype=int)
         return line_indices
 
-    def get_led_positions(self, ids: np.ndarray) -> List[np.ndarray]:
+    def _get_led_positions(self, ids: np.ndarray) -> List[np.ndarray]:
         search_areas_all = np.loadtxt(self.path / 'analysis' / 'led_search_areas_with_coordinates.csv', delimiter=',')
         search_areas_led_array = []
         for led_id in ids:
