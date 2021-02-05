@@ -99,4 +99,4 @@ if args.coordinates:
 
 if args.atest:
     # noinspection PyUnresolvedReferences
-    import ledsa.tests.AcceptanceTests.__main__
+    import ledsa._tests.AcceptanceTests.__main__
