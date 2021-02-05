@@ -3,7 +3,7 @@ import re
 
 import numpy as np
 import scipy.optimize
-from ledsa.core.model import target_function
+from ledsa.core._model import target_function
 from ledsa.core.LEDAnalysisData import LEDAnalysisData
 
 import time

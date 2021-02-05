@@ -1,5 +1,5 @@
-from ledsa.analysis import ui
+from ledsa.analysis import _GUI
 
 # ui.run()
-app = ui.GUI()
+app = _GUI.GUI()
 app.mainloop()

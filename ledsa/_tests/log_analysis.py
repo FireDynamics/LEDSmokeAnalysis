@@ -1,11 +1,11 @@
 # tools for analysing problems with the LED fitting
-import ledsa.core.model
+import ledsa.core._model
 import numpy as np
 import matplotlib.pyplot as plt
 import importlib
 from PIL import Image
 import ledsa.core.led_helper as led
-from ledsa.core.model import led_model
+from ledsa.core._model import led_model
 from ..ledsa import LEDSA
 
 

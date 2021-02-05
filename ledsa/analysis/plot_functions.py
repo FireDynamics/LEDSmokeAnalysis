@@ -1,4 +1,4 @@
-import ledsa.core.model
+import ledsa.core._model
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -132,8 +132,8 @@ def _plot_model(fig, channel, img_id, led_id, window_radius):
     # load model
     model_params = _load_model(img_id, led_id, channel, window_radius)
 
-    led_model = ledsa.core.model.led_model(mesh[0], mesh[1], model_params[0], model_params[1], model_params[2], model_params[3],
-                                           model_params[4], model_params[5], model_params[6], model_params[7])
+    led_model = ledsa.core._model.led_model(mesh[0], mesh[1], model_params[0], model_params[1], model_params[2], model_params[3],
+                                            model_params[4], model_params[5], model_params[6], model_params[7])
 
     current_fig = plt.gcf()
 
