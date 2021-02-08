@@ -1,14 +1,14 @@
-# runs _tests for push-events, for pull requests and using cron schedule:
+# runs tests for push-events, for pull requests and using cron schedule:
 name: Run Robot Framework Tests
 on:
   push:
-    # runs _tests for commits pushed to master
+    # runs tests for commits pushed to master
     branches:
       - master
-    # do not run _tests if file README.md changes
+    # do not run tests if file README.md changes
     paths-ignore:
       - 'README.md'
-    # run _tests for GitHub Pull requests. Test result is visible in the Pull Request page.
+    # run tests for GitHub Pull requests. Test result is visible in the Pull Request page.
   pull_request:
     paths-ignore:
       - 'README.md'
@@ -22,13 +22,13 @@ jobs:
         # create folder for test reports
         - name: Create folder for reports
           run: mkdir reports
-        # run Robot Framework _tests inside Docker container
+        # run Robot Framework tests inside Docker container
         - name: Run Robot Framework Tests
           # container used here is ppodgorsek/robot-framework:latest
           # see container documentation for usage: https://hub.docker.com/r/ppodgorsek/robot-framework/dockerfile
           # it is required that GitHub repository contains folder "reports". Commit some file inside "reports" to create it
-          # place _tests in folder _tests or change docker run command accordingly
-          # configure -e ROBOT_OPTIONS according to yout _tests, or remove it if no special configuration is needed
+          # place tests in folder tests or change docker run command accordingly
+          # configure -e ROBOT_OPTIONS according to yout tests, or remove it if no special configuration is needed
           run: |
             docker run \
               -v ${PWD}/ledsa/reports:/opt/robotframework/reports:Z \
@@ -50,7 +50,7 @@ jobs:
             export REPO="$(echo "${{ github.repository }}" | awk -F / '{print $2}' | sed -e "s/:refs//")"
             echo "name=REPOSITORY_NAME::$REPO" >> $GITHUB_ENV
         # when test are run for a commit, post results as a comment
-        # note: comment is not posted for _tests triggered for pull requests, only for a main branch (master)
+        # note: comment is not posted for tests triggered for pull requests, only for a main branch (master)
         - name: Send test report as comment to commit
           uses: joonvena/robotframework-reporter-action@v0.1
           if: ${{ github.event_name == 'push' }}
