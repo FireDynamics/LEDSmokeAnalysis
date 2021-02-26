@@ -45,6 +45,7 @@ class ConfigData(cp.ConfigParser):
             self.set('DEFAULT', ' ')
             self.set('DEFAULT', '# String representing the naming convention of the image files')
             self['DEFAULT']['   img_name_string'] = str(img_name_string)
+            self['DEFAULT']['   img_number_overflow'] = None
 
             self.set('DEFAULT', '  ')
             self.set('DEFAULT', '# First and last image number of the experiment')
@@ -145,6 +146,10 @@ class ConfigData(cp.ConfigParser):
         self['DEFAULT']['img_name_string'] = input(
             'Please give the name structure of the images in the form img{}.jpg where '
             '{} denotes the increasing number of the image files: ')
+
+    def in_img_number_overflow(self):
+        self['DEFAULT']['img_number_overflow'] = input(
+            'Please give the maximal number an image file can have (typically 9999): ')
 
     def in_first_img(self):
         self['DEFAULT']['first_img'] = input('Please give the number of the first image file of the experiment: ')

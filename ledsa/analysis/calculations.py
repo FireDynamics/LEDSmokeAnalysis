@@ -32,8 +32,8 @@ def create_binary_data(channel):
     # find time and fit parameter for every image
     first_img = int(conf['analyse_photo']['first_img'])
     last_img = int(conf['analyse_photo']['last_img'])
-    # TODO: add max img range to config
-    number_of_images = (9999 + last_img - first_img) % 9999
+    max_id = int(conf['DEFAULT']['img_number_overflow'])
+    number_of_images = (max_id + last_img - first_img) % max_id
     number_of_images //= int(conf['analyse_photo']['skip_imgs']) + 1
     print('Loading fit parameters...')
     exception_counter = 0

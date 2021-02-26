@@ -16,67 +16,63 @@ def get_indices_of_outer_leds(config):
 def calc_dists_between_led_arrays_and_search_areas(line_edge_indices, search_areas):
     distances_led_arrays_search_areas = np.zeros((search_areas.shape[0], len(line_edge_indices)))
 
-    xs = search_areas[:, 1]
-    ys = search_areas[:, 2]
-
     for line_edge_idx in range(len(line_edge_indices)):
         i1 = line_edge_indices[line_edge_idx][0]
         i2 = line_edge_indices[line_edge_idx][1]
 
-        p1x = xs[i1]
-        p1y = ys[i1]
-        p2x = xs[i2]
-        p2y = ys[i2]
+        corner1 = np.array(search_areas[i1, 1:])
+        corner2 = np.array(search_areas[i2, 1:])
 
-        pd = np.sqrt((p1x - p2x) ** 2 + (p1y - p2y) ** 2)
-        d = np.abs(((p2y - p1y) * xs - (p2x - p1x) * ys
-                    + p2x * p1y - p2y * p1x) / pd)
+        d = calc_dists_to_line_segment(search_areas[:, 1:], corner1, corner2)
 
         distances_led_arrays_search_areas[:, line_edge_idx] = d
     return distances_led_arrays_search_areas
 
 
+def calc_dists_to_line_segment(points: np.ndarray, c1: np.ndarray, c2: np.ndarray) -> np.ndarray:
+    d = np.zeros(points.shape[0])
+
+    for led_id in range(points.shape[0]):
+        led = points[led_id]
+
+        dist_led_c1 = np.linalg.norm(led - c1)
+        dist_led_c2 = np.linalg.norm(led - c2)
+        segment_len = np.linalg.norm(c2 - c1)
+
+        if np.all(c1 == led) or np.all(c2 == led):
+            d[led_id] = 0
+            continue
+
+        if all(c1 == c2):
+            d[led_id] = dist_led_c1
+            continue
+
+        led_on_wrong_side_of_c1 = np.arccos(np.dot((led - c1) / dist_led_c1, (c2 - c1) / segment_len)) > np.pi / 2
+        if led_on_wrong_side_of_c1:
+            d[led_id] = dist_led_c1
+            continue
+
+        led_on_wrong_side_of_c2 = np.arccos(np.dot((led - c2) / dist_led_c2, (c1 - c2) / segment_len)) > np.pi / 2
+        if led_on_wrong_side_of_c2:
+            d[led_id] = dist_led_c2
+            continue
+
+        d[led_id] = np.abs(np.cross(c1 - c2, c1 - led)) / segment_len
+    return d
+
+
 def match_leds_to_arrays_with_min_dist(dists_led_arrays_search_areas, edge_indices, config, search_areas):
     ignore_indices = get_indices_of_ignored_leds(config)
-
-    xs = search_areas[:, 1]
-    ys = search_areas[:, 2]
-
-    num_leds = search_areas.shape[0]
-
-    # construct 2D array for LED indices sorted by line
+    # construct 2D list for LED indices sorted by line
     led_arrays = []
     for edge_idx in edge_indices:
         led_arrays.append([])
 
-    for iled in range(num_leds):
+    for iled in range(search_areas.shape[0]):
         if iled in ignore_indices:
             continue
 
         idx_nearest_array = np.argmin(dists_led_arrays_search_areas[iled, :])
-        # TODO: ask Lukas for need of following code
-
-        # for il_repeat in range(len(edge_indices)):
-        #     i1 = edge_indices[idx_nearest_array][0]
-        #     i2 = edge_indices[idx_nearest_array][1]
-        #
-        #     x_outer_led1 = xs[i1]
-        #     y_outer_led1 = ys[i1]
-        #     x_outer_led2 = xs[i2]
-        #     y_outer_led2 = ys[i2]
-        #
-        #     x_led = xs[iled]
-        #     y_led = ys[iled]
-        #
-        #     dist_led_outer_led1 = np.sqrt((x_outer_led1 - x_led) ** 2 + (y_outer_led1 - y_led) ** 2)
-        #     dist_led_outer_led2 = np.sqrt((x_outer_led2 - x_led) ** 2 + (y_outer_led2 - y_led) ** 2)
-        #     dist_outer_leds = np.sqrt((x_outer_led1 - x_outer_led2) ** 2 + (y_outer_led1 - y_outer_led2) ** 2) + 1e-8
-        #
-        #     if dist_led_outer_led1 < dist_outer_leds and dist_led_outer_led2 < dist_outer_leds:
-        #         break
-        #
-        #     dists_led_arrays_search_areas[iled, idx_nearest_array] *= 2
-
         led_arrays[idx_nearest_array].append(iled)
     return led_arrays
 
