@@ -57,7 +57,7 @@ def read_file(filename, channel, colordepth=14):
             black_level = raw.black_level_per_channel[channel]
             white_level = raw.white_level
         channel_range = 2 ** colordepth - 1
-        channel_array = data - black_level
+        channel_array = data.astype(np.int16) - black_level
         channel_array = (channel_array * (channel_range / (white_level - black_level))).astype(np.int16)
         channel_array = np.clip(channel_array, 0, channel_range)
         if channel == 0 or channel == 2:
