@@ -55,6 +55,11 @@ def create_binary_data(channel):
 
     print(f'{number_of_images - exception_counter} of {number_of_images} loaded.')
     # fit_params.set_index(['img_id', 'led_id'], inplace=True)
+    fit_params['img_id'] = fit_params['img_id'].astype(int)
+    fit_params['led_id'] = fit_params['led_id'].astype(int)
+    fit_params['line'] = fit_params['line'].astype(int)
+    fit_params['max_col_val'] = fit_params['max_col_val'].astype(int)
+    fit_params['sum_col_val'] = fit_params['sum_col_val'].astype(int)
     fit_params.to_hdf(f".{sep}analysis{sep}channel{channel}{sep}all_parameters.h5", 'table', append=True)
 
 
