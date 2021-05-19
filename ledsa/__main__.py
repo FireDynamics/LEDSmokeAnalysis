@@ -97,6 +97,6 @@ if args.coordinates:
     from ledsa.ledpositions.coordinates import calculate_coordinates
     calculate_coordinates()
 
-if args.atest:
-    # noinspection PyUnresolvedReferences
-    import ledsa.tests.AcceptanceTests.__main__
+# if args.atest:
+#     # noinspection PyUnresolvedReferences
+#     import tests.AcceptanceTests.__main__
