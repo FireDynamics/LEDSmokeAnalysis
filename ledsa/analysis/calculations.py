@@ -138,6 +138,11 @@ def read_hdf(channel, path='.'):
     fit_parameters.set_index(['img_id', 'led_id'], inplace=True)
     return fit_parameters
 
+def extend_hdf(channel, quantity, values, path='.'):
+    file = f"{path}{sep}analysis{sep}channel{channel}{sep}all_parameters.h5"
+    fit_parameters = pd.read_hdf(file, 'table')
+    fit_parameters[quantity] = values
+    fit_parameters.to_hdf(file, 'table')
 
 def include_column_if_nonexistent(fit_parameters, fit_par, channel):
     if fit_par not in fit_parameters.columns:
