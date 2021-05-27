@@ -18,7 +18,6 @@ class ExtinctionCoefficients(ABC):
         self.calculated_img_data = pd.DataFrame()
         self.distances_per_led_and_layer = np.array([])
         self.ref_intensities = np.array([])
-        self.cc_matrix = None
 
         self.type = None
 
@@ -84,28 +83,6 @@ class ExtinctionCoefficients(ABC):
         ref_img_data = self.calculated_img_data.query(f'img_id <= {self.num_ref_imgs}')
         ref_intensities = ref_img_data.mean(0, level='led_id')
         self.ref_intensities = ref_intensities[self.reference_property].to_numpy()
-
-    def apply_color_correction(self, cc_matrix, on='sum_col_val', nchannels=3) -> None: # TODO: remove hardcoding of nchannels
-        """ Apply color correction on channel values based on color correction matrix.
-
-        """
-        self.cc_matrix = cc_matrix
-        cc_matrix_inv = np.linalg.inv(self.cc_matrix)
-        quanity = on
-        fit_params_list = []
-        for channel in range(nchannels):
-            fit_parameters = read_hdf(channel)[quanity]
-            fit_params_list.append(fit_parameters)
-        raw_val_array = pd.concat(fit_params_list, axis=1)
-        cc_val_array = np.dot(cc_matrix_inv, raw_val_array.T).T
-        cc_val_array = cc_val_array.astype(np.int16)
-        for channel in range(nchannels):
-            extend_hdf(channel, quanity + '_cc',cc_val_array[:,channel] )
-        print(f"Color correction applied on {nchannels} Channels!")
-
-
-
-
 
     @abstractmethod
     def calc_coefficients_of_img(self, rel_intensities: np.ndarray) -> np.ndarray:

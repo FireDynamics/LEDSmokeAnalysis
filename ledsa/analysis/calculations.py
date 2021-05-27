@@ -156,11 +156,26 @@ def include_column_if_nonexistent(fit_parameters, fit_par, channel):
 
 def multiindex_series_to_nparray(multi_series: pd.Series) -> np.ndarray:
     index = multi_series.index
-    print(index.levshape)
-    print(index.shape)
     num_leds = pd.Series(multi_series.groupby(level=0).size()).iloc[0]
     num_imgs = pd.Series(multi_series.groupby(level=1).size()).iloc[0]
     array = np.zeros((num_imgs, num_leds))
     for i in range(num_imgs):
         array[i] = multi_series.loc[i+1]
     return array
+
+
+def apply_color_correction(cc_matrix, on='sum_col_val', channels=[0, 1, 2]) -> None:
+    """ Apply color correction on channel values based on color correction matrix.
+
+    """
+    cc_matrix_inv = np.linalg.inv(cc_matrix)
+    quanity = on
+    fit_params_list = []
+    for channel in channels:
+        fit_parameters = read_hdf(channel)[quanity]
+        fit_params_list.append(fit_parameters)
+    raw_val_array = pd.concat(fit_params_list, axis=1)
+    cc_val_array = np.dot(cc_matrix_inv, raw_val_array.T).T
+    cc_val_array = cc_val_array.astype(np.int16)
+    for channel in channels:
+        extend_hdf(channel, quanity + '_cc',cc_val_array[:,channel] )
