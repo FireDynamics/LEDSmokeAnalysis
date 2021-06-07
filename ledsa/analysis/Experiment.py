@@ -34,6 +34,9 @@ class Layers:
     def __str__(self):
         return f'num_of_layers: {self.amount}, bottom_border: {self.bottom_border}, top_border: {self.top_border}\n'
 
+    def __repr__(self):
+        return f'Layers(amount={self.amount}, bottom_border={self.bottom_border}, top_border={self.top_border})'
+
 
 
 @dataclass
@@ -44,6 +47,9 @@ class Camera:
 
     def __str__(self):
         return f'Camera: ({self.pos_x}, {self.pos_y}, {self.pos_z})\n'
+
+    def __repr__(self):
+        return f'Camera(pos_x={self.pos_x}, pos_y={self.pos_y}, pos_z={self.pos_z})'
 
 
 @dataclass
