@@ -10,7 +10,6 @@ Subpackages
    ledsa.analysis
    ledsa.core
    ledsa.ledpositions
-   ledsa.tests
 
 
 Module contents
