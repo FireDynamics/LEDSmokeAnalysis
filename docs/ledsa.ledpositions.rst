@@ -1,8 +1,15 @@
 ledsa.ledpositions package
 ==========================
 
-Submodules
-----------
+
+Module contents
+---------------
+
+.. automodule:: ledsa.ledpositions
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   
 
 ledsa.ledpositions.coordinates module
 -------------------------------------
@@ -13,10 +20,4 @@ ledsa.ledpositions.coordinates module
    :show-inheritance:
 
 
-Module contents
----------------
 
-.. automodule:: ledsa.ledpositions
-   :members:
-   :undoc-members:
-   :show-inheritance:

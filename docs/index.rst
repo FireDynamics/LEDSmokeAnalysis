@@ -13,19 +13,10 @@ Welcome to documentation of LED Smoke Analysis (LEDSA) !
    :maxdepth: 2
    :caption: Contents:
 
-Contents and Links
-======================
-
-* :ref:`genindex`
-* :ref:`modindex`
-
-* :class:`ledsa.ledsa`
-* :class:`ledsa.analysis`
-* :class:`ledsa.core`
 
 =================================
 
-- **How to use LEDSA:**
+**How to use LEDSA:**
 
 Set your PYTHONPATH to find the ledsa folder so the package can be imported.
 Now, the package can be accessed via import ledsa.
@@ -50,7 +41,7 @@ it,there must be the coordinates of the two outermost LEDs for each LED array sa
 line_edge_coordinates inside config.ini
 
 
-- **How this git repo is structured:**
+**How this git repo is structured:**
 
 
 To introduce new, tested and stable changes, pull/ merge requests into the master branch are used.
@@ -60,4 +51,8 @@ Pull request drafts can be used to communicate about changes and new functionali
 After reviewing and testing the changes, they will be merged into master.
 
 Every merge with master is followed by introducing a new version tag corresponding to the semantic versioning pradigm.
+
+==============================
+
+.. include::  ledsa.rst
 

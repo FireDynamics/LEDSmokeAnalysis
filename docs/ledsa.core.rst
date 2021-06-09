@@ -1,8 +1,15 @@
 ledsa.core package
 ==================
 
-Submodules
-----------
+
+Module contents
+---------------
+
+.. automodule:: ledsa.core
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   
 
 ledsa.core.LEDAnalysisData module
 ---------------------------------
@@ -37,10 +44,4 @@ ledsa.core.model module
    :show-inheritance:
 
 
-Module contents
----------------
 
-.. automodule:: ledsa.core
-   :members:
-   :undoc-members:
-   :show-inheritance:

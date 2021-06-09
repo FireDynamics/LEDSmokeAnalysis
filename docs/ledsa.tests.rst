@@ -10,8 +10,15 @@ Subpackages
    ledsa.tests.AcceptanceTests
    ledsa.tests.UnitTests
 
-Submodules
-----------
+
+Module contents
+---------------
+
+.. automodule:: ledsa.tests
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   
 
 ledsa.tests.log\_analysis module
 --------------------------------
@@ -30,10 +37,4 @@ ledsa.tests.plot\_coordinates module
    :show-inheritance:
 
 
-Module contents
----------------
 
-.. automodule:: ledsa.tests
-   :members:
-   :undoc-members:
-   :show-inheritance:
