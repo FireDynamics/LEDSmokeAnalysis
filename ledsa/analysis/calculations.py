@@ -3,12 +3,16 @@ import numpy as np
 import pandas as pd
 from ..core import led_helper as led
 import os
+from typing import List
 
 # os path separator
 sep = os.path.sep
 
 
-def normalize_fitpar(fitpar, channel):
+def normalize_fitpar(fitpar: str, channel: int) -> None:
+    """
+    Normalizes fitpar and extends the binary to include 'normalized_{fitpar}' as new parameter.
+    """
     fit_parameters = read_hdf(channel)
     average = calculate_average_fitpar_without_smoke(fitpar, channel)
     fit_parameters[f'normalized_{fitpar}'] = fit_parameters[fitpar].div(average)
@@ -16,14 +20,19 @@ def normalize_fitpar(fitpar, channel):
     fit_parameters.to_hdf(f".{sep}analysis{sep}channel{channel}{sep}all_parameters.h5", 'table')
 
 
-def calculate_average_fitpar_without_smoke(fitpar, channel, num_of_imgs=20):
+def calculate_average_fitpar_without_smoke(fitpar: str, channel: int, num_of_imgs=20) -> pd.DataFrame:
     fit_parameters = read_hdf(channel)
     idx = pd.IndexSlice
     fit_parameters = fit_parameters.loc[idx[1:num_of_imgs, :]]
     return fit_parameters[fitpar].mean(0, level='led_id')
 
 
-def create_binary_data(channel):
+def create_binary_data(channel: int) -> None:
+    """
+    Creates binary file from all the #_led_positions.csv files generated in step 3
+    Created binary is a pandas hdf file with data
+    :param channel:
+    """
     conf = ConfigData()
     columns = _get_column_names(channel)
 
@@ -62,7 +71,7 @@ def clean_bin_data(channel=-1):
     exit('clean_bin_data not implemented')
 
 
-def _get_column_names(channel):
+def _get_column_names(channel: int) -> List[str]:
     parameters = led.load_file(f".{sep}analysis{sep}channel{channel}{sep}1_led_positions.csv", delim=',', silent=True)
     columns = ["img_id", "led_id", "line",
                "sum_col_val", "mean_col_val", "max_col_val"]
@@ -75,7 +84,10 @@ def _get_column_names(channel):
     return columns
 
 
-def _get_old_columns(params):
+def _get_old_columns(params: np.ndarray) -> List[str]:
+    """
+    Includes file structures from older updates for legacy reasons
+    """
     if params.shape[1] == 15:
         columns = ["img_id", "led_id", "line",
                    "x", "y", "dx", "dy", "A", "alpha", "wx", "wy", "fit_success", "fit_fun", "fit_nfev",
@@ -85,7 +97,7 @@ def _get_old_columns(params):
                    "sum_col_val", "mean_col_val"]
     return columns
 
-def _param_array_to_dataframe(array, img_id, column_names):
+def _param_array_to_dataframe(array: np.ndarray, img_id: int, column_names: List[str]) -> pd.DataFrame:
     appended_array = np.empty((np.shape(array)[0], np.shape(array)[1] + 1))
     appended_array[:, 0] = img_id
     appended_array[:, 1:] = array
@@ -93,7 +105,8 @@ def _param_array_to_dataframe(array, img_id, column_names):
     return fit_params
 
 
-def _append_coordinates(params):
+# TODO: refactor or comment
+def _append_coordinates(params: np.ndarray) -> np.ndarray:
     ac = _append_coordinates
     if "coord" not in ac.__dict__:
         try:
@@ -108,14 +121,14 @@ def _append_coordinates(params):
         return _append_coordinates_to_params(params, ac.coord)
 
 
-def _append_nans(params):
+def _append_nans(params: np.ndarray) -> np.ndarray:
     p_with_nans = np.empty((np.shape(params)[0], np.shape(params)[1] + 2))
     p_with_nans[:] = np.NaN
     p_with_nans[:, :-2] = params
     return p_with_nans
 
 
-def _append_coordinates_to_params(params, coord):
+def _append_coordinates_to_params(params: np.ndarray, coord: np.ndarray) -> np.ndarray:
     p_with_c = np.empty((np.shape(params)[0], np.shape(params)[1] + 2))
     p_with_c[:, :-2] = params
 
@@ -129,7 +142,11 @@ def _append_coordinates_to_params(params, coord):
     return p_with_c
 
 
-def read_hdf(channel, path='.'):
+def read_hdf(channel: int, path='.') -> pd.DataFrame:
+    """
+    Read the pandas dataframe binary at path
+    :return: DataFrame with multi index 'img_id' and 'led_id'
+    """
     try:
         fit_parameters = pd.read_hdf(f"{path}{sep}analysis{sep}channel{channel}{sep}all_parameters.h5", 'table')
     except FileNotFoundError:
@@ -138,13 +155,13 @@ def read_hdf(channel, path='.'):
     fit_parameters.set_index(['img_id', 'led_id'], inplace=True)
     return fit_parameters
 
-def extend_hdf(channel, quantity, values, path='.'):
+def extend_hdf(channel: int, quantity: str, values: np.ndarray, path='.') -> None:
     file = f"{path}{sep}analysis{sep}channel{channel}{sep}all_parameters.h5"
     fit_parameters = pd.read_hdf(file, 'table')
     fit_parameters[quantity] = values
     fit_parameters.to_hdf(file, 'table')
 
-def include_column_if_nonexistent(fit_parameters, fit_par, channel):
+def include_column_if_nonexistent(fit_parameters: pd.DataFrame, fit_par: str, channel: int) -> pd.DataFrame:
     if fit_par not in fit_parameters.columns:
         if fit_par.split('_')[0] == 'normalized':
             normalize_fitpar(fit_par.split('normalized_')[1], channel)
@@ -164,7 +181,7 @@ def multiindex_series_to_nparray(multi_series: pd.Series) -> np.ndarray:
     return array
 
 
-def apply_color_correction(cc_matrix, on='sum_col_val', channels=[0, 1, 2]) -> None:
+def apply_color_correction(cc_matrix: np.ndarray, on='sum_col_val', channels=[0, 1, 2]) -> None:
     """ Apply color correction on channel values based on color correction matrix.
 
     """
