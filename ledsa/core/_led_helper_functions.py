@@ -57,10 +57,16 @@ def find_img_number_list(first, last, increment, number_string_length=4):
 def build_img_data_string(build_type, config):
     img_data = ''
     img_idx = 1
+    num_ref_imgs = 10 # TODO: Remove hardcoding and put in config, also refer to by ExtinctionCoefficient.py
     first_img = config.getint(build_type, 'first_img')
     last_img = config.getint(build_type, 'last_img')
     img_increment = config.getint(build_type, 'skip_imgs') + 1 if build_type == 'analyse_photo' else 1
-    img_number_list = find_img_number_list(first_img, last_img, img_increment)
+    if build_type == 'analyse_photo':
+        last_ref_img = first_img + num_ref_imgs -1
+        ref_img_number_list = find_img_number_list(first_img, last_ref_img, 1)
+        img_number_list = ref_img_number_list + find_img_number_list(last_ref_img + 1, last_img, img_increment)
+    else:
+        img_number_list = find_img_number_list(first_img, last_img, img_increment)
     for img_number in img_number_list:
         tag = 'DateTimeOriginal'
         experiment_time, time = calc_experiment_and_real_time(build_type, config, tag, img_number)
