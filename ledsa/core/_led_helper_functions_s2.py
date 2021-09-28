@@ -83,3 +83,13 @@ def get_indices_of_ignored_leds(config):
     else:
         ignore_indices = np.array([])
     return ignore_indices
+
+def merge_led_arrays(led_arrays, merged_line_indices_groups=None): # TODO: put to merge line indices in config, maybe extra command -s2 -merge to control indices first
+    all_merged_led_arrays = []
+    merged_line_indices_groups = [[0,1,2,3,4,5,6]]
+    for merged_line_indices in merged_line_indices_groups:
+        merged_led_array = []
+        for line_index in merged_line_indices:
+            merged_led_array.extend(led_arrays[line_index])
+        all_merged_led_arrays.append(sorted(merged_led_array))
+    return all_merged_led_arrays
