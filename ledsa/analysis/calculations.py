@@ -16,7 +16,31 @@ def normalize_fitpar(fitpar, channel):
     fit_parameters.to_hdf(f".{sep}analysis{sep}channel{channel}{sep}all_parameters.h5", 'table')
 
 
-def calculate_average_fitpar_without_smoke(fitpar, channel, num_of_imgs=20):
+def average_all_fitpar(channel, n_summarize): # TODO: rename variables within function
+    pass
+    num_ref_imgs = 10 # TODO: remove hardcoding
+    fit_parameters = read_hdf(channel)
+    fit_parameters_grouped = fit_parameters.groupby(['line', 'led_id'])
+    avg_dataset_list = []
+    for name, dataset in fit_parameters_grouped:
+        head = dataset.iloc[:num_ref_imgs]
+        tail = dataset.iloc[num_ref_imgs:]
+        avg_dataset = tail.groupby(np.arange(len(tail))//n_summarize).mean()
+        avg_dataset["img_id"] = range(num_ref_imgs + 1, num_ref_imgs + len(avg_dataset) + 1)
+        avg_dataset["led_id"] = name[1]
+        avg_dataset.set_index(['img_id', 'led_id'], inplace=True)
+        combined_dataset = pd.concat([head, avg_dataset])
+        avg_dataset_list.append(combined_dataset)
+    all = pd.concat(avg_dataset_list)
+    all[["line", "sum_col_val"]] = all[["line", "sum_col_val"]].astype(int)
+    try:
+        all[["sum_col_val_cc"]] = all[["sum_col_val_cc"]].astype(int)
+    except:
+        pass
+    all.reset_index(inplace=True)
+    all.to_hdf(f".{sep}analysis{sep}channel{channel}{sep}all_parameters_avg.h5", 'table', append=True)
+
+def calculate_average_fitpar_without_smoke(fitpar, channel, num_of_imgs=20): # TODO: not relevant for calculation of extinction coefficients?
     fit_parameters = read_hdf(channel)
     idx = pd.IndexSlice
     fit_parameters = fit_parameters.loc[idx[1:num_of_imgs, :]]
@@ -28,13 +52,14 @@ def create_binary_data(channel):
     columns = _get_column_names(channel)
 
     fit_params = pd.DataFrame(columns=columns)
-
+    num_ref_imgs = 10 # TODO: Remove hardcoding and put in config
     # find time and fit parameter for every image
     first_img = int(conf['analyse_photo']['first_img'])
     last_img = int(conf['analyse_photo']['last_img'])
     max_id = int(conf['DEFAULT']['img_number_overflow'])
     number_of_images = (max_id + last_img - first_img) % max_id
     number_of_images //= int(conf['analyse_photo']['skip_imgs']) + 1
+    number_of_images += num_ref_imgs
     print('Loading fit parameters...')
     exception_counter = 0
     for image_id in range(1, number_of_images + 1):
@@ -52,7 +77,6 @@ def create_binary_data(channel):
         parameters = _append_coordinates(parameters)
         fit_params = fit_params.append(_param_array_to_dataframe(parameters, image_id, columns),
                                        ignore_index=True, sort=False)
-
     print(f'{number_of_images - exception_counter} of {number_of_images} loaded.')
     # fit_params.set_index(['img_id', 'led_id'], inplace=True)
     fit_params['img_id'] = fit_params['img_id'].astype(int)
@@ -139,9 +163,19 @@ def read_hdf(channel, path='.'):
         fit_parameters = pd.read_hdf(f"{path}{sep}analysis{sep}channel{channel}{sep}all_parameters.h5", 'table')
     except FileNotFoundError:
         create_binary_data(channel)
-        fit_parameters = pd.read_hdf(f"{path}{sep}analysis{sep}channel{channel}{sep}all_parameters.h5", 'table')
+    fit_parameters = pd.read_hdf(f"{path}{sep}analysis{sep}channel{channel}{sep}all_parameters.h5", 'table')
     fit_parameters.set_index(['img_id', 'led_id'], inplace=True)
     return fit_parameters
+
+def read_hdf_avg(channel, n_summarize = 2, path='.'):
+    try:
+        fit_parameters = pd.read_hdf(f"{path}{sep}analysis{sep}channel{channel}{sep}all_parameters_avg.h5", 'table')
+    except FileNotFoundError:
+        average_all_fitpar(channel, n_summarize)
+    fit_parameters = pd.read_hdf(f"{path}{sep}analysis{sep}channel{channel}{sep}all_parameters_avg.h5", 'table')
+    fit_parameters.set_index(['img_id', 'led_id'], inplace=True)
+    return fit_parameters
+
 
 def extend_hdf(channel, quantity, values, path='.'):
     file = f"{path}{sep}analysis{sep}channel{channel}{sep}all_parameters.h5"
@@ -169,3 +203,24 @@ def multiindex_series_to_nparray(multi_series: pd.Series) -> np.ndarray:
     for i in range(num_imgs):
         array[i] = multi_series.loc[i+1]
     return array
+
+
+def create_analysis_infos_avg(n_summarize):
+    n_skip_images = 10
+    image_infos = pd.read_csv('.{}analysis{}image_infos_analysis.csv'.format(sep, sep))
+    img_names = image_infos['Name'].tolist()
+    exp_time = image_infos['Experiment_Time[s]']
+    head_img_names = img_names[:n_skip_images]
+    head_exp_times = exp_time[:n_skip_images]
+    tail_img_names = img_names[n_skip_images:]
+    tail_exp_times = exp_time[n_skip_images:]
+    img_names_avg = ["/".join(tail_img_names[n:n + n_summarize]) for n in range(0, len(tail_img_names), n_summarize)]
+    exp_times_avg = tail_exp_times.groupby(np.arange(len(tail_exp_times)) // n_summarize).mean()
+    combined_exp_times = pd.concat([head_exp_times, exp_times_avg])
+    combined_exp_times.index = range(len(combined_exp_times))
+    combined_img_names = head_img_names + img_names_avg
+    ids = range(1, len(combined_img_names) + 1)
+    img_infos_analysis_avg = pd.DataFrame(
+        {"#ID": ids, "Name": combined_img_names, "Experiment_Time[s]": combined_exp_times})
+    img_infos_analysis_avg.reset_index()
+    img_infos_analysis_avg.to_csv('.{}analysis{}image_infos_analysis_avg.csv'.format(sep, sep))

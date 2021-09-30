@@ -3,13 +3,13 @@ import numpy as np
 import pandas as pd
 from multiprocessing import Pool
 from ledsa.analysis.Experiment import Experiment, Layers, Camera
-from ledsa.analysis.calculations import read_hdf, extend_hdf, multiindex_series_to_nparray
+from ledsa.analysis.calculations import read_hdf, read_hdf_avg, extend_hdf, multiindex_series_to_nparray, create_analysis_infos_avg
 
 
 class ExtinctionCoefficients(ABC):
     def __init__(self, experiment=Experiment(layers=Layers(10, 1.0, 3.35), camera=Camera(pos_x=4.4, pos_y=2, pos_z=2.3),
                                              led_array=3, channel=0),
-                 reference_property='sum_col_val', num_ref_imgs=10):
+                 reference_property='sum_col_val', num_ref_imgs=10, average_images=2,):
         self.coefficients_per_image_and_layer = []
         self.experiment = experiment
         self.reference_property = reference_property
@@ -19,6 +19,7 @@ class ExtinctionCoefficients(ABC):
         self.distances_per_led_and_layer = np.array([])
         self.ref_intensities = np.array([])
         self.cc_matrix = None
+        self.average_images = average_images
 
         self.type = None
 
@@ -56,7 +57,12 @@ class ExtinctionCoefficients(ABC):
             self.calc_and_set_ref_intensities()
 
     def load_img_data(self) -> None:
-        img_data = read_hdf(self.experiment.channel, path=self.experiment.path)
+        if self.average_images:
+            img_data = read_hdf_avg(self.experiment.channel, self.average_images, path=self.experiment.path)  # TODO: Remove averaging as default
+            create_analysis_infos_avg(self.average_images)
+        else:
+            img_data = read_hdf(self.experiment.channel, path=self.experiment.path)
+
         img_data_cropped = img_data[['line', self.reference_property]]
         self.calculated_img_data = img_data_cropped[img_data_cropped['line'] == self.experiment.led_array]
 

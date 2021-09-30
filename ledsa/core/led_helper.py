@@ -211,7 +211,7 @@ def match_leds_to_led_arrays(search_areas, config):
     edge_indices = get_indices_of_outer_leds(config)
     dists_led_arrays_search_areas = calc_dists_between_led_arrays_and_search_areas(edge_indices, search_areas)
     led_arrays = match_leds_to_arrays_with_min_dist(dists_led_arrays_search_areas, edge_indices, config, search_areas)
-    led_arrays = merge_led_arrays(led_arrays)
+    # led_arrays = merge_led_arrays(led_arrays) # TODO: reactivate
     return led_arrays
 
 
