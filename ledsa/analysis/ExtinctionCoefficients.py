@@ -9,7 +9,7 @@ from ledsa.analysis.calculations import read_hdf, read_hdf_avg, extend_hdf, mult
 class ExtinctionCoefficients(ABC):
     def __init__(self, experiment=Experiment(layers=Layers(10, 1.0, 3.35), camera=Camera(pos_x=4.4, pos_y=2, pos_z=2.3),
                                              led_array=3, channel=0),
-                 reference_property='sum_col_val', num_ref_imgs=10, average_images=2,):
+                 reference_property='sum_col_val', num_ref_imgs=10, average_images=False):
         self.coefficients_per_image_and_layer = []
         self.experiment = experiment
         self.reference_property = reference_property
@@ -57,12 +57,11 @@ class ExtinctionCoefficients(ABC):
             self.calc_and_set_ref_intensities()
 
     def load_img_data(self) -> None:
-        if self.average_images:
-            img_data = read_hdf_avg(self.experiment.channel, self.average_images, path=self.experiment.path)  # TODO: Remove averaging as default
-            create_analysis_infos_avg(self.average_images)
+        if self.average_images == True:
+            img_data = read_hdf_avg(self.experiment.channel, path=self.experiment.path)  # TODO: Remove averaging as default
+            create_analysis_infos_avg()
         else:
             img_data = read_hdf(self.experiment.channel, path=self.experiment.path)
-
         img_data_cropped = img_data[['line', self.reference_property]]
         self.calculated_img_data = img_data_cropped[img_data_cropped['line'] == self.experiment.led_array]
 

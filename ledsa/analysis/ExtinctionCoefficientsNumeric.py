@@ -7,8 +7,8 @@ from scipy.optimize import minimize
 class ExtinctionCoefficientsNumeric(ExtinctionCoefficients):
     def __init__(self, experiment=Experiment(layers=Layers(20, 1.0, 3.35), camera=Camera(pos_x=4.4, pos_y=2, pos_z=2.3),
                                              led_array=3, channel=0),
-                 reference_property='sum_col_val', num_ref_imgs=10):
-        super().__init__(experiment, reference_property, num_ref_imgs)
+                 reference_property='sum_col_val', num_ref_imgs=10, average_images=False):
+        super().__init__(experiment, reference_property, num_ref_imgs, average_images)
         self.bounds = [(0, 10) for _ in range(self.experiment.layers.amount)]
 
         self.type = 'numeric'

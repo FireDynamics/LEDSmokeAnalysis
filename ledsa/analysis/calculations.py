@@ -16,9 +16,7 @@ def normalize_fitpar(fitpar, channel):
     fit_parameters.to_hdf(f".{sep}analysis{sep}channel{channel}{sep}all_parameters.h5", 'table')
 
 
-def average_all_fitpar(channel, n_summarize): # TODO: rename variables within function
-    pass
-    num_ref_imgs = 10 # TODO: remove hardcoding
+def average_all_fitpar(channel, n_summarize=2, num_ref_imgs=10): # TODO: rename variables within function
     fit_parameters = read_hdf(channel)
     fit_parameters_grouped = fit_parameters.groupby(['line', 'led_id'])
     avg_dataset_list = []
@@ -167,11 +165,11 @@ def read_hdf(channel, path='.'):
     fit_parameters.set_index(['img_id', 'led_id'], inplace=True)
     return fit_parameters
 
-def read_hdf_avg(channel, n_summarize = 2, path='.'):
+def read_hdf_avg(channel, path='.'):
     try:
         fit_parameters = pd.read_hdf(f"{path}{sep}analysis{sep}channel{channel}{sep}all_parameters_avg.h5", 'table')
     except FileNotFoundError:
-        average_all_fitpar(channel, n_summarize)
+        average_all_fitpar(channel)
     fit_parameters = pd.read_hdf(f"{path}{sep}analysis{sep}channel{channel}{sep}all_parameters_avg.h5", 'table')
     fit_parameters.set_index(['img_id', 'led_id'], inplace=True)
     return fit_parameters
@@ -205,7 +203,8 @@ def multiindex_series_to_nparray(multi_series: pd.Series) -> np.ndarray:
     return array
 
 
-def create_analysis_infos_avg(n_summarize):
+def create_analysis_infos_avg():
+    n_summarize = 2
     n_skip_images = 10
     image_infos = pd.read_csv('.{}analysis{}image_infos_analysis.csv'.format(sep, sep))
     img_names = image_infos['Name'].tolist()
