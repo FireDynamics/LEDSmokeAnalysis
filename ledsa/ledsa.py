@@ -89,7 +89,10 @@ class LEDSA:
     def load_line_indices(self):
         """loads the line indices from the csv file"""
         self.line_indices = []
-        for i in range(int(self.config['DEFAULT']['num_of_arrays'])):
+        num_of_arrays = int(self.config['DEFAULT']['num_of_arrays'])
+        num_of_arrays = 1 # TODO: Remove hardcoding for merging
+        print("WARNING: ARRAY MERGE IS ACTIVE!!!")
+        for i in range(num_of_arrays):
             filename = 'analysis{}line_indices_{:03}.csv'.format(sep, i)
             self.line_indices.append(led.load_file(filename, dtype='int'))
 

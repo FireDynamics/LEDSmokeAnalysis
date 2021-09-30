@@ -211,7 +211,7 @@ def match_leds_to_led_arrays(search_areas, config):
     edge_indices = get_indices_of_outer_leds(config)
     dists_led_arrays_search_areas = calc_dists_between_led_arrays_and_search_areas(edge_indices, search_areas)
     led_arrays = match_leds_to_arrays_with_min_dist(dists_led_arrays_search_areas, edge_indices, config, search_areas)
-    # led_arrays = merge_led_arrays(led_arrays) # TODO: reactivate
+    led_arrays = merge_led_arrays(led_arrays) # TODO: reactivate
     return led_arrays
 
 
@@ -249,8 +249,10 @@ def generate_analysis_data(img_filename, channel, search_areas, line_indices, co
         analysis_res = generate_led_analysis_data(conf, channel, data, debug, debug_led, img_filename, 0, search_areas,
                                                   window_radius, fit_leds)
         return analysis_res
-
-    for led_array_idx in range(int(conf['num_of_arrays'])):
+    num_of_arrays = int(conf['num_of_arrays'])
+    num_of_arrays = 1  # TODO: Remove hardcoding for merging
+    print("WARNING: ARRAY MERGE IS ACTIVE!!!")
+    for led_array_idx in range(num_of_arrays):
         print('processing LED array ', led_array_idx, '...')
         for iled in line_indices[led_array_idx]:
             if iled % (int(conf['skip_leds']) + 1) == 0:
