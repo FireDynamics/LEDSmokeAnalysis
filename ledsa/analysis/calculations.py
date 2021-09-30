@@ -55,7 +55,7 @@ def create_binary_data(channel):
     first_img = int(conf['analyse_photo']['first_img'])
     last_img = int(conf['analyse_photo']['last_img'])
     max_id = int(conf['DEFAULT']['img_number_overflow'])
-    number_of_images = (max_id + last_img - first_img) % max_id
+    number_of_images = (max_id + last_img - first_img - num_ref_imgs) % max_id
     number_of_images //= int(conf['analyse_photo']['skip_imgs']) + 1
     number_of_images += num_ref_imgs
     print('Loading fit parameters...')
