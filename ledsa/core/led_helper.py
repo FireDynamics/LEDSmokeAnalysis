@@ -254,9 +254,8 @@ def generate_analysis_data(img_filename, channel, search_areas, line_indices, co
         analysis_res = generate_led_analysis_data(conf, channel, data, debug, debug_led, img_filename, 0, search_areas,
                                                   window_radius, fit_leds)
         return analysis_res
-    num_of_arrays = int(conf['num_of_arrays'])
-    num_of_arrays = 1  # TODO: Remove hardcoding for merging
-    print("WARNING: ARRAY MERGE IS ACTIVE!!!")
+    # num_of_arrays = int(conf['num_of_arrays']) # TODO: Remove from config or set as control value
+    num_of_arrays = len(line_indices)
     for led_array_idx in range(num_of_arrays):
         print('processing LED array ', led_array_idx, '...')
         for iled in line_indices[led_array_idx]:
