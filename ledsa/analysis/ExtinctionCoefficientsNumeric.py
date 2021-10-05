@@ -7,9 +7,11 @@ from scipy.optimize import minimize
 class ExtinctionCoefficientsNumeric(ExtinctionCoefficients):
     def __init__(self, experiment=Experiment(layers=Layers(20, 1.0, 3.35), camera=Camera(pos_x=4.4, pos_y=2, pos_z=2.3),
                                              led_array=3, channel=0),
-                 reference_property='sum_col_val', num_ref_imgs=10, average_images=False):
+                 reference_property='sum_col_val', num_ref_imgs=10, average_images=False, weighting_curvature=1e-6, weighting_preference=-6e-3):
         super().__init__(experiment, reference_property, num_ref_imgs, average_images)
         self.bounds = [(0, 10) for _ in range(self.experiment.layers.amount)]
+        self.weighting_preference = weighting_preference
+        self.weighting_curvature = weighting_curvature
 
         self.type = 'numeric'
 
@@ -37,6 +39,6 @@ class ExtinctionCoefficientsNumeric(ExtinctionCoefficients):
     def cost_function(self, kappas: np.ndarray, target: np.ndarray) -> float:
         intensities = self.calc_intensities(kappas)
         rmse = np.sqrt(np.sum((intensities - target) ** 2)) / len(intensities)
-        curvature = np.sum(np.abs(kappas[0:-2] - 2 * kappas[1:-1] + kappas[2:])) * len(intensities) * 2 * 1e-6
-        low_values = - np.sum(kappas) / len(kappas) * 6e-3
-        return rmse + curvature + low_values
+        curvature = np.sum(np.abs(kappas[0:-2] - 2 * kappas[1:-1] + kappas[2:])) * len(intensities) * 2 * self.weighting_curvature # TODO: Factor 2 in weighting factor?
+        preference = np.sum(kappas) / len(kappas) * self.weighting_preference
+        return rmse + curvature + preference
