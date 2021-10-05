@@ -58,7 +58,7 @@ class ExtinctionCoefficients(ABC):
 
     def load_img_data(self) -> None:
         if self.average_images == True:
-            img_data = read_hdf_avg(self.experiment.channel, path=self.experiment.path)  # TODO: Remove averaging as default
+            img_data = read_hdf_avg(self.experiment.channel, path=self.experiment.path)
             create_analysis_infos_avg()
         else:
             img_data = read_hdf(self.experiment.channel, path=self.experiment.path)

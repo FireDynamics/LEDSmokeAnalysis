@@ -55,7 +55,7 @@ class LED:
 
 
 class Experiment:
-    def __init__(self, layers: Layers, led_array: int, camera: Camera, path=Path('.'), channel=0):
+    def __init__(self, layers: Layers, led_array: int, camera: Camera, path=Path('.'), channel=0, merge_led_arrays=False):
         self.layers = layers
         self.led_array = led_array
         self.camera = camera
@@ -63,6 +63,7 @@ class Experiment:
         self.led_number = 0
         self.path = path
         self.channel = channel
+        self.merge_led_arrays = merge_led_arrays
 
         try:
             self.set_leds()
@@ -136,7 +137,11 @@ class Experiment:
         return
 
     def get_led_ids(self) -> np.ndarray:
-        line_indices = np.loadtxt(self.path / 'analysis' / f'line_indices_{self.led_array:03d}.csv', dtype=int)
+        if self.merge_led_arrays == True:
+            file_name_extension = '_merge'
+        else:
+            file_name_extension = ''
+        line_indices = np.loadtxt(self.path / 'analysis' / f'line_indices_{self.led_array:03d}{file_name_extension}.csv', dtype=int)
         return line_indices
 
     def get_led_positions(self, ids: np.ndarray) -> List[np.ndarray]:

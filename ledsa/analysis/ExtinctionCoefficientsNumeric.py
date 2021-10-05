@@ -7,11 +7,12 @@ from scipy.optimize import minimize
 class ExtinctionCoefficientsNumeric(ExtinctionCoefficients):
     def __init__(self, experiment=Experiment(layers=Layers(20, 1.0, 3.35), camera=Camera(pos_x=4.4, pos_y=2, pos_z=2.3),
                                              led_array=3, channel=0),
-                 reference_property='sum_col_val', num_ref_imgs=10, average_images=False, weighting_curvature=1e-6, weighting_preference=-6e-3):
+                 reference_property='sum_col_val', num_ref_imgs=10, average_images=False, weighting_curvature=1e-6, weighting_preference=-6e-3, num_iterations=200):
         super().__init__(experiment, reference_property, num_ref_imgs, average_images)
         self.bounds = [(0, 10) for _ in range(self.experiment.layers.amount)]
         self.weighting_preference = weighting_preference
         self.weighting_curvature = weighting_curvature
+        self.num_iterations = num_iterations
 
         self.type = 'numeric'
 
@@ -22,7 +23,7 @@ class ExtinctionCoefficientsNumeric(ExtinctionCoefficients):
             kappa0 = self.coefficients_per_image_and_layer[-1]
         fit = minimize(self.cost_function, kappa0, args=rel_intensities,
                        method='TNC', bounds=tuple(self.bounds),
-                       options={'maxiter': 200, 'gtol': 1e-5, 'disp': True})
+                       options={'maxiter': self.num_iterations, 'gtol': 1e-5, 'disp': True})
         kappas = np.flip(fit.x)
         return kappas
 
