@@ -11,7 +11,7 @@ class ConfigData(cp.ConfigParser):
     def __init__(self, load_config_file=True, img_directory='.', window_radius=10, threshold_factor=0.25,
                  num_of_arrays=None, multicore_processing=False, num_of_cores=1, reference_img=None, date=None,
                  start_time=None, time_diff_to_image_time=None, time_img=None, img_name_string=None, first_img=None,
-                 last_img=None, first_analyse_img=None, last_analyse_img=None, skip_imgs=0, skip_leds=0):
+                 last_img=None, first_analyse_img=None, last_analyse_img=None, skip_imgs=0, skip_leds=0, merge_led_arrays=None):
         cp.ConfigParser.__init__(self, allow_no_value=True)
         if img_directory[-1] != path.sep:
             img_directory += path.sep
@@ -46,6 +46,7 @@ class ConfigData(cp.ConfigParser):
             self.set('DEFAULT', '# String representing the naming convention of the image files')
             self['DEFAULT']['   img_name_string'] = str(img_name_string)
             self['DEFAULT']['   img_number_overflow'] = None
+            self['DEFAULT']['   merge_led_arrays'] = str(merge_led_arrays)
 
             self.set('DEFAULT', '  ')
             self.set('DEFAULT', '# First and last image number of the experiment')
@@ -91,6 +92,14 @@ class ConfigData(cp.ConfigParser):
     def get2dnparray(self, section, option, num_col=2, dtype=int):
         if self[section][option] == 'None':
             return None
+        if num_col == 'var':
+            indices_array = [i for i in self[section][option].split('\n')]
+            indices_array = [i for i in indices_array if i] # Remove empty strings
+            indices = []
+            for i in indices_array:
+                indices.append([dtype(j) for j in i.split()])
+            return indices
+
         indices_tmp = [dtype(i) for i in self[section][option].split()]
         indices = np.zeros((len(indices_tmp) // num_col, num_col), dtype=dtype)
         for i in range(len(indices_tmp) // num_col):
@@ -108,6 +117,7 @@ class ConfigData(cp.ConfigParser):
             exit(1)
         else:
             return date_time
+
 
     def in_ref_img(self):
         self['find_search_areas']['reference_img'] = input('Please give the name of the reference image, from where the'

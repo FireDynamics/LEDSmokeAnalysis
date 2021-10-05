@@ -85,15 +85,23 @@ class LEDSA:
         self.line_indices = led.match_leds_to_led_arrays(self.search_areas, self.config)
         led.generate_line_indices_files(self.line_indices)
         led.generate_labeled_led_arrays_plot(self.line_indices, self.search_areas)
+        self.line_indices = led.merge_led_arrays(self.line_indices, self.config)
+        led.generate_line_indices_files(self.line_indices, filename_extension='_merge')
+        led.generate_labeled_led_arrays_plot(self.line_indices, self.search_areas, filename_extension='_merge')
+
 
     def load_line_indices(self):
         """loads the line indices from the csv file"""
+        if self.config['DEFAULT']['merge_led_arrays'] != 'None':
+            num_of_arrays = len(self.config.get2dnparray('DEFAULT', 'merge_led_arrays','var'))
+            file_extension = '_merge'
+            print("WARNING: ARRAY MERGE IS ACTIVE!!!")
+        else:
+            num_of_arrays = int(self.config['DEFAULT']['num_of_arrays'])
+            file_extension = ''
         self.line_indices = []
-        num_of_arrays = int(self.config['DEFAULT']['num_of_arrays'])
-        num_of_arrays = 1 # TODO: Remove hardcoding for merging
-        print("WARNING: ARRAY MERGE IS ACTIVE!!!")
         for i in range(num_of_arrays):
-            filename = 'analysis{}line_indices_{:03}.csv'.format(sep, i)
+            filename = 'analysis{}line_indices_{:03}{}.csv'.format(sep, i, file_extension)
             self.line_indices.append(led.load_file(filename, dtype='int'))
 
     # """

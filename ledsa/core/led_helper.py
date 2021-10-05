@@ -211,27 +211,30 @@ def match_leds_to_led_arrays(search_areas, config):
     edge_indices = get_indices_of_outer_leds(config)
     dists_led_arrays_search_areas = calc_dists_between_led_arrays_and_search_areas(edge_indices, search_areas)
     led_arrays = match_leds_to_arrays_with_min_dist(dists_led_arrays_search_areas, edge_indices, config, search_areas)
-    led_arrays = merge_led_arrays(led_arrays) # TODO: reactivate
     return led_arrays
 
+def merge_led_arrays(led_arrays, config):
+    if config['DEFAULT']['merge_led_arrays'] != 'None':
+        led_arrays = merge_indices_of_led_arrays(led_arrays, config)
+    return led_arrays
 
-def generate_line_indices_files(line_indices):
+def generate_line_indices_files(line_indices, filename_extension=''):
     for i in range(len(line_indices)):
-        out_file = open('analysis{}line_indices_{:03}.csv'.format(sep, i), 'w')
+        out_file = open('analysis{}line_indices_{:03}{}.csv'.format(sep, i, filename_extension), 'w')
         for iled in line_indices[i]:
             out_file.write('{}\n'.format(iled))
         out_file.close()
 
 
-def generate_labeled_led_arrays_plot(line_indices, search_areas):
+def generate_labeled_led_arrays_plot(line_indices, search_areas, filename_extension=''):
     """plot the labeled LEDs"""
     for i in range(len(line_indices)):
         plt.scatter(search_areas[line_indices[i], 2],
                     search_areas[line_indices[i], 1],
                     s=0.1, label='led strip {}'.format(i))
-
     plt.legend()
-    plt.savefig('plots{}led_arrays.pdf'.format(sep))
+    plt.savefig('plots{0}led_arrays{1}.pdf'.format(sep, filename_extension))
+    plt.close()
 
 
 # """
