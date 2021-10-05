@@ -214,9 +214,11 @@ def match_leds_to_led_arrays(search_areas, config):
     return led_arrays
 
 def merge_led_arrays(led_arrays, config):
+    merge = False
     if config['DEFAULT']['merge_led_arrays'] != 'None':
         led_arrays = merge_indices_of_led_arrays(led_arrays, config)
-    return led_arrays
+        merge = True
+    return led_arrays, merge
 
 def generate_line_indices_files(line_indices, filename_extension=''):
     for i in range(len(line_indices)):

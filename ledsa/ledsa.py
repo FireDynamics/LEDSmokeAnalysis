@@ -85,9 +85,10 @@ class LEDSA:
         self.line_indices = led.match_leds_to_led_arrays(self.search_areas, self.config)
         led.generate_line_indices_files(self.line_indices)
         led.generate_labeled_led_arrays_plot(self.line_indices, self.search_areas)
-        self.line_indices = led.merge_led_arrays(self.line_indices, self.config)
-        led.generate_line_indices_files(self.line_indices, filename_extension='_merge')
-        led.generate_labeled_led_arrays_plot(self.line_indices, self.search_areas, filename_extension='_merge')
+        self.line_indices, merge = led.merge_led_arrays(self.line_indices, self.config)
+        if merge == True:
+            led.generate_labeled_led_arrays_plot(self.line_indices, self.search_areas, filename_extension='_merge')
+            led.generate_line_indices_files(self.line_indices, filename_extension='_merge')
 
 
     def load_line_indices(self):
