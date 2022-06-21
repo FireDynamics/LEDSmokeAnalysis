@@ -7,7 +7,7 @@ except ImportError:
     import Image
 import numpy as np
 from scipy.stats import norm
-from ledsa.core.ledsa_conf import ConfigData
+from ledsa.core.ConfigData import ConfigData
 from subprocess import Popen, PIPE
 import piexif
 
@@ -21,6 +21,10 @@ class LedsaATestLibrary:
 
     @keyword
     def create_test_image(self, amount=1):
+        """ Creates a test image with black and gray pixels representing 3 leds and sets the exif data needed
+        :param amount: number of test images created
+        :return: None
+        """
         img_array = create_img_array()
         for i in range(amount):
             img = Image.fromarray(img_array, 'RGB')
@@ -55,6 +59,39 @@ class LedsaATestLibrary:
         p = Popen(['python', '-m', 'ledsa', arg], stdin=PIPE, stdout=PIPE, stderr=PIPE)
         out = wait_for_process_to_finish(p, inp)
         return out
+
+    @keyword
+    def execute_ledsa_analysis(self, arg=None, inp=None):
+        p = Popen(['python', '-m', 'ledsa.analysis', arg], stdin=PIPE, stdout=PIPE, stderr=PIPE)
+        out = wait_for_process_to_finish(p, inp)
+        return out
+
+    @keyword
+    def create_test_data(self):
+        from ledsa.data_extraction.step_3_functions import _save_results_in_file
+        from ledsa.core.LEDAnalysisData import LEDAnalysisData
+        time = 0
+        channel = 0
+        img_data = []
+        # id,line,sum_col_value,average_col_value,max_col_value
+        for led_id in [1,2,3]:
+            led = LEDAnalysisData(led_id, 0, False)
+            led.mean_color_value = 150
+            led.sum_color_value = 2000
+            led.max_color_value = 200
+            img_data.append(led)
+        img_name = "test.png"
+        img_infos = [[1,1,1,time],
+                     [1,1,1,time],
+                     [1,1,1,time]]
+        root = "."
+
+        for img_id in [1,2,3]:
+            _save_results_in_file(channel, img_data, img_name, img_id, img_infos, root)
+            time += 1
+
+
+
 
 
 def create_img_array():
