@@ -1,7 +1,5 @@
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-import numpy as np
-from ..core.led_helper import load_file
+from ledsa.data_extraction.led_helper import load_file
 from os import sep
 import pandas as pd
 

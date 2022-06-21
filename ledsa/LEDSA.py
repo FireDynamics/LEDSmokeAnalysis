@@ -1,11 +1,15 @@
 #!/usr/bin/env python
 
 import os
+
+import ledsa.data_extraction.step_1_functions
+import ledsa.data_extraction.step_2_functions
+import ledsa.data_extraction.step_3_functions
 import numpy as np
 import matplotlib.pyplot as plt
 
-from .core import led_helper as led
-from .core import ledsa_conf as lc
+from ledsa.data_extraction import led_helper as led
+from .core import ConfigData as lc
 
 sep = os.path.sep
 
@@ -49,8 +53,8 @@ class LEDSA:
         ref_img_name = "{}{}".format(config['img_directory'], img_filename)
         data = led.read_file(ref_img_name, channel=0)
 
-        self.search_areas = led.find_search_areas(data, skip=1, window_radius=int(config['window_radius']),
-                                                  threshold_factor=float(config['threshold_factor']))
+        self.search_areas = ledsa.data_extraction.step_1_functions.find_search_areas(data, skip=1, window_radius=int(config['window_radius']),
+                                                                                     threshold_factor=float(config['threshold_factor']))
 
         out_filename = 'analysis{}led_search_areas.csv'.format(sep)
         np.savetxt(out_filename, self.search_areas, delimiter=',',
@@ -67,7 +71,7 @@ class LEDSA:
 
         plt.figure(dpi=1200)
         ax = plt.gca()
-        led.add_search_areas_to_plot(self.search_areas, ax, config)
+        ledsa.data_extraction.step_1_functions.add_search_areas_to_plot(self.search_areas, ax, config)
         plt.imshow(data, cmap='Greys')
         plt.colorbar()
         plt.savefig('plots{}led_search_areas.plot.pdf'.format(sep))
@@ -82,9 +86,9 @@ class LEDSA:
         """analyses, which LED belongs to which LED line array"""
         if self.search_areas is None:
             self.load_search_areas()
-        self.line_indices = led.match_leds_to_led_arrays(self.search_areas, self.config)
-        led.generate_line_indices_files(self.line_indices)
-        led.generate_labeled_led_arrays_plot(self.line_indices, self.search_areas)
+        self.line_indices = ledsa.data_extraction.step_2_functions.match_leds_to_led_arrays(self.search_areas, self.config)
+        ledsa.data_extraction.step_2_functions.generate_line_indices_files(self.line_indices)
+        ledsa.data_extraction.step_2_functions.generate_labeled_led_arrays_plot(self.line_indices, self.search_areas)
 
     def load_line_indices(self):
         """loads the line indices from the csv file"""
@@ -125,17 +129,17 @@ class LEDSA:
         """workaround for pool.map"""
         img_id = led.get_img_id(img_filename)
         for channel in self.channels:
-            img_data = led.generate_analysis_data(img_filename, channel, self.search_areas, self.line_indices,
-                                                  self.config['analyse_photo'], self.fit_leds)
-            led.create_fit_result_file(img_data, img_id, channel)
+            img_data = ledsa.data_extraction.step_3_functions.generate_analysis_data(img_filename, channel, self.search_areas, self.line_indices,
+                                                                                     self.config['analyse_photo'], self.fit_leds)
+            ledsa.data_extraction.step_3_functions.create_fit_result_file(img_data, img_id, channel)
         print('Image {} processed'.format(img_id))
 
     def setup_step3(self):
         led.generate_image_infos_csv(self.config, build_analysis_infos=True)
-        led.create_imgs_to_process_file()
+        ledsa.data_extraction.step_3_functions.create_imgs_to_process_file()
 
     def setup_restart(self):
         if len(self.channels) > 1:
             print('Restart of a run currently only supports one channel. \nExiting...')
             exit(1)
-        led.find_not_analysed_imgs(self.channels[0])
+        ledsa.data_extraction.step_3_functions.find_and_save_not_analysed_imgs(self.channels[0])

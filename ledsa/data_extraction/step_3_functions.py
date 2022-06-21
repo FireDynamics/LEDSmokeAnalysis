@@ -1,18 +1,74 @@
 import os
 import re
+from typing import List
 
 import numpy as np
 import scipy.optimize
+from ledsa.core.ConfigData import ConfigData
 from ledsa.core.model import target_function
 from ledsa.core.LEDAnalysisData import LEDAnalysisData
 
 import time
 
+from ledsa.data_extraction.led_helper import read_file, load_file, get_img_name
+
 sep = os.path.sep
 
 
-def generate_led_analysis_data(conf, channel, data, debug, iled, img_filename, led_array_idx, search_areas,
-                               window_radius, fit_leds=True):
+def generate_analysis_data(img_filename: str, channel: int, search_areas: np.ndarray, line_indices: List[int],
+                           conf: ConfigData, fit_leds=True, debug=False, debug_led=None) -> np.ndarray:
+    data = read_file('{}{}'.format(conf['img_directory'], img_filename), channel=channel)
+    window_radius = int(conf['window_radius'])
+    img_analysis_data = []
+
+    if debug:
+        analysis_res = _generate_led_analysis_data(conf, channel, data, debug, debug_led, img_filename, 0, search_areas,
+                                                   window_radius, fit_leds)
+        return analysis_res
+
+    for led_array_idx in range(int(conf['num_of_arrays'])):
+        print('processing LED array ', led_array_idx, '...')
+        for iled in line_indices[led_array_idx]:
+            if iled % (int(conf['skip_leds']) + 1) == 0:
+                led_analysis_data = _generate_led_analysis_data(conf, channel, data, debug, iled, img_filename,
+                                                                led_array_idx, search_areas, window_radius, fit_leds)
+                img_analysis_data.append(led_analysis_data)
+    return img_analysis_data
+
+
+def create_fit_result_file(img_data: np.ndarray, img_id: int, channel: int) -> None:
+    img_infos = load_file('analysis{}image_infos_analysis.csv'.format(sep), dtype='str', delim=',', silent=True,
+                          atleast_2d=True)
+    root = os.getcwd()
+    root = root.split(sep)
+    img_filename = get_img_name(img_id)
+
+    _save_results_in_file(channel, img_data, img_filename, img_id, img_infos, root)
+
+
+def create_imgs_to_process_file() -> None:
+    image_infos = load_file('.{}analysis{}image_infos_analysis.csv'.format(sep, sep), dtype='str', delim=',',
+                            atleast_2d=True)
+    img_filenames = image_infos[:, 1]
+    out_file = open('images_to_process.csv', 'w')
+    for img in img_filenames:
+        out_file.write('{}\n'.format(img))
+    out_file.close()
+
+
+def find_and_save_not_analysed_imgs(channel: int) -> None:
+    image_infos = load_file('.{}analysis{}image_infos_analysis.csv'.format(sep, sep), dtype='str', delim=',',
+                            atleast_2d=True)
+    all_imgs = image_infos[:, 1]
+    processed_img_ids = _find_analysed_img_ids(channel)
+    processed_imgs = np.frompyfunc(get_img_name, 1, 1)(processed_img_ids)
+    remaining_imgs = set(all_imgs)-set(processed_imgs)
+
+    _save_list_of_remaining_imgs_needed_to_be_processed(remaining_imgs)
+
+
+def _generate_led_analysis_data(conf, channel, data, debug, iled, img_filename, led_array_idx, search_areas,
+                                window_radius, fit_leds=True):
     led_data = LEDAnalysisData(iled, led_array_idx, fit_leds)
     center_search_area_x = int(search_areas[iled, 1])
     center_search_area_y = int(search_areas[iled, 2])
@@ -23,7 +79,7 @@ def generate_led_analysis_data(conf, channel, data, debug, iled, img_filename, l
 
     if fit_leds:
         start_time = time.process_time()
-        led_data.fit_results, mesh = fit_model_to_led(data[search_area])
+        led_data.fit_results, mesh = _fit_model_to_led(data[search_area])
         end_time = time.process_time()
         led_data.fit_time = end_time - start_time
         led_data.led_center_x = led_data.fit_results.x[0] + center_search_area_x - window_radius
@@ -31,8 +87,8 @@ def generate_led_analysis_data(conf, channel, data, debug, iled, img_filename, l
         if debug:
             return led_data.fit_results.x
         if not led_data.fit_results.success:  # A > 255 or A < 0:
-            log_warnings(img_filename, channel, led_data, center_search_area_x, center_search_area_y,
-                         data[search_area].shape, window_radius, conf)
+            _log_warnings(img_filename, channel, led_data, center_search_area_x, center_search_area_y,
+                          data[search_area].shape, window_radius, conf)
 
     led_data.mean_color_value = np.mean(data[search_area])
     led_data.sum_color_value = np.sum(data[search_area])
@@ -41,16 +97,16 @@ def generate_led_analysis_data(conf, channel, data, debug, iled, img_filename, l
     return led_data
 
 
-def save_results_in_file(channel, img_data, img_filename, img_id, img_infos, root):
-    out_file = open('analysis{}channel{}{}{}_led_positions.csv'.format(sep, channel, sep, img_id), 'w')
-    header = create_header(channel, img_id, img_filename, img_infos, root, img_data[0].fit_leds)
+def _save_results_in_file(channel, img_data, img_filename, img_id, img_infos, root):
+    out_file = open(f'analysis{sep}channel{channel}{sep}{img_id}_led_positions.csv', 'w')
+    header = _create_header(channel, img_id, img_filename, img_infos, root, img_data[0].fit_leds)
     out_file.write(header)
     for led_data in img_data:
         out_file.write(str(led_data))
     out_file.close()
 
 
-def find_analysed_img_ids(channel):
+def _find_analysed_img_ids(channel):
     processed_imgs = []
     directory_content = os.listdir('.{}analysis{}channel{}'.format(sep, sep, channel))
     for file_name in directory_content:
@@ -60,14 +116,14 @@ def find_analysed_img_ids(channel):
     return processed_imgs
 
 
-def save_list_of_remaining_imgs_needed_to_be_processed(remaining_imgs):
+def _save_list_of_remaining_imgs_needed_to_be_processed(remaining_imgs):
     out_file = open('images_to_process.csv', 'w')
     for i in list(remaining_imgs):
         out_file.write('{}\n'.format(i))
     out_file.close()
 
 
-def fit_model_to_led(search_area):
+def _fit_model_to_led(search_area):
     nx = search_area.shape[0]
     ny = search_area.shape[1]
 
@@ -84,7 +140,7 @@ def fit_model_to_led(search_area):
     return res, mesh
 
 
-def log_warnings(img_filename, channel, led_data, cx, cy, size_of_search_area, window_radius, conf):
+def _log_warnings(img_filename, channel, led_data, cx, cy, size_of_search_area, window_radius, conf):
     res = ' '.join(np.array_str(led_data.fit_results.x).split()).replace('[ ', '[').replace(' ]', ']').replace(' ', ',')
     img_file_path = conf['img_directory'] + img_filename
 
@@ -100,7 +156,7 @@ def log_warnings(img_filename, channel, led_data, cx, cy, size_of_search_area, w
     logfile.close()
 
 
-def create_header(channel, img_id, img_filename, img_infos, root, fit_leds):
+def _create_header(channel, img_id, img_filename, img_infos, root, fit_leds):
     out_str = f'# image root = {root[-1]}, photo file name = {img_filename}, '
     out_str += f"channel = {channel}, "
     out_str += f"time[s] = {img_infos[int(img_id) - 1][3]}\n"

@@ -1,2 +1,2 @@
-from .ledsa import LEDSA
-from .core import ledsa_conf
+from .LEDSA import LEDSA
+from .core import ConfigData

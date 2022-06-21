@@ -3,8 +3,8 @@
 import argparse
 import sys
 
-from .ledsa import LEDSA
-from .core import ledsa_conf as lc
+from .LEDSA import LEDSA
+from .core import ConfigData as lc
 
 
 parser = argparse.ArgumentParser(description=
@@ -34,11 +34,8 @@ parser.add_argument('--coordinates', '-coord', action='store_true',
                     help='Calculates the 3D coordinates from the coordinates given in the configfile and the '
                          'reference image.')
 parser.add_argument('--ext_coeffs', action='store_true')
-# color_correction needs to be optional, all channels need to be analysed before
-# input file mit default werten
-# extra parser in ledsa.analysis
-# parser.add_argument('--atest', '-atest', action='store_true',
-#                     help='Runs the acceptance test suit')
+parser.add_argument('--atest', '-atest', action='store_true',
+                    help='Runs the acceptance test suit')
 args = parser.parse_args()
 
 print('ledsa runs with the following arguments:')
@@ -98,9 +95,9 @@ if args.re:
     ledsa.process_image_data()
 
 if args.coordinates:
-    from ledsa.ledpositions.coordinates import calculate_coordinates
+    from ledsa.data_extraction.ledpositions import calculate_coordinates
     calculate_coordinates()
 
-# if args.atest:
-#     # noinspection PyUnresolvedReferences
-#     import tests.AcceptanceTests.__main__
+if args.atest:
+    # noinspection PyUnresolvedReferences
+    import tests.AcceptanceTests.__main__

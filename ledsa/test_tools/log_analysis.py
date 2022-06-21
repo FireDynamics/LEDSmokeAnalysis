@@ -1,11 +1,10 @@
 # tools for analysing problems with the LED fitting
-import ledsa.core.model
+import ledsa.data_extraction.step_3_functions
 import numpy as np
 import matplotlib.pyplot as plt
 import importlib
 from PIL import Image
-import ledsa.core.led_helper as led
-from ledsa.core.model import led_model
+import ledsa.data_extraction.led_helper as led
 from ..ledsa import LEDSA
 
 
@@ -78,7 +77,7 @@ class FitAnalyser:
         ledsa = LEDSA()
         ledsa.load_line_indices()
         ledsa.load_search_areas()
-        fit_res = led.generate_analysis_data(self.filename[-12:], ledsa.search_areas, ledsa.line_indices, ledsa.config['analyse_photo'], True, self.id)
+        fit_res = ledsa.data_extraction.step_3_functions.generate_analysis_data(self.filename[-12:], ledsa.search_areas, ledsa.line_indices, ledsa.config['analyse_photo'], True, self.id)
         self.fit = fit_res.x
         self.fit_success = fit_res.success
         self.fit_fun = fit_res.fun

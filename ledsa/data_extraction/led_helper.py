@@ -1,8 +1,7 @@
-from ledsa.core._led_helper_functions import *
-from ledsa.core._led_helper_functions_s1 import *
-from ledsa.core._led_helper_functions_s2 import *
-from ledsa.core._led_helper_functions_s3 import *
-from ledsa.core.ledsa_conf import ConfigData
+from datetime import timedelta, datetime
+
+import exifread
+from ledsa.core.ConfigData import ConfigData
 
 import os
 import numpy as np
@@ -172,130 +171,87 @@ def generate_image_infos_csv(config: ConfigData, build_experiment_infos=False, b
         if config['DEFAULT']['start_time'] == 'None':
             config.get_start_time()
             config.save()
-        img_data = build_img_data_string(build_type, config)
+        img_data = _build_img_data_string(build_type, config)
 
         if build_type == 'DEFAULT':
-            save_experiment_infos(img_data)
+            _save_experiment_infos(img_data)
         if build_type == 'analyse_photo':
-            save_analysis_infos(img_data)
+            _save_analysis_infos(img_data)
 
 
-# """
-# ------------------------------------
-# Outsourced logic - Step 1
-# ------------------------------------
-# """
+def _calc_experiment_and_real_time(build_type, config, tag, img_number):
+    exif = _get_exif(config['DEFAULT']['img_directory'] +
+                     config['DEFAULT']['img_name_string'].format(int(img_number)), tag)
+    if not exif:
+        raise ValueError("No EXIF metadata found")
 
-def find_search_areas(image: np.ndarray, window_radius=10, skip=10, threshold_factor=0.25) -> np.ndarray:
-    print('finding led search areas')
-    led_mask = generate_mask_of_led_areas(image, threshold_factor)
-    search_areas = find_pos_of_max_col_val_per_area(image, led_mask, skip, window_radius)
-    print("\nfound {} leds".format(search_areas.shape[0]))
-    return search_areas
+    if f"EXIF {tag}" not in exif:
+        raise ValueError("No EXIF time found")
+    date, time_meta = exif[f"EXIF {tag}"].values.split(' ')
+    date_time_img = _get_datetime_from_str(date, time_meta)
 
-
-def add_search_areas_to_plot(search_areas: np.ndarray, ax: plt.axes, config: ConfigData) -> None:
-    for i in range(search_areas.shape[0]):
-        ax.add_patch(plt.Circle((search_areas[i, 2], search_areas[i, 1]),
-                                radius=int(config['window_radius']),
-                                color='Red', fill=False, alpha=0.25,
-                                linewidth=0.1))
-        ax.text(search_areas[i, 2] + int(config['window_radius']),
-                search_areas[i, 1] + int(config['window_radius']) // 2,
-                '{}'.format(search_areas[i, 0]), fontsize=1)
+    experiment_time = date_time_img - config.get_datetime()
+    experiment_time = experiment_time.total_seconds()
+    time_diff = config[build_type]['exif_time_infront_real_time'].split('.')
+    if len(time_diff) == 1:
+        time_diff.append('0')
+    time = date_time_img - timedelta(seconds=int(time_diff[0]), milliseconds=int(time_diff[1]))
+    return experiment_time, time
 
 
-# """
-# ------------------------------------
-# Outsourced logic - Step 2
-# ------------------------------------
-# """
-
-def match_leds_to_led_arrays(search_areas: np.ndarray, config: ConfigData) -> np.ndarray:
-    edge_indices = get_indices_of_outer_leds(config)
-    dists_led_arrays_search_areas = calc_dists_between_led_arrays_and_search_areas(edge_indices, search_areas)
-    led_arrays = match_leds_to_arrays_with_min_dist(dists_led_arrays_search_areas, edge_indices, config, search_areas)
-    return led_arrays
+def _get_exif(filename, tag):
+    with open(filename, 'rb') as f:
+        exif = exifread.process_file(f, details=False, stop_tag=tag)
+    return exif
 
 
-def generate_line_indices_files(line_indices: List[int]) -> None:
-    for i in range(len(line_indices)):
-        out_file = open('analysis{}line_indices_{:03}.csv'.format(sep, i), 'w')
-        for iled in line_indices[i]:
-            out_file.write('{}\n'.format(iled))
-        out_file.close()
+def _get_datetime_from_str(date, time):
+    if date.find(":") != -1:
+        date_time = datetime.strptime(date + ' ' + time, '%Y:%m:%d %H:%M:%S')
+    else:
+        date_time = datetime.strptime(date + ' ' + time, '%d.%m.%Y %H:%M:%S')
+    return date_time
 
 
-def generate_labeled_led_arrays_plot(line_indices: List[int], search_areas: np.ndarray) -> None:
-    """plot the labeled LEDs"""
-    for i in range(len(line_indices)):
-        plt.scatter(search_areas[line_indices[i], 2],
-                    search_areas[line_indices[i], 1],
-                    s=0.1, label='led strip {}'.format(i))
+def _find_img_number_list(first, last, increment, number_string_length=4):
+    if last >= first:
+        return [str(ele).zfill(number_string_length) for ele in range(first, last + 1, increment)]
 
-    plt.legend()
-    plt.savefig('plots{}led_arrays.pdf'.format(sep))
-
-
-# """
-# ------------------------------------
-# Outsourced logic - Step 3
-# ------------------------------------
-# """
-
-def generate_analysis_data(img_filename: str, channel: int, search_areas: np.ndarray, line_indices: List[int],
-                           conf: ConfigData, fit_leds=True, debug=False, debug_led=None) -> np.ndarray:
-    data = read_file('{}{}'.format(conf['img_directory'], img_filename), channel=channel)
-    window_radius = int(conf['window_radius'])
-    img_analysis_data = []
-
-    if debug:
-        analysis_res = generate_led_analysis_data(conf, channel, data, debug, debug_led, img_filename, 0, search_areas,
-                                                  window_radius, fit_leds)
-        return analysis_res
-
-    for led_array_idx in range(int(conf['num_of_arrays'])):
-        print('processing LED array ', led_array_idx, '...')
-        for iled in line_indices[led_array_idx]:
-            if iled % (int(conf['skip_leds']) + 1) == 0:
-                led_analysis_data = generate_led_analysis_data(conf, channel, data, debug, iled, img_filename,
-                                                               led_array_idx, search_areas, window_radius, fit_leds)
-                img_analysis_data.append(led_analysis_data)
-    return img_analysis_data
+    largest_number = 0
+    for i in range(number_string_length):
+        largest_number += 9 * 10 ** i
+    print(largest_number)
+    num_list = [str(ele).zfill(number_string_length) for ele in range(first, largest_number + 1, increment)]
+    num_list.extend([str(ele).zfill(number_string_length) for ele in
+                     range(increment - (largest_number - int(num_list[-1])), last + 1, increment)])
+    return num_list
 
 
-def create_fit_result_file(img_data: np.ndarray, img_id: int, channel: int) -> None:
-    img_infos = load_file('analysis{}image_infos_analysis.csv'.format(sep), dtype='str', delim=',', silent=True,
-                          atleast_2d=True)
-    root = os.getcwd()
-    root = root.split(sep)
-    img_filename = get_img_name(img_id)
+def _build_img_data_string(build_type, config):
+    img_data = ''
+    img_idx = 1
+    first_img = config.getint(build_type, 'first_img')
+    last_img = config.getint(build_type, 'last_img')
+    img_increment = config.getint(build_type, 'skip_imgs') + 1 if build_type == 'analyse_photo' else 1
+    img_number_list = _find_img_number_list(first_img, last_img, img_increment)
+    for img_number in img_number_list:
+        tag = 'DateTimeOriginal'
+        experiment_time, time = _calc_experiment_and_real_time(build_type, config, tag, img_number)
+        img_data += (str(img_idx) + ',' + config[build_type]['img_name_string'].format(int(img_number)) +
+                     ',' + time.strftime('%H:%M:%S') + ',' + str(experiment_time) + '\n')
+        img_idx += 1
+    return img_data
 
-    save_results_in_file(channel, img_data, img_filename, img_id, img_infos, root)
-    
-    
-def create_imgs_to_process_file() -> None:
-    image_infos = load_file('.{}analysis{}image_infos_analysis.csv'.format(sep, sep), dtype='str', delim=',',
-                            atleast_2d=True)
-    img_filenames = image_infos[:, 1]
-    out_file = open('images_to_process.csv', 'w')
-    for img in img_filenames:
-        out_file.write('{}\n'.format(img))
+
+def _save_analysis_infos(img_data):
+    out_file = open('.{}analysis{}image_infos_analysis.csv'.format(sep, sep), 'w')
+    out_file.write("#ID,Name,Time[s],Experiment_Time[s]\n")
+    out_file.write(img_data)
     out_file.close()
 
 
-# """
-# ------------------------------------
-# Outsourced logic - Step 3-re
-# ------------------------------------
-# """
-
-def find_and_save_not_analysed_imgs(channel: int) -> None:
-    image_infos = load_file('.{}analysis{}image_infos_analysis.csv'.format(sep, sep), dtype='str', delim=',',
-                            atleast_2d=True)
-    all_imgs = image_infos[:, 1]
-    processed_img_ids = find_analysed_img_ids(channel)
-    processed_imgs = np.frompyfunc(get_img_name, 1, 1)(processed_img_ids)
-    remaining_imgs = set(all_imgs)-set(processed_imgs)
-
-    save_list_of_remaining_imgs_needed_to_be_processed(remaining_imgs)
+def _save_experiment_infos(img_data):
+    out_file = open('image_infos.csv', 'w')
+    out_file.write("#Count,Name,Time[s],Experiment_Time[s]\n")
+    out_file.write(img_data)
+    out_file.close()

@@ -1,7 +1,7 @@
-from ..core.ledsa_conf import ConfigData
+from ..core.ConfigData import ConfigData
 import numpy as np
 import pandas as pd
-from ..core import led_helper as led
+from ledsa.data_extraction import led_helper as led
 import os
 from typing import List
 
@@ -183,7 +183,6 @@ def multiindex_series_to_nparray(multi_series: pd.Series) -> np.ndarray:
 
 def apply_color_correction(cc_matrix: np.ndarray, on='sum_col_val', channels=[0, 1, 2]) -> None:
     """ Apply color correction on channel values based on color correction matrix.
-
     """
     cc_matrix_inv = np.linalg.inv(cc_matrix)
     quanity = on

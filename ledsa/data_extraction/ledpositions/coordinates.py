@@ -1,5 +1,5 @@
-from ..core import led_helper as ledh
-from ..core import ledsa_conf as lc
+from ledsa.data_extraction import led_helper as ledh
+from ledsa.core import ledsa_conf as lc
 import os
 from scipy import linalg
 from scipy.optimize import curve_fit
