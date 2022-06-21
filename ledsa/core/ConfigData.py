@@ -1,9 +1,10 @@
 import configparser as cp
-import numpy as np
+from datetime import datetime, timedelta
 from os import path
+
+import numpy as np
 from PIL import Image
 from PIL.ExifTags import TAGS
-from datetime import datetime, timedelta
 
 
 class ConfigData(cp.ConfigParser):

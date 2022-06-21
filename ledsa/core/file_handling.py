@@ -1,37 +1,94 @@
-from ..core.ConfigData import ConfigData
+import os
+from typing import List, Union
+
 import numpy as np
 import pandas as pd
-from ledsa.data_extraction import led_helper as led
-import os
-from typing import List
+import rawpy
+from matplotlib import pyplot as plt
 
-# os path separator
+import ledsa.core
+from ledsa.core.ConfigData import ConfigData
+
 sep = os.path.sep
 
 
-def normalize_fitpar(fitpar: str, channel: int) -> None:
-    """
-    Normalizes fitpar and extends the binary to include 'normalized_{fitpar}' as new parameter.
-    """
-    fit_parameters = read_hdf(channel)
-    average = calculate_average_fitpar_without_smoke(fitpar, channel)
-    fit_parameters[f'normalized_{fitpar}'] = fit_parameters[fitpar].div(average)
-    os.remove(f".{sep}analysis{sep}channel{channel}{sep}all_parameters.h5")
-    fit_parameters.to_hdf(f".{sep}analysis{sep}channel{channel}{sep}all_parameters.h5", 'table')
+def load_file(filename: str, delim=' ', dtype='float', atleast_2d=False, silent=False) -> np.ndarray:
+    try:
+        data = np.loadtxt(filename, delimiter=delim, dtype=dtype)
+    except OSError as e:
+        if not silent:
+            print('An operation system error occurred while loading {}.'.format(filename),
+                  'Maybe the file does not exist or there is no reading ',
+                  'permission.\n Error Message: ', e)
+        raise
+    except Exception as e:
+        if not silent:
+            print('Some error has occurred while loading {}'.format(filename),
+                  '. \n Error Message: ', e)
+        raise
+    else:
+        if not silent:
+            print('{} successfully loaded.'.format(filename))
+    if atleast_2d:
+        return np.atleast_2d(data)
+    return np.atleast_1d(data)
 
 
-def calculate_average_fitpar_without_smoke(fitpar: str, channel: int, num_of_imgs=20) -> pd.DataFrame:
-    fit_parameters = read_hdf(channel)
-    idx = pd.IndexSlice
-    fit_parameters = fit_parameters.loc[idx[1:num_of_imgs, :]]
-    return fit_parameters[fitpar].mean(0, level='led_id')
+def read_file(filename: str, channel: int, color_depth=14) -> np.ndarray:
+    """
+    Returns a 2D array of channel values depending on the color depth.
+    8bit is default range for JPG. Bayer array is a 2D array where
+    all channel values except the selected channel are masked.
+    """
+    extension = os.path.splitext(filename)[-1]
+    data = []
+    if extension in ['.JPG', '.JPEG', '.jpg', '.jpeg', '.PNG', '.png']:
+        data = plt.imread(filename)
+    elif extension in ['.CR2']:
+        with rawpy.imread(filename) as raw:
+            data = raw.raw_image_visible.copy()
+            filter_array = raw.raw_colors_visible
+            black_level = raw.black_level_per_channel[channel]
+            white_level = raw.white_level
+        channel_range = 2 ** color_depth - 1
+        channel_array = data.astype(np.int16) - black_level
+        channel_array = (channel_array * (channel_range / (white_level - black_level))).astype(np.int16)
+        channel_array = np.clip(channel_array, 0, channel_range)
+        if channel == 0 or channel == 2:
+            channel_array = np.where(filter_array == channel, channel_array, 0)
+        elif channel == 1:
+            channel_array = np.where((filter_array == 1) | (filter_array == 3), channel_array, 0)
+        return channel_array
+    return data[:, :, channel]
+
+
+def read_hdf(channel: int, path='.') -> pd.DataFrame:
+    """
+    Read the pandas dataframe binary at path. If binary does not exist, create it.
+    :return: DataFrame with multi index 'img_id' and 'led_id'
+    """
+    try:
+        fit_parameters = pd.read_hdf(f"{path}{sep}analysis{sep}channel{channel}{sep}all_parameters.h5", 'table')
+    except FileNotFoundError:
+        create_binary_data(channel)
+        fit_parameters = pd.read_hdf(f"{path}{sep}analysis{sep}channel{channel}{sep}all_parameters.h5", 'table')
+    fit_parameters.set_index(['img_id', 'led_id'], inplace=True)
+    return fit_parameters
+
+
+def extend_hdf(channel: int, quantity: str, values: np.ndarray, path='.') -> None:
+    """
+    Extends the binary
+    """
+    file = f"{path}{sep}analysis{sep}channel{channel}{sep}all_parameters.h5"
+    fit_parameters = pd.read_hdf(file, 'table')
+    fit_parameters[quantity] = values
+    fit_parameters.to_hdf(file, 'table')
 
 
 def create_binary_data(channel: int) -> None:
     """
     Creates binary file from all the #_led_positions.csv files generated in step 3
-    Created binary is a pandas hdf file with data
-    :param channel:
     """
     conf = ConfigData()
     columns = _get_column_names(channel)
@@ -48,7 +105,7 @@ def create_binary_data(channel: int) -> None:
     exception_counter = 0
     for image_id in range(1, number_of_images + 1):
         try:
-            parameters = led.load_file(".{}analysis{}channel{}{}{}_led_positions.csv".format(
+            parameters = ledsa.core.file_handling.load_file(".{}analysis{}channel{}{}{}_led_positions.csv".format(
                 sep, sep, channel, sep, image_id), delim=',', silent=True)
         except (FileNotFoundError, IOError):
             fit_params = fit_params.append(_param_array_to_dataframe([[np.nan] * (fit_params.shape[1] - 1)], image_id,
@@ -67,12 +124,9 @@ def create_binary_data(channel: int) -> None:
     fit_params.to_hdf(f".{sep}analysis{sep}channel{channel}{sep}all_parameters.h5", 'table', append=True)
 
 
-def clean_bin_data(channel=-1):
-    exit('clean_bin_data not implemented')
-
-
 def _get_column_names(channel: int) -> List[str]:
-    parameters = led.load_file(f".{sep}analysis{sep}channel{channel}{sep}1_led_positions.csv", delim=',', silent=True)
+    parameters = ledsa.core.file_handling.load_file(f".{sep}analysis{sep}channel{channel}{sep}1_led_positions.csv",
+                                                    delim=',', silent=True)
     columns = ["img_id", "led_id", "line",
                "sum_col_val", "mean_col_val", "max_col_val"]
     if parameters.shape[1] > len(columns):
@@ -88,6 +142,7 @@ def _get_old_columns(params: np.ndarray) -> List[str]:
     """
     Includes file structures from older updates for legacy reasons
     """
+    columns = []
     if params.shape[1] == 15:
         columns = ["img_id", "led_id", "line",
                    "x", "y", "dx", "dy", "A", "alpha", "wx", "wy", "fit_success", "fit_fun", "fit_nfev",
@@ -97,7 +152,8 @@ def _get_old_columns(params: np.ndarray) -> List[str]:
                    "sum_col_val", "mean_col_val"]
     return columns
 
-def _param_array_to_dataframe(array: np.ndarray, img_id: int, column_names: List[str]) -> pd.DataFrame:
+
+def _param_array_to_dataframe(array: Union[np.ndarray, List[List]], img_id: int, column_names: List[str]) -> pd.DataFrame:
     appended_array = np.empty((np.shape(array)[0], np.shape(array)[1] + 1))
     appended_array[:, 0] = img_id
     appended_array[:, 1:] = array
@@ -105,13 +161,12 @@ def _param_array_to_dataframe(array: np.ndarray, img_id: int, column_names: List
     return fit_params
 
 
-# TODO: refactor or comment
 def _append_coordinates(params: np.ndarray) -> np.ndarray:
     ac = _append_coordinates
     if "coord" not in ac.__dict__:
         try:
-            ac.coord = led.load_file(".{}analysis{}led_search_areas_with_coordinates.csv".format(sep, sep),
-                                     delim=',', silent=True)[:, [0, -2, -1]]
+            ac.coord = ledsa.core.file_handling.load_file(".{}analysis{}led_search_areas_with_coordinates.csv".format(sep, sep),
+                                                          delim=',', silent=True)[:, [0, -2, -1]]
         except (FileNotFoundError, IOError):
             ac.coord = False
 
@@ -140,58 +195,3 @@ def _append_coordinates_to_params(params: np.ndarray, coord: np.ndarray) -> np.n
 
     p_with_c[:, -2:] = coord[:, -2:]
     return p_with_c
-
-
-def read_hdf(channel: int, path='.') -> pd.DataFrame:
-    """
-    Read the pandas dataframe binary at path
-    :return: DataFrame with multi index 'img_id' and 'led_id'
-    """
-    try:
-        fit_parameters = pd.read_hdf(f"{path}{sep}analysis{sep}channel{channel}{sep}all_parameters.h5", 'table')
-    except FileNotFoundError:
-        create_binary_data(channel)
-        fit_parameters = pd.read_hdf(f"{path}{sep}analysis{sep}channel{channel}{sep}all_parameters.h5", 'table')
-    fit_parameters.set_index(['img_id', 'led_id'], inplace=True)
-    return fit_parameters
-
-def extend_hdf(channel: int, quantity: str, values: np.ndarray, path='.') -> None:
-    file = f"{path}{sep}analysis{sep}channel{channel}{sep}all_parameters.h5"
-    fit_parameters = pd.read_hdf(file, 'table')
-    fit_parameters[quantity] = values
-    fit_parameters.to_hdf(file, 'table')
-
-def include_column_if_nonexistent(fit_parameters: pd.DataFrame, fit_par: str, channel: int) -> pd.DataFrame:
-    if fit_par not in fit_parameters.columns:
-        if fit_par.split('_')[0] == 'normalized':
-            normalize_fitpar(fit_par.split('normalized_')[1], channel)
-        else:
-            raise Exception(f'Can not handle fit parameter: {fit_par}')
-        return read_hdf(channel)
-    return fit_parameters
-
-
-def multiindex_series_to_nparray(multi_series: pd.Series) -> np.ndarray:
-    index = multi_series.index
-    num_leds = pd.Series(multi_series.groupby(level=0).size()).iloc[0]
-    num_imgs = pd.Series(multi_series.groupby(level=1).size()).iloc[0]
-    array = np.zeros((num_imgs, num_leds))
-    for i in range(num_imgs):
-        array[i] = multi_series.loc[i+1]
-    return array
-
-
-def apply_color_correction(cc_matrix: np.ndarray, on='sum_col_val', channels=[0, 1, 2]) -> None:
-    """ Apply color correction on channel values based on color correction matrix.
-    """
-    cc_matrix_inv = np.linalg.inv(cc_matrix)
-    quanity = on
-    fit_params_list = []
-    for channel in channels:
-        fit_parameters = read_hdf(channel)[quanity]
-        fit_params_list.append(fit_parameters)
-    raw_val_array = pd.concat(fit_params_list, axis=1)
-    cc_val_array = np.dot(cc_matrix_inv, raw_val_array.T).T
-    cc_val_array = cc_val_array.astype(np.int16)
-    for channel in channels:
-        extend_hdf(channel, quanity + '_cc',cc_val_array[:,channel] )

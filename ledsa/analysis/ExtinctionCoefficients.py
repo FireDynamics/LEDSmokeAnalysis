@@ -1,9 +1,11 @@
 from abc import ABC, abstractmethod
+from multiprocessing import Pool
+
 import numpy as np
 import pandas as pd
-from multiprocessing import Pool
+
 from ledsa.analysis.Experiment import Experiment, Layers, Camera
-from ledsa.analysis.calculations import read_hdf, extend_hdf, multiindex_series_to_nparray
+from ledsa.core.file_handling import read_hdf
 
 
 class ExtinctionCoefficients(ABC):
@@ -54,7 +56,7 @@ class ExtinctionCoefficients(ABC):
         Use pool to distribute workload of the loop to multiple cores
         """
         self.set_all_member_variables()
-        img_property_array = multiindex_series_to_nparray(self.calculated_img_data[self.reference_property])
+        img_property_array = _multiindex_series_to_nparray(self.calculated_img_data[self.reference_property])
         rel_intensities = img_property_array / self.ref_intensities
 
         pool = Pool(processes=cores)
@@ -114,3 +116,13 @@ class ExtinctionCoefficients(ABC):
         :return: Array of the coefficients
         """
         pass
+
+
+def _multiindex_series_to_nparray(multi_series: pd.Series) -> np.ndarray:
+    index = multi_series.index
+    num_leds = pd.Series(multi_series.groupby(level=0).size()).iloc[0]
+    num_imgs = pd.Series(multi_series.groupby(level=1).size()).iloc[0]
+    array = np.zeros((num_imgs, num_leds))
+    for i in range(num_imgs):
+        array[i] = multi_series.loc[i+1]
+    return array

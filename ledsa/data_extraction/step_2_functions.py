@@ -1,9 +1,10 @@
 from typing import List
 
 import numpy as np
-from ledsa.core.ConfigData import ConfigData
-from ledsa.data_extraction.led_helper import sep
 from matplotlib import pyplot as plt
+
+from ledsa.core.ConfigData import ConfigData
+from ledsa.core.file_handling import sep
 
 
 def match_leds_to_led_arrays(search_areas: np.ndarray, config: ConfigData) -> np.ndarray:
@@ -13,7 +14,7 @@ def match_leds_to_led_arrays(search_areas: np.ndarray, config: ConfigData) -> np
     return led_arrays
 
 
-def generate_line_indices_files(line_indices: List[int]) -> None:
+def generate_line_indices_files(line_indices: List[List[int]]) -> None:
     for i in range(len(line_indices)):
         out_file = open('analysis{}line_indices_{:03}.csv'.format(sep, i), 'w')
         for iled in line_indices[i]:
@@ -21,7 +22,7 @@ def generate_line_indices_files(line_indices: List[int]) -> None:
         out_file.close()
 
 
-def generate_labeled_led_arrays_plot(line_indices: List[int], search_areas: np.ndarray) -> None:
+def generate_labeled_led_arrays_plot(line_indices: List[List[int]], search_areas: np.ndarray) -> None:
     """plot the labeled LEDs"""
     for i in range(len(line_indices)):
         plt.scatter(search_areas[line_indices[i], 2],
@@ -105,7 +106,7 @@ def _match_leds_to_arrays_with_min_dist(dists_led_arrays_search_areas, edge_indi
 
         idx_nearest_array = np.argmin(dists_led_arrays_search_areas[iled, :])
         led_arrays[idx_nearest_array].append(iled)
-    return led_arrays
+    return np.array(led_arrays)
 
 
 def _get_indices_of_ignored_leds(config):

@@ -1,6 +1,7 @@
 import numpy as np
-from ledsa.core.ConfigData import ConfigData
 from matplotlib import pyplot as plt
+
+from ledsa.core.ConfigData import ConfigData
 
 
 def find_search_areas(image: np.ndarray, window_radius=10, skip=10, threshold_factor=0.25) -> np.ndarray:
@@ -20,7 +21,6 @@ def add_search_areas_to_plot(search_areas: np.ndarray, ax: plt.axes, config: Con
         ax.text(search_areas[i, 2] + int(config['window_radius']),
                 search_areas[i, 1] + int(config['window_radius']) // 2,
                 '{}'.format(search_areas[i, 0]), fontsize=1)
-
 
 
 def _generate_mask_of_led_areas(image, threshold_factor):
@@ -61,5 +61,3 @@ def _find_led_pos(image, ix, iy, window_radius):
 
 def _remove_led_from_mask(im_set, ix, iy, window_radius):
     im_set[ix - window_radius:ix + window_radius, iy - window_radius:iy + window_radius] = 0
-
-

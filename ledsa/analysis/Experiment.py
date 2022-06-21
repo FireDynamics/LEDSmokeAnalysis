@@ -1,7 +1,8 @@
 from dataclasses import dataclass, field
-import numpy as np
-from typing import List
 from pathlib import Path
+from typing import List
+
+import numpy as np
 
 
 @dataclass

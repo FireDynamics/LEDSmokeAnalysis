@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-from ledsa.data_extraction.led_helper import load_file
+from ledsa.core.file_handling import load_file
 from os import sep
 import pandas as pd
 

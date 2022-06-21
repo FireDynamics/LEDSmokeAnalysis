@@ -1,12 +1,9 @@
-from ledsa.data_extraction import led_helper as ledh
-from ledsa.core import ledsa_conf as lc
-import os
+import numpy as np
 from scipy import linalg
 from scipy.optimize import curve_fit
-import numpy as np
 
-# os path separator
-sep = os.path.sep
+from ledsa.core.ConfigData import ConfigData
+from ledsa.core.file_handling import load_file, sep
 
 
 class LED:
@@ -40,8 +37,8 @@ def calculate_coordinates():
 # calculating the linear transformation between pixel and room coordinates and applying it to the projection of each led
 # onto the corresponding line
 def calculate_3d_coordinates():
-    conf = lc.ConfigData(load_config_file=True)
-    search_areas = ledh.load_file('.{}analysis{}led_search_areas.csv'.format(sep, sep), delim=',')
+    conf = ConfigData(load_config_file=True)
+    search_areas = load_file('.{}analysis{}led_search_areas.csv'.format(sep, sep), delim=',')
     search_areas = np.pad(search_areas, ((0, 0), (0, 3)), constant_values=(-1, -1))
     led_coordinates = conf.get2dnparray('analyse_positions', 'line_edge_coordinates', 6, float)
     print("Loaded coordinates from config.ini:")
@@ -50,7 +47,7 @@ def calculate_3d_coordinates():
 
     # loop over the led-arrays
     for ledarray in range(int(conf['DEFAULT']['num_of_arrays'])):
-        line_indices = ledh.load_file('.{}analysis{}line_indices_{:03d}.csv'.format(sep, sep, ledarray))
+        line_indices = load_file('.{}analysis{}line_indices_{:03d}.csv'.format(sep, sep, ledarray))
 
         # get the edge leds of an array to calculate from them the conversion matrix for this array
         idx = np.where(search_areas[:, 0] == edge_leds[ledarray, 0])[0]

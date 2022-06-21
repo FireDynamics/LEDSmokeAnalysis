@@ -6,7 +6,6 @@ import sys
 from .LEDSA import LEDSA
 from .core import ConfigData as lc
 
-
 parser = argparse.ArgumentParser(description=
                                  'Allows the analysis of light dampening of LEDs behind a smoke screen.')
 parser.add_argument('--s1', '-s1', '--find_search_areas', action='store_true',
@@ -95,7 +94,7 @@ if args.re:
     ledsa.process_image_data()
 
 if args.coordinates:
-    from ledsa.data_extraction.ledpositions import calculate_coordinates
+    from ledsa.data_extraction.ledpositions.coordinates import calculate_coordinates
     calculate_coordinates()
 
 if args.atest:

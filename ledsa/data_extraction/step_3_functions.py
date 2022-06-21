@@ -1,22 +1,20 @@
 import os
 import re
+import time
 from typing import List
 
 import numpy as np
 import scipy.optimize
+
 from ledsa.core.ConfigData import ConfigData
-from ledsa.core.model import target_function
 from ledsa.core.LEDAnalysisData import LEDAnalysisData
-
-import time
-
-from ledsa.data_extraction.led_helper import read_file, load_file, get_img_name
-
-sep = os.path.sep
+from ledsa.core.file_handling import load_file, read_file, sep
+from ledsa.core.image_handling import get_img_name
+from ledsa.core.model import target_function
 
 
-def generate_analysis_data(img_filename: str, channel: int, search_areas: np.ndarray, line_indices: List[int],
-                           conf: ConfigData, fit_leds=True, debug=False, debug_led=None) -> np.ndarray:
+def generate_analysis_data(img_filename: str, channel: int, search_areas: np.ndarray, line_indices: List[List[int]],
+                           conf: ConfigData, fit_leds=True, debug=False, debug_led=None) -> List[LEDAnalysisData]:
     data = read_file('{}{}'.format(conf['img_directory'], img_filename), channel=channel)
     window_radius = int(conf['window_radius'])
     img_analysis_data = []
@@ -110,7 +108,7 @@ def _find_analysed_img_ids(channel):
     processed_imgs = []
     directory_content = os.listdir('.{}analysis{}channel{}'.format(sep, sep, channel))
     for file_name in directory_content:
-        img = re.search(r"([0-9]+)_led_positions.csv", file_name)
+        img = re.search(r"(\d+)_led_positions.csv", file_name)
         if img is not None:
             processed_imgs.append(int(img.group(1)))
     return processed_imgs

@@ -2,13 +2,15 @@
 
 import os
 
+import ledsa.core.file_handling
+import ledsa.core.image_handling
 import ledsa.data_extraction.step_1_functions
 import ledsa.data_extraction.step_2_functions
 import ledsa.data_extraction.step_3_functions
 import numpy as np
 import matplotlib.pyplot as plt
 
-from ledsa.data_extraction import led_helper as led
+from ledsa.data_extraction import init_functions as led
 from .core import ConfigData as lc
 
 sep = os.path.sep
@@ -41,7 +43,7 @@ class LEDSA:
     def load_search_areas(self):
         """loads the search areas from the csv file"""
         filename = 'analysis{}led_search_areas.csv'.format(sep)
-        self.search_areas = led.load_file(filename, delim=',')
+        self.search_areas = ledsa.core.file_handling.load_file(filename, delim=',')
         # self.last_fit_results = self.search_areas.shape[0] * [[10, 10, 2., 2., 200., 1.0, 1.0, 1.0]]
     
     def find_search_areas(self, img_filename):
@@ -51,7 +53,7 @@ class LEDSA:
         """
         config = self.config['find_search_areas']
         ref_img_name = "{}{}".format(config['img_directory'], img_filename)
-        data = led.read_file(ref_img_name, channel=0)
+        data = ledsa.core.file_handling.read_file(ref_img_name, channel=0)
 
         self.search_areas = ledsa.data_extraction.step_1_functions.find_search_areas(data, skip=1, window_radius=int(config['window_radius']),
                                                                                      threshold_factor=float(config['threshold_factor']))
@@ -67,7 +69,7 @@ class LEDSA:
             self.load_search_areas()
 
         filename = "{}{}".format(config['img_directory'], img_filename)
-        data = led.read_file(filename, channel=0)
+        data = ledsa.core.file_handling.read_file(filename, channel=0)
 
         plt.figure(dpi=1200)
         ax = plt.gca()
@@ -95,7 +97,7 @@ class LEDSA:
         self.line_indices = []
         for i in range(int(self.config['DEFAULT']['num_of_arrays'])):
             filename = 'analysis{}line_indices_{:03}.csv'.format(sep, i)
-            self.line_indices.append(led.load_file(filename, dtype='int'))
+            self.line_indices.append(ledsa.core.file_handling.load_file(filename, dtype='int'))
 
     # """
     # ------------------------------------
@@ -111,7 +113,7 @@ class LEDSA:
         if self.line_indices is None:
             self.load_line_indices()
 
-        img_filenames = led.load_file('images_to_process.csv', dtype=str)
+        img_filenames = ledsa.core.file_handling.load_file('images_to_process.csv', dtype=str)
         if config.getboolean('multicore_processing'):
             from multiprocessing import Pool
 
@@ -127,7 +129,7 @@ class LEDSA:
 
     def process_img_file(self, img_filename):
         """workaround for pool.map"""
-        img_id = led.get_img_id(img_filename)
+        img_id = ledsa.core.image_handling.get_img_id(img_filename)
         for channel in self.channels:
             img_data = ledsa.data_extraction.step_3_functions.generate_analysis_data(img_filename, channel, self.search_areas, self.line_indices,
                                                                                      self.config['analyse_photo'], self.fit_leds)

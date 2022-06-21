@@ -1,10 +1,9 @@
-# from ledsa.analysis import ui
 import argparse
 import os
 
-from ledsa.analysis.Experiment import Experiment
 import ledsa.analysis.ExtinctionCoefficientsNumeric as ECN
-from ledsa.analysis.helper_functions_main import create_default_experiment_data, load_experiment_data
+from ledsa.analysis.Experiment import Experiment
+from ledsa.analysis.ExperimentData import create_default_experiment_data, load_experiment_data
 
 parser = argparse.ArgumentParser(description=
                                  'Calculation of the extinction coefficients.')
@@ -27,7 +26,7 @@ if args.default_input:
 # create and use the color corrected reference property
 if args.cc:
     import numpy as np
-    from ledsa.analysis.calculations import apply_color_correction
+    from ledsa.analysis.data_preparation import apply_color_correction
     try:
         cc_matrix = np.genfromtxt('mean_all_cc_matrix_integral.csv', delimiter=',')
     except(FileNotFoundError):
@@ -54,5 +53,4 @@ for array in ex_data.arrays:
             print(f"{out_file} already exists!")
 
 
-# app = ui.GUI()
-# app.mainloop()
+
