@@ -1,7 +1,7 @@
 *** Settings ***
 Resource        global_keywords.resource
 
-Suite Setup      Create And Fill Config
+Suite Setup     Create And Fill Config
 
 Force Tags  step_2
 

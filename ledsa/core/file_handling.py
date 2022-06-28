@@ -3,8 +3,6 @@ from typing import List, Union
 
 import numpy as np
 import pandas as pd
-import rawpy
-from matplotlib import pyplot as plt
 
 import ledsa.core
 from ledsa.core.ConfigData import ConfigData
@@ -12,7 +10,7 @@ from ledsa.core.ConfigData import ConfigData
 sep = os.path.sep
 
 
-def load_file(filename: str, delim=' ', dtype='float', atleast_2d=False, silent=False) -> np.ndarray:
+def read_table(filename: str, delim=' ', dtype='float', atleast_2d=False, silent=False) -> np.ndarray:
     try:
         data = np.loadtxt(filename, delimiter=delim, dtype=dtype)
     except OSError as e:
@@ -32,34 +30,6 @@ def load_file(filename: str, delim=' ', dtype='float', atleast_2d=False, silent=
     if atleast_2d:
         return np.atleast_2d(data)
     return np.atleast_1d(data)
-
-
-def read_file(filename: str, channel: int, color_depth=14) -> np.ndarray:
-    """
-    Returns a 2D array of channel values depending on the color depth.
-    8bit is default range for JPG. Bayer array is a 2D array where
-    all channel values except the selected channel are masked.
-    """
-    extension = os.path.splitext(filename)[-1]
-    data = []
-    if extension in ['.JPG', '.JPEG', '.jpg', '.jpeg', '.PNG', '.png']:
-        data = plt.imread(filename)
-    elif extension in ['.CR2']:
-        with rawpy.imread(filename) as raw:
-            data = raw.raw_image_visible.copy()
-            filter_array = raw.raw_colors_visible
-            black_level = raw.black_level_per_channel[channel]
-            white_level = raw.white_level
-        channel_range = 2 ** color_depth - 1
-        channel_array = data.astype(np.int16) - black_level
-        channel_array = (channel_array * (channel_range / (white_level - black_level))).astype(np.int16)
-        channel_array = np.clip(channel_array, 0, channel_range)
-        if channel == 0 or channel == 2:
-            channel_array = np.where(filter_array == channel, channel_array, 0)
-        elif channel == 1:
-            channel_array = np.where((filter_array == 1) | (filter_array == 3), channel_array, 0)
-        return channel_array
-    return data[:, :, channel]
 
 
 def read_hdf(channel: int, path='.') -> pd.DataFrame:
@@ -98,14 +68,17 @@ def create_binary_data(channel: int) -> None:
     # find time and fit parameter for every image
     first_img = int(conf['analyse_photo']['first_img'])
     last_img = int(conf['analyse_photo']['last_img'])
-    max_id = int(conf['DEFAULT']['img_number_overflow'])
+    if conf['DEFAULT']['img_number_overflow']:
+        max_id = int(conf['DEFAULT']['img_number_overflow'])
+    else:
+        max_id = 10**7
     number_of_images = (max_id + last_img - first_img) % max_id
     number_of_images //= int(conf['analyse_photo']['skip_imgs']) + 1
     print('Loading fit parameters...')
     exception_counter = 0
     for image_id in range(1, number_of_images + 1):
         try:
-            parameters = ledsa.core.file_handling.load_file(".{}analysis{}channel{}{}{}_led_positions.csv".format(
+            parameters = ledsa.core.file_handling.read_table(".{}analysis{}channel{}{}{}_led_positions.csv".format(
                 sep, sep, channel, sep, image_id), delim=',', silent=True)
         except (FileNotFoundError, IOError):
             fit_params = fit_params.append(_param_array_to_dataframe([[np.nan] * (fit_params.shape[1] - 1)], image_id,
@@ -125,8 +98,8 @@ def create_binary_data(channel: int) -> None:
 
 
 def _get_column_names(channel: int) -> List[str]:
-    parameters = ledsa.core.file_handling.load_file(f".{sep}analysis{sep}channel{channel}{sep}1_led_positions.csv",
-                                                    delim=',', silent=True)
+    parameters = ledsa.core.file_handling.read_table(f".{sep}analysis{sep}channel{channel}{sep}1_led_positions.csv",
+                                                     delim=',', silent=True)
     columns = ["img_id", "led_id", "line",
                "sum_col_val", "mean_col_val", "max_col_val"]
     if parameters.shape[1] > len(columns):
@@ -165,8 +138,8 @@ def _append_coordinates(params: np.ndarray) -> np.ndarray:
     ac = _append_coordinates
     if "coord" not in ac.__dict__:
         try:
-            ac.coord = ledsa.core.file_handling.load_file(".{}analysis{}led_search_areas_with_coordinates.csv".format(sep, sep),
-                                                          delim=',', silent=True)[:, [0, -2, -1]]
+            ac.coord = ledsa.core.file_handling.read_table(".{}analysis{}led_search_areas_with_coordinates.csv".format(sep, sep),
+                                                           delim=',', silent=True)[:, [0, -2, -1]]
         except (FileNotFoundError, IOError):
             ac.coord = False
 

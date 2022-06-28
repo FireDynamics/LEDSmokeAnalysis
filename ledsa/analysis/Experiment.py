@@ -67,7 +67,7 @@ class Experiment:
         self.led_array = led_array
         self.camera = camera
         self.leds = []
-        self.led_number = 0
+        self.led_number = 3         # used for acceptance tests
         self.path = path
         self.channel = channel
 

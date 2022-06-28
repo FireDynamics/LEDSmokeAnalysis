@@ -1,11 +1,11 @@
 import matplotlib.pyplot as plt
-from ledsa.core.file_handling import load_file
+from ledsa.core.file_handling import read_table
 from os import sep
 import pandas as pd
 
 
 def plot_coordinates():
-    leds = load_file('analysis{}led_search_areas_with_coordinates.csv'.format(sep), delim=',')
+    leds = read_table('analysis{}led_search_areas_with_coordinates.csv'.format(sep), delim=',')
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
@@ -33,8 +33,8 @@ def plot_coordinates():
 
 
 def compare_coordinates():
-    leds1 = load_file(f'Cam1{sep}analysis{sep}led_search_areas_with_coordinates.csv', delim=',')
-    leds2 = load_file(f'Cam2{sep}analysis{sep}led_search_areas_with_coordinates.csv', delim=',')
+    leds1 = read_table(f'Cam1{sep}analysis{sep}led_search_areas_with_coordinates.csv', delim=',')
+    leds2 = read_table(f'Cam2{sep}analysis{sep}led_search_areas_with_coordinates.csv', delim=',')
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 

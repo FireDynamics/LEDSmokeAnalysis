@@ -4,18 +4,20 @@ import time
 from typing import List
 
 import numpy as np
+import rawpy
 import scipy.optimize
+from matplotlib import pyplot as plt
 
 from ledsa.core.ConfigData import ConfigData
-from ledsa.core.LEDAnalysisData import LEDAnalysisData
-from ledsa.core.file_handling import load_file, read_file, sep
+from ledsa.data_extraction.LEDAnalysisData import LEDAnalysisData
+from ledsa.core.file_handling import read_table, sep
 from ledsa.core.image_handling import get_img_name
-from ledsa.core.model import target_function
+from ledsa.data_extraction.model import target_function
 
 
 def generate_analysis_data(img_filename: str, channel: int, search_areas: np.ndarray, line_indices: List[List[int]],
                            conf: ConfigData, fit_leds=True, debug=False, debug_led=None) -> List[LEDAnalysisData]:
-    data = read_file('{}{}'.format(conf['img_directory'], img_filename), channel=channel)
+    data = read_img('{}{}'.format(conf['img_directory'], img_filename), channel=channel)
     window_radius = int(conf['window_radius'])
     img_analysis_data = []
 
@@ -35,8 +37,8 @@ def generate_analysis_data(img_filename: str, channel: int, search_areas: np.nda
 
 
 def create_fit_result_file(img_data: np.ndarray, img_id: int, channel: int) -> None:
-    img_infos = load_file('analysis{}image_infos_analysis.csv'.format(sep), dtype='str', delim=',', silent=True,
-                          atleast_2d=True)
+    img_infos = read_table('analysis{}image_infos_analysis.csv'.format(sep), dtype='str', delim=',', silent=True,
+                           atleast_2d=True)
     root = os.getcwd()
     root = root.split(sep)
     img_filename = get_img_name(img_id)
@@ -45,8 +47,8 @@ def create_fit_result_file(img_data: np.ndarray, img_id: int, channel: int) -> N
 
 
 def create_imgs_to_process_file() -> None:
-    image_infos = load_file('.{}analysis{}image_infos_analysis.csv'.format(sep, sep), dtype='str', delim=',',
-                            atleast_2d=True)
+    image_infos = read_table('.{}analysis{}image_infos_analysis.csv'.format(sep, sep), dtype='str', delim=',',
+                             atleast_2d=True)
     img_filenames = image_infos[:, 1]
     out_file = open('images_to_process.csv', 'w')
     for img in img_filenames:
@@ -55,8 +57,8 @@ def create_imgs_to_process_file() -> None:
 
 
 def find_and_save_not_analysed_imgs(channel: int) -> None:
-    image_infos = load_file('.{}analysis{}image_infos_analysis.csv'.format(sep, sep), dtype='str', delim=',',
-                            atleast_2d=True)
+    image_infos = read_table('.{}analysis{}image_infos_analysis.csv'.format(sep, sep), dtype='str', delim=',',
+                             atleast_2d=True)
     all_imgs = image_infos[:, 1]
     processed_img_ids = _find_analysed_img_ids(channel)
     processed_imgs = np.frompyfunc(get_img_name, 1, 1)(processed_img_ids)
@@ -166,3 +168,31 @@ def _create_header(channel, img_id, img_filename, img_infos, root, fit_leds):
     else:
         out_str += "\n"
     return out_str
+
+
+def read_img(filename: str, channel: int, color_depth=14) -> np.ndarray:
+    """
+    Returns a 2D array of channel values depending on the color depth.
+    8bit is default range for JPG. Bayer array is a 2D array where
+    all channel values except the selected channel are masked.
+    """
+    extension = os.path.splitext(filename)[-1]
+    data = []
+    if extension in ['.JPG', '.JPEG', '.jpg', '.jpeg', '.PNG', '.png']:
+        data = plt.imread(filename)
+    elif extension in ['.CR2']:
+        with rawpy.imread(filename) as raw:
+            data = raw.raw_image_visible.copy()
+            filter_array = raw.raw_colors_visible
+            black_level = raw.black_level_per_channel[channel]
+            white_level = raw.white_level
+        channel_range = 2 ** color_depth - 1
+        channel_array = data.astype(np.int16) - black_level
+        channel_array = (channel_array * (channel_range / (white_level - black_level))).astype(np.int16)
+        channel_array = np.clip(channel_array, 0, channel_range)
+        if channel == 0 or channel == 2:
+            channel_array = np.where(filter_array == channel, channel_array, 0)
+        elif channel == 1:
+            channel_array = np.where((filter_array == 1) | (filter_array == 3), channel_array, 0)
+        return channel_array
+    return data[:, :, channel]

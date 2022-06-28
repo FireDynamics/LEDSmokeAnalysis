@@ -1,11 +1,11 @@
 import numpy as np
 
-from ledsa.core.file_handling import sep, load_file
+from ledsa.core.file_handling import sep, read_table
 
 
 def get_img_name(img_id: int) -> np.ndarray:
-    infos = load_file('.{}analysis{}image_infos_analysis.csv'.format(sep, sep), ',', 'str',
-                      silent=True, atleast_2d=True)
+    infos = read_table('.{}analysis{}image_infos_analysis.csv'.format(sep, sep), ',', 'str',
+                       silent=True, atleast_2d=True)
     for i in range(infos.shape[0]):
         if int(infos[i, 0]) == int(img_id):
             return infos[i, 1]
@@ -13,8 +13,8 @@ def get_img_name(img_id: int) -> np.ndarray:
 
 
 def get_img_id(img_name: str) -> int:
-    infos = load_file('.{}analysis{}image_infos_analysis.csv'.format(sep, sep), ',', 'str',
-                      silent=True, atleast_2d=True)
+    infos = read_table('.{}analysis{}image_infos_analysis.csv'.format(sep, sep), ',', 'str',
+                       silent=True, atleast_2d=True)
     for i in range(infos.shape[0]):
         if infos[i, 1] == img_name:
             return infos[i, 0]
@@ -22,13 +22,13 @@ def get_img_id(img_name: str) -> int:
 
 
 def get_last_img_id() -> int:
-    infos = load_file('.{}analysis{}image_infos_analysis.csv'.format(sep, sep), ',', 'str',
-                      silent=True, atleast_2d=True)
+    infos = read_table('.{}analysis{}image_infos_analysis.csv'.format(sep, sep), ',', 'str',
+                       silent=True, atleast_2d=True)
     return int(infos[-1, 0])
 
 
 def get_img_id_from_time(time: float) -> int:
-    infos = load_file('.{}analysis{}image_infos_analysis.csv'.format(sep, sep), ',', 'str', silent=True)
+    infos = read_table('.{}analysis{}image_infos_analysis.csv'.format(sep, sep), ',', 'str', silent=True)
     for i in range(infos.shape[0]):
         if float(infos[i, 3]) == time:
             return int(infos[i, 0])
@@ -36,7 +36,7 @@ def get_img_id_from_time(time: float) -> int:
 
 
 def get_time_from_img_id(img_id: int) -> int:
-    infos = load_file('.{}analysis{}image_infos_analysis.csv'.format(sep, sep), ',', 'str', silent=True)
+    infos = read_table('.{}analysis{}image_infos_analysis.csv'.format(sep, sep), ',', 'str', silent=True)
     for i in range(infos.shape[0]):
         if float(infos[i, 0]) == img_id:
             return int(float(infos[i, 3]))

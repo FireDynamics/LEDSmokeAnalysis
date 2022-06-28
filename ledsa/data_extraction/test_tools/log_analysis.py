@@ -1,7 +1,8 @@
 # tools for analysing problems with the LED fitting
 import ledsa.core.file_handling
+import ledsa.data_extraction.step_3_functions
 import ledsa.data_extraction.step_3_functions as s3
-from ledsa.core.model import led_model
+from ledsa.data_extraction.model import led_model
 import numpy as np
 import matplotlib.pyplot as plt
 import importlib
@@ -32,7 +33,7 @@ class FitAnalyser:
         self.channel = int(params[14])
 
     def plot_image(self):
-        data = ledsa.core.file_handling.read_file(self.filename, channel=self.channel)
+        data = ledsa.data_extraction.step_3_functions.read_img(self.filename, channel=self.channel)
 
         s = np.index_exp[self.cx - self.window_radius:self.cx + self.window_radius,
                          self.cy - self.window_radius:self.cy + self.window_radius]

@@ -3,7 +3,7 @@ from scipy import linalg
 from scipy.optimize import curve_fit
 
 from ledsa.core.ConfigData import ConfigData
-from ledsa.core.file_handling import load_file, sep
+from ledsa.core.file_handling import read_table, sep
 
 
 class LED:
@@ -38,7 +38,7 @@ def calculate_coordinates():
 # onto the corresponding line
 def calculate_3d_coordinates():
     conf = ConfigData(load_config_file=True)
-    search_areas = load_file('.{}analysis{}led_search_areas.csv'.format(sep, sep), delim=',')
+    search_areas = read_table('.{}analysis{}led_search_areas.csv'.format(sep, sep), delim=',')
     search_areas = np.pad(search_areas, ((0, 0), (0, 3)), constant_values=(-1, -1))
     led_coordinates = conf.get2dnparray('analyse_positions', 'line_edge_coordinates', 6, float)
     print("Loaded coordinates from config.ini:")
@@ -47,7 +47,7 @@ def calculate_3d_coordinates():
 
     # loop over the led-arrays
     for ledarray in range(int(conf['DEFAULT']['num_of_arrays'])):
-        line_indices = load_file('.{}analysis{}line_indices_{:03d}.csv'.format(sep, sep, ledarray))
+        line_indices = read_table('.{}analysis{}line_indices_{:03d}.csv'.format(sep, sep, ledarray))
 
         # get the edge leds of an array to calculate from them the conversion matrix for this array
         idx = np.where(search_areas[:, 0] == edge_leds[ledarray, 0])[0]

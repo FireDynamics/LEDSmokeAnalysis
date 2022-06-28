@@ -8,8 +8,8 @@ from typing import Union, Tuple
 from ledsa import LEDSA
 from ledsa.core.ConfigData import ConfigData
 import ledsa.analysis.data_preparation
-import ledsa.core.model
-from ledsa.core.file_handling import sep, load_file, read_hdf
+import ledsa.data_extraction.model
+from ledsa.core.file_handling import sep, read_table, read_hdf
 import ledsa.core.image_handling
 import ledsa.data_extraction.step_3_functions
 
@@ -98,7 +98,7 @@ def plot_t_fitpar_with_moving_average(fig, led_id, fit_par, channel, image_id_st
 
 
 def _calc_t_fitpar_plot_info(led_id, fit_par, channel, image_id_start, image_id_finish):
-    times = load_file(".{}analysis{}image_infos_analysis.csv".format(sep, sep), delim=',', dtype=str)
+    times = read_table(".{}analysis{}image_infos_analysis.csv".format(sep, sep), delim=',', dtype=str)
     times = pd.DataFrame(times[:, [0, 3]], columns=['img_id', 'experiment_time'], dtype=np.float64)
     times.set_index('img_id', inplace=True)
     fit_parameters = read_hdf(channel)
@@ -146,8 +146,8 @@ def plot_model(fig, channel, img_id, led_id, window_radius):
     # load model
     model_params = load_model(img_id, led_id, channel, window_radius)
 
-    led_model = ledsa.core.model.led_model(mesh[0], mesh[1], model_params[0], model_params[1], model_params[2], model_params[3],
-                                           model_params[4], model_params[5], model_params[6], model_params[7])
+    led_model = ledsa.data_extraction.model.led_model(mesh[0], mesh[1], model_params[0], model_params[1], model_params[2], model_params[3],
+                                                      model_params[4], model_params[5], model_params[6], model_params[7])
 
     current_fig = plt.gcf()
 
@@ -207,7 +207,7 @@ def get_img_path():
 
 
 def get_led_pos(led_id):
-    positions = load_file(".{}analysis{}led_search_areas.csv".format(sep, sep), delim=',', dtype=int)
+    positions = read_table(".{}analysis{}led_search_areas.csv".format(sep, sep), delim=',', dtype=int)
     for i in range(positions.shape[0]):
         if positions[i, 0] == led_id:
             return float(positions[i, 1]), float(positions[i, 2])

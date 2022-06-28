@@ -1,6 +1,7 @@
 from robot.api.deco import keyword, library
 from robot.libraries.BuiltIn import BuiltIn
 import os
+
 try:
     from PIL import Image
 except ImportError:
@@ -36,9 +37,12 @@ class LedsaATestLibrary:
             img.save(f'test_img_{i}.jpg', exif=exif_bytes)
 
     @keyword
-    def create_and_fill_config(self):
-        conf = ConfigData(False, '.', 10, 0.25, 1, False, 1, 'test_img_0.jpg', None, None, 0, None, 'test_img_{}.jpg',
-                          0, 0, 0, 0)
+    def create_and_fill_config(self, first=0, last=0):
+        conf = ConfigData(load_config_file=False, img_directory='.', window_radius=10, threshold_factor=0.25,
+                          num_of_arrays=1, multicore_processing=False, num_of_cores=1, reference_img='test_img_0.jpg',
+                          date=None, start_time=None, time_diff_to_image_time=0, time_img=None,
+                          img_name_string='test_img_{}.jpg', first_img=first, last_img=last, first_analyse_img=first,
+                          last_analyse_img=last, skip_imgs=0, skip_leds=0)
         conf.set('analyse_positions', '   line_edge_indices', '0 2')
         conf.set('DEFAULT', '   date', '2018:11:27')
         conf.save()
@@ -61,37 +65,45 @@ class LedsaATestLibrary:
         return out
 
     @keyword
-    def execute_ledsa_analysis(self, arg=None, inp=None):
-        p = Popen(['python', '-m', 'ledsa.analysis', arg], stdin=PIPE, stdout=PIPE, stderr=PIPE)
+    def execute_ledsa_analysis(self, *args, inp=None):
+        p = Popen(['python', '-m', 'ledsa.analysis', *args], stdin=PIPE, stdout=PIPE, stderr=PIPE)
         out = wait_for_process_to_finish(p, inp)
         return out
 
     @keyword
     def create_test_data(self):
         from ledsa.data_extraction.step_3_functions import _save_results_in_file
-        from ledsa.core.LEDAnalysisData import LEDAnalysisData
+        from ledsa.data_extraction.LEDAnalysisData import LEDAnalysisData
         time = 0
         channel = 0
         img_data = []
         # id,line,sum_col_value,average_col_value,max_col_value
-        for led_id in [1,2,3]:
+        for led_id in [1, 2, 3]:
             led = LEDAnalysisData(led_id, 0, False)
-            led.mean_color_value = 150
-            led.sum_color_value = 2000
-            led.max_color_value = 200
+            led.mean_color_value = 150*led_id
+            led.sum_color_value = 2000*led_id
+            led.max_color_value = 200*led_id
             img_data.append(led)
         img_name = "test.png"
-        img_infos = [[1,1,1,time],
-                     [1,1,1,time],
-                     [1,1,1,time]]
+        img_infos = [[1, "im_1", 1, time],
+                     [2, "im_2", 1, time],
+                     [3, "im_3", 1, time]]
         root = "."
 
-        for img_id in [1,2,3]:
+        for img_id in [1, 2, 3]:
             _save_results_in_file(channel, img_data, img_name, img_id, img_infos, root)
             time += 1
 
+    @keyword
+    def create_experiment_data(self):
+        from ledsa.analysis.ExperimentData import create_experiment_data
+        create_experiment_data(channels=[0])
 
-
+    @keyword
+    def create_cc_matrix_file(self):
+        file = open("mean_all_cc_matrix_integral.csv", "w")
+        file.write("2,3,4\n1,2,7\n3,4,5")
+        file.close()
 
 
 def create_img_array():
@@ -109,13 +121,13 @@ def add_led(img, x_pos, y_pos):
     for x in range(size):
         for y in range(size):
             led[x, y] = calc_color_val(x, y, size, rv)
-    img[x_pos - size//2:x_pos + size//2, y_pos - size//2:y_pos + size//2, 0] = led
+    img[x_pos - size // 2:x_pos + size // 2, y_pos - size // 2:y_pos + size // 2, 0] = led
     img[:, :, 1] = img[:, :, 0]
     img[:, :, 2] = img[:, :, 0]
 
 
 def calc_color_val(x, y, size, rv):
-    dist = ((size/2 - x)**2 + (size/2 - y)**2)**0.5
+    dist = ((size / 2 - x) ** 2 + (size / 2 - y) ** 2) ** 0.5
     scale = 1.7
     return rv.pdf(dist / scale) * 350 * scale
 
