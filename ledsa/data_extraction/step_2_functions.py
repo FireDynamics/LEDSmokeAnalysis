@@ -1,7 +1,39 @@
+from typing import List
+
 import numpy as np
+from matplotlib import pyplot as plt
+
+from ledsa.core.ConfigData import ConfigData
+from ledsa.core.file_handling import sep
 
 
-def get_indices_of_outer_leds(config):
+def match_leds_to_led_arrays(search_areas: np.ndarray, config: ConfigData) -> np.ndarray:
+    edge_indices = _get_indices_of_outer_leds(config)
+    dists_led_arrays_search_areas = _calc_dists_between_led_arrays_and_search_areas(edge_indices, search_areas)
+    led_arrays = _match_leds_to_arrays_with_min_dist(dists_led_arrays_search_areas, edge_indices, config, search_areas)
+    return led_arrays
+
+
+def generate_line_indices_files(line_indices: List[List[int]]) -> None:
+    for i in range(len(line_indices)):
+        out_file = open('analysis{}line_indices_{:03}.csv'.format(sep, i), 'w')
+        for iled in line_indices[i]:
+            out_file.write('{}\n'.format(iled))
+        out_file.close()
+
+
+def generate_labeled_led_arrays_plot(line_indices: List[List[int]], search_areas: np.ndarray) -> None:
+    """plot the labeled LEDs"""
+    for i in range(len(line_indices)):
+        plt.scatter(search_areas[line_indices[i], 2],
+                    search_areas[line_indices[i], 1],
+                    s=0.1, label='led strip {}'.format(i))
+
+    plt.legend()
+    plt.savefig('plots{}led_arrays.pdf'.format(sep))
+
+
+def _get_indices_of_outer_leds(config):
     if config['analyse_positions']['line_edge_indices'] == 'None':
         config.in_line_edge_indices()
         with open('config.ini', 'w') as configfile:
@@ -13,7 +45,7 @@ def get_indices_of_outer_leds(config):
     return line_edge_indices
 
 
-def calc_dists_between_led_arrays_and_search_areas(line_edge_indices, search_areas):
+def _calc_dists_between_led_arrays_and_search_areas(line_edge_indices, search_areas):
     distances_led_arrays_search_areas = np.zeros((search_areas.shape[0], len(line_edge_indices)))
 
     for line_edge_idx in range(len(line_edge_indices)):
@@ -23,13 +55,13 @@ def calc_dists_between_led_arrays_and_search_areas(line_edge_indices, search_are
         corner1 = np.array(search_areas[i1, 1:])
         corner2 = np.array(search_areas[i2, 1:])
 
-        d = calc_dists_to_line_segment(search_areas[:, 1:], corner1, corner2)
+        d = _calc_dists_to_line_segment(search_areas[:, 1:], corner1, corner2)
 
         distances_led_arrays_search_areas[:, line_edge_idx] = d
     return distances_led_arrays_search_areas
 
 
-def calc_dists_to_line_segment(points: np.ndarray, c1: np.ndarray, c2: np.ndarray) -> np.ndarray:
+def _calc_dists_to_line_segment(points: np.ndarray, c1: np.ndarray, c2: np.ndarray) -> np.ndarray:
     d = np.zeros(points.shape[0])
 
     for led_id in range(points.shape[0]):
@@ -61,8 +93,8 @@ def calc_dists_to_line_segment(points: np.ndarray, c1: np.ndarray, c2: np.ndarra
     return d
 
 
-def match_leds_to_arrays_with_min_dist(dists_led_arrays_search_areas, edge_indices, config, search_areas):
-    ignore_indices = get_indices_of_ignored_leds(config)
+def _match_leds_to_arrays_with_min_dist(dists_led_arrays_search_areas, edge_indices, config, search_areas):
+    ignore_indices = _get_indices_of_ignored_leds(config)
     # construct 2D list for LED indices sorted by line
     led_arrays = []
     for edge_idx in edge_indices:
@@ -74,10 +106,10 @@ def match_leds_to_arrays_with_min_dist(dists_led_arrays_search_areas, edge_indic
 
         idx_nearest_array = np.argmin(dists_led_arrays_search_areas[iled, :])
         led_arrays[idx_nearest_array].append(iled)
-    return led_arrays
+    return np.array(led_arrays)
 
 
-def get_indices_of_ignored_leds(config):
+def _get_indices_of_ignored_leds(config):
     if config['analyse_positions']['ignore_indices'] != 'None':
         ignore_indices = np.array([int(i) for i in config['analyse_positions']['ignore_indices'].split(' ')])
     else:

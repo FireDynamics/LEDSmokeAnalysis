@@ -1,7 +1,8 @@
 import numpy as np
+from scipy.optimize import minimize
+
 from ledsa.analysis.Experiment import Experiment, Layers, Camera
 from ledsa.analysis.ExtinctionCoefficients import ExtinctionCoefficients
-from scipy.optimize import minimize
 
 
 class ExtinctionCoefficientsNumeric(ExtinctionCoefficients):

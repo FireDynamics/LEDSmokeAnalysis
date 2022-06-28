@@ -1,8 +1,14 @@
 ledsa.tests.UnitTests package
 =============================
 
-Submodules
-----------
+Module contents
+---------------
+
+.. automodule:: ledsa.tests.UnitTests
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   
 
 ledsa.tests.UnitTests.test\_Experiment\_class module
 ----------------------------------------------------
@@ -29,10 +35,4 @@ ledsa.tests.UnitTests.test\_ExtinctionCoefficientsAnalytic module
    :show-inheritance:
 
 
-Module contents
----------------
 
-.. automodule:: ledsa.tests.UnitTests
-   :members:
-   :undoc-members:
-   :show-inheritance:

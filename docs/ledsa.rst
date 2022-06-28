@@ -10,10 +10,15 @@ Subpackages
    ledsa.analysis
    ledsa.core
    ledsa.ledpositions
-   ledsa.tests
 
-Submodules
-----------
+
+Module contents
+---------------
+
+.. automodule:: ledsa
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 ledsa.ledsa module
 ------------------
@@ -24,10 +29,4 @@ ledsa.ledsa module
    :show-inheritance:
 
 
-Module contents
----------------
 
-.. automodule:: ledsa
-   :members:
-   :undoc-members:
-   :show-inheritance:

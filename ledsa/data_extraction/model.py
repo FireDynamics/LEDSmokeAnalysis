@@ -1,6 +1,7 @@
 import numpy as np
 
 
+# cost function for the led optimization problem
 def target_function(params, *args):
     data, mesh = args
     X, Y = mesh

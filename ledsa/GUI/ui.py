@@ -1,7 +1,8 @@
-import ledsa.analysis.plot_functions as pf
+import ledsa.GUI.plot_functions as pf
 import matplotlib.pyplot as plt
 import matplotlib
-import ledsa.core.led_helper as led
+
+import ledsa.core.image_handling
 import tkinter as tk
 import subprocess
 import os
@@ -205,10 +206,10 @@ class InputArgumentsWindowPlots(InputArgumentsWindow):
     def plot(self):
         if self.plot_type == 't':
             pf.plot_t_fitpar(self.master.fig, self.master.led_id, self.master.plot_par, self.master.channel, 1,
-                             led.get_last_img_id())
+                             ledsa.core.image_handling.get_last_img_id())
         if self.plot_type == 't_av':
             pf.plot_t_fitpar_with_moving_average(self.master.fig, self.master.led_id, self.master.plot_par,
-                                                 self.master.channel, 1, led.get_last_img_id())
+                                                 self.master.channel, 1, ledsa.core.image_handling.get_last_img_id())
         if self.plot_type == 'z':
             pf.plot_z_fitpar(self.master.fig, self.master.plot_par, self.master.img_id, self.master.channel,
                              self.master.lines)
@@ -255,7 +256,7 @@ class InputArgumentWindowShowLed(InputArgumentsWindow):
         if self.master.use_time.get():
             time = self.master.time
         else:
-            time = led.get_time_from_img_id(self.master.img_id)
+            time = ledsa.core.image_handling.get_time_from_img_id(self.master.img_id)
         pf.plot_led_with_fit(self.master.channel, time, self.master.led_id)
         self.close()
 
@@ -277,7 +278,7 @@ class InputArgumentWindowShowLedDiff(InputArgumentsWindow):
             time1 = self.master.time
             time2 = int(entries[4][1].get())
         else:
-            time1 = led.get_time_from_img_id(self.master.img_id)
-            time2 = led.get_time_from_img_id(int(entries[2][1].get()))
+            time1 = ledsa.core.image_handling.get_time_from_img_id(self.master.img_id)
+            time2 = ledsa.core.image_handling.get_time_from_img_id(int(entries[2][1].get()))
         pf.show_led_diff(self.master.channel, self.master.led_id, time1, time2)
         self.close()

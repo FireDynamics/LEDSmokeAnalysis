@@ -1,8 +1,15 @@
 ledsa.analysis package
 ======================
 
-Submodules
-----------
+
+Module contents
+---------------
+
+.. automodule:: ledsa.analysis
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   
 
 ledsa.analysis.Experiment module
 --------------------------------
@@ -61,10 +68,4 @@ ledsa.analysis.ui module
    :show-inheritance:
 
 
-Module contents
----------------
 
-.. automodule:: ledsa.analysis
-   :members:
-   :undoc-members:
-   :show-inheritance:

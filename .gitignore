@@ -121,4 +121,5 @@ analysis/
 test.py
 img_infos.csv
 config.ini
+experiment_data.txt
 .vscode/settings.json

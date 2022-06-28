@@ -1,12 +1,13 @@
 # tools for analysing problems with the LED fitting
-import ledsa.core.model
+import ledsa.core.file_handling
+import ledsa.data_extraction.step_3_functions
+import ledsa.data_extraction.step_3_functions as s3
+from ledsa.data_extraction.model import led_model
 import numpy as np
 import matplotlib.pyplot as plt
 import importlib
 from PIL import Image
-import ledsa.core.led_helper as led
-from ledsa.core.model import led_model
-from ..ledsa import LEDSA
+from ledsa import LEDSA
 
 
 class FitAnalyser:
@@ -32,7 +33,7 @@ class FitAnalyser:
         self.channel = int(params[14])
 
     def plot_image(self):
-        data = led.read_file(self.filename, channel=self.channel)
+        data = ledsa.data_extraction.step_3_functions.read_img(self.filename, channel=self.channel)
 
         s = np.index_exp[self.cx - self.window_radius:self.cx + self.window_radius,
                          self.cy - self.window_radius:self.cy + self.window_radius]
@@ -48,21 +49,21 @@ class FitAnalyser:
 
         mesh = np.meshgrid(np.linspace(0.5, self.nx - 0.5, self.nx), np.linspace(0.5, self.ny - 0.5, self.ny))
 
-        led_model = led_model(mesh[0], mesh[1], self.fit[0], self.fit[1], self.fit[2], self.fit[3], self.fit[4],
-                              self.fit[5], self.fit[6], self.fit[7])
+        new_led_model = led_model(mesh[0], mesh[1], self.fit[0], self.fit[1], self.fit[2], self.fit[3], self.fit[4],
+                                  self.fit[5], self.fit[6], self.fit[7])
 
         fig, ax = plt.subplots(1, 2, dpi=600)
 
         ax[0].imshow(data[s], cmap='Greys')
-        ax[0].contour(mesh[0], mesh[1], led_model, levels=10, alpha=0.3)
+        ax[0].contour(mesh[0], mesh[1], new_led_model, levels=10, alpha=0.3)
         ax[0].scatter(self.fit[0], self.fit[1], color='Red')
 
-        ax[1].imshow(led_model, cmap='Greys')
+        ax[1].imshow(new_led_model, cmap='Greys')
 
-        ampl = np.max(np.abs(data[s] - led_model))  # 0.25
+        ampl = np.max(np.abs(data[s] - new_led_model))  # 0.25
         maxA = 255  # np.max(np.abs(data[s]))
 
-        im2 = ax[1].imshow((data[s] - led_model)/maxA, cmap='seismic', vmin=-ampl/maxA, vmax=ampl/maxA)
+        im2 = ax[1].imshow((data[s] - new_led_model)/maxA, cmap='seismic', vmin=-ampl/maxA, vmax=ampl/maxA)
         plt.colorbar(mappable=im2)
         # plt.savefig('{}_ledanalysis_{:04d}.pdf'.format(filename, iled))
         # plt.clf()
@@ -73,12 +74,12 @@ class FitAnalyser:
         plt.show(block=True)
 
     def refit_image(self):
-        importlib.reload(led)
+        importlib.reload(s3)
 
         ledsa = LEDSA()
         ledsa.load_line_indices()
         ledsa.load_search_areas()
-        fit_res = led.generate_analysis_data(self.filename[-12:], ledsa.search_areas, ledsa.line_indices, ledsa.config['analyse_photo'], True, self.id)
+        fit_res = s3.generate_analysis_data(self.filename[-12:], self.channel, ledsa.search_areas, ledsa.line_indices, ledsa.config['analyse_photo'], True, True, self.id)
         self.fit = fit_res.x
         self.fit_success = fit_res.success
         self.fit_fun = fit_res.fun

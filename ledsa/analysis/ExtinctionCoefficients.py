@@ -1,12 +1,18 @@
 from abc import ABC, abstractmethod
+from multiprocessing import Pool
+
 import numpy as np
 import pandas as pd
-from multiprocessing import Pool
+
 from ledsa.analysis.Experiment import Experiment, Layers, Camera
-from ledsa.analysis.calculations import read_hdf, multiindex_series_to_nparray
+from ledsa.core.file_handling import read_hdf
 
 
 class ExtinctionCoefficients(ABC):
+    """
+    Parent class for the calculation of the Extinctin Coefficients
+    The calc_and_set_coefficients and the save method schould be the only methods needed.
+    """
     def __init__(self, experiment=Experiment(layers=Layers(10, 1.0, 3.35), camera=Camera(pos_x=4.4, pos_y=2, pos_z=2.3),
                                              led_array=3, channel=0),
                  reference_property='sum_col_val', num_ref_imgs=10):
@@ -27,6 +33,14 @@ class ExtinctionCoefficients(ABC):
         return out
 
     def calc_and_set_coefficients(self) -> None:
+        """
+        main loop of the coefficient calculation
+        Steps:
+        1. Load and claculate all needed variables
+        2. Loop over every image
+            2.1 Calculate the procentual change in intensities compared to the start without smoke
+            2.2 Calculate the extinction coefficients depending on child class used
+        """
         self.set_all_member_variables()
         for img_id, single_img_data in self.calculated_img_data.groupby(level=0):
             single_img_array = single_img_data[self.reference_property].to_numpy()
@@ -37,8 +51,12 @@ class ExtinctionCoefficients(ABC):
         return None
 
     def calc_and_set_coefficients_mp(self, cores=4) -> None:
+        """
+        See method calc_and_set_coefficients.
+        Use pool to distribute workload of the loop to multiple cores
+        """
         self.set_all_member_variables()
-        img_property_array = multiindex_series_to_nparray(self.calculated_img_data[self.reference_property])
+        img_property_array = _multiindex_series_to_nparray(self.calculated_img_data[self.reference_property])
         rel_intensities = img_property_array / self.ref_intensities
 
         pool = Pool(processes=cores)
@@ -46,7 +64,12 @@ class ExtinctionCoefficients(ABC):
         pool.close()
         self.coefficients_per_image_and_layer = kappas
 
-    def set_all_member_variables(self):
+    def set_all_member_variables(self) -> None:
+        """
+        1. Take the ray between led and camera and calculate the distance traveld per layer, for every led
+        2. Load the binary file with the parameters calculated with ledsa core
+        3. Calculate the intensities from the reference images to calculate the relative changes between smoke/no smoke later
+        """
         if len(self.distances_per_led_and_layer) == 0:
             self.distances_per_led_and_layer = self.calc_distance_array()
         if self.calculated_img_data.empty:
@@ -84,7 +107,22 @@ class ExtinctionCoefficients(ABC):
         ref_intensities = ref_img_data.mean(0, level='led_id')
         self.ref_intensities = ref_intensities[self.reference_property].to_numpy()
 
-
     @abstractmethod
     def calc_coefficients_of_img(self, rel_intensities: np.ndarray) -> np.ndarray:
+        """
+        Calculate the extinction coefficients for a single image.
+        Needs to be implemented by the child class.
+        :param rel_intensities: Array of procentual change in intesity of every led in the image
+        :return: Array of the coefficients
+        """
         pass
+
+
+def _multiindex_series_to_nparray(multi_series: pd.Series) -> np.ndarray:
+    index = multi_series.index
+    num_leds = pd.Series(multi_series.groupby(level=0).size()).iloc[0]
+    num_imgs = pd.Series(multi_series.groupby(level=1).size()).iloc[0]
+    array = np.zeros((num_imgs, num_leds))
+    for i in range(num_imgs):
+        array[i] = multi_series.loc[i+1]
+    return array
