@@ -94,12 +94,23 @@ class DataExtractor:
         self.line_indices = ledsa.data_extraction.step_2_functions.match_leds_to_led_arrays(self.search_areas, self.config)
         ledsa.data_extraction.step_2_functions.generate_line_indices_files(self.line_indices)
         ledsa.data_extraction.step_2_functions.generate_labeled_led_arrays_plot(self.line_indices, self.search_areas)
+        self.line_indices, merge = led.merge_led_arrays(self.line_indices, self.config)
+        if merge == True:
+            ledsa.data_extraction.step_2_functions.generate_labeled_led_arrays_plot(self.line_indices, self.search_areas, filename_extension='_merge')
+            ledsa.data_extraction.step_2_functions.generate_line_indices_files(self.line_indices, filename_extension='_merge')
 
     def load_line_indices(self):
         """loads the line indices from the csv file"""
+        if self.config['DEFAULT']['merge_led_arrays'] != 'None':
+            num_of_arrays = len(self.config.get2dnparray('DEFAULT', 'merge_led_arrays','var'))
+            file_extension = '_merge'
+            print("WARNING: ARRAY MERGE IS ACTIVE!!!")
+        else:
+            num_of_arrays = int(self.config['DEFAULT']['num_of_arrays'])
+            file_extension = ''
         self.line_indices = []
-        for i in range(int(self.config['DEFAULT']['num_of_arrays'])):
-            filename = 'analysis{}line_indices_{:03}.csv'.format(sep, i)
+        for i in range(num_of_arrays):
+            filename = 'analysis{}line_indices_{:03}{}.csv'.format(sep, i, file_extension)
             self.line_indices.append(ledsa.core.file_handling.read_table(filename, dtype='int'))
 
     # """

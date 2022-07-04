@@ -115,3 +115,13 @@ def _get_indices_of_ignored_leds(config):
     else:
         ignore_indices = np.array([])
     return ignore_indices
+
+def merge_indices_of_led_arrays(led_arrays, config):
+    merged_line_indices_groups = config.get2dnparray('DEFAULT', 'merge_led_arrays','var')
+    all_merged_led_arrays = []
+    for merged_line_indices in merged_line_indices_groups:
+        merged_led_array = []
+        for line_index in merged_line_indices:
+            merged_led_array.extend(led_arrays[line_index])
+        all_merged_led_arrays.append(sorted(merged_led_array))
+    return all_merged_led_arrays

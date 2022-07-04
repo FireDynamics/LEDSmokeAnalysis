@@ -5,8 +5,7 @@ import numpy as np
 import pandas as pd
 
 from ledsa.analysis.Experiment import Experiment, Layers, Camera
-from ledsa.core.file_handling import read_hdf
-
+from ledsa.core.file_handling import read_hdf, read_hdf_avg, extend_hdf, create_analysis_infos_avg
 
 class ExtinctionCoefficients(ABC):
     """
@@ -15,7 +14,7 @@ class ExtinctionCoefficients(ABC):
     """
     def __init__(self, experiment=Experiment(layers=Layers(10, 1.0, 3.35), camera=Camera(pos_x=4.4, pos_y=2, pos_z=2.3),
                                              led_array=3, channel=0),
-                 reference_property='sum_col_val', num_ref_imgs=10):
+                 reference_property='sum_col_val', num_ref_imgs=10, average_images=False):
         self.coefficients_per_image_and_layer = []
         self.experiment = experiment
         self.reference_property = reference_property
@@ -24,6 +23,8 @@ class ExtinctionCoefficients(ABC):
         self.calculated_img_data = pd.DataFrame()
         self.distances_per_led_and_layer = np.array([])
         self.ref_intensities = np.array([])
+        self.cc_matrix = None
+        self.average_images = average_images
 
         self.type = None
 
@@ -78,7 +79,11 @@ class ExtinctionCoefficients(ABC):
             self.calc_and_set_ref_intensities()
 
     def load_img_data(self) -> None:
-        img_data = read_hdf(self.experiment.channel, path=self.experiment.path)
+        if self.average_images == True:
+            img_data = read_hdf_avg(self.experiment.channel, path=self.experiment.path)
+            create_analysis_infos_avg()
+        else:
+            img_data = read_hdf(self.experiment.channel, path=self.experiment.path)
         img_data_cropped = img_data[['line', self.reference_property]]
         self.calculated_img_data = img_data_cropped[img_data_cropped['line'] == self.experiment.led_array]
 
@@ -106,6 +111,28 @@ class ExtinctionCoefficients(ABC):
         ref_img_data = self.calculated_img_data.query(f'img_id <= {self.num_ref_imgs}')
         ref_intensities = ref_img_data.mean(0, level='led_id')
         self.ref_intensities = ref_intensities[self.reference_property].to_numpy()
+
+    def apply_color_correction(self, cc_matrix, on='sum_col_val', nchannels=3) -> None: # TODO: remove hardcoding of nchannels
+        """ Apply color correction on channel values based on color correction matrix.
+
+        """
+        self.cc_matrix = cc_matrix
+        cc_matrix_inv = np.linalg.inv(self.cc_matrix)
+        quanity = on
+        fit_params_list = []
+        for channel in range(nchannels):
+            fit_parameters = read_hdf(channel)[quanity]
+            fit_params_list.append(fit_parameters)
+        raw_val_array = pd.concat(fit_params_list, axis=1)
+        cc_val_array = np.dot(cc_matrix_inv, raw_val_array.T).T
+        cc_val_array = cc_val_array.astype(np.int16)
+        for channel in range(nchannels):
+            extend_hdf(channel, quanity + '_cc',cc_val_array[:,channel] )
+        print(f"Color correction applied on {nchannels} Channels!")
+
+
+
+
 
     @abstractmethod
     def calc_coefficients_of_img(self, rel_intensities: np.ndarray) -> np.ndarray:
