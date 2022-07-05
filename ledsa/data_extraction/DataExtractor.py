@@ -94,7 +94,7 @@ class DataExtractor:
         self.line_indices = ledsa.data_extraction.step_2_functions.match_leds_to_led_arrays(self.search_areas, self.config)
         ledsa.data_extraction.step_2_functions.generate_line_indices_files(self.line_indices)
         ledsa.data_extraction.step_2_functions.generate_labeled_led_arrays_plot(self.line_indices, self.search_areas)
-        self.line_indices, merge = led.merge_led_arrays(self.line_indices, self.config)
+        self.line_indices, merge = ledsa.data_extraction.step_2_functions.merge_led_arrays(self.line_indices, self.config)
         if merge == True:
             ledsa.data_extraction.step_2_functions.generate_labeled_led_arrays_plot(self.line_indices, self.search_areas, filename_extension='_merge')
             ledsa.data_extraction.step_2_functions.generate_line_indices_files(self.line_indices, filename_extension='_merge')

@@ -13,25 +13,30 @@ def match_leds_to_led_arrays(search_areas: np.ndarray, config: ConfigData) -> np
     led_arrays = _match_leds_to_arrays_with_min_dist(dists_led_arrays_search_areas, edge_indices, config, search_areas)
     return led_arrays
 
+def merge_led_arrays(led_arrays, config):
+    merge = False
+    if config['DEFAULT']['merge_led_arrays'] != 'None':
+        led_arrays = _merge_indices_of_led_arrays(led_arrays, config)
+        merge = True
+    return led_arrays, merge
 
-def generate_line_indices_files(line_indices: List[List[int]]) -> None:
+def generate_line_indices_files(line_indices, filename_extension=''):
     for i in range(len(line_indices)):
-        out_file = open('analysis{}line_indices_{:03}.csv'.format(sep, i), 'w')
+        out_file = open('analysis{}line_indices_{:03}{}.csv'.format(sep, i, filename_extension), 'w')
         for iled in line_indices[i]:
             out_file.write('{}\n'.format(iled))
         out_file.close()
 
 
-def generate_labeled_led_arrays_plot(line_indices: List[List[int]], search_areas: np.ndarray) -> None:
+def generate_labeled_led_arrays_plot(line_indices, search_areas, filename_extension=''):
     """plot the labeled LEDs"""
     for i in range(len(line_indices)):
         plt.scatter(search_areas[line_indices[i], 2],
                     search_areas[line_indices[i], 1],
                     s=0.1, label='led strip {}'.format(i))
-
     plt.legend()
-    plt.savefig('plots{}led_arrays.pdf'.format(sep))
-
+    plt.savefig('plots{0}led_arrays{1}.pdf'.format(sep, filename_extension))
+    plt.close()
 
 def _get_indices_of_outer_leds(config):
     if config['analyse_positions']['line_edge_indices'] == 'None':
@@ -116,7 +121,7 @@ def _get_indices_of_ignored_leds(config):
         ignore_indices = np.array([])
     return ignore_indices
 
-def merge_indices_of_led_arrays(led_arrays, config):
+def _merge_indices_of_led_arrays(led_arrays, config):
     merged_line_indices_groups = config.get2dnparray('DEFAULT', 'merge_led_arrays','var')
     all_merged_led_arrays = []
     for merged_line_indices in merged_line_indices_groups:

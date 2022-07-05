@@ -9,6 +9,26 @@ from ledsa.core.ConfigData import ConfigData
 
 sep = os.path.sep
 
+def create_analysis_infos_avg(): #TODO: Move cuntion somewhere else
+  n_summarize = 2
+  n_skip_images = 10
+  image_infos = pd.read_csv('.{}analysis{}image_infos_analysis.csv'.format(sep, sep))
+  img_names = image_infos['Name'].tolist()
+  exp_time = image_infos['Experiment_Time[s]']
+  head_img_names = img_names[:n_skip_images]
+  head_exp_times = exp_time[:n_skip_images]
+  tail_img_names = img_names[n_skip_images:]
+  tail_exp_times = exp_time[n_skip_images:]
+  img_names_avg = ["/".join(tail_img_names[n:n + n_summarize]) for n in range(0, len(tail_img_names), n_summarize)]
+  exp_times_avg = tail_exp_times.groupby(np.arange(len(tail_exp_times)) // n_summarize).mean()
+  combined_exp_times = pd.concat([head_exp_times, exp_times_avg])
+  combined_exp_times.index = range(len(combined_exp_times))
+  combined_img_names = head_img_names + img_names_avg
+  ids = range(1, len(combined_img_names) + 1)
+  img_infos_analysis_avg = pd.DataFrame(
+      {"#ID": ids, "Name": combined_img_names, "Experiment_Time[s]": combined_exp_times})
+  img_infos_analysis_avg.reset_index()
+  img_infos_analysis_avg.to_csv('.{}analysis{}image_infos_analysis_avg.csv'.format(sep, sep))
 
 def read_table(filename: str, delim=' ', dtype='float', atleast_2d=False, silent=False) -> np.ndarray:
     try:
@@ -42,6 +62,15 @@ def read_hdf(channel: int, path='.') -> pd.DataFrame:
     except FileNotFoundError:
         create_binary_data(channel)
         fit_parameters = pd.read_hdf(f"{path}{sep}analysis{sep}channel{channel}{sep}all_parameters.h5", 'table')
+    fit_parameters.set_index(['img_id', 'led_id'], inplace=True)
+    return fit_parameters
+
+def read_hdf_avg(channel, path='.'):
+    try:
+        fit_parameters = pd.read_hdf(f"{path}{sep}analysis{sep}channel{channel}{sep}all_parameters_avg.h5", 'table')
+    except FileNotFoundError:
+        average_all_fitpar(channel)
+    fit_parameters = pd.read_hdf(f"{path}{sep}analysis{sep}channel{channel}{sep}all_parameters_avg.h5", 'table')
     fit_parameters.set_index(['img_id', 'led_id'], inplace=True)
     return fit_parameters
 

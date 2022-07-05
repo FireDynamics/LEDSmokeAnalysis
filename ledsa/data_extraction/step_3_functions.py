@@ -26,12 +26,14 @@ def generate_analysis_data(img_filename: str, channel: int, search_areas: np.nda
                                                    window_radius, fit_leds)
         return analysis_res
 
-    for led_array_idx in range(int(conf['num_of_arrays'])):
+    # num_of_arrays = int(conf['num_of_arrays']) # TODO: Remove from config or set as control value
+    num_of_arrays = len(line_indices)
+    for led_array_idx in range(num_of_arrays):
         print('processing LED array ', led_array_idx, '...')
         for iled in line_indices[led_array_idx]:
             if iled % (int(conf['skip_leds']) + 1) == 0:
                 led_analysis_data = _generate_led_analysis_data(conf, channel, data, debug, iled, img_filename,
-                                                                led_array_idx, search_areas, window_radius, fit_leds)
+                                                               led_array_idx, search_areas, window_radius, fit_leds)
                 img_analysis_data.append(led_analysis_data)
     return img_analysis_data
 
