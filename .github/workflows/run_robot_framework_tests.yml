@@ -47,7 +47,7 @@ jobs:
         # repository name is needed for posting test report in a next step
         - name: Get Repository Name
           run: |
-            export REPO="$(echo "${{ github.repository }}" | awk -F / '{print $2}' | sed -e "s/:refs//")"
+            export REPO="$(echo "${{ github.repository }}/tests/AcceptanceTests/" | awk -F / '{print $2}' | sed -e "s/:refs//")"
             echo "REPOSITORY_NAME=$REPO" >> $GITHUB_ENV
         # when test are run for a commit, post results as a comment
         # note: comment is not posted for tests triggered for pull requests, only for a main branch (master)
