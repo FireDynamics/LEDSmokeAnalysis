@@ -31,7 +31,7 @@ jobs:
           # configure -e ROBOT_OPTIONS according to yout tests, or remove it if no special configuration is needed
           run: |
             docker run \
-              -v ${PWD}/tests/reports:/opt/robotframework/reports:Z \
+              -v ${PWD}/tests/AcceptanceTests/reports:/opt/robotframework/reports:Z \
               -v ${PWD}/tests/AcceptanceTests:/opt/robotframework/tests:Z \
               -v ${PWD}/ledsa:/usr/local/lib/python3.8/site-packages/ledsa:Z \
               --user $(id -u):$(id -g) \
@@ -43,7 +43,7 @@ jobs:
           with:
             name: reports
             # set path to Robot Framework results reports. Exclude dummy file that is needed because of ppodgorsek image priviledges.
-            path: ${{ github.workspace }}/tests/reports
+            path: ${{ github.workspace }}/tests/AcceptanceTests/reports
         # repository name is needed for posting test report in a next step
         - name: Get Repository Name
           run: |
