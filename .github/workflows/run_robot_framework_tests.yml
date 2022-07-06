@@ -52,7 +52,7 @@ jobs:
         # when test are run for a commit, post results as a comment
         # note: comment is not posted for tests triggered for pull requests, only for a main branch (master)
         - name: Send test report as comment to commit
-          uses: joonvena/robotframework-reporter-action@v0.1
+          uses: joonvena/robotframework-reporter-action@v2
           if: ${{ github.event_name == 'push' }}
           env:
             GH_ACCESS_TOKEN: ${{ github.TOKEN }}
