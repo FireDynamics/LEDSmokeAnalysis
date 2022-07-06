@@ -31,7 +31,7 @@ jobs:
           # configure -e ROBOT_OPTIONS according to yout tests, or remove it if no special configuration is needed
           run: |
             docker run \
-              -v ${PWD}/tests/AcceptanceTests/reports:/opt/robotframework/reports:Z \
+              -v ${PWD}/reports:/opt/robotframework/reports:Z \
               -v ${PWD}/tests/AcceptanceTests:/opt/robotframework/tests:Z \
               -v ${PWD}/ledsa:/usr/local/lib/python3.8/site-packages/ledsa:Z \
               --user $(id -u):$(id -g) \
@@ -43,11 +43,11 @@ jobs:
           with:
             name: reports
             # set path to Robot Framework results reports. Exclude dummy file that is needed because of ppodgorsek image priviledges.
-            path: ${{ github.workspace }}/tests/AcceptanceTests/reports
+            path: ${{ github.workspace }}/reports
         # repository name is needed for posting test report in a next step
         - name: Get Repository Name
           run: |
-            export REPO="$(echo "${{ github.repository }}/tests/AcceptanceTests/" | awk -F / '{print $2}' | sed -e "s/:refs//")"
+            export REPO="$(echo "${{ github.repository }}" | awk -F / '{print $2}' | sed -e "s/:refs//")"
             echo "REPOSITORY_NAME=$REPO" >> $GITHUB_ENV
         # when test are run for a commit, post results as a comment
         # note: comment is not posted for tests triggered for pull requests, only for a main branch (master)
@@ -55,11 +55,10 @@ jobs:
           uses: joonvena/robotframework-reporter-action@v2
           with:
             gh_access_token: ${{ secrets.GITHUB_TOKEN }}
-            report_path: ${{ github.workspace }}/tests/AcceptanceTests/reports
           if: ${{ github.event_name == 'push' }}
           env:
             # GH_ACCESS_TOKEN: ${{ github.TOKEN }}
             REPO_OWNER: ${{ github.REPOSITORY_OwNER }}
             COMMIT_SHA: ${{ github.SHA }}
             REPOSITORY: ${{ env.REPOSITORY_NAME }}
-            # REPORT_PATH: ${{ github.workspace }}/tests/AcceptanceTests/reports
+            REPORT_PATH: ${{ github.workspace }}/tests/AcceptanceTests/reports
