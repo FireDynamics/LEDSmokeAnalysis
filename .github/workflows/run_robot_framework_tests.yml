@@ -55,10 +55,11 @@ jobs:
           uses: joonvena/robotframework-reporter-action@v2
           with:
             gh_access_token: ${{ secrets.GITHUB_TOKEN }}
+            report_path: ${{ github.workspace }}/tests/AcceptanceTests/reports
           if: ${{ github.event_name == 'push' }}
           env:
             # GH_ACCESS_TOKEN: ${{ github.TOKEN }}
             REPO_OWNER: ${{ github.REPOSITORY_OwNER }}
             COMMIT_SHA: ${{ github.SHA }}
             REPOSITORY: ${{ env.REPOSITORY_NAME }}
-            REPORT_PATH: ${{ github.workspace }}/tests/AcceptanceTests/reports
+            # REPORT_PATH: ${{ github.workspace }}/tests/AcceptanceTests/reports
