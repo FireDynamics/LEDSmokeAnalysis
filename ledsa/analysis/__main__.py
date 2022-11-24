@@ -4,7 +4,8 @@ import sys
 
 import ledsa.analysis.ExtinctionCoefficientsNumeric as ECN
 from ledsa.analysis.Experiment import Experiment
-from ledsa.analysis.ExperimentData import create_experiment_data, load_experiment_data
+# from ledsa.analysis.ExperimentData import create_experiment_data, load_experiment_data # Todo: remove
+from ledsa.analysis.ExperimentData import ExperimentData
 
 def main(argv):
     parser = argparse.ArgumentParser(description=
@@ -38,11 +39,11 @@ def add_parser_argument_analysis(parser: argparse.ArgumentParser) -> argparse.Ar
 
 def run_analysis_arguments(args):
     if args.default_input:
-        create_experiment_data(argv)
+        create_experiment_data(args) # Todo: Remove because of config
         exit(0)
 
     if args.cc:
-        apply_cc_on_ref_property(args)
+        apply_cc_on_ref_property(args) # Todo: Delete and take from Config
         args.ref_property += '_cc'
 
 def run_analysis_arguments_with_extinction_coefficient(args):
@@ -52,7 +53,7 @@ def run_analysis_arguments_with_extinction_coefficient(args):
 
 
 def extionction_coefficient_calculation(args):
-    ex_data = load_experiment_data()
+    ex_data = ExperimentData()
     for array in ex_data.arrays:
         for channel in ex_data.channels:
             out_file = os.path.join(os.getcwd(), 'analysis', 'AbsorptionCoefficients',
