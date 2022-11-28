@@ -6,7 +6,7 @@ import ledsa.analysis.ExtinctionCoefficientsNumeric as ECN
 from ledsa.analysis.Experiment import Experiment
 # from ledsa.analysis.ExperimentData import create_experiment_data, load_experiment_data # Todo: remove
 from ledsa.analysis.ExperimentData import ExperimentData
-
+from ledsa.analysis.ConfigDataAnalysis import ConfigDataAnalysis
 def main(argv):
     parser = argparse.ArgumentParser(description=
                                      'Calculation of the extinction coefficients.')
@@ -23,8 +23,8 @@ def main(argv):
 def add_parser_argument_analysis(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
     parser.add_argument('--analysis', action='store_true',
                         help='Activate extinction coefficient calculation if not run directly from analysis package')
-    parser.add_argument('--default_input', action='store_true',
-                        help='Create an input file with a default experiemnt configuration.')
+    parser.add_argument('--config_analysis', '-conf_a', nargs='*', default=None,
+                        help='creates the analysis configuration file.')
     parser.add_argument('--cc', '--color_correction', action='store_true',
                         help='Applies color correction matrix before calculating the extinction coefficients. Use only, if'
                              'the reference property is not already color corrected.')
@@ -38,9 +38,8 @@ def add_parser_argument_analysis(parser: argparse.ArgumentParser) -> argparse.Ar
 
 
 def run_analysis_arguments(args):
-    if args.default_input:
-        create_experiment_data(args) # Todo: Remove because of config
-        exit(0)
+    if args.config_analysis is not None:
+        ConfigDataAnalysis(load_config_file=False)
 
     if args.cc:
         apply_cc_on_ref_property(args) # Todo: Delete and take from Config
@@ -54,17 +53,19 @@ def run_analysis_arguments_with_extinction_coefficient(args):
 
 def extionction_coefficient_calculation(args):
     ex_data = ExperimentData()
+    ex_data.request_config_parameters()
     for array in ex_data.arrays:
         for channel in ex_data.channels:
             out_file = os.path.join(os.getcwd(), 'analysis', 'AbsorptionCoefficients',
                                     f'absorption_coefs_numeric_channel_{channel}_{args.ref_property}_led_array_{array}.csv')
             if not os.path.exists(out_file):
                 ex = Experiment(ex_data.layers, led_array=array, camera=ex_data.camera, channel=channel)
-                eca = ECN.ExtinctionCoefficientsNumeric(ex, reference_property=args.ref_property)
+                eca = ECN.ExtinctionCoefficientsNumeric(ex, reference_property=args.ref_property, num_ref_imgs=ex_data.num_ref_images)
                 if args.no_mp:
                     eca.calc_and_set_coefficients()
                 else:
                     eca.calc_and_set_coefficients_mp(ex_data.n_cpus)
+                eca.save()
                 print(f"{out_file} created!")
             else:
                 print(f"{out_file} already exists!")
