@@ -117,11 +117,11 @@ class DataExtractor:
             self.load_line_indices()
 
         img_filenames = ledsa.core.file_handling.read_table('images_to_process.csv', dtype=str)
-        if config.getboolean('multicore_processing'):
+        num_of_cores = int(config['num_of_cores'])
+        if num_of_cores > 1:
             from multiprocessing import Pool
-
             print('images are getting processed, this may take a while')
-            with Pool(int(config['num_of_cores'])) as p:
+            with Pool(num_of_cores) as p:
                 p.map(self.process_img_file, img_filenames)
         else:
             for i in range(len(img_filenames)):

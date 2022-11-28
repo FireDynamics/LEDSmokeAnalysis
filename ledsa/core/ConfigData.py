@@ -10,7 +10,7 @@ from PIL.ExifTags import TAGS
 class ConfigData(cp.ConfigParser):
     # don't give img_directory a standard value
     def __init__(self, load_config_file=True, img_directory='.', window_radius=10, threshold_factor=0.25,
-                 num_of_arrays=None, multicore_processing=False, num_of_cores=1, reference_img=None, date=None,
+                 num_of_arrays=None, num_of_cores=1, reference_img=None, date=None,
                  start_time=None, time_diff_to_image_time=None, time_img=None, img_name_string=None, first_img=None,
                  last_img=None, first_analyse_img=None, last_analyse_img=None, skip_imgs=0, skip_leds=0):
         cp.ConfigParser.__init__(self, allow_no_value=True)
@@ -27,7 +27,6 @@ class ConfigData(cp.ConfigParser):
             self.set('DEFAULT', '   # Number of LED lines')
             self['DEFAULT']['   num_of_arrays'] = str(num_of_arrays)
             self.set('DEFAULT', '   # Set to True if Multiprocessing should be used')
-            self['DEFAULT']['   multicore_processing'] = str(multicore_processing)
             self['DEFAULT']['   num_of_cores'] = str(num_of_cores)
 
             self.set('DEFAULT', '')
