@@ -23,6 +23,7 @@ class ExperimentData:
         self.weighting_curvature = None
         self.num_iterations = None
         self.num_ref_images = None
+        self.reference_property = None
         self.load_experiment_data() # Todo: Does that belong here?
 
     def load_experiment_data(self):
@@ -36,6 +37,7 @@ class ExperimentData:
         self.weighting_preference = float(config['DEFAULT']['weighting_preference'])
         self.weighting_curvature = float(config['DEFAULT']['weighting_preference'])
         self.num_iterations = float(config['DEFAULT']['num_iterations'])
+        self.reference_property = config['DEFAULT']['reference_property']
 
         if domain_bounds is None:
             config.in_domain_bounds()
