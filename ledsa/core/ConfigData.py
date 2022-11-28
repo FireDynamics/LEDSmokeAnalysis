@@ -46,7 +46,7 @@ class ConfigData(cp.ConfigParser):
             self.set('DEFAULT', ' ')
             self.set('DEFAULT', '# String representing the naming convention of the image files')
             self['DEFAULT']['   img_name_string'] = str(img_name_string)
-            self['DEFAULT']['   img_number_overflow'] = None
+            self['DEFAULT']['   img_number_overflow'] = 'None'
 
             self.set('DEFAULT', '  ')
             self.set('DEFAULT', '# First and last image number of the experiment')
