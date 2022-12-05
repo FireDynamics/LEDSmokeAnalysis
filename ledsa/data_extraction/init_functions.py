@@ -84,12 +84,6 @@ def _calc_experiment_and_real_time(build_type, config, tag, img_number):
     return experiment_time, time
 
 
-def _get_exif(filename, tag):
-    with open(filename, 'rb') as f:
-        exif = exifread.process_file(f, details=False, stop_tag=tag)
-    return exif
-
-
 def _get_datetime_from_str(date, time):
     if date.find(":") != -1:
         date_time = datetime.strptime(date + ' ' + time, '%Y:%m:%d %H:%M:%S')
