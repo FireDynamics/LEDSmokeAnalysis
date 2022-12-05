@@ -51,7 +51,7 @@ def run_analysis_arguments_with_extinction_coefficient(args):
 def extionction_coefficient_calculation(args):
     ex_data = ExperimentData()
     ex_data.request_config_parameters()
-    for array in ex_data.arrays:
+    for array in ex_data.led_arrays:
         for channel in ex_data.channels:
             out_file = os.path.join(os.getcwd(), 'analysis', 'AbsorptionCoefficients',
                                     f'absorption_coefs_numeric_channel_{channel}_{ex_data.reference_property}_led_array_{array}.csv')
