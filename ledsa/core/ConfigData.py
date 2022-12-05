@@ -80,7 +80,10 @@ class ConfigData(cp.ConfigParser):
             print('config.ini created')
 
     def load(self):
-        self.read('config.ini')
+        try:
+            self.read_file(open('config.ini'))
+        except FileNotFoundError:
+            print('config.ini not found in working directory! Please create it with argument "--config".')
         print('config.ini loaded')
 
     def save(self):
