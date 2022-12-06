@@ -41,8 +41,8 @@ class LedsaATestLibrary:
         conf = ConfigData(load_config_file=False, img_directory='.', window_radius=10, threshold_factor=0.25,
                           num_of_arrays=1, multicore_processing=False, num_of_cores=1, reference_img='test_img_0.jpg',
                           date=None, start_time=None, time_diff_to_image_time=0, time_img=None,
-                          img_name_string='test_img_{}.jpg', first_img=first, last_img=last, first_analyse_img=first,
-                          last_analyse_img=last, skip_imgs=0, skip_leds=0)
+                          img_name_string='test_img_{}.jpg', first_img=first, last_img=last, first_img_analysis=first,
+                          last_img_analysis=last, skip_imgs=0, skip_leds=0)
         conf.set('analyse_positions', '   line_edge_indices', '0 2')
         conf.set('DEFAULT', '   date', '2018:11:27')
         conf.save()

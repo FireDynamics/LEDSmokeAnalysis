@@ -4,11 +4,10 @@ import time
 from typing import List
 
 import numpy as np
-import rawpy
 import scipy.optimize
-from matplotlib import pyplot as plt
 
 from ledsa.core.ConfigData import ConfigData
+from ledsa.core.image_reading import read_img
 from ledsa.data_extraction.LEDAnalysisData import LEDAnalysisData
 from ledsa.core.file_handling import read_table, sep
 from ledsa.core.image_handling import get_img_name
@@ -17,8 +16,8 @@ from ledsa.data_extraction.model import target_function
 
 def generate_analysis_data(img_filename: str, channel: int, search_areas: np.ndarray, line_indices: List[List[int]],
                            conf: ConfigData, fit_leds=True, debug=False, debug_led=None) -> List[LEDAnalysisData]:
-    data = read_img('{}{}'.format(conf['img_directory'], img_filename), channel=channel)
-    window_radius = int(conf['window_radius'])
+    data = read_img('{}{}'.format(conf['DEFAULT']['img_directory'], img_filename), channel=channel)
+    window_radius = int(conf['find_search_areas']['window_radius'])
     img_analysis_data = []
 
     if debug:
@@ -26,14 +25,12 @@ def generate_analysis_data(img_filename: str, channel: int, search_areas: np.nda
                                                    window_radius, fit_leds)
         return analysis_res
 
-    # num_of_arrays = int(conf['num_of_arrays']) # TODO: Remove from config or set as control value
-    num_of_arrays = len(line_indices)
-    for led_array_idx in range(num_of_arrays):
+    for led_array_idx in range(int(conf['analyse_positions']['num_of_arrays'])):
         print('processing LED array ', led_array_idx, '...')
         for iled in line_indices[led_array_idx]:
-            if iled % (int(conf['skip_leds']) + 1) == 0:
+            if iled % (int(conf['analyse_photo']['skip_leds']) + 1) == 0:
                 led_analysis_data = _generate_led_analysis_data(conf, channel, data, debug, iled, img_filename,
-                                                               led_array_idx, search_areas, window_radius, fit_leds)
+                                                                led_array_idx, search_areas, window_radius, fit_leds)
                 img_analysis_data.append(led_analysis_data)
     return img_analysis_data
 
@@ -170,31 +167,3 @@ def _create_header(channel, img_id, img_filename, img_infos, root, fit_leds):
     else:
         out_str += "\n"
     return out_str
-
-
-def read_img(filename: str, channel: int, color_depth=14) -> np.ndarray:
-    """
-    Returns a 2D array of channel values depending on the color depth.
-    8bit is default range for JPG. Bayer array is a 2D array where
-    all channel values except the selected channel are masked.
-    """
-    extension = os.path.splitext(filename)[-1]
-    data = []
-    if extension in ['.JPG', '.JPEG', '.jpg', '.jpeg', '.PNG', '.png']:
-        data = plt.imread(filename)
-    elif extension in ['.CR2']:
-        with rawpy.imread(filename) as raw:
-            data = raw.raw_image_visible.copy()
-            filter_array = raw.raw_colors_visible
-            black_level = raw.black_level_per_channel[channel]
-            white_level = raw.white_level
-        channel_range = 2 ** color_depth - 1
-        channel_array = data.astype(np.int16) - black_level
-        channel_array = (channel_array * (channel_range / (white_level - black_level))).astype(np.int16)
-        channel_array = np.clip(channel_array, 0, channel_range)
-        if channel == 0 or channel == 2:
-            channel_array = np.where(filter_array == channel, channel_array, 0)
-        elif channel == 1:
-            channel_array = np.where((filter_array == 1) | (filter_array == 3), channel_array, 0)
-        return channel_array
-    return data[:, :, channel]

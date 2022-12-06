@@ -86,6 +86,8 @@ class ExtinctionCoefficients(ABC):
             img_data = read_hdf(self.experiment.channel, path=self.experiment.path)
         img_data_cropped = img_data[['line', self.reference_property]]
         self.calculated_img_data = img_data_cropped[img_data_cropped['line'] == self.experiment.led_array]
+        if self.calculated_img_data.empty:
+            exit(f"Apparently there are no intensity values for line {self.experiment.led_array}!")
 
     def save(self) -> None:
         path = self.experiment.path / 'analysis' / 'AbsorptionCoefficients'

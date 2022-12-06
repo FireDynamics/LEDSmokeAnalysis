@@ -4,6 +4,7 @@ import os
 
 import ledsa.core.file_handling
 import ledsa.core.image_handling
+import ledsa.core.image_reading
 import ledsa.data_extraction.step_1_functions
 import ledsa.data_extraction.step_2_functions
 import ledsa.data_extraction.step_3_functions
@@ -56,7 +57,7 @@ class DataExtractor:
         """
         config = self.config['find_search_areas']
         ref_img_name = "{}{}".format(config['img_directory'], img_filename)
-        data = ledsa.data_extraction.step_3_functions.read_img(ref_img_name, channel=0)
+        data = ledsa.core.image_reading.read_img(ref_img_name, channel=0)
 
         self.search_areas = ledsa.data_extraction.step_1_functions.find_search_areas(data, skip=1, window_radius=int(config['window_radius']),
                                                                                      threshold_factor=float(config['threshold_factor']))
@@ -72,7 +73,7 @@ class DataExtractor:
             self.load_search_areas()
 
         filename = "{}{}".format(config['img_directory'], img_filename)
-        data = ledsa.data_extraction.step_3_functions.read_img(filename, channel=0)
+        data = ledsa.core.image_reading.read_img(filename, channel=0)
 
         plt.figure(dpi=1200)
         ax = plt.gca()
@@ -128,11 +129,11 @@ class DataExtractor:
             self.load_line_indices()
 
         img_filenames = ledsa.core.file_handling.read_table('images_to_process.csv', dtype=str)
-        if config.getboolean('multicore_processing'):
+        num_of_cores = int(config['num_of_cores'])
+        if num_of_cores > 1:
             from multiprocessing import Pool
-
             print('images are getting processed, this may take a while')
-            with Pool(int(config['num_of_cores'])) as p:
+            with Pool(num_of_cores) as p:
                 p.map(self.process_img_file, img_filenames)
         else:
             for i in range(len(img_filenames)):
@@ -146,7 +147,7 @@ class DataExtractor:
         img_id = ledsa.core.image_handling.get_img_id(img_filename)
         for channel in self.channels:
             img_data = ledsa.data_extraction.step_3_functions.generate_analysis_data(img_filename, channel, self.search_areas, self.line_indices,
-                                                                                     self.config['analyse_photo'], self.fit_leds)
+                                                                                     self.config, self.fit_leds)
             ledsa.data_extraction.step_3_functions.create_fit_result_file(img_data, img_id, channel)
         print('Image {} processed'.format(img_id))
 

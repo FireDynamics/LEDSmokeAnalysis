@@ -82,7 +82,7 @@ def run_data_extraction_arguments(args):
             ConfigData(load_config_file=False, img_directory=args.config[0], reference_img=args.config[1])
         if len(args.config) == 3:
             ConfigData(load_config_file=False, img_directory=args.config[0], reference_img=args.config[1],
-                          multicore_processing=True, num_of_cores=args.config[2])
+                       num_of_cores=args.config[2])
 
     channels = []
     if args.rgb:

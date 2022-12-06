@@ -9,6 +9,8 @@ from ledsa.core.file_handling import sep
 
 def match_leds_to_led_arrays(search_areas: np.ndarray, config: ConfigData) -> np.ndarray:
     edge_indices = _get_indices_of_outer_leds(config)
+    if len(search_areas) <= np.max(edge_indices):
+        exit("At least one of the chosen LED indices is larger that the number of found LEDS!")
     dists_led_arrays_search_areas = _calc_dists_between_led_arrays_and_search_areas(edge_indices, search_areas)
     led_arrays = _match_leds_to_arrays_with_min_dist(dists_led_arrays_search_areas, edge_indices, config, search_areas)
     return led_arrays
