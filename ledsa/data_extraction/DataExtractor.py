@@ -56,7 +56,7 @@ class DataExtractor:
         """
         config = self.config['find_search_areas']
         ref_img_name = "{}{}".format(config['img_directory'], img_filename)
-        data = ledsa.data_extraction.step_3_functions.read_img(ref_img_name, channel=0)
+        data = ledsa.core.image_reading.read_img(ref_img_name, channel=0)
 
         self.search_areas = ledsa.data_extraction.step_1_functions.find_search_areas(data, skip=1, window_radius=int(config['window_radius']),
                                                                                      threshold_factor=float(config['threshold_factor']))
@@ -72,7 +72,7 @@ class DataExtractor:
             self.load_search_areas()
 
         filename = "{}{}".format(config['img_directory'], img_filename)
-        data = ledsa.data_extraction.step_3_functions.read_img(filename, channel=0)
+        data = ledsa.core.image_reading.read_img(filename, channel=0)
 
         plt.figure(dpi=1200)
         ax = plt.gca()

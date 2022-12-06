@@ -194,11 +194,5 @@ def _get_datetime_from_str(date, time):
     return date_time
 
 
-def _get_exif(filename):
-    image = Image.open(filename)
-    image.verify()
-    return image._getexif()
-
-
 if __name__ == 'main':
     ConfigData()
