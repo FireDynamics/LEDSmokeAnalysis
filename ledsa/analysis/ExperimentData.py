@@ -29,22 +29,31 @@ class ExperimentData:
     def load_experiment_data(self):
         config = self.config
         num_layers = int(config['model_parameters']['num_of_layers'])
-        domain_bounds = config.get_list_of_values('model_parameters', 'domain_bounds', dtype=float)
         self.channels = config.get_list_of_values('DEFAULT', 'camera_channels')
-        self.arrays = config.get_list_of_values('model_parameters', 'led_arrays')
-        camera_position = config.get_list_of_values('experiment_geometry', 'camera_position')
         self.num_ref_images =int(config['DEFAULT']['num_ref_images'])
         self.weighting_preference = float(config['DEFAULT']['weighting_preference'])
-        self.weighting_curvature = float(config['DEFAULT']['weighting_preference'])
+        self.weighting_curvature = float(config['DEFAULT']['weighting_curvature'])
         self.num_iterations = float(config['DEFAULT']['num_iterations'])
         self.reference_property = config['DEFAULT']['reference_property']
 
+        self.led_arrays = config.get_list_of_values('model_parameters', 'led_arrays')
+        if self.led_arrays is None:
+            config.in_led_arrays()
+            config.save()
+        self.led_arrays = config.get_list_of_values('model_parameters', 'led_arrays')
+
+        domain_bounds = config.get_list_of_values('model_parameters', 'domain_bounds', dtype=float)
         if domain_bounds is None:
             config.in_domain_bounds()
             config.save()
+        domain_bounds = config.get_list_of_values('model_parameters', 'domain_bounds', dtype=float)
+
+        camera_position = config.get_list_of_values('experiment_geometry', 'camera_position', dtype=float)
         if camera_position is None:
             config.in_camera_position()
             config.save()
+        camera_position = config.get_list_of_values('experiment_geometry', 'camera_position', dtype=float)
+
         self.layers = Layers(num_layers, *domain_bounds)
         self.camera = Camera(*camera_position)
         self.n_cpus = int(config['DEFAULT']['num_of_cores'])

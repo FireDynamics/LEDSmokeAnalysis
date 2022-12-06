@@ -60,20 +60,35 @@ def create_binary_data(channel: int) -> None:
     """
     Creates binary file from all the #_led_positions.csv files generated in step 3
     """
-    conf = ConfigData()
+    config = ConfigData()
     columns = _get_column_names(channel)
 
     fit_params = pd.DataFrame(columns=columns)
 
     # find time and fit parameter for every image
-    first_img = int(conf['analyse_photo']['first_img'])
-    last_img = int(conf['analyse_photo']['last_img'])
-    if conf['DEFAULT']['img_number_overflow']:
-        max_id = int(conf['DEFAULT']['img_number_overflow'])
+
+    if config['DEFAULT']['img_name_string'] == 'None':
+        config.in_img_name_string()
+        config.save()
+
+    if config['analyse_photo']['first_img'] == 'None':
+        config.in_first_img_analysis()
+        config.save()
+    first_img = int(config['analyse_photo']['first_img'])
+
+    if config['analyse_photo']['last_img'] == 'None':
+        config.in_last_img_analysis()
+        config.save()
+    last_img = int(config['analyse_photo']['last_img'])
+
+
+
+    if config['DEFAULT']['img_number_overflow']:
+        max_id = int(config['DEFAULT']['img_number_overflow'])
     else:
         max_id = 10**7
     number_of_images = (max_id + last_img - first_img) % max_id
-    number_of_images //= int(conf['analyse_photo']['skip_imgs']) + 1
+    number_of_images //= int(config['analyse_photo']['skip_imgs']) + 1
     print('Loading fit parameters...')
     exception_counter = 0
     for image_id in range(1, number_of_images + 1):

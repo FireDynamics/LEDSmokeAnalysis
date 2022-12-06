@@ -135,7 +135,7 @@ class DataExtractor:
         img_id = ledsa.core.image_handling.get_img_id(img_filename)
         for channel in self.channels:
             img_data = ledsa.data_extraction.step_3_functions.generate_analysis_data(img_filename, channel, self.search_areas, self.line_indices,
-                                                                                     self.config['analyse_photo'], self.fit_leds)
+                                                                                     self.config, self.fit_leds)
             ledsa.data_extraction.step_3_functions.create_fit_result_file(img_data, img_id, channel)
         print('Image {} processed'.format(img_id))
 

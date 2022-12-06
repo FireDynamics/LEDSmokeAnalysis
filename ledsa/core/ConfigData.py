@@ -112,6 +112,13 @@ class ConfigData(cp.ConfigParser):
         else:
             return date_time
 
+    def in_img_dir(self):
+        self['DEFAULT']['img_directory'] = input('Please give the path where the images are stored: ')
+    def in_first_img_experiment(self):
+        self['DEFAULT']['first_img'] = input('Please give the number of the first image of the experiment: ')
+
+    def in_last_img_experiment(self):
+        self['DEFAULT']['last_img'] = input('Please give the number of the last image image of the experiment: ')
     def in_ref_img(self):
         self['find_search_areas']['reference_img'] = input('Please give the name of the reference image, from where the'
                                                            ' led positions are calculated and which will be the start '
@@ -122,49 +129,43 @@ class ConfigData(cp.ConfigParser):
                                             'is visible, to synchronise multiple cameras in one experiment: ')
 
     def in_num_of_arrays(self):
-        self['DEFAULT']['num_of_arrays'] = input('Please give the number of LED lines: ')
+        self['analyse_positions']['num_of_arrays'] = input('Please give the number of LED lines: ')
 
     def in_time_diff_to_img_time(self):
         if self['DEFAULT']['time_ref_img_time'] == 'None':
             time = input('Please give the time shown on the clock in the time reference image in hh:mm:ss: ')
             self['DEFAULT']['time_ref_img_time'] = str(time)
         time = self['DEFAULT']['time_ref_img_time']
-
-        exif = _get_exif(self['DEFAULT']['img_directory'] + self['DEFAULT']['time_img'])
-        if not exif:
-            raise ValueError("No EXIF metadata found")
-
-        for (idx, tag) in TAGS.items():
-            if tag == 'DateTimeOriginal':
-                if idx not in exif:
-                    raise ValueError("No EXIF time found")
-                date, time_meta = exif[idx].split(' ')
-                self['DEFAULT']['date'] = date
-                img_time = _get_datetime_from_str(date, time_meta)
-                real_time = _get_datetime_from_str(date, time)
-                time_diff = img_time - real_time
-                self['DEFAULT']['exif_time_infront_real_time'] = str(time_diff.total_seconds())
+        print(self['DEFAULT']['img_directory'] + self['DEFAULT']['time_img'])
+        tag = 'EXIF DateTimeOriginal'
+        exif_entry = get_exif_entry(self['DEFAULT']['img_directory'] + self['DEFAULT']['time_img'], tag)
+        date, time_meta = exif_entry.split(' ')
+        self['DEFAULT']['date'] = date
+        img_time = _get_datetime_from_str(date, time_meta)
+        real_time = _get_datetime_from_str(date, time)
+        time_diff = img_time - real_time
+        self['DEFAULT']['exif_time_infront_real_time'] = str(int(time_diff.total_seconds()))
 
     def in_img_name_string(self):
         self['DEFAULT']['img_name_string'] = input(
-            'Please give the name structure of the images in the form img{}.jpg where '
+            'Please give the name structure of the images in the form img{}.extension where '
             '{} denotes the increasing number of the image files: ')
 
     def in_img_number_overflow(self):
         self['DEFAULT']['img_number_overflow'] = input(
             'Please give the maximal number an image file can have (typically 9999): ')
 
-    def in_first_img(self):
-        self['DEFAULT']['first_img'] = input('Please give the number of the first image file of the experiment: ')
+    def in_first_img_analysis(self):
+        self['analyse_photo']['first_img'] = input('Please give the number of the first image file to be analysed: ')
 
-    def in_last_img(self):
-        self['DEFAULT']['last_img'] = input('Please give the number of the last image file of the experiment:  ')
+    def in_last_img_analysis(self):
+        self['analyse_photo']['last_img'] = input('Please give the number of the last image file to be analysed: ')
 
     def in_line_edge_indices(self):
         print('The edges of the LED arrays are needed. Please enter the labels of the top most and bottom most LED of '
               'each array. Separate the two labels with a whitespace.')
         labels = str()
-        for i in range(int(self['DEFAULT']['num_of_arrays'])):
+        for i in range(int(self['analyse_positions']['num_of_arrays'])):
             line = input(str(i) + '. array: ')
             labels += '\t    ' + line + '\n'
         self['analyse_positions']['line_edge_indices'] = '\n' + labels
@@ -173,26 +174,19 @@ class ConfigData(cp.ConfigParser):
         print('Please enter the coordinates of the top most and bottom most LED of each array corresponding to the '
               'order of the line edge indices. Separate the two coordinates with a whitespace.')
         coordinates = str()
-        for i in range(int(self['DEFAULT']['num_of_arrays'])):
+        for i in range(int(self['analyse_positions']['num_of_arrays'])):
             line = input(str(i) + '. array: ')
             coordinates += '\t    ' + line + '\n'
         self['analyse_positions']['line_edge_coordinates'] = '\n' + coordinates
 
     # get the start time from the first experiment image
     def get_start_time(self):
-        exif = _get_exif(self['DEFAULT']['img_directory'] + self['DEFAULT']['img_name_string'].format(
-            self['DEFAULT']['first_img']))
-        if not exif:
-            raise ValueError("No EXIF metadata found")
-
-        for (idx, tag) in TAGS.items():
-            if tag == 'DateTimeOriginal':
-                if idx not in exif:
-                    raise ValueError("No EXIF time found")
-                date, time_meta = exif[idx].split(' ')
-                time_img = _get_datetime_from_str(date, time_meta)
-                start_time = time_img - timedelta(seconds=self['DEFAULT'].getint('exif_time_infront_real_time'))
-                self['DEFAULT']['start_time'] = start_time.strftime('%H:%M:%S')
+        exif_entry = get_exif_entry(self['DEFAULT']['img_directory'] + self['DEFAULT']['img_name_string'].format(
+            self['analyse_photo']['first_img']), 'EXIF DateTimeOriginal')
+        date, time_meta = exif_entry.split(' ')
+        time_img = _get_datetime_from_str(date, time_meta)
+        start_time = time_img - timedelta(seconds=self['DEFAULT'].getint('exif_time_infront_real_time'))
+        self['DEFAULT']['start_time'] = start_time.strftime('%H:%M:%S')
 
 
 def _get_datetime_from_str(date, time):

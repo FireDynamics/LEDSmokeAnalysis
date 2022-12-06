@@ -22,6 +22,15 @@ def create_needed_directories(channels: List[int]) -> None:
 
 
 def request_config_parameters(config: ConfigData) -> None:
+    if config['DEFAULT']['img_directory'] == 'None':
+        config.in_img_dir()
+        config.save()
+    if config['DEFAULT']['first_img'] == 'None':
+        config.in_first_img_experiment()
+        config.save()
+    if config['DEFAULT']['last_img'] == 'None':
+        config.in_last_img_experiment()
+        config.save()
     if config['DEFAULT']['time_img'] == 'None' and \
             config['DEFAULT']['exif_time_infront_real_time'] == 'None':
         config.in_time_img()
@@ -32,16 +41,7 @@ def request_config_parameters(config: ConfigData) -> None:
     if config['DEFAULT']['exif_time_infront_real_time'] == 'None':
         config.in_time_diff_to_img_time()
         config.save()
-    if config['DEFAULT']['img_name_string'] == 'None':
-        config.in_img_name_string()
-        config.save()
-    if config['DEFAULT']['first_img'] == 'None':
-        config.in_first_img()
-        config.save()
-    if config['DEFAULT']['last_img'] == 'None':
-        config.in_last_img()
-        config.save()
-    if config['DEFAULT']['num_of_arrays'] == 'None':
+    if config['analyse_positions']['num_of_arrays'] == 'None':
         config.in_num_of_arrays()
         config.save()
 
@@ -109,8 +109,16 @@ def _find_img_number_list(first, last, increment, number_string_length=4):
 def _build_img_data_string(build_type, config):
     img_data = ''
     img_idx = 1
+    if config['analyse_photo']['first_img'] == 'None':
+        config.in_first_img_analysis()
+        config.save()
     first_img = config.getint(build_type, 'first_img')
+
+    if config['analyse_photo']['last_img'] == 'None':
+        config.in_first_img_analysis()
+        config.save()
     last_img = config.getint(build_type, 'last_img')
+
     img_increment = config.getint(build_type, 'skip_imgs') + 1 if build_type == 'analyse_photo' else 1
     img_number_list = _find_img_number_list(first_img, last_img, img_increment)
     for img_number in img_number_list:

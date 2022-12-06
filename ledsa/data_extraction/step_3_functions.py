@@ -15,8 +15,8 @@ from ledsa.data_extraction.model import target_function
 
 def generate_analysis_data(img_filename: str, channel: int, search_areas: np.ndarray, line_indices: List[List[int]],
                            conf: ConfigData, fit_leds=True, debug=False, debug_led=None) -> List[LEDAnalysisData]:
-    data = read_img('{}{}'.format(conf['img_directory'], img_filename), channel=channel)
-    window_radius = int(conf['window_radius'])
+    data = read_img('{}{}'.format(conf['DEFAULT']['img_directory'], img_filename), channel=channel)
+    window_radius = int(conf['find_search_areas']['window_radius'])
     img_analysis_data = []
 
     if debug:
@@ -24,10 +24,10 @@ def generate_analysis_data(img_filename: str, channel: int, search_areas: np.nda
                                                    window_radius, fit_leds)
         return analysis_res
 
-    for led_array_idx in range(int(conf['num_of_arrays'])):
+    for led_array_idx in range(int(conf['analyse_positions']['num_of_arrays'])):
         print('processing LED array ', led_array_idx, '...')
         for iled in line_indices[led_array_idx]:
-            if iled % (int(conf['skip_leds']) + 1) == 0:
+            if iled % (int(conf['analyse_photo']['skip_leds']) + 1) == 0:
                 led_analysis_data = _generate_led_analysis_data(conf, channel, data, debug, iled, img_filename,
                                                                 led_array_idx, search_areas, window_radius, fit_leds)
                 img_analysis_data.append(led_analysis_data)

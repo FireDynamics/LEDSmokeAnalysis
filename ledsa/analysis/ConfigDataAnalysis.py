@@ -5,16 +5,15 @@ class ConfigDataAnalysis(cp.ConfigParser):
 
     def __init__(self, load_config_file=True, camera_position=None, num_of_layers=20, domain_bounds=None,
                  led_arrays=None, merge_led_arrays=False, num_ref_images=10,
-                 camera_channels=0, multicore_processing=False, num_of_cores=1, reference_property='sum_col_val',
-                 average_images=False, color_correction=False, solver='numeric', weighting_preference=-6e-3,
-                 weighting_curvature=1e-6, num_iterations=200):
+                 camera_channels=0, num_of_cores=1, reference_property='sum_col_val', average_images=False,
+                 solver='numeric', weighting_preference=-6e-3, weighting_curvature=1e-6, num_iterations=200):
         cp.ConfigParser.__init__(self, allow_no_value=True)
         if load_config_file:
             self.load()
         else:
             self['DEFAULT'] = {}
             self.set('DEFAULT', '# Variables used in multiple parts of LEDSA')
-            self['DEFAULT']['   multicore_processing'] = str(multicore_processing)
+            self.set('DEFAULT', '   # Number of CPUs, multicore processing is applied if > 1')
             self['DEFAULT']['   num_of_cores'] = str(num_of_cores)
             self['DEFAULT']['   reference_property'] = str(reference_property)
             self.set('DEFAULT', '   # Number images used to compute normalize LED intensities')
@@ -23,8 +22,8 @@ class ConfigDataAnalysis(cp.ConfigParser):
             self.set('DEFAULT', '   # Intensities are computed as average from two consecutive images if set to True ')
             self['DEFAULT']['   average_images'] = str(average_images)
             self.set('DEFAULT', '   # Extinction coefficients can be computed by linear or numeric solver ')
-            self.set('DEFAULT', '   # Options for numeric solver ')
             self['DEFAULT']['   solver'] = str(solver)
+            self.set('DEFAULT', '   # Options for numeric solver ')
             self['DEFAULT']['   weighting_preference'] = str(weighting_preference)
             self['DEFAULT']['   weighting_curvature'] = str(weighting_curvature)
             self['DEFAULT']['   num_iterations'] = str(num_iterations)
@@ -70,9 +69,6 @@ class ConfigDataAnalysis(cp.ConfigParser):
     def in_camera_channels(self):
         self['DEFAULT']['camera_channels'] = input('Please give the camera channels that should be consiered in the '
                                                       'analysis: ')
-    def in_color_correction(self):
-        self['DEFAULT']['color_correction'] = input('Please state if color correction should be applied on the image '
-                                                      'data : ')
     def in_camera_position(self):
         self['experiment_geometry']['camera_position'] = input('Please give the global X Y Z [m] coordinates of the '
                                                                   'camera : ')
