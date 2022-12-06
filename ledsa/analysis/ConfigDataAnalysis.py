@@ -29,10 +29,11 @@ class ConfigDataAnalysis(cp.ConfigParser):
             self['DEFAULT']['   num_iterations'] = str(num_iterations)
 
             self['experiment_geometry'] = {}
-            self.set('experiment_geometry', '   # Global X Y Z position of the camera ')
+            self.set('experiment_geometry', '# Global X Y Z position of the camera ')
             self['experiment_geometry']['   camera_position'] = str(camera_position)
 
             self['model_parameters'] = {}
+            self.set('model_parameters', '# Parameters regarding the discretization of the spatial domain ')
             self.set('model_parameters', '   # LED arrays for that the extinction coefficients should be computed  ')
             self['model_parameters']['   led_arrays'] = str(led_arrays)
             self.set('model_parameters', '   # Number of horizontal smoke layers  ')
