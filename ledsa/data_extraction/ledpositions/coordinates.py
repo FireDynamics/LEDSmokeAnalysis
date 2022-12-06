@@ -51,7 +51,10 @@ def calculate_3d_coordinates():
         conf.in_line_edge_indices()
         conf.save()
     edge_leds = conf.get2dnparray('analyse_positions', 'line_edge_indices')
-
+    print("Loaded line edge indices from config.ini:")
+    print(edge_leds)
+    if edge_leds.shape[0] != led_coordinates.shape[0]:
+        exit("The number of coordinate sets does not match the number of LED line edge indices!")
     # loop over the led-arrays
     for ledarray in range(int(conf['analyse_positions']['num_of_arrays'])):
         line_indices = read_table('.{}analysis{}line_indices_{:03d}.csv'.format(sep, sep, ledarray))
