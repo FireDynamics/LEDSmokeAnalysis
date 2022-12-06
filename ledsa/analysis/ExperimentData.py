@@ -17,7 +17,7 @@ class ExperimentData:
         self.camera = None
         self.layers = None
         self.channels = None
-        self.arrays = None
+        self.led_arrays = None
         self.n_cpus = None
         self.weighting_preference = None
         self.weighting_curvature = None

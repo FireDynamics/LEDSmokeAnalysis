@@ -99,7 +99,7 @@ class DataExtractor:
     def load_line_indices(self):
         """loads the line indices from the csv file"""
         self.line_indices = []
-        for i in range(int(self.config['DEFAULT']['num_of_arrays'])):
+        for i in range(int(self.config['analyse_positions']['num_of_arrays'])):
             filename = 'analysis{}line_indices_{:03}.csv'.format(sep, i)
             self.line_indices.append(ledsa.core.file_handling.read_table(filename, dtype='int'))
 
