@@ -4,9 +4,9 @@ import configparser as cp
 class ConfigDataAnalysis(cp.ConfigParser):
 
     def __init__(self, load_config_file=True, camera_position=None, num_of_layers=20, domain_bounds=None,
-                 led_arrays=None, merge_led_arrays=False, num_ref_images=10,
-                 camera_channels=0, num_of_cores=1, reference_property='sum_col_val', average_images=False,
-                 solver='numeric', weighting_preference=-6e-3, weighting_curvature=1e-6, num_iterations=200):
+                 led_arrays=None, num_ref_images=10, camera_channels=0, num_of_cores=1, reference_property='sum_col_val',
+                 average_images=False, solver='numeric', weighting_preference=-6e-3, weighting_curvature=1e-6,
+                 num_iterations=200):
         cp.ConfigParser.__init__(self, allow_no_value=True)
         if load_config_file:
             self.load()

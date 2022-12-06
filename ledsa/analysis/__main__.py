@@ -28,8 +28,6 @@ def add_parser_argument_analysis(parser: argparse.ArgumentParser) -> argparse.Ar
     parser.add_argument('--cc', '--color_correction', action='store_true',
                         help='Applies color correction matrix before calculating the extinction coefficients. Use only, if'
                              'the reference property is not already color corrected.')
-    parser.add_argument('--no_mp', action='store_true',
-                        help='Deactivates multi core processing.')
     parser.add_argument('--cc_channels', default=[0, 1, 2], action='extend', nargs="+", type=int,
                         help='Channels, to which color correcten gets applied. Default 0 1 2')
     return parser
@@ -56,12 +54,19 @@ def extionction_coefficient_calculation(args):
             out_file = os.path.join(os.getcwd(), 'analysis', 'AbsorptionCoefficients',
                                     f'absorption_coefs_numeric_channel_{channel}_{ex_data.reference_property}_led_array_{array}.csv')
             if not os.path.exists(out_file):
-                ex = Experiment(layers=ex_data.layers, led_array=array, camera=ex_data.camera, channel=channel, merge_led_arrays=ex_data.merge_led_arrays)
-                eca = ECN.ExtinctionCoefficientsNumeric(ex, reference_property=ex_data.reference_property, num_ref_imgs=ex_data.num_ref_images)
-                if args.no_mp:
-                    eca.calc_and_set_coefficients()
-                else:
+                ex = Experiment(layers=ex_data.layers, led_array=array, camera=ex_data.camera, channel=channel,
+                                merge_led_arrays=ex_data.merge_led_arrays)
+                eca = ECN.ExtinctionCoefficientsNumeric(ex, reference_property=ex_data.reference_property,
+                                                        num_ref_imgs=ex_data.num_ref_images,
+                                                        weighting_curvature=ex_data.weighting_curvature,
+                                                        weighting_preference=ex_data.weighting_preference,
+                                                        num_iterations=ex_data.num_iterations)
+                if ex_data.n_cpus > 1:
+                    print(f"Calculation of extinction coefficients runs on {ex_data.n_cpus} cpus!")
                     eca.calc_and_set_coefficients_mp(ex_data.n_cpus)
+                else:
+                    print("Calculation of extinction coefficients runs on a single cpu!")
+                    eca.calc_and_set_coefficients()
                 eca.save()
                 print(f"{out_file} created!")
             else:

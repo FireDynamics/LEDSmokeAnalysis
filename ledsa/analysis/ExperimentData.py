@@ -36,7 +36,7 @@ class ExperimentData:
         self.num_ref_images =int(config_analysis['DEFAULT']['num_ref_images'])
         self.weighting_preference = float(config_analysis['DEFAULT']['weighting_preference'])
         self.weighting_curvature = float(config_analysis['DEFAULT']['weighting_curvature'])
-        self.num_iterations = float(config_analysis['DEFAULT']['num_iterations'])
+        self.num_iterations = int(config_analysis['DEFAULT']['num_iterations'])
         self.reference_property = config_analysis['DEFAULT']['reference_property']
 
         self.led_arrays = config_analysis.get_list_of_values('model_parameters', 'led_arrays')
