@@ -123,23 +123,10 @@ def create_binary_data(channel: int) -> None:
 
     # find time and fit parameter for every image
 
-    if config['DEFAULT']['img_name_string'] == 'None':
-        config.in_img_name_string()
-        config.save()
-
-    if config['analyse_photo']['first_img'] == 'None':
-        config.in_first_img_analysis()
-        config.save()
     first_img = int(config['analyse_photo']['first_img'])
-
-    if config['analyse_photo']['last_img'] == 'None':
-        config.in_last_img_analysis()
-        config.save()
     last_img = int(config['analyse_photo']['last_img'])
 
-
-
-    if config['DEFAULT']['img_number_overflow']:
+    if config['DEFAULT']['img_number_overflow']!= 'None':
         max_id = int(config['DEFAULT']['img_number_overflow'])
     else:
         max_id = 10**7

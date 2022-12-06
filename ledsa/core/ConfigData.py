@@ -61,7 +61,7 @@ class ConfigData(cp.ConfigParser):
                                           'the')
             self.set('analyse_positions', '   # edges given in line_edge_indices')
             self['analyse_positions']['   line_edge_coordinates'] = str(line_edge_coordinates)
-            # self['analyse_positions']['   merge_led_arrays'] = str(merge_led_arrays) # TODO: here or in analysis config?
+            self['analyse_positions']['   merge_led_arrays'] = str(merge_led_arrays)
 
             self['analyse_photo'] = {}
             self.set('analyse_photo', '# Variables used for the final fitting of the intensity function')
@@ -188,7 +188,7 @@ class ConfigData(cp.ConfigParser):
     # get the start time from the first experiment image
     def get_start_time(self):
         exif_entry = get_exif_entry(self['DEFAULT']['img_directory'] + self['DEFAULT']['img_name_string'].format(
-            self['analyse_photo']['first_img']), 'EXIF DateTimeOriginal')
+            self['DEFAULT']['first_img']), 'EXIF DateTimeOriginal')
         date, time_meta = exif_entry.split(' ')
         time_img = _get_datetime_from_str(date, time_meta)
         start_time = time_img - timedelta(seconds=self['DEFAULT'].getint('exif_time_infront_real_time'))

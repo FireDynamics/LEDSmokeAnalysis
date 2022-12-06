@@ -102,8 +102,8 @@ class DataExtractor:
 
     def load_line_indices(self):
         """loads the line indices from the csv file"""
-        if self.config['DEFAULT']['merge_led_arrays'] != 'None':
-            num_of_arrays = len(self.config.get2dnparray('DEFAULT', 'merge_led_arrays','var'))
+        if self.config['analyse_positions']['merge_led_arrays'] != 'None':
+            num_of_arrays = len(self.config.get2dnparray('analyse_positions', 'merge_led_arrays','var'))
             file_extension = '_merge'
             print("WARNING: ARRAY MERGE IS ACTIVE!!!")
         else:

@@ -40,8 +40,6 @@ class ConfigDataAnalysis(cp.ConfigParser):
             self['model_parameters']['   num_of_layers'] = str(num_of_layers)
             self.set('model_parameters', '   # Lower and upper bounds of the computational domain  ')
             self['model_parameters']['   domain_bounds'] = str(domain_bounds)
-            self.set('model_parameters', '   # Multiple LED arrays can be merged to a single one  ')
-            self['model_parameters']['   merge_led_arrays'] = str(merge_led_arrays)
 
             with open('config_analysis.ini', 'w') as configfile:
                 self.write(configfile)
@@ -80,7 +78,7 @@ class ConfigDataAnalysis(cp.ConfigParser):
         self['model_parameters']['domain_bounds'] = input('Please give lower and upper height [m] of the spatial '
                                                                 'domain : ')
     def in_led_arrays(self):
-        self['model_parameters']['led_arrays'] = input('Please give IDs of LED Arrays to compute: ')
+        self['model_parameters']['led_arrays'] = input('Please give IDs of (merged) LED Arrays to compute: ')
 
 
 if __name__ == 'main':

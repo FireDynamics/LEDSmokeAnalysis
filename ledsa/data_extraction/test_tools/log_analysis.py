@@ -80,7 +80,7 @@ class FitAnalyser:
         ledsa = LEDSA()
         ledsa.load_line_indices()
         ledsa.load_search_areas()
-        fit_res = s3.generate_analysis_data(self.filename[-12:], self.channel, ledsa.search_areas, ledsa.line_indices, ledsa.config['analyse_photo'], True, True, self.id)
+        fit_res = s3.generate_analysis_data(self.filename[-12:], self.channel, ledsa.search_areas, ledsa.line_indices, ledsa.config_analysis['analyse_photo'], True, True, self.id)
         self.fit = fit_res.x
         self.fit_success = fit_res.success
         self.fit_fun = fit_res.fun

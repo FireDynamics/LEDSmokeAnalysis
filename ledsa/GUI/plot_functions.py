@@ -219,7 +219,7 @@ def fit_led(img_id, led_id, channel):
     ledsa.load_line_indices()
     ledsa.load_search_areas()
     filename = ledsa.data_extraction.image_handling.get_img_name(img_id)
-    fit_res = ledsa.data_extraction.step_3_functions.generate_analysis_data(filename, ledsa.search_areas, ledsa.line_indices, ledsa.config['analyse_photo'], True,
+    fit_res = ledsa.data_extraction.step_3_functions.generate_analysis_data(filename, ledsa.search_areas, ledsa.line_indices, ledsa.config_analysis['analyse_photo'], True,
                                                                             led_id)
     return fit_res
 

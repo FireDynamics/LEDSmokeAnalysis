@@ -4,6 +4,7 @@ from typing import List
 
 from ledsa.analysis.Experiment import Camera, Layers
 # Todo: Import init_function for request of missing data
+from ledsa.core.ConfigData import ConfigData
 from ledsa.analysis.ConfigDataAnalysis import ConfigDataAnalysis
 
 @dataclass
@@ -13,7 +14,8 @@ class ExperimentData:
     """
 
     def __init__(self, load_config_file=True):
-        self.config = ConfigDataAnalysis(load_config_file=load_config_file)
+        self.config = ConfigData(load_config_file=load_config_file)
+        self.config_analysis = ConfigDataAnalysis(load_config_file=load_config_file)
         self.camera = None
         self.layers = None
         self.channels = None
@@ -24,42 +26,44 @@ class ExperimentData:
         self.num_iterations = None
         self.num_ref_images = None
         self.reference_property = None
-        self.load_experiment_data() # Todo: Does that belong here?
+        self.merge_led_arrays = None
+        self.load_config_parameters() # Todo: Does that belong here?
 
-    def load_experiment_data(self):
-        config = self.config
-        num_layers = int(config['model_parameters']['num_of_layers'])
-        self.channels = config.get_list_of_values('DEFAULT', 'camera_channels')
-        self.num_ref_images =int(config['DEFAULT']['num_ref_images'])
-        self.weighting_preference = float(config['DEFAULT']['weighting_preference'])
-        self.weighting_curvature = float(config['DEFAULT']['weighting_curvature'])
-        self.num_iterations = float(config['DEFAULT']['num_iterations'])
-        self.reference_property = config['DEFAULT']['reference_property']
+    def load_config_parameters(self):
+        config_analysis = self.config_analysis
+        num_layers = int(config_analysis['model_parameters']['num_of_layers'])
+        self.channels = config_analysis.get_list_of_values('DEFAULT', 'camera_channels')
+        self.num_ref_images =int(config_analysis['DEFAULT']['num_ref_images'])
+        self.weighting_preference = float(config_analysis['DEFAULT']['weighting_preference'])
+        self.weighting_curvature = float(config_analysis['DEFAULT']['weighting_curvature'])
+        self.num_iterations = float(config_analysis['DEFAULT']['num_iterations'])
+        self.reference_property = config_analysis['DEFAULT']['reference_property']
 
-        self.led_arrays = config.get_list_of_values('model_parameters', 'led_arrays')
+        self.led_arrays = config_analysis.get_list_of_values('model_parameters', 'led_arrays')
         if self.led_arrays is None:
-            config.in_led_arrays()
-            config.save()
-        self.led_arrays = config.get_list_of_values('model_parameters', 'led_arrays')
+            config_analysis.in_led_arrays()
+            config_analysis.save()
+        self.led_arrays = config_analysis.get_list_of_values('model_parameters', 'led_arrays')
 
-        domain_bounds = config.get_list_of_values('model_parameters', 'domain_bounds', dtype=float)
+        domain_bounds = config_analysis.get_list_of_values('model_parameters', 'domain_bounds', dtype=float)
         if domain_bounds is None:
-            config.in_domain_bounds()
-            config.save()
-        domain_bounds = config.get_list_of_values('model_parameters', 'domain_bounds', dtype=float)
+            config_analysis.in_domain_bounds()
+            config_analysis.save()
+        domain_bounds = config_analysis.get_list_of_values('model_parameters', 'domain_bounds', dtype=float)
 
-        camera_position = config.get_list_of_values('experiment_geometry', 'camera_position', dtype=float)
+        camera_position = config_analysis.get_list_of_values('experiment_geometry', 'camera_position', dtype=float)
         if camera_position is None:
-            config.in_camera_position()
-            config.save()
-        camera_position = config.get_list_of_values('experiment_geometry', 'camera_position', dtype=float)
+            config_analysis.in_camera_position()
+            config_analysis.save()
+        camera_position = config_analysis.get_list_of_values('experiment_geometry', 'camera_position', dtype=float)
 
         self.layers = Layers(num_layers, *domain_bounds)
         self.camera = Camera(*camera_position)
-        self.n_cpus = int(config['DEFAULT']['num_of_cores'])
+        self.n_cpus = int(config_analysis['DEFAULT']['num_of_cores'])
+        self.merge_led_arrays = str(self.config['analyse_positions']['merge_led_arrays'])
 
     def request_config_parameters(self):
-        config = self.config
+        config = self.config_analysis
         if config['experiment_geometry']['camera_position'] == 'None':
             config.in_camera_position()
             config.save()

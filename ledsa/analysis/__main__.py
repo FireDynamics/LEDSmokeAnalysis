@@ -56,7 +56,7 @@ def extionction_coefficient_calculation(args):
             out_file = os.path.join(os.getcwd(), 'analysis', 'AbsorptionCoefficients',
                                     f'absorption_coefs_numeric_channel_{channel}_{ex_data.reference_property}_led_array_{array}.csv')
             if not os.path.exists(out_file):
-                ex = Experiment(ex_data.layers, led_array=array, camera=ex_data.camera, channel=channel)
+                ex = Experiment(layers=ex_data.layers, led_array=array, camera=ex_data.camera, channel=channel, merge_led_arrays=ex_data.merge_led_arrays)
                 eca = ECN.ExtinctionCoefficientsNumeric(ex, reference_property=ex_data.reference_property, num_ref_imgs=ex_data.num_ref_images)
                 if args.no_mp:
                     eca.calc_and_set_coefficients()

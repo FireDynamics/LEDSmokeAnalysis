@@ -17,7 +17,7 @@ def match_leds_to_led_arrays(search_areas: np.ndarray, config: ConfigData) -> np
 
 def merge_led_arrays(led_arrays, config):
     merge = False
-    if config['DEFAULT']['merge_led_arrays'] != 'None':
+    if config['analyse_positions']['merge_led_arrays'] != 'None':
         led_arrays = _merge_indices_of_led_arrays(led_arrays, config)
         merge = True
     return led_arrays, merge
@@ -124,7 +124,7 @@ def _get_indices_of_ignored_leds(config):
     return ignore_indices
 
 def _merge_indices_of_led_arrays(led_arrays, config):
-    merged_line_indices_groups = config.get2dnparray('DEFAULT', 'merge_led_arrays','var')
+    merged_line_indices_groups = config.get2dnparray('analyse_positions', 'merge_led_arrays','var')
     all_merged_led_arrays = []
     for merged_line_indices in merged_line_indices_groups:
         merged_led_array = []

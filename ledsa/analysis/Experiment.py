@@ -144,7 +144,7 @@ class Experiment:
         return
 
     def get_led_ids(self) -> np.ndarray:
-        if self.merge_led_arrays == True:
+        if self.merge_led_arrays != 'None': # TODO: This may be solved better!
             file_name_extension = '_merge'
         else:
             file_name_extension = ''
