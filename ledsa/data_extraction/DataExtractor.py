@@ -4,6 +4,7 @@ import os
 
 import ledsa.core.file_handling
 import ledsa.core.image_handling
+import ledsa.core.image_reading
 import ledsa.data_extraction.step_1_functions
 import ledsa.data_extraction.step_2_functions
 import ledsa.data_extraction.step_3_functions
