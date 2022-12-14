@@ -1,12 +1,12 @@
 *** Settings ***
 Resource        global_keywords.resource
 
-Suite Setup  Init Suit
-Suite Teardown  Remove Directory    ${WORKDIR}      recursive=True
+Suite Setup  Init Suite
+#Suite Teardown  Remove Directory    ${WORKDIR}      recursive=True
 
 *** Keywords ***
-Init Suit
+Init Suite
     Remove Directory    ${WORKDIR}      recursive=True
     Create Directory    ${WORKDIR}
     Change Directory    ${WORKDIR}
-    Create Test Image
+    Create Test Data

@@ -107,7 +107,7 @@ class DataExtractor:
             file_extension = '_merge'
             print("WARNING: ARRAY MERGE IS ACTIVE!!!")
         else:
-            num_of_arrays = int(self.config['DEFAULT']['num_of_arrays'])
+            num_of_arrays = int(self.config['analyse_positions']['num_of_arrays'])
             file_extension = ''
         self.line_indices = []
         for i in range(num_of_arrays):

@@ -73,16 +73,16 @@ def add_parser_arguments_demo(parser: argparse.ArgumentParser) -> argparse.Argum
 
 
 def run_data_extraction_arguments(args):
-    if args.config_analysis is not None:
-        if len(args.config_analysis) == 0:
+    if args.config is not None:
+        if len(args.config) == 0:
             ConfigData(load_config_file=False)
-        if len(args.config_analysis) == 1:
-            ConfigData(load_config_file=False, img_directory=args.config_analysis[0])
-        if len(args.config_analysis) == 2:
-            ConfigData(load_config_file=False, img_directory=args.config_analysis[0], reference_img=args.config_analysis[1])
-        if len(args.config_analysis) == 3:
-            ConfigData(load_config_file=False, img_directory=args.config_analysis[0], reference_img=args.config_analysis[1],
-                       num_of_cores=args.config_analysis[2])
+        if len(args.config) == 1:
+            ConfigData(load_config_file=False, img_directory=args.config[0])
+        if len(args.config) == 2:
+            ConfigData(load_config_file=False, img_directory=args.config[0], reference_img=args.config[1])
+        if len(args.config) == 3:
+            ConfigData(load_config_file=False, img_directory=args.config[0], reference_img=args.config[1],
+                       num_of_cores=args.config[2])
 
     channels = []
     if args.rgb:

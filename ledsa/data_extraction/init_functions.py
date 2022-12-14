@@ -25,12 +25,6 @@ def request_config_parameters(config: ConfigData) -> None:
     if config['DEFAULT']['img_directory'] == 'None':
         config.in_img_dir()
         config.save()
-    if config['DEFAULT']['first_img'] == 'None':
-        config.in_first_img_experiment()
-        config.save()
-    if config['DEFAULT']['last_img'] == 'None':
-        config.in_last_img_experiment()
-        config.save()
     if config['DEFAULT']['time_img'] == 'None' and \
             config['DEFAULT']['exif_time_infront_real_time'] == 'None':
         config.in_time_img()
@@ -40,6 +34,12 @@ def request_config_parameters(config: ConfigData) -> None:
         config.save()
     if config['DEFAULT']['exif_time_infront_real_time'] == 'None':
         config.in_time_diff_to_img_time()
+        config.save()
+    if config['DEFAULT']['first_img'] == 'None':
+        config.in_first_img_experiment()
+        config.save()
+    if config['DEFAULT']['last_img'] == 'None':
+        config.in_last_img_experiment()
         config.save()
     if config['analyse_positions']['num_of_arrays'] == 'None':
         config.in_num_of_arrays()
