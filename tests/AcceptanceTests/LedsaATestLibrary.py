@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 from robot.api.deco import keyword, library
 from robot.libraries.BuiltIn import BuiltIn
 import os
@@ -9,9 +10,11 @@ except ImportError:
 import numpy as np
 from scipy.stats import norm
 from ledsa.core.ConfigData import ConfigData
+from ledsa.analysis.ConfigDataAnalysis import ConfigDataAnalysis
 from subprocess import Popen, PIPE
 import piexif
 
+from TestExperiment import TestExperiment, Layers, Camera
 
 @library
 class LedsaATestLibrary:
@@ -21,30 +24,65 @@ class LedsaATestLibrary:
         os.chdir(new_dir)
 
     @keyword
-    def create_test_image(self, amount=1):
-        """ Creates a test image with black and gray pixels representing 3 leds and sets the exif data needed
-        :param amount: number of test images created
-        :return: None
-        """
-        img_array = create_img_array()
-        for i in range(amount):
-            img = Image.fromarray(img_array, 'RGB')
-            exif_ifd = {
-                piexif.ExifIFD.DateTimeOriginal: u'2021:01:01 12:00:00'
-            }
-            exif_dict = {'Exif': exif_ifd}
-            exif_bytes = piexif.dump(exif_dict)
-            img.save(f'test_img_{i}.jpg', exif=exif_bytes)
+    def create_test_data(self, num_of_leds=100, num_of_layers=20):
+        camera = Camera(0, 0, 1.0)
+        layers = Layers(num_of_layers, 1, 3)
+
+        extinction_coefficients_set = []
+        extinction_coefficients_set.append(np.zeros(num_of_layers))
+        extinction_coefficients_set.append(0.2*np.ones(num_of_layers))
+        extinction_coefficients_set.append(np.linspace(0.1, 0.5, num_of_layers))
+        extinction_coefficients_set.append(2*np.linspace(0.2236, 0.5, num_of_layers)**2)
+
+        for image_id, extinction_coefficients in enumerate(extinction_coefficients_set):
+            ex = TestExperiment(camera=camera, layers=layers)
+            np.savetxt(f'test_extinction_coefficients_input_{image_id+1}.csv', extinction_coefficients)
+            for z in np.linspace(1.05, 2.95, num_of_leds):
+                ex.add_led(0, 4, z)
+            ex.set_extinction_coefficients(extinction_coefficients)
+            create_test_image(image_id, ex)
+    @keyword
+    def plot_input_vs_computed_extinction_coefficients(self, first=1, last=4, led_array= 0, channel=0):
+        # os.chdir('/Users/kristianboerger/repos/PhD/LEDSmokeAnalysis/test_output/ledsa')
+        filename = f'absorption_coefs_numeric_channel_{channel}_sum_col_val_led_array_{led_array}.csv'
+        extinction_coefficients_computed = (np.loadtxt(os.path.join('analysis', 'AbsorptionCoefficients', filename), skiprows=5, delimiter=','))
+        for image_id in range(first, last+1):
+            extinction_coefficients_input = np.flip(np.loadtxt(f'test_extinction_coefficients_input_{image_id}.csv', delimiter=','))
+            num_of_layers = extinction_coefficients_input.shape[0]
+            plt.plot(extinction_coefficients_input, range(num_of_layers), '.-')
+            plt.plot(extinction_coefficients_computed[image_id-1, :], range(num_of_layers), '.-')
+            plt.xlim(-0.1, 0.8)
+            plt.ylim(num_of_layers, 0)
+            plt.grid(linestyle='--', alpha=0.5)
+            plt.savefig(f'image_Id_{image_id}.pdf')
+            plt.close()
 
     @keyword
-    def create_and_fill_config(self, first=0, last=0):
-        conf = ConfigData(load_config_file=False, img_directory='.', window_radius=10, threshold_factor=0.25,
-                          num_of_arrays=1, multicore_processing=False, num_of_cores=1, reference_img='test_img_0.jpg',
-                          date=None, start_time=None, time_diff_to_image_time=0, time_img=None,
-                          img_name_string='test_img_{}.jpg', first_img=first, last_img=last, first_img_analysis=first,
-                          last_img_analysis=last, skip_imgs=0, skip_leds=0)
-        conf.set('analyse_positions', '   line_edge_indices', '0 2')
+    def create_and_fill_config(self, first=1, last=4):
+        conf = ConfigData(load_config_file=False, img_directory='./', window_radius=10, threshold_factor=0.25,
+                          num_of_arrays=1, num_of_cores=1, date=None, start_time=None, time_img=None,
+                          time_ref_img_time=None,
+                          time_diff_to_image_time=0, img_name_string='test_img_{}.jpg', img_number_overflow=None,
+                          first_img_experiment=first,
+                          last_img_experiment=last, reference_img='test_img_1.jpg', ignore_indices=None,
+                          line_edge_indices=None,
+                          line_edge_coordinates=None, first_img_analysis=first, last_img_analysis=last, skip_imgs=0,
+                          skip_leds=0, merge_led_arrays=None)
+        conf.set('analyse_positions', '   line_edge_indices', '0 99')
+        conf.set('analyse_positions', '   line_edge_coordinates', '0 4 1.05 0 4 2.95')
         conf.set('DEFAULT', '   date', '2018:11:27')
+        conf.save()
+
+    @keyword
+    def create_and_fill_config_analysis(self):
+        conf = ConfigDataAnalysis(load_config_file=False, camera_position=None, num_of_layers=20, domain_bounds=None,
+                                  led_arrays=0, num_ref_images=1, camera_channels=0, num_of_cores=1,
+                                  reference_property='sum_col_val',
+                                  average_images=False, solver='numeric', weighting_preference=-6e-3,
+                                  weighting_curvature=1e-6,
+                                  num_iterations=2000)
+        conf.set('experiment_geometry', '   camera_position', '0 0 1.0')
+        conf.set('model_parameters', '   domain_bounds', '1 3')
         conf.save()
 
     @keyword
@@ -53,7 +91,7 @@ class LedsaATestLibrary:
             out = self.execute_ledsa('-s1')
         else:
             self.execute_ledsa('--config')
-            inp = b'test_img_0.jpg\ntest_img_0.jpg\n12:00:00\ntest_img_{}.jpg\n0\n0\n1\n'
+            inp = b'./\ntest_img_1.jpg\ntest_img_1.jpg\n12:00:00\n1\n1\n1'
             out = self.execute_ledsa('-s1', inp)
             check_error_msg(out)
         return out[0].decode('ascii')[-7]
@@ -70,29 +108,31 @@ class LedsaATestLibrary:
         out = wait_for_process_to_finish(p, inp)
         return out
 
-    @keyword
-    def create_test_data(self):
-        from ledsa.data_extraction.step_3_functions import _save_results_in_file
-        from ledsa.data_extraction.LEDAnalysisData import LEDAnalysisData
-        time = 0
-        channel = 0
-        img_data = []
-        # id,line,sum_col_value,average_col_value,max_col_value
-        for led_id in [1, 2, 3]:
-            led = LEDAnalysisData(led_id, 0, False)
-            led.mean_color_value = 150*led_id
-            led.sum_color_value = 2000*led_id
-            led.max_color_value = 200*led_id
-            img_data.append(led)
-        img_name = "test.png"
-        img_infos = [[1, "im_1", 1, time],
-                     [2, "im_2", 1, time],
-                     [3, "im_3", 1, time]]
-        root = "."
 
-        for img_id in [1, 2, 3]:
-            _save_results_in_file(channel, img_data, img_name, img_id, img_infos, root)
-            time += 1
+
+    # @keyword
+    # def create_test_data(self):
+    #     from ledsa.data_extraction.step_3_functions import _save_results_in_file
+    #     from ledsa.data_extraction.LEDAnalysisData import LEDAnalysisData
+    #     time = 0
+    #     channel = 0
+    #     img_data = []
+    #     # id,line,sum_col_value,average_col_value,max_col_value
+    #     for led_id in [1, 2, 3]:
+    #         led = LEDAnalysisData(led_id, 0, False)
+    #         led.mean_color_value = 150 * led_id
+    #         led.sum_color_value = 2000 * led_id
+    #         led.max_color_value = 200 * led_id
+    #         img_data.append(led)
+    #     img_name = "test.png"
+    #     img_infos = [[1, "im_1", 1, time],
+    #                  [2, "im_2", 1, time],
+    #                  [3, "im_3", 1, time]]
+    #     root = "."
+    #
+    #     for img_id in [1, 2, 3]:
+    #         _save_results_in_file(channel, img_data, img_name, img_id, img_infos, root)
+    #         time += 1
 
     @keyword
     def create_experiment_data(self):
@@ -105,22 +145,38 @@ class LedsaATestLibrary:
         file.write("2,3,4\n1,2,7\n3,4,5")
         file.close()
 
+def create_test_image(image_id, experiment):
+    """ Creates three test images with black and gray pixels representing 3 leds and sets the exif data needed
+    The first image has 100% transmission on all LEDs, the second image has 50% transmission on all LEDs,
+    the third has 50%, 70% and 80% transmission on the top, middle and bottom LEDs.
+    :return: None
+    """
+    num_of_leds = len(experiment.leds)
+    transmissions = experiment.calc_all_led_transmissions()
+    img_array = create_img_array(num_of_leds, transmissions)
 
-def create_img_array():
-    img = np.zeros((200, 50, 3), np.int8)
-    add_led(img, 50, 25)
-    add_led(img, 100, 25)
-    add_led(img, 150, 25)
+    img = Image.fromarray(img_array, 'RGB')
+    exif_ifd = {
+        piexif.ExifIFD.DateTimeOriginal: f'2021:01:01 12:00:{0 + image_id:01d}'
+    }
+    exif_dict = {'Exif': exif_ifd}
+    exif_bytes = piexif.dump(exif_dict)
+    img.save(f'test_img_{image_id+1}.jpg', exif=exif_bytes)
+
+def create_img_array(num_of_leds, transmissions):
+    img = np.zeros((num_of_leds*50+50, 50, 3), np.int8)
+    for led_id in range(num_of_leds):
+        add_led(img, (1+led_id) * 50, 25, transmissions[led_id])
     return img
 
 
-def add_led(img, x_pos, y_pos):
+def add_led(img, x_pos, y_pos, transmission):
     rv = norm()
     size = 20
     led = np.zeros((size, size))
     for x in range(size):
         for y in range(size):
-            led[x, y] = calc_color_val(x, y, size, rv)
+            led[x, y] = calc_color_val(x, y, size, rv) * transmission
     img[x_pos - size // 2:x_pos + size // 2, y_pos - size // 2:y_pos + size // 2, 0] = led
     img[:, :, 1] = img[:, :, 0]
     img[:, :, 2] = img[:, :, 0]
@@ -143,3 +199,7 @@ def check_error_msg(out):
         if out[1].decode('ascii') != '':
             BuiltIn().log(out[1].decode('ascii'), 'ERROR')
             exit()
+
+# ddd = LedsaATestLibrary()
+# ddd.create_test_data()
+# ddd.plot_input_vs_computed_extinction_coefficients()

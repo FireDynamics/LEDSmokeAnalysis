@@ -130,7 +130,7 @@ def create_binary_data(channel: int) -> None:
         max_id = int(config['DEFAULT']['img_number_overflow'])
     else:
         max_id = 10**7
-    number_of_images = (max_id + last_img - first_img) % max_id
+    number_of_images = (max_id + last_img - first_img) % max_id + 1
     number_of_images //= int(config['analyse_photo']['skip_imgs']) + 1
     print('Loading fit parameters...')
     exception_counter = 0

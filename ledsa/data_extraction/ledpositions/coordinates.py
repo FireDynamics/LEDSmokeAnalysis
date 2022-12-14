@@ -5,7 +5,8 @@ from scipy.optimize import curve_fit
 from ledsa.core.ConfigData import ConfigData
 from ledsa.core.file_handling import read_table, sep
 
-
+import warnings
+warnings.filterwarnings("ignore", message="Covariance of the parameters could not be estimated") #TODO: Find a better workaround for not letting tests crash
 class LED:
     def __init__(self, id=None, pos=None, pix_pos=None):
         self.id = id

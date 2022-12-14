@@ -16,3 +16,7 @@ Create Config
     Log     Creating config.ini
     Create And Fill Config
 
+Create Config Analysis
+    Log     Creating config_analysis.ini
+    Create And Fill Config Analysis
+
