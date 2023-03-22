@@ -136,13 +136,13 @@ class TestExperiment:
             transmissions.append(self.calc_led_transmission(led))
         return transmissions
 
-layers = Layers(10, 0, 1.2)
-camera = Camera(0, 0, 0)
-ex = TestExperiment(layers=layers, camera=camera)
-ex.add_led(0, 0, 0.7)
-ex.add_led(0, 0, 0.3)
-print(ex.calc_traversed_dist_per_layer(ex.leds[0]))
-ex.set_extinction_coefficients(np.ones(10)*0.01)
-print(ex.extinction_coefficients)
-
-print(ex.calc_led_transmission(ex.leds[0]))
+# layers = Layers(10, 0, 1.2)
+# camera = Camera(0, 0, 0)
+# ex = TestExperiment(layers=layers, camera=camera)
+# ex.add_led(0, 0, 0.7)
+# ex.add_led(0, 0, 0.3)
+# print(ex.calc_traversed_dist_per_layer(ex.leds[0]))
+# ex.set_extinction_coefficients(np.ones(10)*0.01)
+# print(ex.extinction_coefficients)
+#
+# print(ex.calc_led_transmission(ex.leds[0]))

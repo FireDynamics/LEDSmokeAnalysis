@@ -46,7 +46,8 @@ class ExtinctionCoefficients(ABC):
         for img_id, single_img_data in self.calculated_img_data.groupby(level=0):
             single_img_array = single_img_data[self.reference_property].to_numpy()
             rel_intensities = single_img_array / self.ref_intensities
-
+            camera = 0
+            np.savetxt(f'cam_{camera}_rel_intensities_{img_id}.txt', rel_intensities) #Todo: remove
             kappas = self.calc_coefficients_of_img(rel_intensities)
             self.coefficients_per_image_and_layer.append(kappas)
         return None
@@ -71,8 +72,10 @@ class ExtinctionCoefficients(ABC):
         2. Load the binary file with the parameters calculated with ledsa core
         3. Calculate the intensities from the reference images to calculate the relative changes between smoke/no smoke later
         """
+        camera = 0
         if len(self.distances_per_led_and_layer) == 0:
             self.distances_per_led_and_layer = self.calc_distance_array()
+            np.savetxt(f'cam_{camera}_distances_per_led_and_layer.txt', self.distances_per_led_and_layer)
         if self.calculated_img_data.empty:
             self.load_img_data()
         if self.ref_intensities.shape[0] == 0:

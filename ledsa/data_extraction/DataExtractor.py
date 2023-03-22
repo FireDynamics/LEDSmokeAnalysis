@@ -156,7 +156,7 @@ class DataExtractor:
         ledsa.data_extraction.step_3_functions.create_imgs_to_process_file()
 
     def setup_restart(self):
-        if len(self.channels) > 1:
-            print('Restart of a run currently only supports one channel. \nExiting...')
-            exit(1)
+        # if len(self.channels) > 1: #TODO: deactivated for testing
+        #     print('Restart of a run currently only supports one channel. \nExiting...')
+        #     exit(1)
         ledsa.data_extraction.step_3_functions.find_and_save_not_analysed_imgs(self.channels[0])

@@ -24,20 +24,32 @@ class LedsaATestLibrary:
         os.chdir(new_dir)
 
     @keyword
-    def create_test_data(self, num_of_leds=100, num_of_layers=20):
-        camera = Camera(0, 0, 1.0)
-        layers = Layers(num_of_layers, 1, 3)
+    def create_test_data(self, num_of_leds=100, num_of_layers=20, bottom_border=0, top_border=3):
+        camera = Camera(0, 0, 2)
+        layers = Layers(num_of_layers, bottom_border, top_border)
 
         extinction_coefficients_set = []
         extinction_coefficients_set.append(np.zeros(num_of_layers))
         extinction_coefficients_set.append(0.2*np.ones(num_of_layers))
-        extinction_coefficients_set.append(np.linspace(0.1, 0.5, num_of_layers))
-        extinction_coefficients_set.append(2*np.linspace(0.2236, 0.5, num_of_layers)**2)
+        # extinction_coefficients_set.append(np.linspace(0.1, 0.5, num_of_layers))
+        # extinction_coefficients_set.append(2*np.linspace(0.2236, 0.5, num_of_layers)**2)
+
+        z_range = np.linspace(bottom_border, top_border, num_of_layers)
+        def extco_lin(z):
+            return 0.15 * z
+
+        def extco_quad(z):
+            return 0.0435 * z ** 2
+
+        extinction_coefficients_set.append(extco_lin(z_range))
+        extinction_coefficients_set.append(extco_quad(z_range))
+
+
 
         for image_id, extinction_coefficients in enumerate(extinction_coefficients_set):
             ex = TestExperiment(camera=camera, layers=layers)
             np.savetxt(f'test_extinction_coefficients_input_{image_id+1}.csv', extinction_coefficients)
-            for z in np.linspace(1.05, 2.95, num_of_leds):
+            for z in np.linspace(bottom_border+0.05, top_border-0.05, num_of_leds):
                 ex.add_led(0, 4, z)
             ex.set_extinction_coefficients(extinction_coefficients)
             create_test_image(image_id, ex)
@@ -69,7 +81,7 @@ class LedsaATestLibrary:
                           line_edge_coordinates=None, first_img_analysis=first, last_img_analysis=last, skip_imgs=0,
                           skip_leds=0, merge_led_arrays=None)
         conf.set('analyse_positions', '   line_edge_indices', '0 99')
-        conf.set('analyse_positions', '   line_edge_coordinates', '0 4 1.05 0 4 2.95')
+        conf.set('analyse_positions', '   line_edge_coordinates', '0 4 0.05 0 4 2.95')
         conf.set('DEFAULT', '   date', '2018:11:27')
         conf.save()
 
@@ -81,8 +93,8 @@ class LedsaATestLibrary:
                                   average_images=False, solver='numeric', weighting_preference=-6e-3,
                                   weighting_curvature=1e-6,
                                   num_iterations=2000)
-        conf.set('experiment_geometry', '   camera_position', '0 0 1.0')
-        conf.set('model_parameters', '   domain_bounds', '1 3')
+        conf.set('experiment_geometry', '   camera_position', '0 0 1')
+        conf.set('model_parameters', '   domain_bounds', '0 3')
         conf.save()
 
     @keyword

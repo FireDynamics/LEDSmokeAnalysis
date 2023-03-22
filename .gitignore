@@ -113,13 +113,17 @@ venv.bak/
 # mypy
 .mypy_cache/
 
+# Pycharm
+/.idea
+
 #data & output
 data/
 out/
 plots/
-analysis/
 test.py
 img_infos.csv
 config.ini
+config_analysis.ini
 experiment_data.txt
 .vscode/settings.json
+/test_output/

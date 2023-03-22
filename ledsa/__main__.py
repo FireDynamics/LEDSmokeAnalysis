@@ -119,7 +119,8 @@ def run_data_extraction_arguments(args):
         de.process_image_data()
 
     if args.re:
-        de = DataExtractor(build_experiment_infos=False, channels=channels)
+        channels = [0, 1, 2] # TODO: just for testing
+        de = DataExtractor(build_experiment_infos=False, channels=channels, fit_leds=False)
         de.setup_restart()
         de.process_image_data()
 

@@ -4,7 +4,8 @@ Library     LedsaATestLibrary.py
 
 
 *** Variables ***
-${WORKDIR}      ${TEMPDIR}${/}ledsa
+${WORKDIR}     /Users/kristianboerger/repos/PhD/LEDSmokeAnalysis/test_output/ledsa
+#${WORKDIR}     ${TEMPDIR}${/}ledsa
 
 *** Keywords ***
 Change Directory

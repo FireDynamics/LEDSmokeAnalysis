@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot generator="Robot 6.0.1 (Python 3.8.5 on darwin)" generated="20221213 16:42:41.902" rpa="false" schemaversion="3">
+<suite id="s1" name="Test S5 Analysis" source="/Users/kristianboerger/repos/PhD/LEDSmokeAnalysis/tests/AcceptanceTests/test_s5_analysis.robot">
+<test id="s1-t1" name="Config File Exists" line="7">
+<kw name="Create Config Analysis" library="global_keywords">
+<kw name="Log" library="BuiltIn">
+<arg>Creating config_analysis.ini</arg>
+<doc>Logs the given message with the given level.</doc>
+<msg timestamp="20221213 16:42:43.538" level="INFO">Creating config_analysis.ini</msg>
+<status status="PASS" starttime="20221213 16:42:43.538" endtime="20221213 16:42:43.538"/>
+</kw>
+<kw name="Create And Fill Config Analysis" library="LedsaATestLibrary">
+<msg timestamp="20221213 16:42:43.540" level="INFO">config_analysis.ini created
+config_analysis.ini saved</msg>
+<status status="PASS" starttime="20221213 16:42:43.538" endtime="20221213 16:42:43.540"/>
+</kw>
+<status status="PASS" starttime="20221213 16:42:43.538" endtime="20221213 16:42:43.540"/>
+</kw>
+<kw name="Start Step Analysis Numeric">
+<kw name="Log" library="BuiltIn">
+<arg>Step Analysis Numeric</arg>
+<doc>Logs the given message with the given level.</doc>
+<msg timestamp="20221213 16:42:43.540" level="INFO">Step Analysis Numeric</msg>
+<status status="PASS" starttime="20221213 16:42:43.540" endtime="20221213 16:42:43.540"/>
+</kw>
+<kw name="Execute Ledsa" library="LedsaATestLibrary">
+<arg>-s3_fast</arg>
+<msg timestamp="20221213 16:42:44.880" level="ERROR">Traceback (most recent call last):
+  File "/usr/local/anaconda3/envs/python38_ledsa/lib/python3.8/runpy.py", line 194, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/usr/local/anaconda3/envs/python38_ledsa/lib/python3.8/runpy.py", line 87, in _run_code
+    exec(code, run_globals)
+  File "/usr/local/anaconda3/envs/python38_ledsa/lib/python3.8/site-packages/ledsa/__main__.py", line 146, in &lt;module&gt;
+    main(sys.argv[1:])
+  File "/usr/local/anaconda3/envs/python38_ledsa/lib/python3.8/site-packages/ledsa/__main__.py", line 30, in main
+    run_data_extraction_arguments(args)
+  File "/usr/local/anaconda3/envs/python38_ledsa/lib/python3.8/site-packages/ledsa/__main__.py", line 117, in run_data_extraction_arguments
+    de = DataExtractor(build_experiment_infos=True, channels=channels, fit_leds=False)
+  File "/usr/local/anaconda3/envs/python38_ledsa/lib/python3.8/site-packages/ledsa/data_extraction/DataExtractor.py", line 37, in __init__
+    led.request_config_parameters(self.config)
+  File "/usr/local/anaconda3/envs/python38_ledsa/lib/python3.8/site-packages/ledsa/data_extraction/init_functions.py", line 30, in request_config_parameters
+    config.in_time_img()
+  File "/usr/local/anaconda3/envs/python38_ledsa/lib/python3.8/site-packages/ledsa/core/ConfigData.py", line 134, in in_time_img
+    self['DEFAULT']['time_img'] = input('Please give the name of the time reference image, the image where a clock '
+EOFError: EOF when reading a line
+</msg>
+<errors>
+<msg timestamp="20221213 16:42:44.880" level="ERROR">Traceback (most recent call last):
+  File "/usr/local/anaconda3/envs/python38_ledsa/lib/python3.8/runpy.py", line 194, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/usr/local/anaconda3/envs/python38_ledsa/lib/python3.8/runpy.py", line 87, in _run_code
+    exec(code, run_globals)
+  File "/usr/local/anaconda3/envs/python38_ledsa/lib/python3.8/site-packages/ledsa/__main__.py", line 146, in &lt;module&gt;
+    main(sys.argv[1:])
+  File "/usr/local/anaconda3/envs/python38_ledsa/lib/python3.8/site-packages/ledsa/__main__.py", line 30, in main
+    run_data_extraction_arguments(args)
+  File "/usr/local/anaconda3/envs/python38_ledsa/lib/python3.8/site-packages/ledsa/__main__.py", line 117, in run_data_extraction_arguments
+    de = DataExtractor(build_experiment_infos=True, channels=channels, fit_leds=False)
+  File "/usr/local/anaconda3/envs/python38_ledsa/lib/python3.8/site-packages/ledsa/data_extraction/DataExtractor.py", line 37, in __init__
+    led.request_config_parameters(self.config)
+  File "/usr/local/anaconda3/envs/python38_ledsa/lib/python3.8/site-packages/ledsa/data_extraction/init_functions.py", line 30, in request_config_parameters
+    config.in_time_img()
+  File "/usr/local/anaconda3/envs/python38_ledsa/lib/python3.8/site-packages/ledsa/core/ConfigData.py", line 134, in in_time_img
+    self['DEFAULT']['time_img'] = input('Please give the name of the time reference image, the image where a clock '
+EOFError: EOF when reading a line
+</msg>
+<msg timestamp="20221213 16:42:44.882" level="ERROR">Execution stopped by user.</msg>
+</errors>
+</robot>
