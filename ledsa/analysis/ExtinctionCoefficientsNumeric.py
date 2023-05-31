@@ -26,7 +26,8 @@ class ExtinctionCoefficientsNumeric(ExtinctionCoefficients):
                        method='TNC', bounds=tuple(self.bounds),
                        options={'maxiter': self.num_iterations, 'gtol': 1e-5, 'disp': True})
         kappas = np.flip(fit.x)
-        return kappas
+        fit_report = (fit.fun, fit.nfev, fit.nit)
+        return kappas, fit_report
 
     def calc_intensities(self, kappas: np.ndarray) -> np.ndarray:
         n_leds = self.experiment.led_number

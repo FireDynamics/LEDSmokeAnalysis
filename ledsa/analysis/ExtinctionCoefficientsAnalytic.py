@@ -64,7 +64,8 @@ class ExtinctionCoefficientsAnalytic(ExtinctionCoefficients):
             kappas[bottom_layer] = self.calc_kappa(kappas, bottom_layer,
                                                    mean_dist[bottom_layer],
                                                    mean_rel_intensity[bottom_layer])
-        return kappas
+        fit_report = None # TODO: Find better solution
+        return kappas, fit_report
 
     def find_camera_layer(self, mean_dist_per_led_and_layer: np.ndarray) -> int:
         for layer in range(self.experiment.layers.amount):

@@ -1,3 +1,4 @@
+import os.path
 from abc import ABC, abstractmethod
 from multiprocessing import Pool
 
@@ -25,6 +26,7 @@ class ExtinctionCoefficients(ABC):
         self.ref_intensities = np.array([])
         self.cc_matrix = None
         self.average_images = average_images
+        self.fit_reports = []
 
         self.type = None
 
@@ -47,8 +49,11 @@ class ExtinctionCoefficients(ABC):
             single_img_array = single_img_data[self.reference_property].to_numpy()
             rel_intensities = single_img_array / self.ref_intensities
 
-            kappas = self.calc_coefficients_of_img(rel_intensities)
+            kappas, fit_report = self.calc_coefficients_of_img(rel_intensities)
             self.coefficients_per_image_and_layer.append(kappas)
+            self.fit_reports.append([img_id, *fit_report])
+            self.save_fit_report()
+
         return None
 
     def calc_and_set_coefficients_mp(self, cores=4) -> None:
@@ -132,7 +137,10 @@ class ExtinctionCoefficients(ABC):
             extend_hdf(channel, quanity + '_cc',cc_val_array[:,channel] )
         print(f"Color correction applied on {nchannels} Channels!")
 
-
+    def save_fit_report(self):
+        path = self.experiment.path / 'analysis' / 'fit_report.csv'
+        header = 'Image ID, Function value, Number of evaluations, Number of iterations'
+        np.savetxt(path, np.array(self.fit_reports), delimiter=',', header=header)
 
 
 
