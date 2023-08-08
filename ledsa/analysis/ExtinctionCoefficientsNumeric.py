@@ -24,7 +24,8 @@ class ExtinctionCoefficientsNumeric(ExtinctionCoefficients):
             kappa0 = self.coefficients_per_image_and_layer[-1]
         fit = minimize(self.cost_function, kappa0, args=rel_intensities,
                        method='TNC', bounds=tuple(self.bounds),
-                       options={'maxiter': self.num_iterations, 'gtol': 1e-5, 'disp': True})
+                       options={'maxiter': self.num_iterations, 'gtol': 1e-5, 'disp': False})
+        print(fit.message)
         kappas = np.flip(fit.x)
         return kappas
 
