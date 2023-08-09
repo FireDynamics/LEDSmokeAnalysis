@@ -1,0 +1,46 @@
+name: Run Robot Framework Tests
+on:
+  push:
+    branches:
+      - master
+    paths-ignore:
+      - 'README.md'
+  pull_request:
+    paths-ignore:
+      - 'README.md'
+
+jobs:
+  run_tests:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Create folder for reports
+      run: mkdir reports
+    - name: Install Python
+      run: sudo apt-get update && sudo apt-get install -y python3
+    - name: Install Robot Framework
+      run: pip install robotframework
+    - name: Run Robot Framework Tests
+      run: |
+        robot \
+          --outputdir reports \
+          --pythonpath ${PWD}/ledsa \
+          tests/AcceptanceTests
+    - name: Upload reports
+      uses: actions/upload-artifact@v2
+      if: always()
+      with:
+        name: reports
+        path: ${{ github.workspace }}/reports
+    - name: Get Repository Name
+      run: echo "REPOSITORY_NAME=${{ github.repository }}" >> $GITHUB_ENV
+    - name: Send test report as comment to commit
+      uses: joonvena/robotframework-reporter-action@v2
+      with:
+        gh_access_token: ${{ secrets.GITHUB_TOKEN }}
+      if: ${{ github.event_name == 'push' }}
+      env:
+        REPO_OWNER: ${{ github.repository_owner }}
+        COMMIT_SHA: ${{ github.sha }}
+        REPOSITORY: ${{ env.REPOSITORY_NAME }}
+        REPORT_PATH: ${{ github.workspace }}/tests/AcceptanceTests/reports
