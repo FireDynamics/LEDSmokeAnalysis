@@ -10,11 +10,11 @@ Force Tags  step_1
 Config File Exists
     Create Config
     ${infos} =  Start Step One
-    Three leds should be found and the pdf created    ${infos}
+    Hundred leds should be found and the pdf created    ${infos}
 
 No Config File Exists
     ${infos} =  Start Step One      use_config=${FALSE}
-    Three leds should be found and the pdf created    ${infos}
+    Hundred leds should be found and the pdf created    ${infos}
 
 
 *** Keywords ***
@@ -24,7 +24,7 @@ Start Step One
     ${leds} =   Execute Ledsa S1    ${use_config}
     [Return]  ${leds}
 
-Three leds should be found and the pdf created
+Hundred leds should be found and the pdf created
     [Arguments]  ${leds}
-    Should Be Equal     ${leds}     3
+    Should Be Equal     ${leds}     100
     File Should Exist   ${WORKDIR}${/}plots${/}led_search_areas.plot.pdf

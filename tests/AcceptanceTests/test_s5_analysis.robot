@@ -8,10 +8,10 @@ Config File Exists
     Create Config Analysis
     Start Step Analysis Numeric
     Plot Extinction Coefficients
-
-#    ${infos} =  Start Step One
-#    Three leds should be found and the pdf created    ${infos}
-
+    Check Results    1
+    Check Results    2
+    Check Results    3
+    Check Results    4
 
 
 *** Keywords ***
@@ -23,6 +23,17 @@ Start Step Analysis Numeric
 Plot Extinction Coefficients
     Log     Plot Extinction Coefficients
     Plot Input Vs Computed Extinction Coefficients
+
+Check Results
+    [Arguments]  ${image_id}
+    Log     Check Results
+    ${rmse} =   Check Input Vs Computed Extinction Coefficients    ${image_id}
+    Rmse Should Be Small   ${rmse}
+
+Rmse Should Be Small
+    [Arguments]  ${rmse}
+    Should Be True   ${rmse} < 0.015
+
 
 
 

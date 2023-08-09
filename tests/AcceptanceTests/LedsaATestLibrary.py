@@ -68,6 +68,14 @@ class LedsaATestLibrary:
             plt.grid(linestyle='--', alpha=0.5)
             plt.savefig(f'image_Id_{image_id}.pdf')
             plt.close()
+    @keyword
+    def check_input_vs_computed_extinction_coefficients(self, image_id, led_array= 0, channel=0):
+        filename = f'absorption_coefs_numeric_channel_{channel}_sum_col_val_led_array_{led_array}.csv'
+        extinction_coefficients_computed = (np.loadtxt(os.path.join('analysis', 'AbsorptionCoefficients', filename), skiprows=5, delimiter=','))
+        extinction_coefficients_input = np.flip(
+            np.loadtxt(f'test_extinction_coefficients_input_{image_id}.csv', delimiter=','))
+        rmse = np.sqrt(np.mean((extinction_coefficients_input - extinction_coefficients_computed[int(image_id)-1, :]) ** 2))
+        return rmse
 
     @keyword
     def create_and_fill_config(self, first=1, last=4):
@@ -114,11 +122,11 @@ class LedsaATestLibrary:
         out = wait_for_process_to_finish(p, inp)
         return out
 
-    @keyword
-    def execute_ledsa_analysis(self, *args, inp=None):
-        p = Popen(['python', '-m', 'ledsa.analysis', *args], stdin=PIPE, stdout=PIPE, stderr=PIPE)
-        out = wait_for_process_to_finish(p, inp)
-        return out
+    # @keyword
+    # def execute_ledsa_analysis(self, *args, inp=None):
+    #     p = Popen(['python', '-m', 'ledsa.analysis', *args], stdin=PIPE, stdout=PIPE, stderr=PIPE)
+    #     out = wait_for_process_to_finish(p, inp)
+    #     return out
 
 
 
