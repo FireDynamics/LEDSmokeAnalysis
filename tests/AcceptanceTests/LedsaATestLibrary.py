@@ -101,7 +101,7 @@ class LedsaATestLibrary:
                                   average_images=False, solver='numeric', weighting_preference=-6e-3,
                                   weighting_curvature=1e-6,
                                   num_iterations=2000)
-        conf.set('experiment_geometry', '   camera_position', '0 0 1')
+        conf.set('experiment_geometry', '   camera_position', '0 0 2')
         conf.set('model_parameters', '   domain_bounds', '0 3')
         conf.save()
 
@@ -114,7 +114,7 @@ class LedsaATestLibrary:
             inp = b'./\ntest_img_1.jpg\ntest_img_1.jpg\n12:00:00\n1\n1\n1'
             out = self.execute_ledsa('-s1', inp)
             check_error_msg(out)
-        return out[0].decode('ascii')[-7]
+        return out[0].decode('ascii')[-9:-6]
 
     @keyword
     def execute_ledsa(self, arg, inp=None):
