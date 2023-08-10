@@ -127,3 +127,4 @@ config_analysis.ini
 experiment_data.txt
 .vscode/settings.json
 /test_output/
+log.html
