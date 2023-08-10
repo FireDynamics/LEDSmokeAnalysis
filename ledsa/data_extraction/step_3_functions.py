@@ -135,7 +135,7 @@ def _fit_model_to_led(search_area):
     mesh = np.meshgrid(x, y)
     res = scipy.optimize.minimize(target_function, x0,
                                   args=(search_area, mesh), method='nelder-mead',
-                                  options={'xtol': 1e-8, 'disp': False,
+                                  options={'xatol': 1e-8, 'disp': False,
                                            'adaptive': False, 'maxiter': 10000})
     return res, mesh
 
