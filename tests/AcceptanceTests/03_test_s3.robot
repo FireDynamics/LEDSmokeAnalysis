@@ -6,17 +6,17 @@ Test Teardown  Empty Directory  ${WORKDIR}${/}analysis${/}channel0${/}
 Force Tags  step_3
 
 *** Test Cases ***
-#Step Three
-#    Start Step Three
-#    Result table should be generated
+Step Three With Fit
+    Start Step Three
+    Result table should be generated
 
 Step Three Wihtout Fit
     Start Step Three Without Fit
     Result table should be generated
-#
-#Repeat Step Three After Interruption
-#    Restart Step Three
-#    Result table should be generated
+
+Repeat Step Three After Interruption
+    Restart Step Three
+    Result table should be generated
 
 *** Keywords ***
 Start Step Three

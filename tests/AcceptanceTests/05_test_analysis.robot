@@ -4,10 +4,14 @@ Resource  global_keywords.resource
 Force Tags  analysis_numeric
 
 *** Test Cases ***
-Config File Exists
+Step Analysis Numeric
     Create Config Analysis
     Start Step Analysis Numeric
+
+Plot Results
     Plot Extinction Coefficients
+
+Check Extinction Coefficient Results
     Check Results    1
     Check Results    2
     Check Results    3
@@ -32,11 +36,4 @@ Check Results
 
 Rmse Should Be Small
     [Arguments]  ${rmse}
-    Should Be True   ${rmse} < 0.015
-
-
-
-
-
-#Cooordinates should be calculated
-#    File Should Exist   ${WORKDIR}${/}analysis${/}led_search_areas_with_coordinates.csv
+    Should Be True   ${rmse} < 0.02

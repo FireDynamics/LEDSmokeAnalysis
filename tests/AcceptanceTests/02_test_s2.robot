@@ -7,7 +7,7 @@ Force Tags  step_2
 
 
 *** Test Cases ***
-Test Step Two
+Step Two
     Start Step Two
     Pdf with lines should be created
     Line indice tabels should be created
