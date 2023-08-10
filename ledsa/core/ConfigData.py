@@ -8,10 +8,11 @@ from ledsa.core.image_reading import get_exif_entry
 class ConfigData(cp.ConfigParser):
     def __init__(self, load_config_file=True, img_directory=None, window_radius=10, threshold_factor=0.25,
                  num_of_arrays=None, num_of_cores=1, date=None, start_time=None, time_img=None, time_ref_img_time=None,
-                 time_diff_to_image_time=None, img_name_string=None, img_number_overflow=None, first_img_experiment=None,
+                 time_diff_to_image_time=None, img_name_string=None, img_number_overflow=None,
+                 first_img_experiment=None,
                  last_img_experiment=None, reference_img=None, ignore_indices=None, line_edge_indices=None,
                  line_edge_coordinates=None, first_img_analysis=None, last_img_analysis=None, skip_imgs=0,
-                 skip_leds=0, merge_led_arrays=None): # TODO: merge LED arrays
+                 skip_leds=0, merge_led_arrays=None):  # TODO: merge LED arrays
         cp.ConfigParser.__init__(self, allow_no_value=True)
         if load_config_file:
             self.load()
@@ -48,7 +49,6 @@ class ConfigData(cp.ConfigParser):
             self['find_search_areas']['   threshold_factor'] = str(threshold_factor)
             self.set('find_search_areas', '   # Radius of pixels assigned to each LED')
             self['find_search_areas']['   window_radius'] = str(window_radius)
-
 
             self['analyse_positions'] = {}
             self.set('analyse_positions', '# Variables used to find the physical positions of every led')
@@ -94,7 +94,7 @@ class ConfigData(cp.ConfigParser):
             return None
         if num_col == 'var':
             indices_array = [i for i in self[section][option].split('\n')]
-            indices_array = [i for i in indices_array if i] # Remove empty strings
+            indices_array = [i for i in indices_array if i]  # Remove empty strings
             indices = []
             for i in indices_array:
                 indices.append([dtype(j) for j in i.split()])
@@ -120,11 +120,13 @@ class ConfigData(cp.ConfigParser):
 
     def in_img_dir(self):
         self['DEFAULT']['img_directory'] = input('Please give the path where the images are stored: ')
+
     def in_first_img_experiment(self):
         self['DEFAULT']['first_img'] = input('Please give the number of the first image of the experiment: ')
 
     def in_last_img_experiment(self):
         self['DEFAULT']['last_img'] = input('Please give the number of the last image image of the experiment: ')
+
     def in_ref_img(self):
         self['find_search_areas']['reference_img'] = input('Please give the name of the reference image, from where the'
                                                            ' led positions are calculated and which will be the start '

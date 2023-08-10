@@ -7,6 +7,7 @@ from .data_extraction.DataExtractor import DataExtractor
 from .core.ConfigData import ConfigData
 from ledsa.analysis.__main__ import add_parser_argument_analysis, run_analysis_arguments_with_extinction_coefficient
 
+
 def main(argv):
     parser = argparse.ArgumentParser(description=
                                      'Allows the analysis of light dampening of LEDs behind a smoke screen.')
@@ -59,12 +60,14 @@ def add_parser_arguments_data_extraction(parser: argparse.ArgumentParser) -> arg
                              'reference image.')
     return parser
 
+
 def add_parser_arguments_testing(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
     parser.add_argument('--atest', '-atest', action='store_true',
                         help='Runs the acceptance test suit')
     parser.add_argument('--atest_debug', action='store_true',
                         help='Runs acceptance test suit in debug mode')
     return parser
+
 
 def add_parser_arguments_demo(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
     parser.add_argument('--demo', action='store_true',
@@ -119,7 +122,7 @@ def run_data_extraction_arguments(args):
         de.process_image_data()
 
     if args.re:
-        channels = [0, 1, 2] # TODO: just for testing
+        channels = [0, 1, 2]  # TODO: just for testing
         de = DataExtractor(build_experiment_infos=False, channels=channels, fit_leds=False)
         de.setup_restart()
         de.process_image_data()
@@ -142,6 +145,7 @@ def run_testing_arguments(args):
 def run_demo_arguments(args):
     from demo.__main__ import main as demo_main
     demo_main()
+
 
 if __name__ == "__main__":
     main(sys.argv[1:])

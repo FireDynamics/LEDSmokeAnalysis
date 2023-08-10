@@ -3,10 +3,8 @@ from robot.api.deco import keyword, library
 from robot.libraries.BuiltIn import BuiltIn
 import os
 
-try:
-    from PIL import Image
-except ImportError:
-    import Image
+
+from PIL import Image
 import numpy as np
 from scipy.stats import norm
 from ledsa.core.ConfigData import ConfigData
@@ -15,6 +13,7 @@ from subprocess import Popen, PIPE
 import piexif
 
 from TestExperiment import TestExperiment, Layers, Camera
+
 
 @library
 class LedsaATestLibrary:
@@ -30,11 +29,12 @@ class LedsaATestLibrary:
 
         extinction_coefficients_set = []
         extinction_coefficients_set.append(np.zeros(num_of_layers))
-        extinction_coefficients_set.append(0.2*np.ones(num_of_layers))
+        extinction_coefficients_set.append(0.2 * np.ones(num_of_layers))
         # extinction_coefficients_set.append(np.linspace(0.1, 0.5, num_of_layers))
         # extinction_coefficients_set.append(2*np.linspace(0.2236, 0.5, num_of_layers)**2)
 
         z_range = np.linspace(bottom_border, top_border, num_of_layers)
+
         def extco_lin(z):
             return 0.15 * z
 
@@ -44,36 +44,40 @@ class LedsaATestLibrary:
         extinction_coefficients_set.append(extco_lin(z_range))
         extinction_coefficients_set.append(extco_quad(z_range))
 
-
-
         for image_id, extinction_coefficients in enumerate(extinction_coefficients_set):
             ex = TestExperiment(camera=camera, layers=layers)
-            np.savetxt(f'test_extinction_coefficients_input_{image_id+1}.csv', extinction_coefficients)
-            for z in np.linspace(bottom_border+0.05, top_border-0.05, num_of_leds):
+            np.savetxt(f'test_extinction_coefficients_input_{image_id + 1}.csv', extinction_coefficients)
+            for z in np.linspace(bottom_border + 0.05, top_border - 0.05, num_of_leds):
                 ex.add_led(0, 4, z)
             ex.set_extinction_coefficients(extinction_coefficients)
             create_test_image(image_id, ex)
+
     @keyword
-    def plot_input_vs_computed_extinction_coefficients(self, first=1, last=4, led_array= 0, channel=0):
+    def plot_input_vs_computed_extinction_coefficients(self, first=1, last=4, led_array=0, channel=0):
         filename = f'absorption_coefs_numeric_channel_{channel}_sum_col_val_led_array_{led_array}.csv'
-        extinction_coefficients_computed = (np.loadtxt(os.path.join('analysis', 'AbsorptionCoefficients', filename), skiprows=5, delimiter=','))
-        for image_id in range(first, last+1):
-            extinction_coefficients_input = np.flip(np.loadtxt(f'test_extinction_coefficients_input_{image_id}.csv', delimiter=','))
+        extinction_coefficients_computed = (
+            np.loadtxt(os.path.join('analysis', 'AbsorptionCoefficients', filename), skiprows=5, delimiter=','))
+        for image_id in range(first, last + 1):
+            extinction_coefficients_input = np.flip(
+                np.loadtxt(f'test_extinction_coefficients_input_{image_id}.csv', delimiter=','))
             num_of_layers = extinction_coefficients_input.shape[0]
             plt.plot(extinction_coefficients_input, range(num_of_layers), '.-')
-            plt.plot(extinction_coefficients_computed[image_id-1, :], range(num_of_layers), '.-')
+            plt.plot(extinction_coefficients_computed[image_id - 1, :], range(num_of_layers), '.-')
             plt.xlim(-0.1, 0.8)
             plt.ylim(num_of_layers, 0)
             plt.grid(linestyle='--', alpha=0.5)
             plt.savefig(f'image_Id_{image_id}.pdf')
             plt.close()
+
     @keyword
-    def check_input_vs_computed_extinction_coefficients(self, image_id, led_array= 0, channel=0):
+    def check_input_vs_computed_extinction_coefficients(self, image_id, led_array=0, channel=0):
         filename = f'absorption_coefs_numeric_channel_{channel}_sum_col_val_led_array_{led_array}.csv'
-        extinction_coefficients_computed = (np.loadtxt(os.path.join('analysis', 'AbsorptionCoefficients', filename), skiprows=5, delimiter=','))
+        extinction_coefficients_computed = (
+            np.loadtxt(os.path.join('analysis', 'AbsorptionCoefficients', filename), skiprows=5, delimiter=','))
         extinction_coefficients_input = np.flip(
             np.loadtxt(f'test_extinction_coefficients_input_{image_id}.csv', delimiter=','))
-        rmse = np.sqrt(np.mean((extinction_coefficients_input - extinction_coefficients_computed[int(image_id)-1, :]) ** 2))
+        rmse = np.sqrt(
+            np.mean((extinction_coefficients_input - extinction_coefficients_computed[int(image_id) - 1, :]) ** 2))
         return rmse
 
     @keyword
@@ -127,8 +131,6 @@ class LedsaATestLibrary:
     #     out = wait_for_process_to_finish(p, inp)
     #     return out
 
-
-
     # @keyword
     # def create_test_data(self):
     #     from ledsa.data_extraction.step_3_functions import _save_results_in_file
@@ -164,6 +166,7 @@ class LedsaATestLibrary:
         file.write("2,3,4\n1,2,7\n3,4,5")
         file.close()
 
+
 def create_test_image(image_id, experiment):
     """ Creates three test images with black and gray pixels representing 3 leds and sets the exif data needed
     The first image has 100% transmission on all LEDs, the second image has 50% transmission on all LEDs,
@@ -180,12 +183,13 @@ def create_test_image(image_id, experiment):
     }
     exif_dict = {'Exif': exif_ifd}
     exif_bytes = piexif.dump(exif_dict)
-    img.save(f'test_img_{image_id+1}.jpg', exif=exif_bytes)
+    img.save(f'test_img_{image_id + 1}.jpg', exif=exif_bytes)
+
 
 def create_img_array(num_of_leds, transmissions):
-    img = np.zeros((num_of_leds*50+50, 50, 3), np.int8)
+    img = np.zeros((num_of_leds * 50 + 50, 50, 3), np.int8)
     for led_id in range(num_of_leds):
-        add_led(img, (1+led_id) * 50, 25, transmissions[led_id])
+        add_led(img, (1 + led_id) * 50, 25, transmissions[led_id])
     return img
 
 

@@ -6,10 +6,14 @@ from ledsa.core.ConfigData import ConfigData
 from ledsa.core.file_handling import read_table, sep
 
 import warnings
-warnings.filterwarnings("ignore", message="Covariance of the parameters could not be estimated") #TODO: Find a better workaround for not letting tests crash
+
+warnings.filterwarnings("ignore",
+                        message="Covariance of the parameters could not be estimated")  # TODO: Find a better workaround for not letting tests crash
+
+
 class LED:
-    def __init__(self, id=None, pos=None, pix_pos=None):
-        self.id = id
+    def __init__(self, led_id=None, pos=None, pix_pos=None):
+        self.id = led_id
         self.pos = pos
         self.pix_pos = pix_pos
 
@@ -24,7 +28,6 @@ class LED:
 
 
 def calculate_coordinates():
-
     coordinates_3d = calculate_3d_coordinates()
     coordinates_2d = calculate_2d_coordinates(coordinates_3d[0:, 3:6])
     coord = np.append(coordinates_3d, coordinates_2d.T, axis=1)
@@ -104,17 +107,17 @@ def _orth_projection(point, line, point_on_line):
     line_hat = (line / np.linalg.norm(line)).flatten()
 
     # vector between the line and the normalized direction vector of the line
-    line_pos = point_on_line.flatten() - point_on_line.flatten().dot(line_hat)*line_hat
+    line_pos = point_on_line.flatten() - point_on_line.flatten().dot(line_hat) * line_hat
 
     # projection of the point onto the line
-    projection = point.flatten().dot(line_hat)*line_hat + line_pos
+    projection = point.flatten().dot(line_hat) * line_hat + line_pos
     return projection
 
 
 # Uses least squares to fit a plane through an array of points. The fitted plane is orthogonal to the xy-plane.
 def _fit_plane(points: np.ndarray):
     def plane_func(point, a, b, d):
-        return -1./b * (a*point[0]+d)
+        return -1. / b * (a * point[0] + d)
 
     popt, pcov = curve_fit(plane_func, points, points[1])
     popt = np.insert(popt, 2, 0)
@@ -122,7 +125,7 @@ def _fit_plane(points: np.ndarray):
 
 
 def _project_points_to_plane(points: np.ndarray, plane: np.ndarray):
-    t = -(plane[0] * points[0] + plane[1] * points[1] + plane[3]) / (plane[0]**2 + plane[1]**2)
+    t = -(plane[0] * points[0] + plane[1] * points[1] + plane[3]) / (plane[0] ** 2 + plane[1] ** 2)
     t = np.atleast_2d(t)
     plane = np.atleast_2d(plane[0:3])
     print(points.shape, plane.T.shape, t.shape)
@@ -135,7 +138,7 @@ def _get_plane_coordinates(points: np.ndarray, plane: np.ndarray):
     plane_coordinates = np.ndarray((2, points.shape[1]))
 
     # move the plane so it goes through the origin
-    y = points[1]+plane[3]/plane[1]
+    y = points[1] + plane[3] / plane[1]
 
     # coordinate transformation x -> width
     plane_coordinates[0] = np.sqrt(points[0] ** 2 + y ** 2) / (np.dot([0, 1], plane[0:2]) / np.linalg.norm(plane[0:2]))

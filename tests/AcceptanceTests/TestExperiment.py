@@ -12,6 +12,7 @@ class Layer:
             return True
         return False
 
+
 @dataclass
 class Layers:
     amount: int
@@ -24,7 +25,7 @@ class Layers:
         self.layers = []
         self.borders = np.linspace(self.bottom_border, self.top_border, self.amount + 1)
         for i in range(self.amount):
-            self.layers.append(Layer(self.borders[i], self.borders[i+1]))
+            self.layers.append(Layer(self.borders[i], self.borders[i + 1]))
 
     def __getitem__(self, layer):
         return self.layers[layer]
@@ -34,7 +35,6 @@ class Layers:
 
     def __repr__(self):
         return f'Layers(amount={self.amount}, bottom_border={self.bottom_border}, top_border={self.top_border})'
-
 
 
 @dataclass
@@ -72,9 +72,8 @@ class TestExperiment:
     def set_extinction_coefficients(self, extinction_coefficients_array):
         self.extinction_coefficients = extinction_coefficients_array
 
-
     def calc_traversed_dist_per_layer(self, led: LED) -> np.ndarray:
-        horizontal_dist = np.sqrt((self.camera.pos_x-led.pos_x)**2 + (self.camera.pos_y-led.pos_y)**2)
+        horizontal_dist = np.sqrt((self.camera.pos_x - led.pos_x) ** 2 + (self.camera.pos_y - led.pos_y) ** 2)
         alpha = np.arctan((led.pos_z - self.camera.pos_z) / horizontal_dist)
         if alpha == 0:
             distance_per_layer = self.calc_traversed_dist_in_plane(led)
@@ -121,7 +120,7 @@ class TestExperiment:
             if not silent:
                 print("error in distance computation, camera_x: {}, camera_y: {} camera_z: {}, led_x: {}, led_y: {}, "
                       "led_z: {}".format(
-                        self.camera.pos_x, self.camera.pos_y, self.camera.pos_z, led.pos_x, led.pos_y, led.pos_z))
+                    self.camera.pos_x, self.camera.pos_y, self.camera.pos_z, led.pos_x, led.pos_y, led.pos_z))
             return False
         return True
 

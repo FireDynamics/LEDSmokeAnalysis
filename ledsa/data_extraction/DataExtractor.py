@@ -21,8 +21,8 @@ class DataExtractor:
     """
     Class for extracting the data from the experiment images.
     """
-    
-    def __init__(self, channels=[0], load_config_file=True, build_experiment_infos=True, fit_leds=True):
+
+    def __init__(self, channels=(0), load_config_file=True, build_experiment_infos=True, fit_leds=True):
         self.config = ConfigData(load_config_file=load_config_file)
 
         self.channels = list(channels)
@@ -49,7 +49,7 @@ class DataExtractor:
         filename = 'analysis{}led_search_areas.csv'.format(sep)
         self.search_areas = ledsa.core.file_handling.read_table(filename, delim=',')
         # self.last_fit_results = self.search_areas.shape[0] * [[10, 10, 2., 2., 200., 1.0, 1.0, 1.0]]
-    
+
     def find_search_areas(self, img_filename):
         """
         finds all LEDs in a single image file and defines the search areas, in
@@ -59,8 +59,10 @@ class DataExtractor:
         ref_img_name = "{}{}".format(config['img_directory'], img_filename)
         data = ledsa.core.image_reading.read_img(ref_img_name, channel=0)
 
-        self.search_areas = ledsa.data_extraction.step_1_functions.find_search_areas(data, skip=1, window_radius=int(config['window_radius']),
-                                                                                     threshold_factor=float(config['threshold_factor']))
+        self.search_areas = ledsa.data_extraction.step_1_functions.find_search_areas(data, skip=1, window_radius=int(
+            config['window_radius']),
+                                                                                     threshold_factor=float(
+                                                                                         config['threshold_factor']))
 
         out_filename = 'analysis{}led_search_areas.csv'.format(sep)
         np.savetxt(out_filename, self.search_areas, delimiter=',',
@@ -92,18 +94,23 @@ class DataExtractor:
         """analyses, which LED belongs to which LED line array"""
         if self.search_areas is None:
             self.load_search_areas()
-        self.line_indices = ledsa.data_extraction.step_2_functions.match_leds_to_led_arrays(self.search_areas, self.config)
+        self.line_indices = ledsa.data_extraction.step_2_functions.match_leds_to_led_arrays(self.search_areas,
+                                                                                            self.config)
         ledsa.data_extraction.step_2_functions.generate_line_indices_files(self.line_indices)
         ledsa.data_extraction.step_2_functions.generate_labeled_led_arrays_plot(self.line_indices, self.search_areas)
-        self.line_indices, merge = ledsa.data_extraction.step_2_functions.merge_led_arrays(self.line_indices, self.config)
-        if merge == True:
-            ledsa.data_extraction.step_2_functions.generate_labeled_led_arrays_plot(self.line_indices, self.search_areas, filename_extension='_merge')
-            ledsa.data_extraction.step_2_functions.generate_line_indices_files(self.line_indices, filename_extension='_merge')
+        self.line_indices, merge = ledsa.data_extraction.step_2_functions.merge_led_arrays(self.line_indices,
+                                                                                           self.config)
+        if merge:
+            ledsa.data_extraction.step_2_functions.generate_labeled_led_arrays_plot(self.line_indices,
+                                                                                    self.search_areas,
+                                                                                    filename_extension='_merge')
+            ledsa.data_extraction.step_2_functions.generate_line_indices_files(self.line_indices,
+                                                                               filename_extension='_merge')
 
     def load_line_indices(self):
         """loads the line indices from the csv file"""
         if self.config['analyse_positions']['merge_led_arrays'] != 'None':
-            num_of_arrays = len(self.config.get2dnparray('analyse_positions', 'merge_led_arrays','var'))
+            num_of_arrays = len(self.config.get2dnparray('analyse_positions', 'merge_led_arrays', 'var'))
             file_extension = '_merge'
             print("WARNING: ARRAY MERGE IS ACTIVE!!!")
         else:
@@ -119,7 +126,7 @@ class DataExtractor:
     # Step 3 - LED smoke analysis
     # ------------------------------------
     # """
-    
+
     def process_image_data(self):
         """process the image data to find the changes in light intensity"""
         config = self.config['analyse_photo']
@@ -138,7 +145,7 @@ class DataExtractor:
         else:
             for i in range(len(img_filenames)):
                 self.process_img_file(img_filenames[i])
-                print('image ', i+1, '/', len(img_filenames), ' processed')
+                print('image ', i + 1, '/', len(img_filenames), ' processed')
 
         os.remove('images_to_process.csv')
 
@@ -146,7 +153,9 @@ class DataExtractor:
         """workaround for pool.map"""
         img_id = ledsa.core.image_handling.get_img_id(img_filename)
         for channel in self.channels:
-            img_data = ledsa.data_extraction.step_3_functions.generate_analysis_data(img_filename, channel, self.search_areas, self.line_indices,
+            img_data = ledsa.data_extraction.step_3_functions.generate_analysis_data(img_filename, channel,
+                                                                                     self.search_areas,
+                                                                                     self.line_indices,
                                                                                      self.config, self.fit_leds)
             ledsa.data_extraction.step_3_functions.create_fit_result_file(img_data, img_id, channel)
         print('Image {} processed'.format(img_id))

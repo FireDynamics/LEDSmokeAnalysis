@@ -9,7 +9,7 @@ from pathlib import Path
 import os
 
 from ledsa.analysis.ExtinctionCoefficientsNumeric import ExtinctionCoefficientsNumeric
-from ledsa.analysis.ExtinctionCoefficients import _multiindex_series_to_nparray
+from ledsa.analysis.ExtinctionCoefficients import multiindex_series_to_nparray
 from ledsa.analysis.Experiment import Layers, Experiment, Camera, LED
 
 
@@ -135,5 +135,5 @@ class CoefficientCalculationMPTestCase(CoefficientCalculationTestCase):
 
 class MultiSeriesArrayTransformTestCase(TestExtinctionCoefficientsNumeric):
     def test_array_has_right_dim(self):
-        array = _multiindex_series_to_nparray(self.ec.calculated_img_data[self.ec.reference_property])
+        array = multiindex_series_to_nparray(self.ec.calculated_img_data[self.ec.reference_property])
         self.assertEqual(self.ec.calculated_img_data.index.levshape, array.shape)

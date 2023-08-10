@@ -15,6 +15,7 @@ class Layer:
             return True
         return False
 
+
 @dataclass
 class Layers:
     amount: int
@@ -27,7 +28,7 @@ class Layers:
         self.layers = []
         self.borders = np.linspace(self.bottom_border, self.top_border, self.amount + 1)
         for i in range(self.amount):
-            self.layers.append(Layer(self.borders[i], self.borders[i+1]))
+            self.layers.append(Layer(self.borders[i], self.borders[i + 1]))
 
     def __getitem__(self, layer):
         return self.layers[layer]
@@ -37,7 +38,6 @@ class Layers:
 
     def __repr__(self):
         return f'Layers(amount={self.amount}, bottom_border={self.bottom_border}, top_border={self.top_border})'
-
 
 
 @dataclass
@@ -62,12 +62,13 @@ class LED:
 
 
 class Experiment:
-    def __init__(self, layers: Layers, led_array: int, camera: Camera, path=Path('.'), channel=0, merge_led_arrays=False):
+    def __init__(self, layers: Layers, led_array: int, camera: Camera, path=Path('.'), channel=0,
+                 merge_led_arrays=False):
         self.layers = layers
         self.led_array = led_array
         self.camera = camera
         self.leds = []
-        self.led_number = 3         # used for acceptance tests
+        self.led_number = 3  # used for acceptance tests
         self.path = path
         self.channel = channel
         self.merge_led_arrays = merge_led_arrays
@@ -84,7 +85,7 @@ class Experiment:
         return out
 
     def calc_traversed_dist_per_layer(self, led: LED) -> np.ndarray:
-        horizontal_dist = np.sqrt((self.camera.pos_x-led.pos_x)**2 + (self.camera.pos_y-led.pos_y)**2)
+        horizontal_dist = np.sqrt((self.camera.pos_x - led.pos_x) ** 2 + (self.camera.pos_y - led.pos_y) ** 2)
         alpha = np.arctan((led.pos_z - self.camera.pos_z) / horizontal_dist)
         if alpha == 0:
             distance_per_layer = self.calc_traversed_dist_in_plane(led)
@@ -131,7 +132,7 @@ class Experiment:
             if not silent:
                 print("error in distance computation, camera_x: {}, camera_y: {} camera_z: {}, led_x: {}, led_y: {}, "
                       "led_z: {}".format(
-                        self.camera.pos_x, self.camera.pos_y, self.camera.pos_z, led.pos_x, led.pos_y, led.pos_z))
+                    self.camera.pos_x, self.camera.pos_y, self.camera.pos_z, led.pos_x, led.pos_y, led.pos_z))
             return False
         return True
 
@@ -144,11 +145,12 @@ class Experiment:
         return
 
     def get_led_ids(self) -> np.ndarray:
-        if self.merge_led_arrays != 'None': # TODO: This may be solved better!
+        if self.merge_led_arrays != 'None':  # TODO: This may be solved better!
             file_name_extension = '_merge'
         else:
             file_name_extension = ''
-        line_indices = np.loadtxt(self.path / 'analysis' / f'line_indices_{self.led_array:03d}{file_name_extension}.csv', dtype=int)
+        line_indices = np.loadtxt(
+            self.path / 'analysis' / f'line_indices_{self.led_array:03d}{file_name_extension}.csv', dtype=int)
         return line_indices
 
     def get_led_positions(self, ids: np.ndarray) -> List[np.ndarray]:

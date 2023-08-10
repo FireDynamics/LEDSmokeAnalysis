@@ -4,7 +4,7 @@ import pandas as pd
 from ..core.file_handling import extend_hdf, read_hdf
 
 
-def add_normalized_parameter(parameter: str, channels=[0, 1, 2]):
+def add_normalized_parameter(parameter: str, channels=(0, 1, 2)):
     """
     normalizes one parameter of the binary and adds the new column 'normalized_{parameter}' to it
     """
@@ -16,7 +16,7 @@ def add_normalized_parameter(parameter: str, channels=[0, 1, 2]):
             extend_hdf(channel, "normalized_" + parameter, normalized_par)
 
 
-def apply_color_correction(cc_matrix: np.ndarray, on='sum_col_val', channels=[0, 1, 2]) -> None:
+def apply_color_correction(cc_matrix: np.ndarray, on='sum_col_val', channels=(0, 1, 2)) -> None:
     """ Apply color correction on channel values based on color correction matrix.
     """
     cc_matrix_inv = np.linalg.inv(cc_matrix)

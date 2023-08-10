@@ -7,6 +7,8 @@ from ledsa.analysis.Experiment import Experiment
 # from ledsa.analysis.ExperimentData import create_experiment_data, load_experiment_data # Todo: remove
 from ledsa.analysis.ExperimentData import ExperimentData
 from ledsa.analysis.ConfigDataAnalysis import ConfigDataAnalysis
+
+
 def main(argv):
     parser = argparse.ArgumentParser(description=
                                      'Calculation of the extinction coefficients.')
@@ -40,6 +42,8 @@ def run_analysis_arguments(args):
     if args.cc:
         ex_data = ExperimentData()
         apply_cc_on_ref_property(ex_data)
+
+
 def run_analysis_arguments_with_extinction_coefficient(args):
     run_analysis_arguments(args)
     if args.analysis:
@@ -80,10 +84,10 @@ def apply_cc_on_ref_property(ex_data):
     from ledsa.analysis.data_preparation import apply_color_correction
     try:
         cc_matrix = np.genfromtxt('mean_all_cc_matrix_integral.csv', delimiter=',')
-    except(FileNotFoundError):
+    except FileNotFoundError:
         print('File: mean_all_cc_matrix_integral.csv containing the color correction matrix not found')
         exit(1)
-    apply_color_correction(cc_matrix, on=ex_data.reference_property, channels= args.cc_channels)
+    apply_color_correction(cc_matrix, on=ex_data.reference_property, channels=args.cc_channels)
 
 
 if __name__ == "__main__":

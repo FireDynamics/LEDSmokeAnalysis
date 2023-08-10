@@ -7,11 +7,13 @@ import pandas as pd
 from ledsa.analysis.Experiment import Experiment, Layers, Camera
 from ledsa.core.file_handling import read_hdf, read_hdf_avg, extend_hdf, create_analysis_infos_avg
 
+
 class ExtinctionCoefficients(ABC):
     """
     Parent class for the calculation of the Extinction Coefficients
     The calc_and_set_coefficients and the save method should be the only methods needed.
     """
+
     def __init__(self, experiment=Experiment(layers=Layers(10, 1.0, 3.35), camera=Camera(pos_x=4.4, pos_y=2, pos_z=2.3),
                                              led_array=3, channel=0),
                  reference_property='sum_col_val', num_ref_imgs=10, average_images=False):
@@ -47,7 +49,7 @@ class ExtinctionCoefficients(ABC):
             single_img_array = single_img_data[self.reference_property].to_numpy()
             rel_intensities = single_img_array / self.ref_intensities
             camera = 0
-            np.savetxt(f'cam_{camera}_rel_intensities_{img_id}.txt', rel_intensities) #Todo: remove
+            np.savetxt(f'cam_{camera}_rel_intensities_{img_id}.txt', rel_intensities)  # Todo: remove
             kappas = self.calc_coefficients_of_img(rel_intensities)
             self.coefficients_per_image_and_layer.append(kappas)
         return None
@@ -58,7 +60,7 @@ class ExtinctionCoefficients(ABC):
         Use pool to distribute workload of the loop to multiple cores
         """
         self.set_all_member_variables()
-        img_property_array = _multiindex_series_to_nparray(self.calculated_img_data[self.reference_property])
+        img_property_array = multiindex_series_to_nparray(self.calculated_img_data[self.reference_property])
         rel_intensities = img_property_array / self.ref_intensities
 
         pool = Pool(processes=cores)
@@ -82,7 +84,7 @@ class ExtinctionCoefficients(ABC):
             self.calc_and_set_ref_intensities()
 
     def load_img_data(self) -> None:
-        if self.average_images == True:
+        if self.average_images:
             img_data = read_hdf_avg(self.experiment.channel, path=self.experiment.path)
             create_analysis_infos_avg()
         else:
@@ -99,8 +101,8 @@ class ExtinctionCoefficients(ABC):
         path = path / f'absorption_coefs_{self.type}_channel_{self.experiment.channel}_{self.reference_property}_led_array_{self.experiment.led_array}.csv'
         header = str(self)
         header += 'layer0'
-        for i in range(self.experiment.layers.amount-1):
-            header += f',layer{i+1}'
+        for i in range(self.experiment.layers.amount - 1):
+            header += f',layer{i + 1}'
         np.savetxt(path, self.coefficients_per_image_and_layer, delimiter=',', header=header)
 
     def calc_distance_array(self) -> np.ndarray:
@@ -118,7 +120,8 @@ class ExtinctionCoefficients(ABC):
 
         self.ref_intensities = ref_intensities[self.reference_property].to_numpy()
 
-    def apply_color_correction(self, cc_matrix, on='sum_col_val', nchannels=3) -> None: # TODO: remove hardcoding of nchannels
+    def apply_color_correction(self, cc_matrix, on='sum_col_val',
+                               nchannels=3) -> None:  # TODO: remove hardcoding of nchannels
         """ Apply color correction on channel values based on color correction matrix.
 
         """
@@ -133,12 +136,8 @@ class ExtinctionCoefficients(ABC):
         cc_val_array = np.dot(cc_matrix_inv, raw_val_array.T).T
         cc_val_array = cc_val_array.astype(np.int16)
         for channel in range(nchannels):
-            extend_hdf(channel, quanity + '_cc',cc_val_array[:,channel] )
+            extend_hdf(channel, quanity + '_cc', cc_val_array[:, channel])
         print(f"Color correction applied on {nchannels} Channels!")
-
-
-
-
 
     @abstractmethod
     def calc_coefficients_of_img(self, rel_intensities: np.ndarray) -> np.ndarray:
@@ -151,11 +150,11 @@ class ExtinctionCoefficients(ABC):
         pass
 
 
-def _multiindex_series_to_nparray(multi_series: pd.Series) -> np.ndarray:
+def multiindex_series_to_nparray(multi_series: pd.Series) -> np.ndarray:
     index = multi_series.index
     num_leds = pd.Series(multi_series.groupby(level=0).size()).iloc[0]
     num_imgs = pd.Series(multi_series.groupby(level=1).size()).iloc[0]
     array = np.zeros((num_imgs, num_leds))
     for i in range(num_imgs):
-        array[i] = multi_series.loc[i+1]
+        array[i] = multi_series.loc[i + 1]
     return array

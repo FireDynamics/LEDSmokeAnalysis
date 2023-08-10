@@ -15,12 +15,14 @@ def match_leds_to_led_arrays(search_areas: np.ndarray, config: ConfigData) -> np
     led_arrays = _match_leds_to_arrays_with_min_dist(dists_led_arrays_search_areas, edge_indices, config, search_areas)
     return led_arrays
 
+
 def merge_led_arrays(led_arrays, config):
     merge = False
     if config['analyse_positions']['merge_led_arrays'] != 'None':
         led_arrays = _merge_indices_of_led_arrays(led_arrays, config)
         merge = True
     return led_arrays, merge
+
 
 def generate_line_indices_files(line_indices, filename_extension=''):
     for i in range(len(line_indices)):
@@ -39,6 +41,7 @@ def generate_labeled_led_arrays_plot(line_indices, search_areas, filename_extens
     plt.legend()
     plt.savefig('plots{0}led_arrays{1}.pdf'.format(sep, filename_extension))
     plt.close()
+
 
 def _get_indices_of_outer_leds(config):
     if config['analyse_positions']['line_edge_indices'] == 'None':
@@ -123,8 +126,9 @@ def _get_indices_of_ignored_leds(config):
         ignore_indices = np.array([])
     return ignore_indices
 
+
 def _merge_indices_of_led_arrays(led_arrays, config):
-    merged_line_indices_groups = config.get2dnparray('analyse_positions', 'merge_led_arrays','var')
+    merged_line_indices_groups = config.get2dnparray('analyse_positions', 'merge_led_arrays', 'var')
     all_merged_led_arrays = []
     for merged_line_indices in merged_line_indices_groups:
         merged_led_array = []

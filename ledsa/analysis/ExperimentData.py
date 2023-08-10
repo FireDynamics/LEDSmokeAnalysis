@@ -1,11 +1,10 @@
-import ast
 from dataclasses import dataclass
-from typing import List
 
+from ledsa.analysis.ConfigDataAnalysis import ConfigDataAnalysis
 from ledsa.analysis.Experiment import Camera, Layers
 # Todo: Import init_function for request of missing data
 from ledsa.core.ConfigData import ConfigData
-from ledsa.analysis.ConfigDataAnalysis import ConfigDataAnalysis
+
 
 @dataclass
 class ExperimentData:
@@ -27,13 +26,13 @@ class ExperimentData:
         self.num_ref_images = None
         self.reference_property = None
         self.merge_led_arrays = None
-        self.load_config_parameters() # Todo: Does that belong here?
+        self.load_config_parameters()  # Todo: Does that belong here?
 
     def load_config_parameters(self):
         config_analysis = self.config_analysis
         num_layers = int(config_analysis['model_parameters']['num_of_layers'])
         self.channels = config_analysis.get_list_of_values('DEFAULT', 'camera_channels')
-        self.num_ref_images =int(config_analysis['DEFAULT']['num_ref_images'])
+        self.num_ref_images = int(config_analysis['DEFAULT']['num_ref_images'])
         self.weighting_preference = float(config_analysis['DEFAULT']['weighting_preference'])
         self.weighting_curvature = float(config_analysis['DEFAULT']['weighting_curvature'])
         self.num_iterations = int(config_analysis['DEFAULT']['num_iterations'])

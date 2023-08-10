@@ -40,5 +40,5 @@ def get_exif_entry(filename: str, tag: str):
     try:
         return exif[tag].values
     except KeyError:
-        print(("No EXIF metadata found"))
+        print("No EXIF metadata found")
         exit(1)

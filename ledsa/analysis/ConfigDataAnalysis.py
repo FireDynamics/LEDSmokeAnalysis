@@ -4,7 +4,8 @@ import configparser as cp
 class ConfigDataAnalysis(cp.ConfigParser):
 
     def __init__(self, load_config_file=True, camera_position=None, num_of_layers=20, domain_bounds=None,
-                 led_arrays=None, num_ref_images=10, camera_channels=0, num_of_cores=1, reference_property='sum_col_val',
+                 led_arrays=None, num_ref_images=10, camera_channels=0, num_of_cores=1,
+                 reference_property='sum_col_val',
                  average_images=False, solver='numeric', weighting_preference=-6e-3, weighting_curvature=1e-6,
                  num_iterations=200):
         cp.ConfigParser.__init__(self, allow_no_value=True)
@@ -49,10 +50,10 @@ class ConfigDataAnalysis(cp.ConfigParser):
         try:
             self.read_file(open('config_analysis.ini'))
         except FileNotFoundError:
-            print('config_analysis.ini not found in working directory! Please create it with argument "--config_analysis".')
+            print(
+                'config_analysis.ini not found in working directory! Please create it with argument "--config_analysis".')
             exit(1)
         print('config_analysis.ini loaded!')
-
 
     def save(self):
         with open('config_analysis.ini', 'w') as configfile:
@@ -67,16 +68,20 @@ class ConfigDataAnalysis(cp.ConfigParser):
 
     def in_camera_channels(self):
         self['DEFAULT']['camera_channels'] = input('Please give the camera channels that should be considered in the '
-                                                      'analysis: ')
+                                                   'analysis: ')
+
     def in_camera_position(self):
         self['experiment_geometry']['camera_position'] = input('Please give the global X Y Z [m] coordinates of the '
-                                                                  'camera : ')
+                                                               'camera : ')
+
     def in_num_of_layers(self):
         self['model_parameters']['num_of_layers'] = input('Please give number of layers the spatial domain should '
-                                                                'be discretized to : ')
+                                                          'be discretized to : ')
+
     def in_domain_bounds(self):
         self['model_parameters']['domain_bounds'] = input('Please give lower and upper height [m] of the spatial '
-                                                                'domain : ')
+                                                          'domain : ')
+
     def in_led_arrays(self):
         self['model_parameters']['led_arrays'] = input('Please give IDs of (merged) LED Arrays to compute: ')
 

@@ -25,13 +25,13 @@ class TestExtinctionCoefficientsAnalytic(TestCase):
 class SingleCoefficientTestCase(TestExtinctionCoefficientsAnalytic):
     def test_calculation_is_right(self):
         rel_intensity = 0.5
-        kappa = self.ec.calc_kappa(self.kappas, 1, self.dist_per_led_and_layer[1], rel_intensity)
+        kappa = calc_kappa(self.kappas, 1, self.dist_per_led_and_layer[1], rel_intensity)
         calculated_intensity = np.exp(-kappa*self.dist_per_led_and_layer[1, 1] -
                                       self.kappas[2]*self.dist_per_led_and_layer[1, 2])
         self.assertAlmostEqual(0.5, calculated_intensity)
 
     def test_div_by_0_returns_nan(self):
-        kappa = self.ec.calc_kappa(self.kappas, 0, self.dist_per_led_and_layer[0], 1)
+        kappa = calc_kappa(self.kappas, 0, self.dist_per_led_and_layer[0], 1)
         self.assertTrue(np.isnan(kappa))
 
 

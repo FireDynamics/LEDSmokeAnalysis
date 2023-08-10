@@ -4,6 +4,14 @@ from ledsa.analysis.Experiment import Experiment, Layers, Camera, LED
 from ledsa.analysis.ExtinctionCoefficients import ExtinctionCoefficients
 
 
+def calc_kappa(kappas: np.ndarray, layer: int, dist_per_layer: np.ndarray,
+               rel_intensity: float) -> np.ndarray:
+    if dist_per_layer[layer] == 0:
+        return np.nan
+    kappa_new = (-np.log(rel_intensity) - sum(kappas * dist_per_layer)) / dist_per_layer[layer]
+    return kappa_new
+
+
 class ExtinctionCoefficientsAnalytic(ExtinctionCoefficients):
     def __init__(self, experiment=Experiment(layers=Layers(10, 1.0, 3.35), camera=Camera(pos_x=4.4, pos_y=2, pos_z=2.3),
                                              led_array=3, channel=0),
@@ -57,11 +65,11 @@ class ExtinctionCoefficientsAnalytic(ExtinctionCoefficients):
         kappas = np.zeros(self.experiment.layers.amount)
 
         for upper_layer in range(camera_layer, self.experiment.layers.amount):
-            kappas[upper_layer] = self.calc_kappa(kappas, upper_layer,
+            kappas[upper_layer] = calc_kappa(kappas, upper_layer,
                                                   mean_dist[upper_layer],
                                                   mean_rel_intensity[upper_layer])
         for bottom_layer in range(camera_layer - 1, -1, -1):
-            kappas[bottom_layer] = self.calc_kappa(kappas, bottom_layer,
+            kappas[bottom_layer] = calc_kappa(kappas, bottom_layer,
                                                    mean_dist[bottom_layer],
                                                    mean_rel_intensity[bottom_layer])
         return kappas
@@ -70,10 +78,3 @@ class ExtinctionCoefficientsAnalytic(ExtinctionCoefficients):
         for layer in range(self.experiment.layers.amount):
             if np.sum(mean_dist_per_led_and_layer[layer] > 0) == 1:
                 return layer
-
-    def calc_kappa(self, kappas: np.ndarray, layer: int, dist_per_layer: np.ndarray,
-                   rel_intensity: float) -> np.ndarray:
-        if dist_per_layer[layer] == 0:
-            return np.nan
-        kappa_new = (-np.log(rel_intensity) - sum(kappas * dist_per_layer)) / dist_per_layer[layer]
-        return kappa_new
