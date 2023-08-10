@@ -9,8 +9,8 @@ from ledsa.core.file_handling import read_hdf, read_hdf_avg, extend_hdf, create_
 
 class ExtinctionCoefficients(ABC):
     """
-    Parent class for the calculation of the Extinctin Coefficients
-    The calc_and_set_coefficients and the save method schould be the only methods needed.
+    Parent class for the calculation of the Extinction Coefficients
+    The calc_and_set_coefficients and the save method should be the only methods needed.
     """
     def __init__(self, experiment=Experiment(layers=Layers(10, 1.0, 3.35), camera=Camera(pos_x=4.4, pos_y=2, pos_z=2.3),
                                              led_array=3, channel=0),
@@ -37,9 +37,9 @@ class ExtinctionCoefficients(ABC):
         """
         main loop of the coefficient calculation
         Steps:
-        1. Load and claculate all needed variables
+        1. Load and calculate all needed variables
         2. Loop over every image
-            2.1 Calculate the procentual change in intensities compared to the start without smoke
+            2.1 Calculate the relative change in intensities compared to the start without smoke
             2.2 Calculate the extinction coefficients depending on child class used
         """
         self.set_all_member_variables()
@@ -68,7 +68,7 @@ class ExtinctionCoefficients(ABC):
 
     def set_all_member_variables(self) -> None:
         """
-        1. Take the ray between led and camera and calculate the distance traveld per layer, for every led
+        1. Take the ray between led and camera and calculate the distance traveled per layer, for every led
         2. Load the binary file with the parameters calculated with ledsa core
         3. Calculate the intensities from the reference images to calculate the relative changes between smoke/no smoke later
         """
@@ -145,7 +145,7 @@ class ExtinctionCoefficients(ABC):
         """
         Calculate the extinction coefficients for a single image.
         Needs to be implemented by the child class.
-        :param rel_intensities: Array of procentual change in intesity of every led in the image
+        :param rel_intensities: Array of relative change in intensity of every led in the image
         :return: Array of the coefficients
         """
         pass

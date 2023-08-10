@@ -55,7 +55,6 @@ class LedsaATestLibrary:
             create_test_image(image_id, ex)
     @keyword
     def plot_input_vs_computed_extinction_coefficients(self, first=1, last=4, led_array= 0, channel=0):
-        # os.chdir('/Users/kristianboerger/repos/PhD/LEDSmokeAnalysis/test_output/ledsa')
         filename = f'absorption_coefs_numeric_channel_{channel}_sum_col_val_led_array_{led_array}.csv'
         extinction_coefficients_computed = (np.loadtxt(os.path.join('analysis', 'AbsorptionCoefficients', filename), skiprows=5, delimiter=','))
         for image_id in range(first, last+1):

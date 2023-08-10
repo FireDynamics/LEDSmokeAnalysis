@@ -66,7 +66,7 @@ class ConfigDataAnalysis(cp.ConfigParser):
         return values
 
     def in_camera_channels(self):
-        self['DEFAULT']['camera_channels'] = input('Please give the camera channels that should be consiered in the '
+        self['DEFAULT']['camera_channels'] = input('Please give the camera channels that should be considered in the '
                                                       'analysis: ')
     def in_camera_position(self):
         self['experiment_geometry']['camera_position'] = input('Please give the global X Y Z [m] coordinates of the '

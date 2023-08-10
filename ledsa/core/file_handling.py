@@ -9,7 +9,7 @@ from ledsa.core.ConfigData import ConfigData
 
 sep = os.path.sep
 
-def create_analysis_infos_avg(): #TODO: Move cuntion somewhere else
+def create_analysis_infos_avg(): #TODO: Move funtion somewhere else
   n_summarize = 2
   n_skip_images = 10
   image_infos = pd.read_csv('.{}analysis{}image_infos_analysis.csv'.format(sep, sep))

@@ -45,7 +45,7 @@ jobs:
         - name: Run Robot Framework Tests
           run: |
             robot \
-            --outpurdir reports \
+            --outputdir reports \
             test/AcceptanceTests
 
         # If the tests fail, this step ensures the logs are uploaded for inspection
