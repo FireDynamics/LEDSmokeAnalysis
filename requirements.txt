@@ -1,0 +1,9 @@
+numpy
+matplotlib
+pandas
+scipy
+tables
+rawpy
+exifread
+piexif
+robotframework
