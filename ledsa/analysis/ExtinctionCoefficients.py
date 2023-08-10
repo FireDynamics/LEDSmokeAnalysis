@@ -114,7 +114,8 @@ class ExtinctionCoefficients(ABC):
 
     def calc_and_set_ref_intensities(self) -> None:
         ref_img_data = self.calculated_img_data.query(f'img_id <= {self.num_ref_imgs}')
-        ref_intensities = ref_img_data.mean(0, level='led_id')
+        ref_intensities = ref_img_data.groupby(level='led_id').mean()
+
         self.ref_intensities = ref_intensities[self.reference_property].to_numpy()
 
     def apply_color_correction(self, cc_matrix, on='sum_col_val', nchannels=3) -> None: # TODO: remove hardcoding of nchannels

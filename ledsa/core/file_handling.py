@@ -119,6 +119,8 @@ def create_binary_data(channel: int) -> None:
     config = ConfigData()
     columns = _get_column_names(channel)
 
+    fit_params_list = []
+
     fit_params = pd.DataFrame(columns=columns)
 
     # find time and fit parameter for every image
@@ -139,16 +141,19 @@ def create_binary_data(channel: int) -> None:
             parameters = ledsa.core.file_handling.read_table(".{}analysis{}channel{}{}{}_led_positions.csv".format(
                 sep, sep, channel, sep, image_id), delim=',', silent=True)
         except (FileNotFoundError, IOError):
-            fit_params = fit_params.append(_param_array_to_dataframe([[np.nan] * (fit_params.shape[1] - 1)], image_id,
+            fit_params_fragment = fit_params.append(_param_array_to_dataframe([[np.nan] * (fit_params.shape[1] - 1)], image_id,
                                                                      columns),
                                            ignore_index=True, sort=False)
+            fit_params_list.append(fit_params_fragment)
             exception_counter += 1
             continue
 
         parameters = parameters[parameters[:, 0].argsort()]     # sort for led_id
         parameters = _append_coordinates(parameters)
-        fit_params = fit_params.append(_param_array_to_dataframe(parameters, image_id, columns),
-                                       ignore_index=True, sort=False)
+        fit_params_fragment =_param_array_to_dataframe(parameters, image_id, columns)
+        fit_params_list.append(fit_params_fragment)
+
+    fit_params = pd.concat(fit_params_list, ignore_index=True, sort=False)
 
     print(f'{number_of_images - exception_counter} of {number_of_images} loaded.')
     # fit_params.set_index(['img_id', 'led_id'], inplace=True)
