@@ -53,14 +53,14 @@ def read_table(filename: str, delim=' ', dtype='float', atleast_2d=False, silent
     return np.atleast_1d(data)
 
 
-def read_hdf(channel: int) -> pd.DataFrame:
+def read_hdf(channel: int, path='.') -> pd.DataFrame:
     """
     Read the pandas dataframe binary at path. If binary does not exist, create it.
     :return: DataFrame with multi index 'img_id' and 'led_id'
     """
-    file_path = os.path.join('analysis', f'channel{channel}', 'all_parameters.h5')
+    file_path = os.path.join(path, 'analysis', f'channel{channel}','all_parameters.h5',)
     try:
-        fit_parameters = pd.read_hdf(file_path, 'table')
+        fit_parameters = pd.read_hdf(file_path, 'table' )
     except FileNotFoundError:
         create_binary_data(channel)
         fit_parameters = pd.read_hdf(file_path, 'table')
@@ -68,8 +68,8 @@ def read_hdf(channel: int) -> pd.DataFrame:
     return fit_parameters
 
 
-def read_hdf_avg(channel: int) -> pd.DataFrame:
-    file_path = os.path.join('analysis', f'channel{channel}', 'all_parameters_avg.h5')
+def read_hdf_avg(channel: int, path='.') -> pd.DataFrame:
+    file_path = os.path.join(path, 'analysis', f'channel{channel}','all_parameters.h5',)
     try:
         fit_parameters = pd.read_hdf(file_path, 'table')
     except FileNotFoundError:
