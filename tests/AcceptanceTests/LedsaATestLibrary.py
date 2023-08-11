@@ -30,8 +30,6 @@ class LedsaATestLibrary:
         extinction_coefficients_set = []
         extinction_coefficients_set.append(np.zeros(num_of_layers))
         extinction_coefficients_set.append(0.2 * np.ones(num_of_layers))
-        # extinction_coefficients_set.append(np.linspace(0.1, 0.5, num_of_layers))
-        # extinction_coefficients_set.append(2*np.linspace(0.2236, 0.5, num_of_layers)**2)
 
         z_range = np.linspace(bottom_border, top_border, num_of_layers)
 
@@ -124,41 +122,6 @@ class LedsaATestLibrary:
         p = Popen(['python', '-m', 'ledsa', arg], stdin=PIPE, stdout=PIPE, stderr=PIPE)
         out = wait_for_process_to_finish(p, inp)
         return out
-
-    # @keyword
-    # def execute_ledsa_analysis(self, *args, inp=None):
-    #     p = Popen(['python', '-m', 'ledsa.analysis', *args], stdin=PIPE, stdout=PIPE, stderr=PIPE)
-    #     out = wait_for_process_to_finish(p, inp)
-    #     return out
-
-    # @keyword
-    # def create_test_data(self):
-    #     from ledsa.data_extraction.step_3_functions import _save_results_in_file
-    #     from ledsa.data_extraction.LEDAnalysisData import LEDAnalysisData
-    #     time = 0
-    #     channel = 0
-    #     img_data = []
-    #     # id,line,sum_col_value,average_col_value,max_col_value
-    #     for led_id in [1, 2, 3]:
-    #         led = LEDAnalysisData(led_id, 0, False)
-    #         led.mean_color_value = 150 * led_id
-    #         led.sum_color_value = 2000 * led_id
-    #         led.max_color_value = 200 * led_id
-    #         img_data.append(led)
-    #     img_name = "test.png"
-    #     img_infos = [[1, "im_1", 1, time],
-    #                  [2, "im_2", 1, time],
-    #                  [3, "im_3", 1, time]]
-    #     root = "."
-    #
-    #     for img_id in [1, 2, 3]:
-    #         _save_results_in_file(channel, img_data, img_name, img_id, img_infos, root)
-    #         time += 1
-
-    @keyword
-    def create_experiment_data(self):
-        from ledsa.analysis.ExperimentData import create_experiment_data
-        create_experiment_data(channels=[0])
 
     @keyword
     def create_cc_matrix_file(self):

@@ -1,11 +1,12 @@
+import warnings
+import os
+
 import numpy as np
 from scipy import linalg
 from scipy.optimize import curve_fit
 
 from ledsa.core.ConfigData import ConfigData
-from ledsa.core.file_handling import read_table, sep
-
-import warnings
+from ledsa.core.file_handling import read_table
 
 warnings.filterwarnings("ignore",
                         message="Covariance of the parameters could not be estimated")  # TODO: Find a better workaround for not letting tests crash
@@ -31,10 +32,11 @@ def calculate_coordinates():
     coordinates_3d = calculate_3d_coordinates()
     coordinates_2d = calculate_2d_coordinates(coordinates_3d[0:, 3:6])
     coord = np.append(coordinates_3d, coordinates_2d.T, axis=1)
-    np.savetxt('.{}analysis{}led_search_areas_with_coordinates.csv'.format(sep, sep), coord,
-               header='LED id, pixel position x, pixel position y, x, y, z, width, height',
+
+    file_path = os.path.join('analysis', 'led_search_areas_with_coordinates.csv')
+    np.savetxt(file_path, coord, header='LED id, pixel position x, pixel position y, x, y, z, width, height',
                fmt='%d,%d,%d,%f,%f,%f,%f,%f')
-    print("\nCoordinates successfully saved in analysis{}led_search_areas_with_coordinates.csv".format(sep))
+    print(f"\nCoordinates successfully saved in {file_path}")
 
 
 # calculates from the measured room coordinates of two points per led array the room coordinates of each other point by
@@ -42,7 +44,8 @@ def calculate_coordinates():
 # onto the corresponding line
 def calculate_3d_coordinates():
     conf = ConfigData(load_config_file=True)
-    search_areas = read_table('.{}analysis{}led_search_areas.csv'.format(sep, sep), delim=',')
+    file_path = os.path.join('analysis', 'led_search_areas.csv')
+    search_areas = read_table(file_path, delim=',')
     search_areas = np.pad(search_areas, ((0, 0), (0, 3)), constant_values=(-1, -1))
     if conf['analyse_positions']['line_edge_coordinates'] == 'None':
         conf.in_line_edge_coordinates()
@@ -61,7 +64,8 @@ def calculate_3d_coordinates():
         exit("The number of coordinate sets does not match the number of LED line edge indices!")
     # loop over the led-arrays
     for ledarray in range(int(conf['analyse_positions']['num_of_arrays'])):
-        line_indices = read_table('.{}analysis{}line_indices_{:03d}.csv'.format(sep, sep, ledarray))
+        file_path = os.path.join('analysis', f'line_indices_{ledarray:03d}.csv')
+        line_indices = read_table(file_path)
 
         # get the edge leds of an array to calculate from them the conversion matrix for this array
         idx = np.where(search_areas[:, 0] == edge_leds[ledarray, 0])[0]

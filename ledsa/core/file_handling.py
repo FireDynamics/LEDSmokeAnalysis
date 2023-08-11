@@ -7,13 +7,12 @@ import pandas as pd
 import ledsa.core
 from ledsa.core.ConfigData import ConfigData
 
-sep = os.path.sep
-
 
 def create_analysis_infos_avg():  # TODO: Move funtion somewhere else
     n_summarize = 2
     n_skip_images = 10
-    image_infos = pd.read_csv('.{}analysis{}image_infos_analysis.csv'.format(sep, sep))
+    in_file_path = os.path.join('analysis', 'image_infos_analysis.csv')
+    image_infos = pd.read_csv(in_file_path)
     img_names = image_infos['Name'].tolist()
     exp_time = image_infos['Experiment_Time[s]']
     head_img_names = img_names[:n_skip_images]
@@ -29,8 +28,8 @@ def create_analysis_infos_avg():  # TODO: Move funtion somewhere else
     img_infos_analysis_avg = pd.DataFrame(
         {"#ID": ids, "Name": combined_img_names, "Experiment_Time[s]": combined_exp_times})
     img_infos_analysis_avg.reset_index()
-    img_infos_analysis_avg.to_csv('.{}analysis{}image_infos_analysis_avg.csv'.format(sep, sep))
-
+    out_file_path = os.path.join('analysis', 'image_infos_analysis_avg.csv')
+    img_infos_analysis_avg.to_csv(out_file_path)
 
 def read_table(filename: str, delim=' ', dtype='float', atleast_2d=False, silent=False) -> np.ndarray:
     try:
@@ -54,26 +53,28 @@ def read_table(filename: str, delim=' ', dtype='float', atleast_2d=False, silent
     return np.atleast_1d(data)
 
 
-def read_hdf(channel: int, path='.') -> pd.DataFrame:
+def read_hdf(channel: int) -> pd.DataFrame:
     """
     Read the pandas dataframe binary at path. If binary does not exist, create it.
     :return: DataFrame with multi index 'img_id' and 'led_id'
     """
+    file_path = os.path.join('analysis', f'channel{channel}', 'all_parameters.h5')
     try:
-        fit_parameters = pd.read_hdf(f"{path}{sep}analysis{sep}channel{channel}{sep}all_parameters.h5", 'table')
+        fit_parameters = pd.read_hdf(file_path, 'table')
     except FileNotFoundError:
         create_binary_data(channel)
-        fit_parameters = pd.read_hdf(f"{path}{sep}analysis{sep}channel{channel}{sep}all_parameters.h5", 'table')
+        fit_parameters = pd.read_hdf(file_path, 'table')
     fit_parameters.set_index(['img_id', 'led_id'], inplace=True)
     return fit_parameters
 
 
-def read_hdf_avg(channel, path='.'):
+def read_hdf_avg(channel: int) -> pd.DataFrame:
+    file_path = os.path.join('analysis', f'channel{channel}', 'all_parameters_avg.h5')
     try:
-        fit_parameters = pd.read_hdf(f"{path}{sep}analysis{sep}channel{channel}{sep}all_parameters_avg.h5", 'table')
+        fit_parameters = pd.read_hdf(file_path, 'table')
     except FileNotFoundError:
         average_all_fitpar(channel)
-        fit_parameters = pd.read_hdf(f"{path}{sep}analysis{sep}channel{channel}{sep}all_parameters_avg.h5", 'table')
+        fit_parameters = pd.read_hdf(file_path, 'table')
     fit_parameters.set_index(['img_id', 'led_id'], inplace=True)
     return fit_parameters
 
@@ -98,8 +99,8 @@ def average_all_fitpar(channel, n_summarize=2, num_ref_imgs=10):  # TODO: rename
     except:
         pass
     all_fitpar.reset_index(inplace=True)
-    all_fitpar.to_hdf(f".{sep}analysis{sep}channel{channel}{sep}all_parameters_avg.h5", 'table', append=True)
-
+    file_path = os.path.join('analysis', f'channel{channel}', 'all_parameters_avg.h5'),
+    all_fitpar.to_hdf(file_path, 'table', append=True)
 
 def calculate_average_fitpar_without_smoke(fitpar, channel,
                                            num_of_imgs=20):  # TODO: not relevant for calculation of extinction coefficients?
@@ -109,11 +110,11 @@ def calculate_average_fitpar_without_smoke(fitpar, channel,
     return fit_parameters[fitpar].mean(0, level='led_id')
 
 
-def extend_hdf(channel: int, quantity: str, values: np.ndarray, path='.') -> None:
+def extend_hdf(channel: int, quantity: str, values: np.ndarray) -> None:
     """
     Extends the binary
     """
-    file = f"{path}{sep}analysis{sep}channel{channel}{sep}all_parameters.h5"
+    file = os.path.join('analysis', f'channel{channel}', 'all_parameters.h5')
     fit_parameters = pd.read_hdf(file, 'table')
     fit_parameters[quantity] = values
     fit_parameters.to_hdf(file, 'table')
@@ -145,8 +146,8 @@ def create_binary_data(channel: int) -> None:
     exception_counter = 0
     for image_id in range(1, number_of_images + 1):
         try:
-            parameters = ledsa.core.file_handling.read_table(".{}analysis{}channel{}{}{}_led_positions.csv".format(
-                sep, sep, channel, sep, image_id), delim=',', silent=True)
+            in_file_path = os.path.join('analysis', f'channel{channel}', f'{image_id}_led_positions.csv')
+            parameters = ledsa.core.file_handling.read_table(in_file_path, delim=',', silent=True)
         except (FileNotFoundError, IOError):
             fit_params_fragment = fit_params.append(
                 _param_array_to_dataframe([[np.nan] * (fit_params.shape[1] - 1)], image_id,
@@ -164,18 +165,17 @@ def create_binary_data(channel: int) -> None:
     fit_params = pd.concat(fit_params_list, ignore_index=True, sort=False)
 
     print(f'{number_of_images - exception_counter} of {number_of_images} loaded.')
-    # fit_params.set_index(['img_id', 'led_id'], inplace=True)
     fit_params['img_id'] = fit_params['img_id'].astype(int)
     fit_params['led_id'] = fit_params['led_id'].astype(int)
     fit_params['line'] = fit_params['line'].astype(int)
     fit_params['max_col_val'] = fit_params['max_col_val'].astype(int)
     fit_params['sum_col_val'] = fit_params['sum_col_val'].astype(int)
-    fit_params.to_hdf(f".{sep}analysis{sep}channel{channel}{sep}all_parameters.h5", 'table', append=True)
-
+    out_file_path = os.path.join('analysis', f'channel{channel}', 'all_parameters.h5')
+    fit_params.to_hdf(out_file_path, 'table', append=True)
 
 def _get_column_names(channel: int) -> List[str]:
-    parameters = ledsa.core.file_handling.read_table(f".{sep}analysis{sep}channel{channel}{sep}1_led_positions.csv",
-                                                     delim=',', silent=True)
+    file_path = os.path.join('analysis', f'channel{channel}', '1_led_positions.csv')
+    parameters = ledsa.core.file_handling.read_table(file_path, delim=',', silent=True)
     columns = ["img_id", "led_id", "line",
                "sum_col_val", "mean_col_val", "max_col_val"]
     if parameters.shape[1] > len(columns):
@@ -215,9 +215,8 @@ def _append_coordinates(params: np.ndarray) -> np.ndarray:
     ac = _append_coordinates
     if "coord" not in ac.__dict__:
         try:
-            ac.coord = ledsa.core.file_handling.read_table(
-                ".{}analysis{}led_search_areas_with_coordinates.csv".format(sep, sep),
-                delim=',', silent=True)[:, [0, -2, -1]]
+            file_path =  os.path.join('analysis', 'led_search_areas_with_coordinates.csv')
+            ac.coord = ledsa.core.file_handling.read_table(file_path, delim=',', silent=True)[:, [0, -2, -1]]
         except (FileNotFoundError, IOError):
             ac.coord = False
 

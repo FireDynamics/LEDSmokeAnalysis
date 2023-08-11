@@ -14,7 +14,6 @@ import matplotlib.pyplot as plt
 from ledsa.data_extraction import init_functions as led
 from ledsa.core.ConfigData import ConfigData
 
-sep = os.path.sep
 
 
 class DataExtractor:
@@ -46,9 +45,8 @@ class DataExtractor:
 
     def load_search_areas(self):
         """loads the search areas from the csv file"""
-        filename = 'analysis{}led_search_areas.csv'.format(sep)
-        self.search_areas = ledsa.core.file_handling.read_table(filename, delim=',')
-        # self.last_fit_results = self.search_areas.shape[0] * [[10, 10, 2., 2., 200., 1.0, 1.0, 1.0]]
+        file_path = os.path.join('analysis', 'led_search_areas.csv')
+        self.search_areas = ledsa.core.file_handling.read_table(file_path, delim=',')
 
     def find_search_areas(self, img_filename):
         """
@@ -56,16 +54,14 @@ class DataExtractor:
         which future LEDs will be searched
         """
         config = self.config['find_search_areas']
-        ref_img_name = "{}{}".format(config['img_directory'], img_filename)
-        data = ledsa.core.image_reading.read_img(ref_img_name, channel=0)
+        in_file_path = os.path.join(config['img_directory'], img_filename)
+        data = ledsa.core.image_reading.read_img(in_file_path, channel=0)
 
         self.search_areas = ledsa.data_extraction.step_1_functions.find_search_areas(data, skip=1, window_radius=int(
-            config['window_radius']),
-                                                                                     threshold_factor=float(
-                                                                                         config['threshold_factor']))
+            config['window_radius']), threshold_factor=float(config['threshold_factor']))
 
-        out_filename = 'analysis{}led_search_areas.csv'.format(sep)
-        np.savetxt(out_filename, self.search_areas, delimiter=',',
+        out_file_path = os.path.join('analysis', 'led_search_areas.csv')
+        np.savetxt(out_file_path, self.search_areas, delimiter=',',
                    header='LED id, pixel position x, pixel position y', fmt='%d')
 
     def plot_search_areas(self, img_filename):
@@ -74,15 +70,16 @@ class DataExtractor:
         if self.search_areas is None:
             self.load_search_areas()
 
-        filename = "{}{}".format(config['img_directory'], img_filename)
-        data = ledsa.core.image_reading.read_img(filename, channel=0)
+        in_file_path = os.path.join(config['img_directory'], img_filename)
+        data = ledsa.core.image_reading.read_img(in_file_path, channel=0)
 
         plt.figure(dpi=1200)
         ax = plt.gca()
         ledsa.data_extraction.step_1_functions.add_search_areas_to_plot(self.search_areas, ax, config)
         plt.imshow(data, cmap='Greys')
         plt.colorbar()
-        plt.savefig('plots{}led_search_areas.plot.pdf'.format(sep))
+        out_file_path = os.path.join('plots', 'led_search_areas.plot.pdf')
+        plt.savefig(out_file_path)
 
     # """
     # ------------------------------------
@@ -118,8 +115,8 @@ class DataExtractor:
             file_extension = ''
         self.line_indices = []
         for i in range(num_of_arrays):
-            filename = 'analysis{}line_indices_{:03}{}.csv'.format(sep, i, file_extension)
-            self.line_indices.append(ledsa.core.file_handling.read_table(filename, dtype='int'))
+            file_path = os.path.join('analysis', f'line_indices_{i:03}{file_extension}.csv')
+            self.line_indices.append(ledsa.core.file_handling.read_table(file_path, dtype='int'))
 
     # """
     # ------------------------------------

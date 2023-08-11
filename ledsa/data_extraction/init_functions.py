@@ -5,7 +5,6 @@ from typing import List
 from ledsa.core.image_reading import get_exif_entry
 
 from ledsa.core.ConfigData import ConfigData
-from ledsa.core.file_handling import sep
 
 
 def create_needed_directories(channels: List[int]) -> None:
@@ -16,9 +15,10 @@ def create_needed_directories(channels: List[int]) -> None:
         os.mkdir('analysis')
         print("Directory analysis created ")
     for channel in channels:
-        if not os.path.exists('analysis{}channel{}'.format(sep, channel)):
-            os.mkdir('analysis{}channel{}'.format(sep, channel))
-            print("Directory analysis{}channel{} created".format(sep, channel))
+        channel_dir = os.path.join('analysis', f'channel{channel}')
+        if not os.path.exists(channel_dir):
+            os.mkdir(channel_dir)
+            print(os.path.relpath(channel_dir))
 
 
 def request_config_parameters(config: ConfigData) -> None:
@@ -129,7 +129,8 @@ def _build_img_data_string(build_type, config):
 
 
 def _save_analysis_infos(img_data):
-    out_file = open('.{}analysis{}image_infos_analysis.csv'.format(sep, sep), 'w')
+    file_path = os.path.join('analysis', 'image_infos_analysis.csv')
+    out_file = open(file_path, 'w')
     out_file.write("#ID,Name,Time[s],Experiment_Time[s]\n")
     out_file.write(img_data)
     out_file.close()

@@ -4,7 +4,6 @@ import sys
 
 import ledsa.analysis.ExtinctionCoefficientsNumeric as ECN
 from ledsa.analysis.Experiment import Experiment
-# from ledsa.analysis.ExperimentData import create_experiment_data, load_experiment_data # Todo: remove
 from ledsa.analysis.ExperimentData import ExperimentData
 from ledsa.analysis.ConfigDataAnalysis import ConfigDataAnalysis
 

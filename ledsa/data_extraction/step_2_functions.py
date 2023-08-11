@@ -1,10 +1,9 @@
-from typing import List
+import os
 
 import numpy as np
 from matplotlib import pyplot as plt
 
 from ledsa.core.ConfigData import ConfigData
-from ledsa.core.file_handling import sep
 
 
 def match_leds_to_led_arrays(search_areas: np.ndarray, config: ConfigData) -> np.ndarray:
@@ -26,7 +25,8 @@ def merge_led_arrays(led_arrays, config):
 
 def generate_line_indices_files(line_indices, filename_extension=''):
     for i in range(len(line_indices)):
-        out_file = open('analysis{}line_indices_{:03}{}.csv'.format(sep, i, filename_extension), 'w')
+        file_path = os.path.join('analysis', f'line_indices_{i:03}{filename_extension}.csv')
+        out_file = open(file_path, 'w')
         for iled in line_indices[i]:
             out_file.write('{}\n'.format(iled))
         out_file.close()
@@ -39,7 +39,8 @@ def generate_labeled_led_arrays_plot(line_indices, search_areas, filename_extens
                     search_areas[line_indices[i], 1],
                     s=0.1, label='led strip {}'.format(i))
     plt.legend()
-    plt.savefig('plots{0}led_arrays{1}.pdf'.format(sep, filename_extension))
+    file_path = os.path.join('plots', f'led_arrays{filename_extension}.pdf')
+    plt.savefig(file_path)
     plt.close()
 
 
