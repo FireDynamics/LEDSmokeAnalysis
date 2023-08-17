@@ -1,5 +1,5 @@
 # this file is executed if the package is run via python -m ledsa [arguments]
-
+from typing import List
 import argparse
 import sys
 
@@ -8,7 +8,13 @@ from .core.ConfigData import ConfigData
 from ledsa.analysis.__main__ import add_parser_argument_analysis, run_analysis_arguments_with_extinction_coefficient
 
 
-def main(argv):
+def main(argv: List[str]) -> None:
+    """
+    Main function to execute the LEDSA package with command line arguments.
+
+    :param argv: Command line arguments.
+    :type argv: list[str]
+    """
     parser = argparse.ArgumentParser(description=
                                      'Allows the analysis of light dampening of LEDs behind a smoke screen.')
     add_parser_arguments_data_extraction(parser)
@@ -34,6 +40,14 @@ def main(argv):
 
 
 def add_parser_arguments_data_extraction(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
+    """
+    Add parser arguments related to data extraction.
+
+    :param parser: ArgumentParser object to which the arguments are added.
+    :type parser: argparse.ArgumentParser
+    :return: Modified ArgumentParser object with added arguments.
+    :rtype: argparse.ArgumentParser
+    """
     parser.add_argument('--s1', '-s1', '--find_search_areas', action='store_true',
                         help='STEP1: analyse a reference image to find the LED positions and their labels')
     parser.add_argument('--s2', '-s2', '--analyse_positions', action='store_true',
@@ -61,7 +75,15 @@ def add_parser_arguments_data_extraction(parser: argparse.ArgumentParser) -> arg
     return parser
 
 
-def add_parser_arguments_testing(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
+def add_parser_arguments_testing(parser: argparse.ArgumentParser) -> argparse.ArgumentParser: #TODO: Revise arguments
+    """
+    Add parser arguments related to testing.
+
+    :param parser: ArgumentParser object to which the arguments are added.
+    :type parser: argparse.ArgumentParser
+    :return: Modified ArgumentParser object with added arguments.
+    :rtype: argparse.ArgumentParser
+    """
     parser.add_argument('--atest', '-atest', action='store_true',
                         help='Runs the acceptance test suit')
     parser.add_argument('--atest_debug', action='store_true',
@@ -69,13 +91,27 @@ def add_parser_arguments_testing(parser: argparse.ArgumentParser) -> argparse.Ar
     return parser
 
 
-def add_parser_arguments_demo(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
+def add_parser_arguments_demo(parser: argparse.ArgumentParser) -> argparse.ArgumentParser: # TODO: Add demo
+    """
+    Add parser arguments related to running a demo.
+
+    :param parser: ArgumentParser object to which the arguments are added.
+    :type parser: argparse.ArgumentParser
+    :return: Modified ArgumentParser object with added arguments.
+    :rtype: argparse.ArgumentParser
+    """
     parser.add_argument('--demo', action='store_true',
-                        help='Runs the LEDSA demo. Internet connection is necessary.')
+                        help='Runs the LEDSA demo. Internet connection is required.')
     return parser
 
 
-def run_data_extraction_arguments(args):
+def run_data_extraction_arguments(args: argparse.Namespace) -> None:
+    """
+    Execute actions based on data extraction arguments.
+
+    :param args: Parsed command line arguments.
+    :type args: argparse.Namespace
+    """
     if args.config is not None:
         if len(args.config) == 0:
             ConfigData(load_config_file=False)
@@ -132,7 +168,13 @@ def run_data_extraction_arguments(args):
         calculate_coordinates()
 
 
-def run_testing_arguments(args):
+def run_testing_arguments(args: argparse.Namespace) -> None:
+    """
+    Execute actions based on testing arguments.
+
+    :param args: Parsed command line arguments.
+    :type args: argparse.Namespace
+    """
     if args.atest:
         from tests.AcceptanceTests.__main__ import main
         main()
@@ -142,7 +184,13 @@ def run_testing_arguments(args):
         main(extended_logs=True)
 
 
-def run_demo_arguments(args):
+def run_demo_arguments(args: argparse.Namespace) -> None:
+    """
+    Execute actions based on demo arguments.
+
+    :param args: Parsed command line arguments.
+    :type args: argparse.Namespace
+    """
     from demo.__main__ import main as demo_main
     demo_main()
 
