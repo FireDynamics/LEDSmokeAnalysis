@@ -18,12 +18,21 @@ from ledsa.core.ConfigData import ConfigData
 
 class DataExtractor:
     """
-    Class for extracting the data from the experiment images.
+    A class responsible for extracting data from experiment images.
+
     """
-
     def __init__(self, channels=(0), load_config_file=True, build_experiment_infos=True, fit_leds=True):
+        """
+        :param channels: Channels to be processed. Defaults to (0).
+        :type channels: tuple, optional
+        :param load_config_file: Whether to load existing configuration file. Defaults to True.
+        :type load_config_file: bool, optional
+        :param build_experiment_infos: Whether to create 'image_infos.csv'. Defaults to True.
+        :type build_experiment_infos: bool, optional
+        :param fit_leds: Whether to fit LEDs or not. Defaults to True.
+        :type fit_leds: bool, optional
+        """
         self.config = ConfigData(load_config_file=load_config_file)
-
         self.channels = list(channels)
         self.fit_leds = fit_leds
 
@@ -43,15 +52,19 @@ class DataExtractor:
     # ------------------------------------
     # """
 
-    def load_search_areas(self):
-        """loads the search areas from the csv file"""
+    def load_search_areas(self) -> None:
+        """
+        Load LED search areas from the 'led_search_areas.csv' file. #TODO be consistent with search areas and ROIS
+        """
         file_path = os.path.join('analysis', 'led_search_areas.csv')
         self.search_areas = ledsa.core.file_handling.read_table(file_path, delim=',')
 
-    def find_search_areas(self, img_filename):
+    def find_search_areas(self, img_filename: str) -> None:
         """
-        finds all LEDs in a single image file and defines the search areas, in
-        which future LEDs will be searched
+        Identify all LEDs in a single image and define the areas where LEDs will be searched in the experiment images.
+
+        :param img_filename: The name of the image file to be processed.
+        :type img_filename: str
         """
         config = self.config['find_search_areas']
         in_file_path = os.path.join(config['img_directory'], img_filename)
@@ -64,8 +77,13 @@ class DataExtractor:
         np.savetxt(out_file_path, self.search_areas, delimiter=',',
                    header='LED id, pixel position x, pixel position y', fmt='%d')
 
-    def plot_search_areas(self, img_filename):
-        """plots the search areas with their labels"""
+    def plot_search_areas(self, img_filename: str) -> None:
+        """
+        Plot the identified LED search areas with their ID labels.
+
+        :param img_filename: The name of the image file to be plotted.
+        :type img_filename: str
+        """
         config = self.config['find_search_areas']
         if self.search_areas is None:
             self.load_search_areas()
@@ -87,8 +105,10 @@ class DataExtractor:
     # ------------------------------------
     # """
 
-    def match_leds_to_led_arrays(self):
-        """analyses, which LED belongs to which LED line array"""
+    def match_leds_to_led_arrays(self) -> None:
+        """
+        Analyze which LEDs belong to which LED line and save this mapping.
+        """
         if self.search_areas is None:
             self.load_search_areas()
         self.line_indices = ledsa.data_extraction.step_2_functions.match_leds_to_led_arrays(self.search_areas,
@@ -104,12 +124,14 @@ class DataExtractor:
             ledsa.data_extraction.step_2_functions.generate_line_indices_files(self.line_indices,
                                                                                filename_extension='_merge')
 
-    def load_line_indices(self):
-        """loads the line indices from the csv file"""
+    def load_line_indices(self) -> None:
+        """
+        Load LED line indices from the 'line_indices_{...}.csv' files.
+        """
         if self.config['analyse_positions']['merge_led_arrays'] != 'None':
             num_of_arrays = len(self.config.get2dnparray('analyse_positions', 'merge_led_arrays', 'var'))
             file_extension = '_merge'
-            print("WARNING: ARRAY MERGE IS ACTIVE!!!")
+            print("ARRAY MERGE IS ACTIVE!")
         else:
             num_of_arrays = int(self.config['analyse_positions']['num_of_arrays'])
             file_extension = ''
@@ -124,8 +146,11 @@ class DataExtractor:
     # ------------------------------------
     # """
 
-    def process_image_data(self):
-        """process the image data to find the changes in light intensity"""
+    def process_image_data(self) -> None:
+        """
+        Process all the image data to detect changes in light intensity in the search areas across the images.
+        Removes 'images_to_process.csv' file afterward.
+        """
         config = self.config['analyse_photo']
         if self.search_areas is None:
             self.load_search_areas()
@@ -146,8 +171,13 @@ class DataExtractor:
 
         os.remove('images_to_process.csv')
 
-    def process_img_file(self, img_filename):
-        """workaround for pool.map"""
+    def process_img_file(self, img_filename: str) -> None:
+        """
+        Process a single image file to extract relevant data. This is a workaround for pool.map.
+
+        :param img_filename: The name of the image file to be processed.
+        :type img_filename: str
+        """
         img_id = ledsa.core.image_handling.get_img_id(img_filename)
         for channel in self.channels:
             img_data = ledsa.data_extraction.step_3_functions.generate_analysis_data(img_filename, channel,
@@ -157,11 +187,17 @@ class DataExtractor:
             ledsa.data_extraction.step_3_functions.create_fit_result_file(img_data, img_id, channel)
         print('Image {} processed'.format(img_id))
 
-    def setup_step3(self):
+    def setup_step3(self) -> None:
+        """
+        Setup the third step of the data extraction process by creating 'image_infos_analysis.csv' and 'images_to_process.csv' files.
+        """
         led.generate_image_infos_csv(self.config, build_analysis_infos=True)
         ledsa.data_extraction.step_3_functions.create_imgs_to_process_file()
 
-    def setup_restart(self):
+    def setup_restart(self) -> None:
+        """
+        Setup a restart in case the data extraction process was interrupted earlier.
+        """
         # if len(self.channels) > 1: #TODO: deactivated for testing
         #     print('Restart of a run currently only supports one channel. \nExiting...')
         #     exit(1)
