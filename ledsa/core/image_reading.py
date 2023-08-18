@@ -8,9 +8,18 @@ from matplotlib import pyplot as plt
 
 def read_img(filename: str, channel: int, color_depth=14) -> np.ndarray:
     """
-    Returns a 2D array of channel values depending on the color depth.
-    8bit is default range for JPG. Bayer array is a 2D array where
+    Returns a 2D array of the image for a single color channel.
+    8bit is default range for JPG. For RAW files the Bayer array is returned as a 2D array where
     all channel values except the selected channel are masked.
+
+    :param filename: The path of the image file to read.
+    :type filename: str
+    :param channel: The color channel to process.
+    :type channel: int
+    :param color_depth: The bit depth of the image color. Default is 14 for RAW images.
+    :type color_depth: int
+    :return: A 2D array containing the processed image data for one channel.
+    :rtype: np.ndarray
     """
     extension = os.path.splitext(filename)[-1]
     data = []
@@ -34,7 +43,18 @@ def read_img(filename: str, channel: int, color_depth=14) -> np.ndarray:
     return data[:, :, channel]
 
 
-def get_exif_entry(filename: str, tag: str):
+def get_exif_entry(filename: str, tag: str) -> str:
+    """
+    Retrieves the EXIF metadata entry from an image.
+
+    :param filename: The path of the image file to read.
+    :type filename: str
+    :param tag: The EXIF metadata tag to fetch.
+    :type tag: str
+    :return: The value(s) associated with the given EXIF tag.
+    :rtype: str
+    :raises KeyError: If the EXIF tag is not found in the image metadata.
+    """
     with open(filename, 'rb') as f:
         exif = exifread.process_file(f, details=False, stop_tag=tag)
     try:
