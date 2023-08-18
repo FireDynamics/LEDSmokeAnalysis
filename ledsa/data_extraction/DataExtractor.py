@@ -20,6 +20,16 @@ class DataExtractor:
     """
     A class responsible for extracting data from experiment images.
 
+    :ivar config: Configuration data object.
+    :vartype config: ConfigData
+    :ivar channels: Channels to be processed.
+    :vartype channels: Tuple
+    :ivar fit_leds: Whether to fit LEDs or not.
+    :vartype fit_leds: bool
+    :ivar search_areas: 2D numpy array with dimension (# of LEDs) x (LED_id, x, y).
+    :vartype search_areas: numpy.ndarray, optional
+    :ivar line_indices: 2D list with dimension (# of LED arrays) x (# of LEDs per array) or None.
+    :vartype line_indices: list[list[int]], optional
     """
     def __init__(self, channels=(0), load_config_file=True, build_experiment_infos=True, fit_leds=True):
         """
