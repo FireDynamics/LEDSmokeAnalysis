@@ -24,11 +24,11 @@ class ConfigDataAnalysis(cp.ConfigParser):
         :type led_arrays: list[int] or None
         :param num_ref_images: Number of images used to compute normalize LED intensities. Defaults to 10.
         :type num_ref_images: int
-        :param camera_channels: Camera channels to be considered in the analysis. Defaults to 0. #TODO: check
-        :type camera_channels: int
+        :param camera_channels: Camera channels to be considered in the analysis. Defaults to 0.
+        :type camera_channels: List[int]
         :param num_of_cores: Number of CPU cores for (multicore) processing. If greater than 1, multicore processing is applied. Defaults to 1.
         :type num_of_cores: int
-        :param reference_property: Property used for reference in LEDSA. Defaults to 'sum_col_val'. #TODO: give options?
+        :param reference_property: Property used for reference in LEDSA. Defaults to 'sum_col_val'.
         :type reference_property: str
         :param average_images: Determines if intensities are computed as an average from two consecutive images. Defaults to False.
         :type average_images: bool
@@ -38,7 +38,7 @@ class ConfigDataAnalysis(cp.ConfigParser):
         :type weighting_preference: float
         :param weighting_curvature: Weighting curvature option for the numeric solver. Defaults to 1e-6.  #TODO: specify
         :type weighting_curvature: float
-        :param num_iterations: Number of iterations for the numeric solver. Defaults to 200.
+        :param num_iterations: Maximum number of iterations for the numeric solver. Defaults to 200.
         :type num_iterations: int
         """
         cp.ConfigParser.__init__(self, allow_no_value=True)
@@ -122,7 +122,7 @@ class ConfigDataAnalysis(cp.ConfigParser):
 
     def in_camera_channels(self) -> None:
         """
-        Prompts the user to input the camera channels and updates the configuration.
+        Prompts the user to input the camera channels to analyse and updates the configuration.
         """
         self['DEFAULT']['camera_channels'] = input('Please give the camera channels that should be considered in the '
                                                    'analysis: ')
