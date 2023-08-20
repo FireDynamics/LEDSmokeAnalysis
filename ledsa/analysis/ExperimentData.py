@@ -9,9 +9,36 @@ from ledsa.core.ConfigData import ConfigData
 @dataclass
 class ExperimentData:
     """
-    Dataclass containing the data for the extinction coefficient calculation from the experiment_data.txt input file
-    """
+    Dataclass containing the data for the extinction coefficient calculation
+    from the experiment_data.txt input file.
 
+    :ivar config: Configuration data.
+    :type config: ConfigData
+    :ivar config_analysis: Analysis configuration data.
+    :type config_analysis: ConfigDataAnalysis
+    :ivar camera: Camera data.
+    :type camera: Camera
+    :ivar layers: Layer data.
+    :type layers: Layers
+    :ivar channels: List of channels.
+    :type channels: List[int]
+    :ivar led_arrays: List of LED arrays.
+    :type led_arrays: List[int]
+    :ivar n_cpus: Number of CPUs.
+    :type n_cpus: int
+    :ivar weighting_preference: Weighting preference.
+    :type weighting_preference: float
+    :ivar weighting_curvature: Weighting curvature.
+    :type weighting_curvature: float
+    :ivar num_iterations: Number of iterations.
+    :type num_iterations: int
+    :ivar num_ref_images: Number of reference images.
+    :type num_ref_images: int
+    :ivar reference_property: Reference property.
+    :type reference_property: str
+    :ivar merge_led_arrays: Merge LED arrays option.
+    :type merge_led_arrays: str
+    """
     def __init__(self, load_config_file=True):
         self.config = ConfigData(load_config_file=load_config_file)
         self.config_analysis = ConfigDataAnalysis(load_config_file=load_config_file)
@@ -28,7 +55,11 @@ class ExperimentData:
         self.merge_led_arrays = None
         self.load_config_parameters()  # Todo: Does that belong here?
 
-    def load_config_parameters(self):
+    def load_config_parameters(self) -> None:
+        """
+        Load experiment data from configuration file.
+
+        """
         config_analysis = self.config_analysis
         num_layers = int(config_analysis['model_parameters']['num_of_layers'])
         self.channels = config_analysis.get_list_of_values('DEFAULT', 'camera_channels')
@@ -61,7 +92,11 @@ class ExperimentData:
         self.n_cpus = int(config_analysis['DEFAULT']['num_of_cores'])
         self.merge_led_arrays = str(self.config['analyse_positions']['merge_led_arrays'])
 
-    def request_config_parameters(self):
+    def request_config_parameters(self) -> None:
+        """
+        Prompts the user to input missing parameters of analysis configuration and updates the configuration.
+
+        """
         config = self.config_analysis
         if config['experiment_geometry']['camera_position'] == 'None':
             config.in_camera_position()
