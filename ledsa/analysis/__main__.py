@@ -1,3 +1,5 @@
+from typing import List
+
 import argparse
 import os
 import sys
@@ -8,7 +10,13 @@ from ledsa.analysis.ExperimentData import ExperimentData
 from ledsa.analysis.ConfigDataAnalysis import ConfigDataAnalysis
 
 
-def main(argv):
+def main(argv: List[str]) -> None:
+    """
+    Main function to execute the LEDSA package with analysis related command line arguments.
+
+    :param argv: Command line arguments.
+    :type argv: list[str]
+    """
     parser = argparse.ArgumentParser(description=
                                      'Calculation of the extinction coefficients.')
     parser = add_parser_argument_analysis(parser)
@@ -22,6 +30,14 @@ def main(argv):
 
 
 def add_parser_argument_analysis(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
+    """
+    Add command line arguments related to analysis to the parser.
+
+    :param parser: ArgumentParser object
+    :type parser: argparse.ArgumentParser
+    :return: Modified ArgumentParser object with added arguments.
+    :rtype: argparse.ArgumentParser
+    """
     parser.add_argument('--analysis', action='store_true',
                         help='Activate extinction coefficient calculation if not run directly from analysis package')
     parser.add_argument('--config_analysis', '-conf_a', nargs='*', default=None,
@@ -34,7 +50,13 @@ def add_parser_argument_analysis(parser: argparse.ArgumentParser) -> argparse.Ar
     return parser
 
 
-def run_analysis_arguments(args):
+def run_analysis_arguments(args) -> None:
+    """
+    Handle the configuration and preprocessing based on the command line arguments.
+
+    :param args: Parsed command line arguments
+    :type args: argparse.Namespace
+    """
     if args.config_analysis is not None:
         ConfigDataAnalysis(load_config_file=False)
 
@@ -43,13 +65,25 @@ def run_analysis_arguments(args):
         apply_cc_on_ref_property(ex_data)
 
 
-def run_analysis_arguments_with_extinction_coefficient(args):
+def run_analysis_arguments_with_extinction_coefficient(args) -> None:
+    """
+    Run the extinction coefficient calculation based on the command line arguments.
+
+    :param args: Parsed command line arguments
+    :type args: argparse.Namespace
+    """
     run_analysis_arguments(args)
     if args.analysis:
         extionction_coefficient_calculation(args)
 
 
-def extionction_coefficient_calculation(args):
+def extionction_coefficient_calculation(args) -> None:
+    """
+    Calculate extinction coefficients and save the results to a file.
+
+    :param args: Parsed command line arguments
+    :type args: argparse.Namespace
+    """
     ex_data = ExperimentData()
     ex_data.request_config_parameters()
     for array in ex_data.led_arrays:
@@ -76,8 +110,12 @@ def extionction_coefficient_calculation(args):
                 print(f"{out_file} already exists!")
 
 
-def apply_cc_on_ref_property(ex_data):
-    """ color corrected property will be saved in the binary as {ref_property}_cc
+def apply_cc_on_ref_property(ex_data) -> None:
+    """
+    Apply color correction on the reference property and save it in the binary as column {ref_property}_cc.
+
+    :param ex_data: Experiment data containing the reference property
+    :type ex_data: ExperimentData
     """
     import numpy as np
     from ledsa.analysis.data_preparation import apply_color_correction
