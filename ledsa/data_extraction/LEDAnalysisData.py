@@ -3,25 +3,25 @@ class LEDAnalysisData:
     Represents LED analysis data, including its physical properties and fit results.
 
     :ivar led_id: The ID of the LED.
-    :type led_id: int
+    :vartype led_id: int
     :ivar led_array: The array index the LED belongs to.
-    :type led_array: int
+    :vartype led_array: int
     :ivar fit_leds: Indicates whether to fit LEDs or not.
-    :type fit_leds: bool
+    :vartype fit_leds: bool
     :ivar led_center_x: X-coordinate of LED's center.
-    :type led_center_x: float
+    :vartype led_center_x: float
     :ivar led_center_y: Y-coordinate of LED's center.
-    :type led_center_y: float
+    :vartype led_center_y: float
     :ivar mean_color_value: Mean color value of the LED over the search area.
-    :type mean_color_value: float
+    :vartype mean_color_value: float
     :ivar sum_color_value: Integrated color value of the LED over the search area.
-    :type sum_color_value: float
+    :vartype sum_color_value: float
     :ivar max_color_value: Maximum color value observed for the LED.
-    :type max_color_value: float
+    :vartype max_color_value: float
     :ivar fit_results: Fit results after fitting.
-    :type fit_results: OptimizeResult
+    :vartype fit_results: OptimizeResult
     :ivar fit_time: Time taken for fitting.
-    :type fit_time: float
+    :vartype fit_time: float
     """
     def __init__(self, led_id, led_array, fit_leds):
         """

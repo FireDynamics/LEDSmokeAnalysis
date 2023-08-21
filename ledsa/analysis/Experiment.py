@@ -12,9 +12,9 @@ class Layer:
     Represents a spatial layer with a bottom and top border.
 
     :ivar bottom_border: The z-coordinate of the bottom border of the layer
-    :vartpe bottom_border: float
+    :vartype bottom_border: float
     :ivar top_border: The z-coordinate of the top border of the layer
-    :vartpe top_border: float
+    :vartype top_border: float
     """
     bottom_border: float
     top_border: float
@@ -39,11 +39,11 @@ class Layers:
     Represents a collection of spatial layers.
 
     :ivar amount: The number of layers
-    :vartpe amount: int
+    :vartype amount: int
     :ivar bottom_border: The z-coordinate of the bottom-most border of the layers
-    :vartpe bottom_border: float
+    :vartype bottom_border: float
     :ivar top_border: The z-coordinate of the top-most border of the layers
-    :vartpe top_border: float
+    :vartype top_border: float
     """
     amount: int
     bottom_border: float
@@ -73,11 +73,11 @@ class Camera:
     Contains a camera's position in 3D space.
 
     :ivar pos_x: The x-coordinate of the camera
-    :vartpe pos_x: float
+    :vartype pos_x: float
     :ivar pos_y: The y-coordinate of the camera
-    :vartpe pos_y: float
+    :vartype pos_y: float
     :ivar pos_z: The z-coordinate of the camera
-    :vartpe pos_z: float
+    :vartype pos_z: float
     """
     pos_x: float
     pos_y: float
@@ -96,13 +96,13 @@ class LED:
     Represents a LED light source in 3D space.
 
     :ivar id: The identifier for the LED
-    :vartpe id: int
+    :vartype id: int
     :ivar pos_x: The x-coordinate of the LED
-    :vartpe pos_x: float
+    :vartype pos_x: float
     :ivar pos_y: The y-coordinate of the LED
-    :vartpe pos_y: float
+    :vartype pos_y: float
     :ivar pos_z: The z-coordinate of the LED
-    :vartpe pos_z: float
+    :vartype pos_z: float
     """
     id: int
     pos_x: float
