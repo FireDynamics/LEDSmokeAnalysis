@@ -12,9 +12,9 @@ class Layer:
     Represents a spatial layer with a bottom and top border.
 
     :ivar bottom_border: The z-coordinate of the bottom border of the layer
-    :type bottom_border: float
+    :vartpe bottom_border: float
     :ivar top_border: The z-coordinate of the top border of the layer
-    :type top_border: float
+    :vartpe top_border: float
     """
     bottom_border: float
     top_border: float
@@ -38,12 +38,12 @@ class Layers:
     """
     Represents a collection of spatial layers.
 
-    :param amount: The number of layers
-    :type amount: int
-    :param bottom_border: The z-coordinate of the bottom-most border of the layers
-    :type bottom_border: float
-    :param top_border: The z-coordinate of the top-most border of the layers
-    :type top_border: float
+    :ivar amount: The number of layers
+    :vartpe amount: int
+    :ivar bottom_border: The z-coordinate of the bottom-most border of the layers
+    :vartpe bottom_border: float
+    :ivar top_border: The z-coordinate of the top-most border of the layers
+    :vartpe top_border: float
     """
     amount: int
     bottom_border: float
@@ -72,12 +72,12 @@ class Camera:
     """
     Contains a camera's position in 3D space.
 
-    :param pos_x: The x-coordinate of the camera
-    :type pos_x: float
-    :param pos_y: The y-coordinate of the camera
-    :type pos_y: float
-    :param pos_z: The z-coordinate of the camera
-    :type pos_z: float
+    :ivar pos_x: The x-coordinate of the camera
+    :vartpe pos_x: float
+    :ivar pos_y: The y-coordinate of the camera
+    :vartpe pos_y: float
+    :ivar pos_z: The z-coordinate of the camera
+    :vartpe pos_z: float
     """
     pos_x: float
     pos_y: float
@@ -95,14 +95,14 @@ class LED:
     """
     Represents a LED light source in 3D space.
 
-    :param id: The identifier for the LED
-    :type id: int
-    :param pos_x: The x-coordinate of the LED
-    :type pos_x: float
-    :param pos_y: The y-coordinate of the LED
-    :type pos_y: float
-    :param pos_z: The z-coordinate of the LED
-    :type pos_z: float
+    :ivar id: The identifier for the LED
+    :vartpe id: int
+    :ivar pos_x: The x-coordinate of the LED
+    :vartpe pos_x: float
+    :ivar pos_y: The y-coordinate of the LED
+    :vartpe pos_y: float
+    :ivar pos_z: The z-coordinate of the LED
+    :vartpe pos_z: float
     """
     id: int
     pos_x: float
