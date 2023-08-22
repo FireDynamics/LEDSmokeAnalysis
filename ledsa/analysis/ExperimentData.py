@@ -34,7 +34,7 @@ class ExperimentData:
     :type num_iterations: int
     :ivar num_ref_images: Number of reference images.
     :type num_ref_images: int
-    :ivar reference_property: Reference property.
+    :ivar reference_property: Reference property to be analysed.
     :type reference_property: str
     :ivar merge_led_arrays: Merge LED arrays option.
     :type merge_led_arrays: str
