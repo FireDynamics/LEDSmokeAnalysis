@@ -265,7 +265,7 @@ def _log_warnings(img_filename, channel, led_data, cx, cy, size_of_search_area, 
     :type conf: ConfigData
     """
     res = ' '.join(np.array_str(led_data.fit_results.x).split()).replace('[ ', '[').replace(' ]', ']').replace(' ', ',')
-    img_file_path = conf['img_directory'] + img_filename
+    img_file_path = conf['DEFAULT']['img_directory'] + img_filename
 
     log = f'Irregularities while fitting:\n    {img_file_path} {led_data.led_id} {led_data.led_array} {res} ' \
           f'{led_data.fit_results.success} {led_data.fit_results.fun} {led_data.fit_results.nfev} ' \
