@@ -156,7 +156,6 @@ class ExtinctionCoefficients(ABC):
             d = self.experiment.calc_traversed_dist_per_layer(led)
             distances[count] = d
             count += 1
-        a = 1
         return distances
 
     def calc_and_set_ref_intensities(self) -> None:
