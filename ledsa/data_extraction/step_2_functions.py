@@ -25,9 +25,20 @@ def match_leds_to_led_arrays(search_areas: np.ndarray, config: ConfigData) -> np
     return led_arrays
 
 
-def merge_led_arrays(led_arrays, config):
+def merge_led_arrays(led_arrays: List[np.ndarray], config: ConfigData) -> Tuple[List[np.ndarray], bool]: #TODO: Write test for merging
+    #TODO: check Docstrings
+    """
+    Merge LED arrays based on the configuration data if applicable.
+
+    :param led_arrays: List containing LED arrays.
+    :type led_arrays: list
+    :param config: An instance of ConfigData containing the configuration data.
+    :type config: ConfigData
+    :return: Tuple containing the merged LED arrays and a boolean indicating if the arrays were merged.
+    :rtype: tuple
+    """
     merge = False
-    if config['analyse_positions']['merge_led_arrays'] != 'None':
+    if config['analyse_positions']['merge_led_arrays'] != 'None': #TODO: What happens if merge_led_arrays = False?
         led_arrays = _merge_indices_of_led_arrays(led_arrays, config)
         merge = True
     return led_arrays, merge
@@ -50,8 +61,18 @@ def generate_line_indices_files(line_indices: List[np.ndarray], filename_extensi
         out_file.close()
 
 
-def generate_labeled_led_arrays_plot(line_indices, search_areas, filename_extension=''):
-    """plot the labeled LEDs"""
+def generate_labeled_led_arrays_plot(line_indices: List[np.ndarray], search_areas: np.ndarray, filename_extension: str = '') -> None:
+    #TODO: check Docstrings
+    """
+    Plot the labeled LEDs and save the plot as a file.
+
+    :param line_indices: List containing indices for each line.
+    :type line_indices: list
+    :param search_areas: A numpy array containing LED search areas.
+    :type search_areas: numpy.ndarray
+    :param filename_extension: Optional extension for the generated filename, defaults to ''.
+    :type filename_extension: str
+    """
     for i in range(len(line_indices)):
         plt.scatter(search_areas[line_indices[i], 2],
                     search_areas[line_indices[i], 1],
@@ -198,7 +219,17 @@ def _get_indices_of_ignored_leds(config: ConfigData) -> np.ndarray:
     return ignore_indices
 
 
-def _merge_indices_of_led_arrays(led_arrays, config):
+def _merge_indices_of_led_arrays(led_arrays: List[np.ndarray], config: ConfigData) -> List[np.ndarray]:
+    """
+    Merge indices of LED arrays based on the configuration data.
+
+    :param led_arrays: List containing LED arrays.
+    :type led_arrays: list
+    :param config: An instance of ConfigData containing the configuration data.
+    :type config: ConfigData
+    :return: List of merged LED arrays.
+    :rtype: list
+    """
     merged_line_indices_groups = config.get2dnparray('analyse_positions', 'merge_led_arrays', 'var')
     all_merged_led_arrays = []
     for merged_line_indices in merged_line_indices_groups:
