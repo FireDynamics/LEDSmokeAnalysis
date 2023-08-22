@@ -32,6 +32,26 @@ def create_analysis_infos_avg():  # TODO: Move funtion somewhere else
     img_infos_analysis_avg.to_csv(out_file_path)
 
 def read_table(filename: str, delim=' ', dtype='float', atleast_2d=False, silent=False) -> np.ndarray:
+    """
+    Reads data from a file into a numpy array.
+
+    :param filename: Name of the file to read.
+    :type filename: str
+    :param delim: Delimiter for the file, defaults to space.
+    :type delim: str
+    :param dtype: Desired data-type for the array.
+    :type dtype: Union[str, type]
+    :param atleast_2d: If True, always returns data as at least a 2D array.
+    :type atleast_2d: bool
+    :param silent: If False, prints error messages to console.
+    :type silent: bool
+    :return: Data read from the file as a numpy array.
+    :rtype: numpy.ndarray
+
+    :raises OSError: If an operating system error occurs, such as a missing file.
+    :raises Exception: For any other error that occurs.
+    """
+
     try:
         data = np.loadtxt(filename, delimiter=delim, dtype=dtype)
     except OSError as e:
@@ -55,8 +75,16 @@ def read_table(filename: str, delim=' ', dtype='float', atleast_2d=False, silent
 
 def read_hdf(channel: int, path='.') -> pd.DataFrame:
     """
-    Read the pandas dataframe binary at path. If binary does not exist, create it.
-    :return: DataFrame with multi index 'img_id' and 'led_id'
+    Reads data from an HDF file for a given channel. If the binary does not exist, it is created.
+
+    :param channel: Channel number for which data is to be read.
+    :type channel: int
+    :param path: Directory path where the HDF is stored, defaults to the current directory.
+    :type path: str
+    :return: DataFrame with multi-index 'img_id' and 'led_id'.
+    :rtype: pd.DataFrame
+
+    :raises FileNotFoundError: If the HDF file is not found.
     """
     file_path = os.path.join(path, 'analysis', f'channel{channel}','all_parameters.h5',)
     try:
@@ -69,6 +97,18 @@ def read_hdf(channel: int, path='.') -> pd.DataFrame:
 
 
 def read_hdf_avg(channel: int, path='.') -> pd.DataFrame:
+    """
+    Reads averaged data from an HDF file for a given channel. If binary does not exist, it's created.
+
+    :param channel: Channel number for which data is to be read.
+    :type channel: int
+    :param path: Directory path where the HDF is stored, defaults to the current directory.
+    :type path: str
+    :return: DataFrame with multi-index 'img_id' and 'led_id'.
+    :rtype: pd.DataFrame
+
+    :raises FileNotFoundError: If the HDF file is not found.
+    """
     file_path = os.path.join(path, 'analysis', f'channel{channel}','all_parameters.h5',)
     try:
         fit_parameters = pd.read_hdf(file_path, 'table')
@@ -79,7 +119,17 @@ def read_hdf_avg(channel: int, path='.') -> pd.DataFrame:
     return fit_parameters
 
 
-def average_all_fitpar(channel, n_summarize=2, num_ref_imgs=10):  # TODO: rename variables within function
+def average_all_fitpar(channel, n_summarize=2, num_ref_imgs=10) -> None:  # TODO: rename variables within function
+    """
+    Averages all fit parameters for a given channel and writes them to an HDF file.
+
+    :param channel: Channel number for which data is to be averaged.
+    :type channel: int
+    :param n_summarize: Number of images to average over.
+    :type n_summarize: int
+    :param num_ref_imgs: Number of reference images (Excluded from averaging).
+    :type num_ref_imgs: int
+    """
     fit_parameters = read_hdf(channel)
     fit_parameters_grouped = fit_parameters.groupby(['line', 'led_id'])
     avg_dataset_list = []
@@ -102,17 +152,17 @@ def average_all_fitpar(channel, n_summarize=2, num_ref_imgs=10):  # TODO: rename
     file_path = os.path.join('analysis', f'channel{channel}', 'all_parameters_avg.h5'),
     all_fitpar.to_hdf(file_path, 'table', append=True)
 
-def calculate_average_fitpar_without_smoke(fitpar, channel,
-                                           num_of_imgs=20):  # TODO: not relevant for calculation of extinction coefficients?
-    fit_parameters = read_hdf(channel)
-    idx = pd.IndexSlice
-    fit_parameters = fit_parameters.loc[idx[1:num_of_imgs, :]]
-    return fit_parameters[fitpar].mean(0, level='led_id')
-
 
 def extend_hdf(channel: int, quantity: str, values: np.ndarray) -> None:
     """
-    Extends the binary
+    Extends existing binary HDF file by adding new data columns.
+
+    :param channel: Channel number for which the HDF is to be read extended.
+    :type channel: int
+    :param quantity: New column name to add.
+    :type quantity: str
+    :param values: Data values for the new column.
+    :type values:  np.ndarray
     """
     file = os.path.join('analysis', f'channel{channel}', 'all_parameters.h5')
     fit_parameters = pd.read_hdf(file, 'table')
@@ -122,7 +172,10 @@ def extend_hdf(channel: int, quantity: str, values: np.ndarray) -> None:
 
 def create_binary_data(channel: int) -> None:
     """
-    Creates binary file from all the #_led_positions.csv files generated in step 3
+    Creates binary file from the CSV files for a specified channel and writes to an HDF file.
+
+    :param channel: Channel number for which binary data is to be created.
+    :type channel: int
     """
     config = ConfigData()
     columns = _get_column_names(channel)
@@ -174,6 +227,14 @@ def create_binary_data(channel: int) -> None:
     fit_params.to_hdf(out_file_path, 'table', append=True)
 
 def _get_column_names(channel: int) -> List[str]:
+    """
+    Get the column names for the specified channel based on the structure of the CSV files.
+
+    :param channel: Channel number for which column names are to be determined.
+    :type channel: int
+    :return: List of column names.
+    :rtype: List[str]
+    """
     file_path = os.path.join('analysis', f'channel{channel}', '1_led_positions.csv')
     parameters = ledsa.core.file_handling.read_table(file_path, delim=',', silent=True)
     columns = ["img_id", "led_id", "line",
@@ -189,7 +250,12 @@ def _get_column_names(channel: int) -> List[str]:
 
 def _get_old_columns(params: np.ndarray) -> List[str]:
     """
-    Includes file structures from older updates for legacy reasons
+    Provides column names for older file structures for backward compatibility.
+
+    :param params: Array containing parameter data to infer column structure.
+    :type params: np.ndarray
+    :return: List of old column names based on the provided parameter data.
+    :rtype: List[str]
     """
     columns = []
     if params.shape[1] == 15:
@@ -204,6 +270,18 @@ def _get_old_columns(params: np.ndarray) -> List[str]:
 
 def _param_array_to_dataframe(array: Union[np.ndarray, List[List]], img_id: int,
                               column_names: List[str]) -> pd.DataFrame:
+    """
+    Convert an array of parameters to a pandas DataFrame.
+
+    :param array: Array of parameters.
+    :type array: Union[np.ndarray, List[List]]
+    :param img_id: Image ID to append to each row.
+    :type img_id: int
+    :param column_names: List of column names for the DataFrame.
+    :type column_names: List[str]
+    :return: DataFrame representation of the provided array.
+    :rtype: pd.DataFrame
+    """
     appended_array = np.empty((np.shape(array)[0], np.shape(array)[1] + 1))
     appended_array[:, 0] = img_id
     appended_array[:, 1:] = array
@@ -212,6 +290,16 @@ def _param_array_to_dataframe(array: Union[np.ndarray, List[List]], img_id: int,
 
 
 def _append_coordinates(params: np.ndarray) -> np.ndarray:
+    """
+    Append LED coordinates to the parameter array if available.
+
+    :param params: Array of parameters.
+    :type params: np.ndarray
+    :return: Updated parameter array with LED coordinates appended.
+    :rtype: np.ndarray
+
+    :raised: FileNotFoundError if led_search_areas_with_coordinates.csv' file is not found.
+    """
     ac = _append_coordinates
     if "coord" not in ac.__dict__:
         try:
@@ -221,12 +309,20 @@ def _append_coordinates(params: np.ndarray) -> np.ndarray:
             ac.coord = False
 
     if type(ac.coord) == bool:
-        return _append_nans(params)
+        return _append_nans_to_params(params)
     else:
         return _append_coordinates_to_params(params, ac.coord)
 
 
-def _append_nans(params: np.ndarray) -> np.ndarray:
+def _append_nans_to_params(params: np.ndarray) -> np.ndarray:
+    """
+    Append NaN values to the parameter array.
+
+    :param params: Array of parameters.
+    :type params: np.ndarray
+    :return: Updated parameter array with NaN values appended.
+    :rtype: np.ndarray
+    """
     p_with_nans = np.empty((np.shape(params)[0], np.shape(params)[1] + 2))
     p_with_nans[:] = np.NaN
     p_with_nans[:, :-2] = params
@@ -234,6 +330,16 @@ def _append_nans(params: np.ndarray) -> np.ndarray:
 
 
 def _append_coordinates_to_params(params: np.ndarray, coord: np.ndarray) -> np.ndarray:
+    """
+    Append coordinates to the parameter array.
+
+    :param params: Array of parameters.
+    :type params: np.ndarray
+    :param coordinates: Array of LED coordinates.
+    :type coordinates: np.ndarray
+    :return: Updated parameter array with coordinates appended.
+    :rtype: np.ndarray
+    """
     p_with_c = np.empty((np.shape(params)[0], np.shape(params)[1] + 2))
     p_with_c[:, :-2] = params
 
