@@ -13,22 +13,49 @@ warnings.filterwarnings("ignore",
 
 
 class LED:
+    """
+    Represents an LED with its physical position and pixel position.
+
+    :ivar led_id: The LED's identifier.
+    :vartype led_id: float
+    :ivar pos: The LED's 3D position.
+    :vartype pos: np.ndarray
+    :ivar pix_pos: The LED's pixel position in 2D space.
+    :vartype pix_pos: np.ndarray
+    """
     def __init__(self, led_id=None, pos=None, pix_pos=None):
         self.id = led_id
         self.pos = pos
         self.pix_pos = pix_pos
 
-    def conversion_matrix(self, led2):
+    def conversion_matrix(self, led2) -> np.ndarray:
+        """
+        Compute a conversion matrix between the current LED and another LED.
+
+        :param led2: Another LED instance.
+        :type led2: LED
+        :return: The conversion matrix between the two LEDs.
+        :rtype: np.ndarray
+        """
         a = np.array([self.pix_pos, led2.pix_pos])
         b = np.array([self.pos, led2.pos])
         x = linalg.solve(a, b)
         return np.transpose(x)
 
-    def get_line(self, led2):
+    def get_line(self, led2) -> np.ndarray:
+        """
+        Compute the X and Y pixel delta between the current LED and another LED.
+
+        :param led2: Another LED instance.
+        :type led2: LED
+        :return: The X and Y pixel delta between the two LEDs.
+        :rtype: np.ndarray
+        """
         return led2.pix_pos - self.pix_pos
 
 
-def calculate_coordinates():
+def calculate_coordinates() -> None:
+    """Calculate and save the 3D and 2D coordinates of LEDs."""
     coordinates_3d = calculate_3d_coordinates()
     coordinates_2d = calculate_2d_coordinates(coordinates_3d[0:, 3:6])
     coord = np.append(coordinates_3d, coordinates_2d.T, axis=1)
@@ -42,7 +69,13 @@ def calculate_coordinates():
 # calculates from the measured room coordinates of two points per led array the room coordinates of each other point by
 # calculating the linear transformation between pixel and room coordinates and applying it to the projection of each led
 # onto the corresponding line
-def calculate_3d_coordinates():
+def calculate_3d_coordinates() -> np.ndarray:
+    """
+    Calculate the 3D coordinates of LEDs using a configuration and search areas.
+
+    :return: An array containing the LED IDs, the pixel positions and the 3D coordinates of the LEDs.
+    :rtype: np.ndarray
+    """
     conf = ConfigData(load_config_file=True)
     file_path = os.path.join('analysis', 'led_search_areas.csv')
     search_areas = read_table(file_path, delim=',')
@@ -88,13 +121,20 @@ def calculate_3d_coordinates():
             pix_pos = _orth_projection(pix_pos, line, top_led.pix_pos)
             pos = np.transpose(x @ pix_pos)
             search_areas[idx, -3:] = pos
-
     return search_areas
 
 
 # uses least squares to fit a plane through the points, projects the points onto the plane and changes the coordinate
 # system such that there is a width axis in [0,inf) and a height axis which stays the same as the z axis
-def calculate_2d_coordinates(points):
+def calculate_2d_coordinates(points: np.ndarray) -> np.ndarray:
+    """
+    Calculate 2D coordinates by projecting 3D points onto a plane.
+
+    :param points: An array of 3D points.
+    :type points: np.ndarray
+    :return: An array of 2D coordinates.
+    :rtype: np.ndarray
+    """
     if points.shape[1] == 3 and points.shape[0] != 3:
         points = points.T
     plane = _fit_plane(points)
@@ -102,11 +142,19 @@ def calculate_2d_coordinates(points):
     return _get_plane_coordinates(projections, plane)
 
 
-# projects a point orthogonal onto a line
-# the arguments are numpy arrays with two elements with point and point_on_line containing the pixel coordinates of the
-# point to project and one point on the line respectively and line containing the direction of the line
-# (point B - point A)
-def _orth_projection(point, line, point_on_line):
+def _orth_projection(point: np.ndarray, line, point_on_line: np.ndarray) -> np.ndarray:
+    """
+    Project a point orthogonally onto a line.
+
+    :param point: The point to project.
+    :type point: np.ndarray
+    :param line: The line's direction vector.
+    :type line: np.ndarray
+    :param point_on_line: A point on the line.
+    :type point_on_line: np.ndarray
+    :return: The orthogonal projection of the point onto the line.
+    :rtype: np.ndarray
+    """
     # normalized direction vector of line
     line_hat = (line / np.linalg.norm(line)).flatten()
 
@@ -117,9 +165,15 @@ def _orth_projection(point, line, point_on_line):
     projection = point.flatten().dot(line_hat) * line_hat + line_pos
     return projection
 
+def _fit_plane(points: np.ndarray) -> np.ndarray:
+    """
+    Fit a plane through the given points using the least squares method.
 
-# Uses least squares to fit a plane through an array of points. The fitted plane is orthogonal to the xy-plane.
-def _fit_plane(points: np.ndarray):
+    :param points: An array of points with 3d physical coordinates to fit the plane through.
+    :type points: np.ndarray
+    :return: The optimization coefficients of the fitted plane.
+    :rtype: np.ndarray
+    """
     def plane_func(point, a, b, d):
         return -1. / b * (a * point[0] + d)
 
@@ -128,7 +182,17 @@ def _fit_plane(points: np.ndarray):
     return popt
 
 
-def _project_points_to_plane(points: np.ndarray, plane: np.ndarray):
+def _project_points_to_plane(points: np.ndarray, plane: np.ndarray) -> np.ndarray:
+    """
+    Project points onto a specified plane.
+
+    :param points: An array of points to project with 3d physical coordinates to fit the plane through.
+    :type points: np.ndarray
+    :param plane: The coefficients of the plane as normal vector.
+    :type plane: np.ndarray
+    :return: An array of the projected points onto the plane with 3d physical coordinates.
+    :rtype: np.ndarray
+    """
     t = -(plane[0] * points[0] + plane[1] * points[1] + plane[3]) / (plane[0] ** 2 + plane[1] ** 2)
     t = np.atleast_2d(t)
     plane = np.atleast_2d(plane[0:3])
@@ -138,7 +202,17 @@ def _project_points_to_plane(points: np.ndarray, plane: np.ndarray):
 
 
 # Transforms the coordinate system of points on a plane orthogonal to the xy-plane from 3D to 2D.
-def _get_plane_coordinates(points: np.ndarray, plane: np.ndarray):
+def _get_plane_coordinates(points: np.ndarray, plane: np.ndarray) -> np.ndarray:
+    """
+    Convert 3D points on a plane to 2D plane coordinates.
+
+    :param points:An array of points to project with 3d physical coordinates on a plane.
+    :type points: np.ndarray
+    :param plane: The coefficients of the plane as normal vector.
+    :type plane: np.ndarray
+    :return: An array of the 2D physical coordinates of the points on the plane.
+    :rtype: np.ndarray
+    """
     plane_coordinates = np.ndarray((2, points.shape[1]))
 
     # move the plane so it goes through the origin
