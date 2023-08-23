@@ -1,7 +1,7 @@
 import os
 import re
 import time
-from typing import List
+from typing import List, Tuple
 
 import numpy as np
 import scipy.optimize
@@ -220,7 +220,7 @@ def _save_list_of_remaining_imgs_needed_to_be_processed(remaining_imgs): # TODO:
     out_file.close()
 
 
-def _fit_model_to_led(search_area: np.ndarray) -> tuple[scipy.optimize.OptimizeResult, List[np.ndarray]]:
+def _fit_model_to_led(search_area: np.ndarray) -> Tuple[scipy.optimize.OptimizeResult, List[np.ndarray]]:
     """
     Fit a model to the LED in a specific search area.
 

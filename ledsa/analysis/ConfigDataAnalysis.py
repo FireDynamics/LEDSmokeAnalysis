@@ -32,11 +32,11 @@ class ConfigDataAnalysis(cp.ConfigParser):
         :type reference_property: str
         :param average_images: Determines if intensities are computed as an average from two consecutive images. Defaults to False.
         :type average_images: bool
-        :param solver: Method used to compute extinction coefficients - can be 'linear' or 'numeric'. Defaults to 'numeric'. #TODO: hint analytic is beta now
+        :param solver: Method used to compute extinction coefficients - can be 'analytic' or 'numeric'. Defaults to 'numeric'.
         :type solver: str
-        :param weighting_preference: Weighting preference option for the numeric solver. Defaults to -6e-3. #TODO: specify
+        :param weighting_preference: Weighting factor for the preference to push the numerical solver to high or low values for the extinction coeffiientes. Defaults to -6e-3.
         :type weighting_preference: float
-        :param weighting_curvature: Weighting curvature option for the numeric solver. Defaults to 1e-6.  #TODO: specify
+        :param weighting_curvature:  Weighting factor for the smoothness of the solution.. Defaults to 1e-6.
         :type weighting_curvature: float
         :param num_iterations: Maximum number of iterations for the numeric solver. Defaults to 200.
         :type num_iterations: int

@@ -11,9 +11,9 @@ class ExtinctionCoefficientsNumeric(ExtinctionCoefficients):
 
     :ivar bounds: Bounds for each layer.
     :vartype bounds: list[tuple]
-    :ivar weighting_preference: Weighting factor for the preference to push the numerical
-    :vartype weighting_preference: float
     :ivar weighting_preference: Weighting factor for the preference to push the numerical solver to high or low values for the extinction coeffiientes.
+    :vartype weighting_preference: float
+    :ivar weighting_curvature: Weighting factor for the smoothness of the solution.
     :vartype weighting_curvature: float
     :ivar num_iterations: Maximum number of iterations of the numerical solver.
     :vartype num_iterations: int
@@ -102,6 +102,6 @@ class ExtinctionCoefficientsNumeric(ExtinctionCoefficients):
         intensities = self.calc_intensities(kappas)
         rmse = np.sqrt(np.sum((intensities - target) ** 2)) / len(intensities)
         curvature = np.sum(np.abs(kappas[0:-2] - 2 * kappas[1:-1] + kappas[2:])) * len(
-            intensities) * 2 * self.weighting_curvature  # TODO: Factor 2 in weighting factor?
+            intensities) * 2 * self.weighting_curvature
         preference = np.sum(kappas) / len(kappas) * self.weighting_preference
         return rmse + curvature + preference

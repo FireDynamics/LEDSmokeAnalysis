@@ -200,7 +200,7 @@ def _match_leds_to_arrays_with_min_dist(dists_led_arrays_search_areas: np.ndarra
 
         idx_nearest_array = np.argmin(dists_led_arrays_search_areas[iled, :])
         led_arrays[idx_nearest_array].append(iled)
-    return np.array(led_arrays)
+    return led_arrays
 
 
 def _get_indices_of_ignored_leds(config: ConfigData) -> np.ndarray:
