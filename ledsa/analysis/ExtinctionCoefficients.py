@@ -74,8 +74,6 @@ class ExtinctionCoefficients(ABC):
         for img_id, single_img_data in self.calculated_img_data.groupby(level=0):
             single_img_array = single_img_data[self.reference_property].to_numpy()
             rel_intensities = single_img_array / self.ref_intensities
-            camera = 0
-            np.savetxt(f'cam_{camera}_rel_intensities_{img_id}.txt', rel_intensities)  # Todo: remove
 
             # Calculate the extinction coefficients depending on child class used
             kappas = self.calc_coefficients_of_img(rel_intensities)
