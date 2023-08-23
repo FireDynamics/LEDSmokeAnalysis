@@ -1,4 +1,5 @@
 # this file is executed if the package is run via python -m ledsa [arguments]
+import os
 from typing import List
 import argparse
 import sys
@@ -32,7 +33,7 @@ def main(argv: List[str]) -> None:
         exit(0)
 
     if args.demo:
-        run_demo_arguments(args)
+        run_demo_arguments(args, parser)
     else:
         run_data_extraction_arguments(args)
         run_analysis_arguments_with_extinction_coefficient(args)
@@ -91,7 +92,7 @@ def add_parser_arguments_testing(parser: argparse.ArgumentParser) -> argparse.Ar
     return parser
 
 
-def add_parser_arguments_demo(parser: argparse.ArgumentParser) -> argparse.ArgumentParser: # TODO: Add demo
+def add_parser_arguments_demo(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
     """
     Add parser arguments related to running a demo.
 
@@ -101,7 +102,14 @@ def add_parser_arguments_demo(parser: argparse.ArgumentParser) -> argparse.Argum
     :rtype: argparse.ArgumentParser
     """
     parser.add_argument('--demo', action='store_true',
-                        help='Runs the LEDSA demo. Internet connection is required.')
+                        help='Flag to indicate that the LEDSA demo should run. Must be used with --setup or --run.')
+    parser.add_argument('--setup', type=str,
+                        help='Path for the LEDSA demo setup. Use with --demo.')
+    parser.add_argument('--run', action='store_true',
+                        help='Flag to indicate that the LEDSA demo should run. Must be used with --setup.')
+    parser.add_argument('--n_cores', type=int,
+                        help='Flag to indicate that the LEDSA demo should run. Must be used with --run.')
+
     return parser
 
 
@@ -168,31 +176,49 @@ def run_data_extraction_arguments(args: argparse.Namespace) -> None:
         calculate_coordinates()
 
 
-def run_testing_arguments(args: argparse.Namespace) -> None:
+def run_testing_arguments(args) -> None:
     """
     Execute actions based on testing arguments.
 
     :param args: Parsed command line arguments.
     :type args: argparse.Namespace
     """
+
     if args.atest:
         from tests.AcceptanceTests.__main__ import main
         main()
 
     if args.atest_debug:
-        from tests.AcceptanceTests.__main__ import main
+        from tests.AcceptanceTests.__main__ import main # TODO: should import be relative or absolut?
         main(extended_logs=True)
 
 
-def run_demo_arguments(args: argparse.Namespace) -> None:
+def run_demo_arguments(args: argparse.Namespace, parser: argparse.ArgumentParser) -> None:
     """
     Execute actions based on demo arguments.
 
     :param args: Parsed command line arguments.
     :type args: argparse.Namespace
     """
-    from demo.__main__ import main as demo_main
-    demo_main()
+    if not args.setup and not args.run:
+        parser.error("--demo requires either --setup or --run argument.")
+    if args.n_cores and not args.run:
+        parser.error("--n_cores requires the --run argument.")
+
+    if args.setup:
+        src_path = '/Users/kristianboerger/working_files/ledsa_demo_src'
+        image_src_path = os.path.join(src_path, 'image_data_V001_Cam01.zip')
+        config_src_path = os.path.join(src_path, 'config')
+        from .demo.demo_setup import setup_demo
+        setup_demo(destination_path=args.setup, image_src_path=image_src_path, config_src_path=config_src_path)
+    if args.run:
+        from .demo.demon_run import run_demo
+        if args.n_cores:
+            run_demo(num_of_cores=args.n_cores)
+        else:
+            run_demo()
+
+
 
 
 if __name__ == "__main__":
