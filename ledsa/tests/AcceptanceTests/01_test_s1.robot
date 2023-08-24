@@ -7,12 +7,12 @@ Force Tags  step_1
 
 
 *** Test Cases ***
-Step Two With Existing Config File
+Step One With Existing Config File
     Create Config
     ${infos} =  Start Step One
     Hundred leds should be found and the pdf created    ${infos}
 
-Step Two Without Existing Config File
+Step One Without Existing Config File
     ${infos} =  Start Step One      use_config=${FALSE}
     Hundred leds should be found and the pdf created    ${infos}
 
