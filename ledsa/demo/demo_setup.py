@@ -16,12 +16,12 @@ def setup_demo(destination_path: str, image_src_path: str, config_src_path: str)
     :param config_src_path: Path/URL to the config source.
     :type config_src_path: str
     """
-    image_dest_path, simulation_dest_path = setup_directories(destination_path)
-    download_and_extract(image_dest_path, simulation_dest_path, image_src_path, config_src_path)
-    edit_config_files(simulation_dest_path)
+    image_dest_path, simulation_dest_path = _setup_directories(destination_path)
+    _download_and_extract(image_dest_path, simulation_dest_path, image_src_path, config_src_path)
+    _edit_config_files(simulation_dest_path)
     print("Demo setup successfully")
 
-def setup_directories(destination_path: str) -> Tuple[str]:
+def _setup_directories(destination_path: str) -> Tuple[str]:
     """
     Set up required directories.
 
@@ -44,7 +44,7 @@ def setup_directories(destination_path: str) -> Tuple[str]:
 
 
 
-def download_and_extract(image_data_path: str, simulation_path: str, local_zip_path: str, local_config_path: str) -> None:
+def _download_and_extract(image_data_path: str, simulation_path: str, local_zip_path: str, local_config_path: str) -> None:
     """
     Move and extract data from local paths to the target directories.
 
@@ -127,7 +127,7 @@ def download_and_extract(image_data_path: str, simulation_path: str, local_zip_p
 #     download_file_from_url(os.path.join(config_dir_url, 'config_analysis.ini'), simulation_path)
 #     print("All Demo files have been downloaded successfully!")
 
-def edit_config_files(simulation_path: str, num_of_cores=1, setup=False) -> None:
+def _edit_config_files(simulation_path: str, num_of_cores=1, setup=False) -> None:
     """
     Edit the configuration files based on the provided parameters.
 
@@ -141,13 +141,13 @@ def edit_config_files(simulation_path: str, num_of_cores=1, setup=False) -> None
     config_file = os.path.join(simulation_path, 'config.ini')
     config_analysis_file = os.path.join(simulation_path, 'config_analysis.ini')
     if setup:
-        replace_params_in_file(config_file, 'img_directory', '../image_data/')
-    replace_params_in_file(config_file, 'num_of_cores', num_of_cores)
-    replace_params_in_file(config_analysis_file, 'num_of_cores', num_of_cores)
+        _replace_params_in_file(config_file, 'img_directory', '../image_data/')
+    _replace_params_in_file(config_file, 'num_of_cores', num_of_cores)
+    _replace_params_in_file(config_analysis_file, 'num_of_cores', num_of_cores)
 
 
 
-def replace_params_in_file(file_path: str, target_word: str, target_value: str) -> None:
+def _replace_params_in_file(file_path: str, target_word: str, target_value: str) -> None:
     """
     For lines containing target_word, replace content after '=' with replacement_word.
 
