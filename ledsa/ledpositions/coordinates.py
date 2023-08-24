@@ -56,8 +56,8 @@ class LED:
 
 def calculate_coordinates() -> None:
     """Calculate and save the 3D and 2D coordinates of LEDs."""
-    coordinates_3d = calculate_3d_coordinates()
-    coordinates_2d = calculate_2d_coordinates(coordinates_3d[0:, 3:6])
+    coordinates_3d = _calculate_3d_coordinates()
+    coordinates_2d = _calculate_2d_coordinates(coordinates_3d[0:, 3:6])
     coord = np.append(coordinates_3d, coordinates_2d.T, axis=1)
 
     file_path = os.path.join('analysis', 'led_search_areas_with_coordinates.csv')
@@ -69,7 +69,7 @@ def calculate_coordinates() -> None:
 # calculates from the measured room coordinates of two points per led array the room coordinates of each other point by
 # calculating the linear transformation between pixel and room coordinates and applying it to the projection of each led
 # onto the corresponding line
-def calculate_3d_coordinates() -> np.ndarray:
+def _calculate_3d_coordinates() -> np.ndarray:
     """
     Calculate the 3D coordinates of LEDs using a configuration and search areas.
 
@@ -126,7 +126,7 @@ def calculate_3d_coordinates() -> np.ndarray:
 
 # uses least squares to fit a plane through the points, projects the points onto the plane and changes the coordinate
 # system such that there is a width axis in [0,inf) and a height axis which stays the same as the z axis
-def calculate_2d_coordinates(points: np.ndarray) -> np.ndarray:
+def _calculate_2d_coordinates(points: np.ndarray) -> np.ndarray:
     """
     Calculate 2D coordinates by projecting 3D points onto a plane.
 
