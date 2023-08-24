@@ -87,7 +87,7 @@ def run_testing_arguments(args) -> None:
         main()
 
     if args.acceptance_test_debug:
-        from ledsa.tests.AcceptanceTests.__main__ import main # TODO: should import be relative or absolut?
+        from ledsa.tests.AcceptanceTests.__main__ import main
         main(extended_logs=True)
 
 

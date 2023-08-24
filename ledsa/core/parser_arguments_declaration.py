@@ -37,7 +37,7 @@ def add_parser_arguments_data_extraction(parser: argparse.ArgumentParser) -> arg
     return parser
 
 
-def add_parser_arguments_testing(parser: argparse.ArgumentParser) -> argparse.ArgumentParser: #TODO: Revise arguments
+def add_parser_arguments_testing(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
     """
     Add parser arguments related to testing.
 
