@@ -49,28 +49,28 @@ def add_parser_arguments_data_extraction(parser: argparse.ArgumentParser) -> arg
     :return: Modified ArgumentParser object with added arguments.
     :rtype: argparse.ArgumentParser
     """
-    parser.add_argument('--s1', '-s1', '--find_search_areas', action='store_true',
+    parser.add_argument('-s1', '--step_1', '--find_search_areas', action='store_true',
                         help='STEP1: analyse a reference image to find the LED positions and their labels')
-    parser.add_argument('--s2', '-s2', '--analyse_positions', action='store_true',
+    parser.add_argument('-s2', '-step_2', '--analyse_positions', action='store_true',
                         help='STEP2: finds the LED array to which each LED belongs')
-    parser.add_argument('--s3', '-s3', '--analyse_photo', action='store_true',
+    parser.add_argument('-s3', '--step_3', '--analyse_photo', action='store_true',
                         help='STEP3: finds the changes in light intensity')
-    parser.add_argument('--s3_fast', '-s3_fast', action='store_true',
+    parser.add_argument('-s3_fast', '--step_3_fast', '--analyse_photo_fast', action='store_true',
                         help='Step 3 but without the fits.')
-    parser.add_argument('--config', '-conf', nargs='*', default=None,
+    parser.add_argument('-conf', '--config', nargs='*', default=None,
                         help='creates the default configuration file. optional arguments are are: img_directory, '
                              'reference_img, number_of_cores.')
-    parser.add_argument('--re', '-re', '--restart', action='store_true',
+    parser.add_argument('-re', '--restart', action='store_true',
                         help='Restarts step 3 of the analysis after the program was terminated before it finished.')
-    parser.add_argument('--r', '-r', '--red', action='store_true',
+    parser.add_argument('-r', '--red', action='store_true',
                         help='Use the red channel for step3. Default value.')
-    parser.add_argument('--g', '-g', '--green', action='store_true',
+    parser.add_argument('-g', '--green', action='store_true',
                         help='Use the green channel for step3')
-    parser.add_argument('--b', '-b', '--blue', action='store_true',
+    parser.add_argument('-b', '--blue', action='store_true',
                         help='Use the blue channel for step3.')
     parser.add_argument('-rgb', '--rgb', action='store_true',
                         help='Run step3 for each channel.')
-    parser.add_argument('--coordinates', '-coord', action='store_true',
+    parser.add_argument('-coord', '--coordinates', action='store_true',
                         help='Calculates the 3D coordinates from the coordinates given in the configfile and the '
                              'reference image.')
     return parser
@@ -85,9 +85,9 @@ def add_parser_arguments_testing(parser: argparse.ArgumentParser) -> argparse.Ar
     :return: Modified ArgumentParser object with added arguments.
     :rtype: argparse.ArgumentParser
     """
-    parser.add_argument('--atest', '-atest', action='store_true',
+    parser.add_argument('-atest', '--acceptance_test', action='store_true',
                         help='Runs the acceptance test suit')
-    parser.add_argument('--atest_debug', action='store_true',
+    parser.add_argument('-atest_debug', '--acceptance_test_debug', action='store_true',
                         help='Runs acceptance test suit in debug mode')
     return parser
 
@@ -101,7 +101,7 @@ def add_parser_arguments_demo(parser: argparse.ArgumentParser) -> argparse.Argum
     :return: Modified ArgumentParser object with added arguments.
     :rtype: argparse.ArgumentParser
     """
-    parser.add_argument('--demo', action='store_true',
+    parser.add_argument('-d', '--demo' , action='store_true',
                         help='Flag to indicate that the LEDSA demo should run. Must be used with --setup or --run.')
     parser.add_argument('--setup', type=str,
                         help='Path for the LEDSA demo setup. Use with --demo.')
@@ -120,7 +120,7 @@ def run_data_extraction_arguments(args: argparse.Namespace) -> None:
     :param args: Parsed command line arguments.
     :type args: argparse.Namespace
     """
-    if args.config is not None:
+    if args.config is not None: # TODO: remove additional options from config parser argument
         if len(args.config) == 0:
             ConfigData(load_config_file=False)
         if len(args.config) == 1:
@@ -172,7 +172,7 @@ def run_data_extraction_arguments(args: argparse.Namespace) -> None:
         de.process_image_data()
 
     if args.coordinates:
-        from ledsa.data_extraction.ledpositions.coordinates import calculate_coordinates
+        from ledsa.ledpositions import calculate_coordinates
         calculate_coordinates()
 
 
@@ -185,11 +185,11 @@ def run_testing_arguments(args) -> None:
     """
 
     if args.atest:
-        from tests.AcceptanceTests.__main__ import main
+        from ledsa.tests.AcceptanceTests.__main__ import main
         main()
 
     if args.atest_debug:
-        from tests.AcceptanceTests.__main__ import main # TODO: should import be relative or absolut?
+        from ledsa.tests.AcceptanceTests.__main__ import main # TODO: should import be relative or absolut?
         main(extended_logs=True)
 
 

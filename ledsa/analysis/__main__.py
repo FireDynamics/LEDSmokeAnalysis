@@ -38,9 +38,9 @@ def add_parser_argument_analysis(parser: argparse.ArgumentParser) -> argparse.Ar
     :return: Modified ArgumentParser object with added arguments.
     :rtype: argparse.ArgumentParser
     """
-    parser.add_argument('--analysis', action='store_true',
+    parser.add_argument('-a', '--analysis', action='store_true',
                         help='Activate extinction coefficient calculation if not run directly from analysis package')
-    parser.add_argument('--config_analysis', '-conf_a', nargs='*', default=None,
+    parser.add_argument('-conf_a', '--config_analysis' , nargs='*', default=None,
                         help='creates the analysis configuration file.')
     parser.add_argument('--cc', '--color_correction', action='store_true',
                         help='Applies color correction matrix before calculating the extinction coefficients. Use only, if'
