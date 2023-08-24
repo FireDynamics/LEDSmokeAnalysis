@@ -11,6 +11,10 @@ Analysis
    :undoc-members:
    :show-inheritance:
 
+.. warning::
+    Analytical computation of extinction coefficients is in a test state and has not yet been sufficiently evaluated. The application may lead to incorrect results.
+
+
 .. automodule:: ledsa.analysis.Experiment
    :members:
    :undoc-members:
