@@ -154,7 +154,7 @@ def extionction_coefficient_calculation(args) -> None:
     ex_data.request_config_parameters()
     for array in ex_data.led_arrays:
         for channel in ex_data.channels:
-            out_file = os.path.join(os.getcwd(), 'analysis', 'AbsorptionCoefficients',
+            out_file = os.path.join(os.getcwd(), '../analysis', 'AbsorptionCoefficients',
                                     f'absorption_coefs_numeric_channel_{channel}_{ex_data.reference_property}_led_array_{array}.csv')
             if not os.path.exists(out_file):
                 ex = Experiment(layers=ex_data.layers, led_array=array, camera=ex_data.camera, channel=channel,

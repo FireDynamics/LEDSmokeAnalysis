@@ -3,9 +3,9 @@ from typing import List
 import argparse
 import sys
 
-from ledsa.parser_arguments_declaration import add_parser_arguments_data_extraction, add_parser_arguments_testing, \
+from ledsa.core.parser_arguments_declaration import add_parser_arguments_data_extraction, add_parser_arguments_testing, \
     add_parser_arguments_demo, add_parser_argument_analysis
-from ledsa.parser_arguments_run import run_data_extraction_arguments, run_testing_arguments, run_demo_arguments, \
+from ledsa.core.parser_arguments_run import run_data_extraction_arguments, run_testing_arguments, run_demo_arguments, \
     run_analysis_arguments, run_analysis_arguments_with_extinction_coefficient
 
 
