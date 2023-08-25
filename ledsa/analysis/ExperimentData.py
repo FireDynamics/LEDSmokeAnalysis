@@ -1,72 +1,112 @@
-import ast
 from dataclasses import dataclass
-from typing import List
 
+from ledsa.analysis.ConfigDataAnalysis import ConfigDataAnalysis
 from ledsa.analysis.Experiment import Camera, Layers
+# Todo: Import init_function for request of missing data
+from ledsa.core.ConfigData import ConfigData
 
 
 @dataclass
 class ExperimentData:
     """
-    Dataclass containing the data for the extinction coefficient calculation from the experiment_data.txt input file
+    Dataclass containing the data for the extinction coefficient calculation
+    from the experiment_data.txt input file.
+
+    :ivar config: Configuration data.
+    :type config: ConfigData
+    :ivar config_analysis: Analysis configuration data.
+    :type config_analysis: ConfigDataAnalysis
+    :ivar camera: Camera data.
+    :type camera: Camera
+    :ivar layers: Layer data.
+    :type layers: Layers
+    :ivar channels: List of channels.
+    :type channels: List[int]
+    :ivar led_arrays: List of LED arrays.
+    :type led_arrays: List[int]
+    :ivar n_cpus: Number of CPUs.
+    :type n_cpus: int
+    :ivar weighting_preference: Weighting preference.
+    :type weighting_preference: float
+    :ivar weighting_curvature: Weighting curvature.
+    :type weighting_curvature: float
+    :ivar num_iterations: Number of iterations.
+    :type num_iterations: int
+    :ivar num_ref_images: Number of reference images.
+    :type num_ref_images: int
+    :ivar reference_property: Reference property to be analysed.
+    :type reference_property: str
+    :ivar merge_led_arrays: Merge LED arrays option.
+    :type merge_led_arrays: str
     """
-    camera: Camera
-    layers: Layers
-    channels: List[int]
-    arrays: List[int]
-    n_cpus: int
+    def __init__(self, load_config_file=True):
+        self.config = ConfigData(load_config_file=load_config_file)
+        self.config_analysis = ConfigDataAnalysis(load_config_file=load_config_file)
+        self.camera = None
+        self.layers = None
+        self.channels = None
+        self.led_arrays = None
+        self.n_cpus = None
+        self.weighting_preference = None
+        self.weighting_curvature = None
+        self.num_iterations = None
+        self.num_ref_images = None
+        self.reference_property = None
+        self.merge_led_arrays = None
+        self.load_config_parameters()  # Todo: Does that belong here?
 
-    def __str__(self):
-        out = repr(self.camera) + '\n'
-        out += repr(self.layers) + '\n'
-        out += 'Channels: ' + repr(self.channels) + '\n'
-        out += 'Arrays: ' + repr(self.arrays) + '\n'
-        out += 'Number Cpus: ' + repr(self.n_cpus)
-        return out
-
-    @classmethod
-    def from_str(cls, init_string: str):
+    def load_config_parameters(self) -> None:
         """
-        Alternative constructor using the classes string representation
+        Load experiment data from configuration file.
+
         """
-        init_list = init_string.split('\n')
-        return cls(eval(init_list[0], {'Camera': Camera, '__builtins__': None}),
-                   eval(init_list[1], {'Layers': Layers, '__builtins__': None}),
-                   ast.literal_eval(init_list[2].split(': ')[1]),
-                   ast.literal_eval(init_list[3].split(': ')[1]),
-                   int(init_list[4].split(': ')[1]))
+        config_analysis = self.config_analysis
+        num_layers = int(config_analysis['model_parameters']['num_of_layers'])
+        self.channels = config_analysis.get_list_of_values('DEFAULT', 'camera_channels')
+        self.num_ref_images = int(config_analysis['DEFAULT']['num_ref_images'])
+        self.weighting_preference = float(config_analysis['DEFAULT']['weighting_preference'])
+        self.weighting_curvature = float(config_analysis['DEFAULT']['weighting_curvature'])
+        self.num_iterations = int(config_analysis['DEFAULT']['num_iterations'])
+        self.reference_property = config_analysis['DEFAULT']['reference_property']
 
+        self.led_arrays = config_analysis.get_list_of_values('model_parameters', 'led_arrays')
+        if self.led_arrays is None:
+            config_analysis.in_led_arrays()
+            config_analysis.save()
+        self.led_arrays = config_analysis.get_list_of_values('model_parameters', 'led_arrays')
 
-def create_experiment_data(cam=Camera(0, 0, 0), layers=Layers(20, 0, 3), channels=None, arrays=None,
-                           cpu_cores=4) -> None:
-    """
-    Creates the experiment_data.txt input file for the experiment information.
-    """
-    if arrays is None:
-        arrays = [0]
-    if channels is None:
-        channels = [0, 1, 2]
-    ex_data = ExperimentData(cam, layers, channels, arrays, cpu_cores)
+        domain_bounds = config_analysis.get_list_of_values('model_parameters', 'domain_bounds', dtype=float)
+        if domain_bounds is None:
+            config_analysis.in_domain_bounds()
+            config_analysis.save()
+        domain_bounds = config_analysis.get_list_of_values('model_parameters', 'domain_bounds', dtype=float)
 
-    out_file = open('experiment_data.txt', 'w')
-    out_file.write(str(ex_data))
-    out_file.close()
+        camera_position = config_analysis.get_list_of_values('experiment_geometry', 'camera_position', dtype=float)
+        if camera_position is None:
+            config_analysis.in_camera_position()
+            config_analysis.save()
+        camera_position = config_analysis.get_list_of_values('experiment_geometry', 'camera_position', dtype=float)
 
+        self.layers = Layers(num_layers, *domain_bounds)
+        self.camera = Camera(*camera_position)
+        self.n_cpus = int(config_analysis['DEFAULT']['num_of_cores'])
+        self.merge_led_arrays = str(self.config['analyse_positions']['merge_led_arrays'])
 
-def load_experiment_data() -> ExperimentData:
-    """
-    Loads experiment_data.txt.
-    """
-    try:
-        in_file = open('experiment_data.txt', 'r')
-        data = in_file.read()
-        return ExperimentData.from_str(data)
-    except FileNotFoundError:
-        print('experiment_data.txt was not found.')
-        exit(1)
-    except PermissionError:
-        print('Missing permissions to read from experiment_data.txt')
-        exit(1)
-    except Exception as e:
-        print('Exception while reading experiment_data.txt: ', e)
-        exit(1)
+    def request_config_parameters(self) -> None:
+        """
+        Prompts the user to input missing parameters of analysis configuration and updates the configuration.
+
+        """
+        config = self.config_analysis
+        if config['experiment_geometry']['camera_position'] == 'None':
+            config.in_camera_position()
+            config.save()
+        if config['model_parameters']['num_of_layers'] == 'None':
+            config.in_num_of_layers()
+            config.save()
+        if config['model_parameters']['domain_bounds'] == 'None':
+            config.in_domain_bounds()
+            config.save()
+        if config['model_parameters']['led_arrays'] == 'None':
+            config.in_led_arrays()
+            config.save()
