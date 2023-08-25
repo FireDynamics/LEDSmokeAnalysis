@@ -16,12 +16,47 @@ def setup_demo(destination_path: str, image_src_path: str, config_src_path: str)
     :param config_src_path: Path/URL to the config source.
     :type config_src_path: str
     """
-    image_dest_path, simulation_dest_path = _setup_directories(destination_path)
-    _download_and_extract(image_dest_path, simulation_dest_path, image_src_path, config_src_path)
-    _edit_config_files(simulation_dest_path)
-    print("Demo setup successfully")
+    input_str = "Setting up the demo will download about 5 GB of data from the internet. Would you like to proceed? (yes/no): "
+    exit_str = "Demo setup aborted by the user."
+    proceed_demo_setup = _proceed_prompt(input_str, exit_str)
+    if proceed_demo_setup:
+        if os.path.isfile(os.path.join(destination_path, 'simulation', '.simulation_setup_successful')):
+            input_str = "Looks like the simulation was already set up. Do you want to overwrite the existing data? (yes/no): "
+            overwrite_demo = _proceed_prompt(input_str, exit_str)
+            if overwrite_demo:
+                _cleanup_demo_directories(destination_path)
+            else:
+                print("No changes were made to the demo setup.")
+                exit(0)
+        image_dest_path, simulation_dest_path = _setup_directories(destination_path)
+        _download_and_extract(image_dest_path, simulation_dest_path, image_src_path, config_src_path)
+        _edit_config_files(simulation_dest_path, setup=True)
+        print("Demo setup successfully")
+    else:
+        exit(0)
 
-def _setup_directories(destination_path: str) -> Tuple[str]:
+
+def _proceed_prompt(promt_str: str, exit_str: str) -> bool:
+    while True:
+        proceed = input(promt_str).lower()
+        if proceed == "yes":
+            return True
+        elif proceed == "no":
+            print(exit_str)
+            return False
+        else:
+            print("Invalid choice. Please enter 'yes' or 'no'.")
+            continue
+
+
+
+def _cleanup_demo_directories(path):
+    shutil.rmtree(os.path.join(path, 'simulation'))
+    shutil.rmtree(os.path.join(path, 'image_data'))
+
+
+
+def _setup_directories(destination_path: str) -> Tuple[str, str]:
     """
     Set up required directories.
 
@@ -32,13 +67,12 @@ def _setup_directories(destination_path: str) -> Tuple[str]:
     """
     image_dest_path = os.path.join(destination_path, "image_data")
     simulation_dest_path = os.path.join(destination_path, "simulation")
-
+    print("Setting up demo directories...")
     if not os.path.exists(image_dest_path):
         os.makedirs(image_dest_path)
     if not os.path.exists(simulation_dest_path):
         os.makedirs(simulation_dest_path)
-
-
+    print("Done")
     return image_dest_path, simulation_dest_path
 
 
@@ -57,6 +91,7 @@ def _download_and_extract(image_data_path: str, simulation_path: str, local_zip_
     :param local_config_path: Local path to the config file.
     :type local_config_path: str
     """
+    print("Downloading data...")
     # Move and extract ZIP file into the image_data directory
     shutil.copy(local_zip_path, image_data_path)
     zip_path = os.path.join(image_data_path, os.path.basename(local_zip_path))
@@ -77,8 +112,10 @@ def _download_and_extract(image_data_path: str, simulation_path: str, local_zip_
     # Move config file to the simulation directory
     shutil.copy(os.path.join(local_config_path, 'config.ini'), simulation_path)
     shutil.copy(os.path.join(local_config_path, 'config_analysis.ini'), simulation_path)
+    with open(os.path.join(simulation_path, '.simulation_setup_successful'), 'w'):
+        pass
+    print("Done")
 
-    print("All Demo files have been downloaded successfully!")
 
 
 # def download_and_extract(image_data_path: str, simulation_path: str, zip_url: str, config_dir_url: str) -> None:
