@@ -37,6 +37,16 @@ def setup_demo(destination_path: str, image_src_path: str, config_src_path: str)
 
 
 def _proceed_prompt(promt_str: str, exit_str: str) -> bool:
+    """
+    Prompts the user with a given message and waits for a 'yes' or 'no' response.
+
+    :param promt_str: The prompt string to display to the user.
+    :type promt_str: str
+    :param exit_str: The message to display when the user responds with 'no'.
+    :type exit_str: str
+    :return: Returns True if user responds with 'yes', and False if 'no'.
+    :rtype: bool
+    """
     while True:
         proceed = input(promt_str).lower()
         if proceed == "yes":
@@ -50,7 +60,13 @@ def _proceed_prompt(promt_str: str, exit_str: str) -> bool:
 
 
 
-def _cleanup_demo_directories(path):
+def _cleanup_demo_directories(path: str) -> None:
+    """
+    Removes the 'simulation' and 'image_data' directories from the given path.
+
+    :param path: The base path where the directories are located.
+    :type path: str
+    """
     shutil.rmtree(os.path.join(path, 'simulation'))
     shutil.rmtree(os.path.join(path, 'image_data'))
 
