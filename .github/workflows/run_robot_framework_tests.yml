@@ -46,7 +46,7 @@ jobs:
           run: |
             robot \
             --outputdir reports \
-            ledsa/test/AcceptanceTests
+            ledsa/tests/AcceptanceTests
 
         # If the tests fail, this step ensures the logs are uploaded for inspection
         - name: Upload Robot Framework logs
