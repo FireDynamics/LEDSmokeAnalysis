@@ -29,7 +29,7 @@ def setup_demo(destination_path: str, image_src_path: str, config_src_path: str)
                 print("No changes were made to the demo setup.")
                 exit(0)
         image_dest_path, simulation_dest_path = _setup_directories(destination_path)
-        _download_and_extract(image_dest_path, simulation_dest_path, image_src_path, config_src_path)
+        _download_and_extract_images(image_dest_path, simulation_dest_path, image_src_path, config_src_path)
         _edit_config_files(simulation_dest_path, setup=True)
         print("Demo setup successfully")
     else:
@@ -94,7 +94,7 @@ def _setup_directories(destination_path: str) -> Tuple[str, str]:
 
 
 
-def _download_and_extract(image_data_path: str, simulation_path: str, local_zip_path: str, local_config_path: str) -> None:
+def _download_and_extract_images(image_data_path: str, simulation_path: str, local_zip_path: str, local_config_path: str) -> None: # TODO: Only working local right now
     """
     Move and extract data from local paths to the target directories.
 
