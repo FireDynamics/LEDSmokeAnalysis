@@ -107,10 +107,10 @@ def run_demo_arguments(args: argparse.Namespace, parser: argparse.ArgumentParser
         src_path = '/Users/kristianboerger/working_files/ledsa_demo_src'
         image_src_path = os.path.join(src_path, 'image_data_V001_Cam01.zip')
         config_src_path = os.path.join(src_path, 'config')
-        from .demo.demo_setup import setup_demo
+        from ledsa.demo.demo_setup import setup_demo
         setup_demo(destination_path=args.setup, image_src_path=image_src_path, config_src_path=config_src_path)
     if args.run:
-        from .demo.demo_run import run_demo
+        from ledsa.demo.demo_run import run_demo
         if args.n_cores:
             run_demo(num_of_cores=args.n_cores)
         else:
