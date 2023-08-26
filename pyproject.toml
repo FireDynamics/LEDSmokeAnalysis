@@ -1,6 +1,34 @@
+
 [build-system]
-requires = [
-    "setuptools>=42",
-    "wheel"
+requires = ["setuptools", "wheel"]
+
+[project]
+name = "ledsa"
+version = "0.9.0"
+description = "A scientific package to analyse smoke via the dimming of light sources."
+authors = [{name = "Kristian Börger", email =  "boerger@uni-wuppertal.de"}, {name = "Lukas Arnold", email =  "arnold@uni-wuppertal.de"}]
+readme = "README.md"
+homepage = "https://github.com/FireDynamics/LEDSmokeAnalysis"
+repository = "https://github.com/FireDynamics/LEDSmokeAnalysis"
+license = "MIT"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent"
 ]
-build-backend = "setuptools.build_meta"
+
+[project.dependencies]
+numpy = "~1.25.2"
+matplotlib = "~3.7.2"
+pandas = "~2.0.3"
+scipy = "~1.11.1"
+tables = "*"
+rawpy = "~0.18.1"
+exifread = "~3.0.0"
+piexif = "~1.1.3"
+robotframework = "~6.1.1"
+pillow = "~10.0.0"
+requests = "~2.31.0"
+
+[project.urls]
+Bug Tracker = "https://github.com/FireDynamics/LEDSmokeAnalysis/issues"
