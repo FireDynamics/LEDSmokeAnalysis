@@ -2,18 +2,17 @@
 
 import os
 
+import matplotlib.pyplot as plt
+import numpy as np
+
 import ledsa.core.file_handling
 import ledsa.core.image_handling
 import ledsa.core.image_reading
 import ledsa.data_extraction.step_1_functions
 import ledsa.data_extraction.step_2_functions
 import ledsa.data_extraction.step_3_functions
-import numpy as np
-import matplotlib.pyplot as plt
-
-from ledsa.data_extraction import init_functions as led
 from ledsa.core.ConfigData import ConfigData
-
+from ledsa.data_extraction import init_functions as led
 
 
 class DataExtractor:

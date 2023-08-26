@@ -1,18 +1,17 @@
+import os
+from subprocess import Popen, PIPE
+
 import matplotlib.pyplot as plt
+import numpy as np
+import piexif
+from PIL import Image
 from robot.api.deco import keyword, library
 from robot.libraries.BuiltIn import BuiltIn
-import os
-
-
-from PIL import Image
-import numpy as np
 from scipy.stats import norm
-from ledsa.core.ConfigData import ConfigData
-from ledsa.analysis.ConfigDataAnalysis import ConfigDataAnalysis
-from subprocess import Popen, PIPE
-import piexif
 
 from TestExperiment import TestExperiment, Layers, Camera
+from ledsa.analysis.ConfigDataAnalysis import ConfigDataAnalysis
+from ledsa.core.ConfigData import ConfigData
 
 
 @library

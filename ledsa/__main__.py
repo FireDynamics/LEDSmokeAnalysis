@@ -1,7 +1,7 @@
 # this file is executed if the package is run via python -m ledsa [arguments]
-from typing import List
 import argparse
 import sys
+from typing import List
 
 from ledsa.core.parser_arguments_declaration import add_parser_arguments_data_extraction, add_parser_arguments_testing, \
     add_parser_arguments_demo, add_parser_argument_analysis
