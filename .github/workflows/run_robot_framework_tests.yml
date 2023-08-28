@@ -27,15 +27,9 @@ jobs:
             python-version: '3.10'
             cache: 'pip'
 
-        # Install project dependencies
-        - name: Install dependencies
-          run: |
-            python -m pip install --upgrade pip
-            pip install -r requirements.txt
-
         # Add LEDSA to PYTHONPATH
-        - name: Add LEDSA to PYTHONPATH
-          run: echo "PYTHONPATH=$GITHUB_WORKSPACE" >> $GITHUB_ENV
+        - name: Install LEDSA package and dependencies
+          run: pip install .
 
         # create folder for test reports
         - name: Create folder for reports

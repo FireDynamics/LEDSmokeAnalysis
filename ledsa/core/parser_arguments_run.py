@@ -104,11 +104,9 @@ def run_demo_arguments(args: argparse.Namespace, parser: argparse.ArgumentParser
         parser.error("--n_cores requires the --run argument.")
 
     if args.setup:
-        src_path = '/Users/kristianboerger/working_files/ledsa_demo_src'
-        image_src_path = os.path.join(src_path, 'image_data_V001_Cam01.zip')
-        config_src_path = os.path.join(src_path, 'config')
+        image_data_url = 'https://zenodo.org/record/7016689/files/image_data_V001_Cam01.zip?download=1'
         from ledsa.demo.demo_setup import setup_demo
-        setup_demo(destination_path=args.setup, image_src_path=image_src_path, config_src_path=config_src_path)
+        setup_demo(destination_path=args.setup, image_data_url=image_data_url)
     if args.run:
         from ledsa.demo.demo_run import run_demo
         if args.n_cores:

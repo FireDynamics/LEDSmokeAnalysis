@@ -3,18 +3,20 @@ import requests
 import shutil
 import zipfile
 from typing import Tuple
+import tqdm
+
+from ledsa.analysis.ConfigDataAnalysis import ConfigDataAnalysis
+from ledsa.core.ConfigData import ConfigData
 
 
-def setup_demo(destination_path: str, image_src_path: str, config_src_path: str) -> None:
+def setup_demo(destination_path: str, image_data_url: str) -> None:
     """
     Set up the demo environment.
 
     :param destination_path: Path where the demo should be set up.
     :type destination_path: str
-    :param image_src_path: Path/URL to the image source.
-    :type image_src_path: str
-    :param config_src_path: Path/URL to the config source.
-    :type config_src_path: str
+    :param image_data_url: URL to the image data.
+    :type image_data_url: str
     """
     input_str = "Setting up the demo will download about 5 GB of data from the internet. Would you like to proceed? (yes/no): "
     exit_str = "Demo setup aborted by the user."
@@ -24,16 +26,77 @@ def setup_demo(destination_path: str, image_src_path: str, config_src_path: str)
             input_str = "Looks like the simulation was already set up. Do you want to overwrite the existing data? (yes/no): "
             overwrite_demo = _proceed_prompt(input_str, exit_str)
             if overwrite_demo:
-                _cleanup_demo_directories(destination_path)
+                # _cleanup_demo_directories(destination_path)
+                pass
             else:
                 print("No changes were made to the demo setup.")
                 exit(0)
         image_dest_path, simulation_dest_path = _setup_directories(destination_path)
-        _download_and_extract(image_dest_path, simulation_dest_path, image_src_path, config_src_path)
-        _edit_config_files(simulation_dest_path, setup=True)
+        # _download_and_extract_images(image_data_url, image_dest_path, simulation_dest_path)
+        _create_config_files(os.path.join(destination_path, 'simulation'))
         print("Demo setup successfully")
     else:
         exit(0)
+
+def _create_config_files(path):
+    owd = os.getcwd()
+    os.chdir(path)
+    config = ConfigData(
+        load_config_file=False,
+        img_directory="../image_data/",
+        img_name_string="V001_Cam01_{}.CR2",
+        img_number_overflow=9999,
+        first_img_experiment=1,
+        last_img_experiment=275,
+        num_of_cores=4,
+        date="27.11.2018",
+        start_time="15:36:07",
+        time_img=None,
+        time_ref_img_time=None,
+        time_diff_to_image_time=-1,
+        reference_img="V001_Cam01_1.CR2",
+        threshold_factor=0.1,
+        window_radius=10,
+        num_of_arrays=7,
+        first_img_analysis=1,
+        last_img_analysis=275,
+        skip_imgs=0,
+        skip_leds=0,
+        merge_led_arrays=None
+    )
+    config.set('analyse_positions', '   ignore_indices', '49 54 59')
+
+    config.set('analyse_positions', '   line_edge_indices', '\n   983 2\n    977 0\n    957 23\n    953 20\n    872 28\n    916 63\n    834 72\n   ')
+    config.set('analyse_positions', '   line_edge_coordinates','\n   6.86 3.13 1.14 5.98 2.83 3.32\n   '
+                                                                '5.96 2.83 0.99 5.98 2.83 3.35\n   '
+                                                                '5.96 2.83 1.17 5.05 2.62 3.32\n   '
+                                                                '5.02 2.62 1.0 5.05 2.62 3.34\n   '
+                                                                '4.09 2.38 1.19 5.05 2.62 3.32\n   '
+                                                                '4.09 2.38 1.0 4.12 2.38 3.35\n   '
+                                                                '3.17 2.25 1.17 4.12 2.38 3.32\n   ')
+
+    config.save()
+
+    config_analysis = ConfigDataAnalysis(
+        load_config_file=False,
+        num_of_layers=20,
+        led_arrays=3,
+        num_ref_images=10,
+        num_of_cores=1,
+        reference_property='sum_col_val',
+        average_images=False,
+        solver='numeric',
+        weighting_preference=-6e-3,
+        weighting_curvature=1e-6,
+        num_iterations=200
+    )
+    config_analysis.set('experiment_geometry', '   camera_position', '7.29 6.46 2.3')
+    config_analysis.set('DEFAULT', '   camera_channels', '0 1 2')
+
+    config_analysis.set('model_parameters', '   domain_bounds', '0.99 3.35')
+    config_analysis.save()
+
+    os.chdir(owd)
 
 
 def _proceed_prompt(promt_str: str, exit_str: str) -> bool:
@@ -93,94 +156,54 @@ def _setup_directories(destination_path: str) -> Tuple[str, str]:
 
 
 
-
-def _download_and_extract(image_data_path: str, simulation_path: str, local_zip_path: str, local_config_path: str) -> None:
+def _download_and_extract_images(image_data_url: str, image_data_dest_path: str, simulation_path: str) -> None:
     """
-    Move and extract data from local paths to the target directories.
+    Download and extract data from URLs to the target directories.
 
-    :param image_data_path: Path to the image_data directory.
-    :type image_data_path: str
+    :param image_data_url: URL to download the ZIP file from.
+    :type image_data_url: str
+    :param image_data_dest_path: Path to the destination image_data directory.
+    :type image_data_dest_path: str
     :param simulation_path: Path to the simulation directory.
     :type simulation_path: str
-    :param local_zip_path: Local path to the ZIP file.
-    :type local_zip_path: str
-    :param local_config_path: Local path to the config file.
-    :type local_config_path: str
     """
-    print("Downloading data...")
-    # Move and extract ZIP file into the image_data directory
-    shutil.copy(local_zip_path, image_data_path)
-    zip_path = os.path.join(image_data_path, os.path.basename(local_zip_path))
+    # Helper function to download a file from a given URL with progress bar
+    def download_file_from_url(url, destination):
+        response = requests.get(url, stream=True)
+        response.raise_for_status()
+        total_size = int(response.headers.get('content-length', 0))
+        block_size = 8192  # 8 Kibibytes
+        progress_bar = tqdm(total=total_size, unit='iB', unit_scale=True)
 
-    # Extract contents of the ZIP's directory directly into image_data_path
+        with open(destination, 'wb') as fd:
+            for chunk in response.iter_content(chunk_size=block_size):
+                progress_bar.update(len(chunk))
+                fd.write(chunk)
+        progress_bar.close()
+
+    # Download ZIP file
+    zip_name = os.path.basename(image_data_url)
+    local_zip_path = os.path.join(image_data_dest_path, zip_name)
+    download_file_from_url(image_data_url, local_zip_path)
+
+    # Extract contents of the ZIP's directory directly into image_data_path with progress bar
     with zipfile.ZipFile(local_zip_path, 'r') as zip_ref:
-        root_dir = zip_ref.namelist()[0]
-        for member in zip_ref.namelist():
-            if member != root_dir:
-                zip_ref.extract(member, image_data_path)
-                os.rename(os.path.join(image_data_path, member),
-                          os.path.join(image_data_path, os.path.basename(member)))
+        members = zip_ref.namelist()
+        for member in tqdm(members, desc="Extracting", unit="files"):
+            if member != members[0]:  # Assuming the first member is the root directory
+                zip_ref.extract(member, image_data_dest_path)
+                os.rename(os.path.join(image_data_dest_path, member),
+                          os.path.join(image_data_dest_path, os.path.basename(member)))
 
     # Cleanup the extracted ZIP file and any unwanted directory
-    os.remove(zip_path)
-    shutil.rmtree(os.path.join(image_data_path, root_dir))
-
-    # Move config file to the simulation directory
-    shutil.copy(os.path.join(local_config_path, 'config.ini'), simulation_path)
-    shutil.copy(os.path.join(local_config_path, 'config_analysis.ini'), simulation_path)
+    os.remove(local_zip_path)
+    shutil.rmtree(os.path.join(image_data_dest_path, members[0]), ignore_errors=True)
     with open(os.path.join(simulation_path, '.simulation_setup_successful'), 'w'):
         pass
-    print("Done")
+    print("All Image files have been downloaded successfully!")
 
 
-
-# def download_and_extract(image_data_path: str, simulation_path: str, zip_url: str, config_dir_url: str) -> None:
-#     """
-#     Download and extract data from URLs to the target directories.
-#
-#     :param image_data_path: Path to the image_data directory.
-#     :type image_data_path: str
-#     :param simulation_path: Path to the simulation directory.
-#     :type simulation_path: str
-#     :param zip_url: URL to download the ZIP file from.
-#     :type zip_url: str
-#     :param config_dir_url: URL of directory to download the config and config_analysis file from.
-#     :type config_dir_url: str
-#     """
-#     # Helper function to download a file from a given URL
-#     def download_file_from_url(url, destination):
-#         response = requests.get(url, stream=True)
-#         response.raise_for_status()
-#
-#         with open(destination, 'wb') as fd:
-#             for chunk in response.iter_content(chunk_size=8192):
-#                 fd.write(chunk)
-#
-#     # Download ZIP file
-#     zip_name = os.path.basename(zip_url)
-#     local_zip_path = os.path.join(image_data_path, zip_name)
-#     download_file_from_url(zip_url, local_zip_path)
-#
-#     # Extract contents of the ZIP's directory directly into image_data_path
-#     with zipfile.ZipFile(local_zip_path, 'r') as zip_ref:
-#         root_dir = zip_ref.namelist()[0]
-#         for member in zip_ref.namelist():
-#             if member != root_dir:
-#                 zip_ref.extract(member, image_data_path)
-#                 os.rename(os.path.join(image_data_path, member),
-#                           os.path.join(image_data_path, os.path.basename(member)))
-#
-#     # Cleanup the extracted ZIP file and any unwanted directory
-#     os.remove(local_zip_path)
-#     shutil.rmtree(os.path.join(image_data_path, root_dir), ignore_errors=True)
-#
-#     # Download config files from the given URL and copy to the simulation directory
-#
-#     download_file_from_url(os.path.join(config_dir_url, 'config.ini'), simulation_path)
-#     download_file_from_url(os.path.join(config_dir_url, 'config_analysis.ini'), simulation_path)
-#     print("All Demo files have been downloaded successfully!")
-
-def _edit_config_files(simulation_path: str, num_of_cores=1, setup=False) -> None:
+def _edit_config_files(simulation_path: str, num_of_cores=1) -> None:
     """
     Edit the configuration files based on the provided parameters.
 
@@ -188,13 +211,9 @@ def _edit_config_files(simulation_path: str, num_of_cores=1, setup=False) -> Non
     :type simulation_path: str
     :param num_of_cores: Number of cores to be set in the config.
     :type num_of_cores: int, optional
-    :param setup: Indicator if setup is required or not.
-    :type setup: bool, optional
     """
     config_file = os.path.join(simulation_path, 'config.ini')
     config_analysis_file = os.path.join(simulation_path, 'config_analysis.ini')
-    if setup:
-        _replace_params_in_file(config_file, 'img_directory', '../image_data/')
     _replace_params_in_file(config_file, 'num_of_cores', num_of_cores)
     _replace_params_in_file(config_analysis_file, 'num_of_cores', num_of_cores)
 

@@ -2,9 +2,8 @@ import os
 from datetime import timedelta, datetime
 from typing import List
 
-from ledsa.core.image_reading import get_exif_entry
-
 from ledsa.core.ConfigData import ConfigData
+from ledsa.core.image_reading import get_exif_entry
 
 
 def create_needed_directories(channels: List[int]) -> None:

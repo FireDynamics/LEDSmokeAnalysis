@@ -7,10 +7,10 @@ import numpy as np
 import scipy.optimize
 
 from ledsa.core.ConfigData import ConfigData
-from ledsa.core.image_reading import read_img
-from ledsa.data_extraction.LEDAnalysisData import LEDAnalysisData
 from ledsa.core.file_handling import read_table
 from ledsa.core.image_handling import get_img_name
+from ledsa.core.image_reading import read_img
+from ledsa.data_extraction.LEDAnalysisData import LEDAnalysisData
 from ledsa.data_extraction.model import target_function
 
 

@@ -1,10 +1,11 @@
 import os
+from typing import List, Tuple
 
 import numpy as np
 from matplotlib import pyplot as plt
 
 from ledsa.core.ConfigData import ConfigData
-from typing import List, Tuple, Union
+
 
 def match_leds_to_led_arrays(search_areas: np.ndarray, config: ConfigData) -> np.ndarray:
     """

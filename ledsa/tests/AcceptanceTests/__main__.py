@@ -1,5 +1,5 @@
-from subprocess import call
 import pathlib
+from subprocess import call
 
 
 def main(extended_logs=False):
