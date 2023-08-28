@@ -27,31 +27,9 @@ jobs:
             python-version: '3.10'
             cache: 'pip'
 
-        # Install Poetry for dependency management
-        - name: Install Poetry
-          run: |
-            curl -sSL https://install.python-poetry.org | python3 -
-
-        # Cache dependencies for faster subsequent runs
-        - name: Cache dependencies
-          uses: actions/cache@v2
-          with:
-            # Specify the cache directory
-            path: ~/.cache/pypoetry
-            # Use a unique key for the cache based on the OS and the content of pyproject.toml
-            key: ${{ runner.os }}-poetry-${{ hashFiles('**/pyproject.toml') }}
-            # Specify keys to restore cache if the exact key is not found
-            restore-keys: |
-              ${{ runner.os }}-poetry-
-
-        # Install project dependencies using Poetry
-        - name: Install dependencies
-          run: poetry install
-
-
         # Add LEDSA to PYTHONPATH
-        - name: Add LEDSA to PYTHONPATH
-          run: echo "PYTHONPATH=$GITHUB_WORKSPACE" >> $GITHUB_ENV
+        - name: Install LEDSA package and dependencies
+          run: pip install .
 
         # create folder for test reports
         - name: Create folder for reports
