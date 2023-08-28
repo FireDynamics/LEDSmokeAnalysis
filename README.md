@@ -16,6 +16,7 @@ To use the LEDSA CLI, the general structure is as follows:
 
 `python -m ledsa [ARGUMENT] [OPTIONS]`
 
+See the `Documentation <https://firedynamics.github.io/LEDSmokeAnalysis/>`_
 
 ## Contributing
 
