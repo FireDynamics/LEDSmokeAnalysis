@@ -27,7 +27,7 @@ jobs:
             python-version: '3.10'
             cache: 'pip'
 
-        # Add LEDSA to PYTHONPATH
+        # Install LEDSA and dependencies
         - name: Install LEDSA package and dependencies
           run: pip install .
 
