@@ -26,13 +26,13 @@ def setup_demo(destination_path: str, image_data_url: str) -> None:
             input_str = "Looks like the simulation was already set up. Do you want to overwrite the existing data? (yes/no): "
             overwrite_demo = _proceed_prompt(input_str, exit_str)
             if overwrite_demo:
-                _cleanup_demo_directories(destination_path)
+                # _cleanup_demo_directories(destination_path)
                 pass
             else:
                 print("No changes were made to the demo setup.")
                 exit(0)
         image_dest_path, simulation_dest_path = _setup_directories(destination_path)
-        _download_and_extract_images(image_data_url, image_dest_path, simulation_dest_path)
+        # _download_and_extract_images(image_data_url, image_dest_path, simulation_dest_path)
         _create_config_files(os.path.join(destination_path, 'simulation'))
         print("Demo setup successfully")
     else:
@@ -58,39 +58,42 @@ def _create_config_files(path):
         threshold_factor=0.1,
         window_radius=10,
         num_of_arrays=7,
-        ignore_indices=[49, 54, 59],
-        line_edge_indices=[[983, 2], [977, 0], [957, 23], [953, 20], [872, 28], [916, 63], [834, 72]],
-        line_edge_coordinates=[
-            [6.86, 3.13, 1.14, 5.98, 2.83, 3.32],
-            [5.96, 2.83, 0.99, 5.98, 2.83, 3.35],
-            [5.96, 2.83, 1.17, 5.05, 2.62, 3.32],
-            [5.02, 2.62, 1.0, 5.05, 2.62, 3.34],
-            [4.09, 2.38, 1.19, 5.05, 2.62, 3.32],
-            [4.09, 2.38, 1.0, 4.12, 2.38, 3.35],
-            [3.17, 2.25, 1.17, 4.12, 2.38, 3.32]
-        ],
         first_img_analysis=1,
         last_img_analysis=275,
         skip_imgs=0,
         skip_leds=0,
         merge_led_arrays=None
     )
+    config.set('analyse_positions', '   ignore_indices', '49 54 59')
+
+    config.set('analyse_positions', '   line_edge_indices', '\n   983 2\n    977 0\n    957 23\n    953 20\n    872 28\n    916 63\n    834 72\n   ')
+    config.set('analyse_positions', '   line_edge_coordinates','\n   6.86 3.13 1.14 5.98 2.83 3.32\n   '
+                                                                '5.96 2.83 0.99 5.98 2.83 3.35\n   '
+                                                                '5.96 2.83 1.17 5.05 2.62 3.32\n   '
+                                                                '5.02 2.62 1.0 5.05 2.62 3.34\n   '
+                                                                '4.09 2.38 1.19 5.05 2.62 3.32\n   '
+                                                                '4.09 2.38 1.0 4.12 2.38 3.35\n   '
+                                                                '3.17 2.25 1.17 4.12 2.38 3.32\n   ')
+
     config.save()
 
-    config_analysis = ConfigDataAnalysis(load_config_file=False,
-        camera_position=[7.29, 6.46, 2.3],
+    config_analysis = ConfigDataAnalysis(
+        load_config_file=False,
         num_of_layers=20,
-        domain_bounds=[0.99, 3.35],
-        led_arrays=[0, 1, 2, 3, 4, 5, 6],
+        led_arrays=3,
         num_ref_images=10,
-        camera_channels=[0, 1, 2],
         num_of_cores=1,
         reference_property='sum_col_val',
         average_images=False,
         solver='numeric',
         weighting_preference=-6e-3,
         weighting_curvature=1e-6,
-        num_iterations=200)
+        num_iterations=200
+    )
+    config_analysis.set('experiment_geometry', '   camera_position', '7.29 6.46 2.3')
+    config_analysis.set('DEFAULT', '   camera_channels', '0 1 2')
+
+    config_analysis.set('model_parameters', '   domain_bounds', '0.99 3.35')
     config_analysis.save()
 
     os.chdir(owd)

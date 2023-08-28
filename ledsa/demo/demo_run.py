@@ -22,7 +22,7 @@ def run_demo(num_of_cores=1):
     # run s1-s3
     ledsa_main(['-s1'])
     ledsa_main(['-s2'])
-    ledsa_main(['-s3_fast'])
+    ledsa_main(['-s3_fast -rgb'])
     ledsa_main(['-coord'])
 
     # run analysis
