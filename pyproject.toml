@@ -30,6 +30,6 @@ dependencies = [
     "requests ~= 2.31.0",]
 
 [project.urls]
-"Homepage" = "https://github.com/FireDynamics/LEDSmokeAnalysis"
+"Homepage" = "https://firedynamics.github.io/LEDSmokeAnalysis/"
 "Repository" = "https://github.com/FireDynamics/LEDSmokeAnalysis"
 "Bug Tracker" = "https://github.com/FireDynamics/LEDSmokeAnalysis/issues"
