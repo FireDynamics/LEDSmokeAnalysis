@@ -82,7 +82,7 @@ def _create_config_files(path):
         num_of_layers=20,
         led_arrays=3,
         num_ref_images=10,
-        num_of_cores=1,
+        num_of_cores=4,
         reference_property='sum_col_val',
         average_images=False,
         solver='numeric',
