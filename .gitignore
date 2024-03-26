@@ -129,3 +129,4 @@ experiment_data.txt
 .vscode/settings.json
 /test_output/
 log.html
+/run_dir/
