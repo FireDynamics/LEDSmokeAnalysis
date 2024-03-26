@@ -30,6 +30,7 @@ class DataExtractor:
     :ivar line_indices: 2D list with dimension (# of LED arrays) x (# of LEDs per array) or None.
     :vartype line_indices: list[list[int]], optional
     """
+
     def __init__(self, channels=(0), load_config_file=True, build_experiment_infos=True, fit_leds=True):
         """
         :param channels: Channels to be processed. Defaults to (0).
@@ -66,7 +67,21 @@ class DataExtractor:
         Load LED search areas from the 'led_search_areas.csv' file. #TODO be consistent with search areas and ROIS
         """
         file_path = os.path.join('analysis', 'led_search_areas.csv')
-        self.search_areas = ledsa.core.file_handling.read_table(file_path, delim=',')
+        self.search_areas = ledsa.core.file_handling.read_table(file_path, delim=',', dtype='int')
+
+    def write_search_areas(self, reorder_leds=False) -> None:
+        """
+        Writes LED search areas to a CSV file.
+
+        :param reorder_leds: A flag indicating whether the LED IDs have been reordered. Affects the header of the output file.
+        :type reorder_leds: bool
+        """
+        out_file_path = os.path.join('analysis', 'led_search_areas.csv')
+        header = 'LED id (reordered), pixel position x, pixel position y' if reorder_leds else ('LED id, pixel '
+                                                                                                'position x, '
+                                                                                                'pixel position y')
+        np.savetxt(out_file_path, self.search_areas, delimiter=',',
+                   header=header, fmt='%d')
 
     def find_search_areas(self, img_filename: str) -> None:
         """
@@ -81,18 +96,23 @@ class DataExtractor:
 
         self.search_areas = ledsa.data_extraction.step_1_functions.find_search_areas(data, skip=1, window_radius=int(
             config['window_radius']), threshold_factor=float(config['threshold_factor']))
+        self.write_search_areas()
+        ledsa.core.file_handling.remove_flag('reorder_leds')
 
-        out_file_path = os.path.join('analysis', 'led_search_areas.csv')
-        np.savetxt(out_file_path, self.search_areas, delimiter=',',
-                   header='LED id, pixel position x, pixel position y', fmt='%d')
-
-    def plot_search_areas(self, img_filename: str) -> None:
+    def plot_search_areas(self, img_filename: str, reorder_leds=False) -> None:
         """
         Plot the identified LED search areas with their ID labels.
 
         :param img_filename: The name of the image file to be plotted.
         :type img_filename: str
+        :param reorder_leds: A flag indicating whether the LED IDs have been reordered. Affects the name of the output file.
+        :type reorder_leds: bool
         """
+        try:
+            os.remove(os.path.join('plots', 'led_search_areas.plot_reordered.pdf'))
+        except OSError:
+            pass
+
         config = self.config['find_search_areas']
         if self.search_areas is None:
             self.load_search_areas()
@@ -105,8 +125,10 @@ class DataExtractor:
         ledsa.data_extraction.step_1_functions.add_search_areas_to_plot(self.search_areas, ax, config)
         plt.imshow(data, cmap='Greys')
         plt.colorbar()
-        out_file_path = os.path.join('plots', 'led_search_areas.plot.pdf')
+        plot_filename = 'led_search_areas.plot_reordered.pdf' if reorder_leds else 'led_search_areas.plot.pdf'
+        out_file_path = os.path.join('plots', plot_filename)
         plt.savefig(out_file_path)
+        plt.close()
 
     # """
     # ------------------------------------
@@ -118,20 +140,29 @@ class DataExtractor:
         """
         Analyze which LEDs belong to which LED line and save this mapping.
         """
-        if self.search_areas is None:
-            self.load_search_areas()
-        self.line_indices = ledsa.data_extraction.step_2_functions.match_leds_to_led_arrays(self.search_areas,
-                                                                                            self.config)
-        ledsa.data_extraction.step_2_functions.generate_line_indices_files(self.line_indices)
-        ledsa.data_extraction.step_2_functions.generate_labeled_led_arrays_plot(self.line_indices, self.search_areas)
-        self.line_indices, merge = ledsa.data_extraction.step_2_functions.merge_led_arrays(self.line_indices,
-                                                                                           self.config)
-        if merge:
-            ledsa.data_extraction.step_2_functions.generate_labeled_led_arrays_plot(self.line_indices,
-                                                                                    self.search_areas,
-                                                                                    filename_extension='_merge')
-            ledsa.data_extraction.step_2_functions.generate_line_indices_files(self.line_indices,
-                                                                               filename_extension='_merge')
+        if ledsa.core.file_handling.check_flag('reorder_leds'):
+            exit("LED IDs have been reordered. Please run step S1 again before trying to match LEDs to LED lines!")
+        else:
+            if self.search_areas is None:
+                self.load_search_areas()
+            self.line_indices = ledsa.data_extraction.step_2_functions.match_leds_to_led_arrays(self.search_areas,
+                                                                                                self.config)
+            if eval(self.config['analyse_positions']['reorder_led_indices']):
+                self.search_areas = ledsa.data_extraction.step_2_functions.reorder_search_areas(self.search_areas,
+                                                                                                self.line_indices)
+                self.write_search_areas(reorder_leds=True)
+                self.line_indices = ledsa.data_extraction.step_2_functions.reorder_led_indices(self.line_indices)
+                self.plot_search_areas(self.config['find_search_areas']['reference_img'], reorder_leds=True)
+                print("LED IDs reordered successfully!")
+                ledsa.core.file_handling.set_flag('reorder_leds')
+
+            ledsa.data_extraction.step_2_functions.generate_line_indices_files(self.line_indices)
+            self.plot_led_arrays()
+
+
+        if self.config['analyse_positions']['merge_led_arrays'] != 'None':
+            self.line_indices = ledsa.data_extraction.step_2_functions.merge_indices_of_led_arrays(self.line_indices, self.config)
+            self.plot_led_arrays(merge_led_arrays=True)
 
     def load_line_indices(self) -> None:
         """
@@ -148,6 +179,24 @@ class DataExtractor:
         for i in range(num_of_arrays):
             file_path = os.path.join('analysis', f'line_indices_{i:03}{file_extension}.csv')
             self.line_indices.append(ledsa.core.file_handling.read_table(file_path, dtype='int'))
+
+    def plot_led_arrays(self, merge_led_arrays=False) -> None:
+        # TODO: check Docstrings
+        """
+        Plots the arrangement of LEDs as identified in the LED arrays and saves the plot as a PDF file.
+
+        :param merge_led_arrays: A flag indicating whether LED arrays have been merged. Affects the naming of the output file.
+        :type merge_led_arrays: bool
+        """
+        for i in range(len(self.line_indices)):
+            plt.scatter(self.search_areas[self.line_indices[i], 2],
+                        self.search_areas[self.line_indices[i], 1],
+                        s=0.1, label='led strip {}'.format(i))
+        plt.legend()
+        plot_filename = 'led_arrays_merged.pdf' if merge_led_arrays else 'led_arrays.pdf'
+        out_file_path = os.path.join('plots', plot_filename)
+        plt.savefig(out_file_path)
+        plt.close()
 
     # """
     # ------------------------------------

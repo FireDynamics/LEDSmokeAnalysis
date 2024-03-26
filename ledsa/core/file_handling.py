@@ -8,9 +8,49 @@ import ledsa.core
 from ledsa.core.ConfigData import ConfigData
 
 
+def set_flag(flag: str) -> None:
+    """
+    Creates a flag file in the current directory to indicate if a certain task has been performed.
+
+    :param flag: The name of the flag to set.
+    :type flag: str
+    """
+    with open(f'.{flag}.flag', 'w') as flag_file:
+        pass
+
+
+def check_flag(flag: str) -> bool:
+    """
+    Checks if a flag file exists in the current directory.
+
+    :param flag: The name of the flag to check.
+    :type flag: str
+    :return: True if the flag file exists, False otherwise.
+    :rtype: bool
+    """
+    return os.path.exists(f'.{flag}.flag')
+
+
+def remove_flag(flag: str) -> None:
+    """
+    Removes a flag file from the current directory if it exists.
+
+    :param flag: The name of the flag to remove.
+    :type flag: str
+    :raises OSError: If an error occurs during file removal. This exception is caught and suppressed within the function.
+    """
+    try:
+        os.remove(f'.{flag}.flag')
+    except OSError:
+        pass
+
 def create_analysis_infos_avg():  # TODO: Move funtion somewhere else
-    n_summarize = 2
-    n_skip_images = 10
+    """
+    Generate CSV files with image information for experiment and/or analysis averaged over n images from the existing
+    image_infos_analysis.csv file. Skips the first n images. Contains image name, exif time and experiment time
+    """
+    n_summarize = 2 # TODO: remove hardcoding
+    n_skip_images = 10 # TODO: Remove hardcoding
     in_file_path = os.path.join('analysis', 'image_infos_analysis.csv')
     image_infos = pd.read_csv(in_file_path)
     img_names = image_infos['Name'].tolist()

@@ -49,7 +49,6 @@ def run_data_extraction_arguments(args: argparse.Namespace) -> None:
         de = DataExtractor(build_experiment_infos=False, channels=channels)
         if args.step_1:
             de.find_search_areas(de.config['find_search_areas']['reference_img'])
-            de.plot_search_areas(de.config['find_search_areas']['reference_img'])
         if args.step_2:
             de.match_leds_to_led_arrays()
 
