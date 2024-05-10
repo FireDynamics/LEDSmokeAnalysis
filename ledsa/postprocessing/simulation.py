@@ -3,7 +3,7 @@ import os
 
 import pandas as pd
 
-from ledsa.core.image_reading import read_channel_from_img
+from ledsa.core.image_reading import read_channel_data_from_img
 
 
 class SimData:
@@ -366,7 +366,7 @@ class SimData:
             pixel_positions = self.get_pixel_cordinates_of_LED(led_id)
             imagename = self.get_image_name_from_timestep(timestep)
             imagefile = os.path.join(self.path_images, imagename)
-            channel_array = read_channel_from_img(imagefile, channel)
+            channel_array = read_channel_data_from_img(imagefile, channel)
             x = pixel_positions[0]
             y = pixel_positions[1]
             channel_array_cropped = channel_array[x - radius:x + radius, y - radius:y + radius]

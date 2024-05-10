@@ -9,7 +9,7 @@ import scipy.optimize
 from ledsa.core.ConfigData import ConfigData
 from ledsa.core.file_handling import read_table
 from ledsa.core.image_handling import get_img_name
-from ledsa.core.image_reading import read_channel_from_img
+from ledsa.core.image_reading import read_channel_data_from_img
 from ledsa.data_extraction.LEDAnalysisData import LEDAnalysisData
 from ledsa.data_extraction.model import target_function
 
@@ -39,7 +39,7 @@ def generate_analysis_data(img_filename: str, channel: int, search_areas: np.nda
     :rtype: List[LEDAnalysisData]
     """
     file_path = os.path.join(conf['DEFAULT']['img_directory'], img_filename)
-    data = read_channel_from_img(file_path, channel=channel)
+    data = read_channel_data_from_img(file_path, channel=channel)
     window_radius = int(conf['find_search_areas']['window_radius'])
     img_analysis_data = []
 
