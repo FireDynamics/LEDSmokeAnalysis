@@ -1,6 +1,7 @@
 import argparse
 import os
 
+from ledsa.tools.photo_renamer import set_working_dir, get_files, rename_images_by_date
 from ledsa.analysis import ExtinctionCoefficientsNumeric as ECN
 from ledsa.analysis.ConfigDataAnalysis import ConfigDataAnalysis
 from ledsa.analysis.Experiment import Experiment
@@ -11,6 +12,19 @@ from ledsa.core.ConfigData import ConfigData
 from ledsa.data_extraction.DataExtractor import DataExtractor
 
 
+def run_tools_arguments(args: argparse.Namespace) -> None:
+    """
+    Execute actions based on tools arguments.
+
+    :param args: Parsed command line arguments.
+    :type args: argparse.Namespace
+    """
+    if args.prepare_images:
+        set_working_dir()
+        image_df = get_files()
+        rename_images_by_date(image_df)
+
+
 def run_data_extraction_arguments(args: argparse.Namespace) -> None:
     """
     Execute actions based on data extraction arguments.
@@ -18,7 +32,7 @@ def run_data_extraction_arguments(args: argparse.Namespace) -> None:
     :param args: Parsed command line arguments.
     :type args: argparse.Namespace
     """
-    if args.config is not None: # TODO: remove additional options from config parser argument
+    if args.config is not None:  # TODO: remove additional options from config parser argument
         if len(args.config) == 0:
             ConfigData(load_config_file=False)
         if len(args.config) == 1:
@@ -73,7 +87,7 @@ def run_data_extraction_arguments(args: argparse.Namespace) -> None:
         calculate_coordinates()
 
 
-def run_testing_arguments(args) -> None:
+def run_testing_arguments(args: argparse.Namespace) -> None:
     """
     Execute actions based on testing arguments.
 
@@ -112,6 +126,7 @@ def run_demo_arguments(args: argparse.Namespace, parser: argparse.ArgumentParser
             run_demo(num_of_cores=args.n_cores)
         else:
             run_demo()
+
 
 def run_analysis_arguments(args) -> None:
     """
