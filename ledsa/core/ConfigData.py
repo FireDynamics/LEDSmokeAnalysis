@@ -11,8 +11,8 @@ class ConfigData(cp.ConfigParser):
     Class responsible for handling configuration data related to LEDSA.
 
     """
-    def __init__(self, load_config_file=True, img_directory=None, window_radius=10, threshold_factor=0.25,
-                 num_of_arrays=None, num_of_cores=1, date=None, start_time=None, time_img=None, time_ref_img_time=None,
+    def __init__(self, load_config_file=True, img_directory=None, window_radius=10, pixel_value_percentile=99.875, channel='all',
+                 max_num_of_leds=None, num_of_arrays=None, num_of_cores=1, date=None, start_time=None, time_img=None, time_ref_img_time=None,
                  time_diff_to_image_time=None, img_name_string=None, img_number_overflow=None,
                  first_img_experiment=None, last_img_experiment=None, reference_img=None, ignore_indices=None,
                  line_edge_indices=None, reorder_led_indices=False, line_edge_coordinates=None, first_img_analysis=None,
@@ -24,8 +24,12 @@ class ConfigData(cp.ConfigParser):
         :type img_directory: str or None
         :param window_radius: Pixel radius of ROI assigned to each LED. Defaults to 10.
         :type window_radius: int
-        :param threshold_factor: Threshold factor for LED detection. Defaults to 0.25.
-        :type threshold_factor: float
+        :param pixel_value_percentile: Threshold percentile of pixel value for LED detection. Defaults to 99.875.
+        :type pixel_value_percentile: float
+        :param channel: Camera channel on which the LED should be detected. Defaults to 'all'
+        :type channel: int
+        :param max_num_of_leds: Maximum number of LEDs to be detected on the reference image. Defaults to None
+        :type max_num_of_leds: int
         :param num_of_arrays: Number of LED arrays. Defaults to None.
         :type num_of_arrays: int or None
         :param num_of_cores: Number of CPU cores for (multicore) processing. If greater than 1, multicore processing is applied. Defaults to 1.
@@ -101,10 +105,15 @@ class ConfigData(cp.ConfigParser):
             self.set('find_search_areas', '# Variables used to find the pixel positions of every led')
             self.set('find_search_areas', '   # Reference image used to find and label the leds')
             self['find_search_areas']['   reference_img'] = str(reference_img)
-            self.set('find_search_areas', '   # Threshold factor for the detection of LEDs on the reference image')
-            self['find_search_areas']['   threshold_factor'] = str(threshold_factor)
+            self.set('find_search_areas', '# Threshold percentile of pixel value to find LEDs on the reference image')
+            self['find_search_areas']['   pixel_value_percentile'] = str(pixel_value_percentile)
+            self.set('find_search_areas', '# Camera channel on which LEDs should be found, "all" only works for RAW '
+                                          'image files')
+            self['find_search_areas']['   channel'] = str(channel)
             self.set('find_search_areas', '   # Radius of pixels assigned to each LED')
             self['find_search_areas']['   window_radius'] = str(window_radius)
+            self.set('find_search_areas', '   # Maximum number of LEDs to detect on the reference image')
+            self['find_search_areas']['   max_num_of_leds'] = str(max_num_of_leds)
 
             self['analyse_positions'] = {}
             self.set('analyse_positions', '# Variables used to find the physical positions of every led')
@@ -231,6 +240,13 @@ class ConfigData(cp.ConfigParser):
         self['find_search_areas']['reference_img'] = input('Please give the name of the reference image, from where the'
                                                            ' led positions are calculated and which will be the start '
                                                            'of the experiment time calculation: ')
+
+    def in_max_num_of_leds(self) -> None:
+        """
+        Prompts the user for the maximum number of LEDs to be detected on the reference image.
+        """
+        self['find_search_areas']['max_num_of_leds'] = input('Please give the maximum number of LEDs to be detected on the reference '
+                                            'image: ')
 
     def in_time_img(self) -> None:
         """

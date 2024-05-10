@@ -79,15 +79,13 @@ class LedsaATestLibrary:
 
     @keyword
     def create_and_fill_config(self, first=1, last=4):
-        conf = ConfigData(load_config_file=False, img_directory='./', window_radius=10, threshold_factor=0.25,
-                          num_of_arrays=1, num_of_cores=1, date=None, start_time=None, time_img=None,
-                          time_ref_img_time=None,
-                          time_diff_to_image_time=0, img_name_string='test_img_{}.jpg', img_number_overflow=None,
-                          first_img_experiment=first,
+        conf = ConfigData(load_config_file=False, img_directory='./', window_radius=10, pixel_value_percentile=99.875,
+                          channel='all', max_num_of_leds=1000, num_of_arrays=1, num_of_cores=1, date=None,
+                          start_time=None, time_img=None, time_ref_img_time=None, time_diff_to_image_time=0,
+                          img_name_string='test_img_{}.jpg', img_number_overflow=None, first_img_experiment=first,
                           last_img_experiment=last, reference_img='test_img_1.jpg', ignore_indices=None,
-                          line_edge_indices=None,
-                          line_edge_coordinates=None, first_img_analysis=first, last_img_analysis=last, skip_imgs=0,
-                          skip_leds=0, merge_led_arrays=None)
+                          line_edge_indices=None, line_edge_coordinates=None, first_img_analysis=first,
+                          last_img_analysis=last, skip_imgs=0, skip_leds=0, merge_led_arrays=None)
         conf.set('analyse_positions', '   line_edge_indices', '0 99')
         conf.set('analyse_positions', '   line_edge_coordinates', '0 4 0.05 0 4 2.95')
         conf.set('DEFAULT', '   date', '2018:11:27')

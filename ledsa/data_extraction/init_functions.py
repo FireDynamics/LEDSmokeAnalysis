@@ -43,6 +43,9 @@ def request_config_parameters(config: ConfigData) -> None:
     if config['find_search_areas']['reference_img'] == 'None':
         config.in_ref_img()
         config.save()
+    if config['find_search_areas']['max_num_of_leds'] == 'None':
+        config.in_max_num_of_leds()
+        config.save()
     if config['DEFAULT']['exif_time_infront_real_time'] == 'None':
         config.in_time_diff_to_img_time()
         config.save()

@@ -26,6 +26,7 @@ def read_channel_data_from_img(filename: str, channel: int) -> np.ndarray:
         channel_array = _read_channel_data_from_raw_file(filename, channel)
     return channel_array
 
+
 def _read_channel_data_from_img_file(filename: str, channel: int) -> np.ndarray:
     """
     Reads an image file and extracts a single color channel.
@@ -39,6 +40,7 @@ def _read_channel_data_from_img_file(filename: str, channel: int) -> np.ndarray:
     """
     data = plt.imread(filename)
     return data[:, :, channel]
+
 
 def _read_channel_data_from_raw_file(filename: str, channel: int) -> np.ndarray:
     """
@@ -59,6 +61,7 @@ def _read_channel_data_from_raw_file(filename: str, channel: int) -> np.ndarray:
         channel_array = np.where((filter_array == 1) | (filter_array == 3), img_array, 0)
     return channel_array
 
+
 def read_img_array_from_raw_file(filename: str, channel: int) -> np.ndarray:
     # TODO: channel is only relevant for black level, consider individually!
     with rawpy.imread(filename) as raw:
@@ -70,7 +73,6 @@ def read_img_array_from_raw_file(filename: str, channel: int) -> np.ndarray:
     img_array = (img_array * (white_level / (white_level - black_level))).astype(np.int16)
     img_array = np.clip(img_array, 0, white_level)
     return img_array, filter_array
-
 
 
 def get_exif_entry(filename: str, tag: str) -> str:

@@ -92,11 +92,19 @@ class DataExtractor:
         """
         config = self.config['find_search_areas']
         in_file_path = os.path.join(config['img_directory'], img_filename)
-        data, _ = ledsa.core.image_reading.read_img_array_from_raw_file(in_file_path, channel=0) # TODO: Channel to be removed here!
+        channel = config['channel']
+        window_radius = int(config['window_radius'])
+        max_num_leds = int(config['max_num_of_leds'])
+        pixel_value_percentile = float(config['pixel_value_percentile'])
+        if channel == 'all':
+            data, _ = ledsa.core.image_reading.read_img_array_from_raw_file(in_file_path, channel=0) # TODO: Channel to be removed here!
+        else:
+            channel = int(channel)
+            data = ledsa.core.image_reading.read_channel_data_from_img(in_file_path, channel=channel)
 
-        self.search_areas = ledsa.data_extraction.step_1_functions.find_search_areas(data, skip=1, window_radius=int(
-            config['window_radius']), threshold_factor=float(config['threshold_factor']))
+        self.search_areas = ledsa.data_extraction.step_1_functions.find_search_areas(data, window_radius=window_radius, max_n_leds=max_num_leds, pixel_value_percentile=pixel_value_percentile)
         self.write_search_areas()
+        self.plot_search_areas(self.config['find_search_areas']['reference_img'])
         ledsa.core.file_handling.remove_flag('reorder_leds')
 
     def plot_search_areas(self, img_filename: str, reorder_leds=False) -> None:
@@ -122,8 +130,10 @@ class DataExtractor:
         window_radius = int(config['window_radius'])
         plt.figure(dpi=1200)
         ax = plt.gca()
-        ledsa.data_extraction.step_1_functions.add_search_areas_to_plot(self.search_areas, ax, config)
+        ledsa.data_extraction.step_1_functions.add_search_areas_to_plot(self.search_areas, window_radius, ax)
         plt.imshow(data, cmap='Greys')
+        plt.xlim(self.search_areas[:, 2].min() - 5 * window_radius, self.search_areas[:, 2].max() + 5 * window_radius)
+        plt.ylim(self.search_areas[:, 1].max() + 5 * window_radius, self.search_areas[:, 1].min() - 5 * window_radius)
         plt.colorbar()
         plot_filename = 'led_search_areas.plot_reordered.pdf' if reorder_leds else 'led_search_areas.plot.pdf'
         out_file_path = os.path.join('plots', plot_filename)
