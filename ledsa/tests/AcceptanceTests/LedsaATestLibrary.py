@@ -80,7 +80,7 @@ class LedsaATestLibrary:
     @keyword
     def create_and_fill_config(self, first=1, last=4):
         conf = ConfigData(load_config_file=False, img_directory='./', window_radius=10, pixel_value_percentile=99.875,
-                          channel='all', max_num_of_leds=1000, num_of_arrays=1, num_of_cores=1, date=None,
+                          channel=0, max_num_of_leds=1000, num_of_arrays=1, num_of_cores=1, date=None,
                           start_time=None, time_img=None, time_ref_img_time=None, time_diff_to_image_time=0,
                           img_name_string='test_img_{}.jpg', img_number_overflow=None, first_img_num_experiment=first,
                           last_img_num_experiment=last, reference_img='test_img_1.jpg', ignore_indices=None,
@@ -109,7 +109,7 @@ class LedsaATestLibrary:
             out = self.execute_ledsa('-s1')
         else:
             self.execute_ledsa('--config')
-            inp = b'./\ntest_img_1.jpg\ntest_img_1.jpg\n12:00:00\n1\n1\n1'
+            inp = b'./\ntest_img_1.jpg\n12:00:00\ntest_img_1.jpg\n1000\n1\n1\n4'
             out = self.execute_ledsa('-s1', inp)
             check_error_msg(out)
         return out[0].decode('ascii')[-9:-6]

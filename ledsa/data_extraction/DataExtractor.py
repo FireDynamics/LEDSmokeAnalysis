@@ -10,6 +10,7 @@ import ledsa.core.image_handling
 import ledsa.core.image_reading
 import ledsa.data_extraction.step_1_functions
 import ledsa.data_extraction.step_2_functions
+import ledsa.data_extraction.step_2_functions_legacy
 import ledsa.data_extraction.step_3_functions
 from ledsa.core.ConfigData import ConfigData
 from ledsa.data_extraction import init_functions as led
@@ -146,7 +147,7 @@ class DataExtractor:
     # ------------------------------------
     # """
 
-    def match_leds_to_led_arrays(self) -> None:
+    def match_leds_to_led_arrays(self, legacy=False) -> None:
         """
         Analyze which LEDs belong to which LED line and save this mapping.
         """
@@ -155,7 +156,11 @@ class DataExtractor:
         else:
             if self.search_areas is None:
                 self.load_search_areas()
-            self.line_indices = ledsa.data_extraction.step_2_functions.match_leds_to_led_arrays(self.search_areas,
+            if legacy:
+                self.line_indices = ledsa.data_extraction.step_2_functions_legacy.match_leds_to_led_arrays(
+                    self.search_areas, self.config)
+            else:
+                self.line_indices = ledsa.data_extraction.step_2_functions.match_leds_to_led_arrays(self.search_areas,
                                                                                                 self.config)
             if eval(self.config['analyse_positions']['reorder_led_indices']):
                 self.search_areas = ledsa.data_extraction.step_2_functions.reorder_search_areas(self.search_areas,

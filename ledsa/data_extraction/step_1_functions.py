@@ -24,6 +24,7 @@ def find_search_areas(image: np.ndarray, window_radius, pixel_value_percentile=9
     print("Threshold pixel value:", threshold)
     print("Searching LEDs")
     led_id = 0
+    image = image.copy()
     while max_pixel_value > threshold and led_id < max_n_leds:
         (_, max_pixel_value, _, max_pixel_loc) = cv2.minMaxLoc(image)
         if max_pixel_value > threshold:
@@ -32,7 +33,7 @@ def find_search_areas(image: np.ndarray, window_radius, pixel_value_percentile=9
             print('.', end='', flush=True)
             led_id += 1
     print('\n')
-    print(f"Found {led_id} LEDS!")
+    print(f"Found {led_id} LEDS")
     return np.array(search_areas_list)
 
 

@@ -1,50 +1,156 @@
-import os
-from typing import List, Tuple
-
 import numpy as np
-from matplotlib import pyplot as plt
-
+from scipy.spatial import distance
 from ledsa.core.ConfigData import ConfigData
+from typing import List
+import os
 
 
-def match_leds_to_led_arrays(search_areas: np.ndarray, config: ConfigData) -> List[List]:
+def match_leds_to_led_arrays(search_areas: np.array, config: ConfigData, max_n_neighbours=5,
+                             distance_weighting_factor=0.987) -> List:
     """
-    Matches LEDs to their corresponding LED arrays based on the given LED line edge indices.
+    Assigns LEDs to LED Arrays. Starting with the first of the defined edge LEDs, the closest neighbour LEDs are
+    first detected. After that, a cumulative distance from the current LED to each neighbour and to the last edge
+    LED of the LED array is calculated. The next LED from the current LED is chosen by the minimum cumulative
+    distance. To account for LEDs that are close to the current LED but in the wrong direction, the distance between
+    the neighbour LEDs and the last edge LED is multiplied by a weighting factor.
 
-    :param search_areas: A numpy array containing LED search areas.
-    :type search_areas: numpy.ndarray
-    :param config: An instance of ConfigData containing the configuration data.
+    :param search_areas: Array containing LED search areas.
+    :type search_areas: np.array
+    :param config: Configuration data.
     :type config: ConfigData
-    :return: A List of Lists containing matched LED arrays.
-    :rtype: list
+    :param max_n_neighbours: Maximum number of neighbour LEDs to consider, defaults to 5.
+    :type max_n_neighbours: int
+    :param distance_weighting_factor: Weighting factor for distance calculations, defaults to 0.987.
+    :type distance_weighting_factor: float
+    :return: List of LED arrays with assigned led_ids.
+    :rtype: List
     """
     edge_indices = _get_indices_of_outer_leds(config)
-    if len(search_areas) <= np.max(edge_indices):
-        exit("At least one of the chosen LED indices is larger that the number of found LEDS!")
-    dists_led_arrays_search_areas = _calc_dists_between_led_arrays_and_search_areas(edge_indices, search_areas)
-    led_arrays = _match_leds_to_arrays_with_min_dist(dists_led_arrays_search_areas, edge_indices, config, search_areas)
-    return led_arrays
+
+    search_areas_dict = {row[0]: row[1:] for row in search_areas}
+    all_led_lines_dict = {}
+
+    for led_line_id, ref_led_id_list in enumerate(edge_indices):
+        led_line_list = []
+        ref_led_id_iter = iter(ref_led_id_list)
+        led_id = next(ref_led_id_iter)
+        ref_led_id = next(ref_led_id_iter)
+        led_loc = search_areas_dict[led_id]
+        ref_led_loc = search_areas_dict[ref_led_id]
+
+        while len(search_areas_dict) > 0:
+            del search_areas_dict[led_id]
+            led_line_list.append(led_id)
+            led_id = find_next_led(search_areas_dict, max_n_neighbours, ref_led_loc, distance_weighting_factor, led_loc)
+            led_loc = search_areas_dict[led_id]
+
+            # If last led_id of led_line is reached go to next one
+            if led_id == ref_led_id:
+                led_line_list.append(led_id)
+                del search_areas_dict[led_id]
+                break
+            elif led_id == ref_led_id:
+                ref_led_id = next(ref_led_id_iter)
+                ref_led_loc = search_areas_dict[ref_led_id]
+
+        all_led_lines_dict[led_line_id] = led_line_list
+    num_non_matched_leds = len(search_areas_dict)
+    print(f"Number of not matched LEDs: {num_non_matched_leds}")
+    if num_non_matched_leds > 0:
+        print("LED IDs:")
+        for led_id in search_areas_dict:
+            print(led_id, end=" ")
+        print("\n")
+    all_led_lines_dict = _remove_ignored_leds(all_led_lines_dict, config)
+    return list(all_led_lines_dict.values())
+
+def find_next_led(search_areas_dict, max_n_neighbours, ref_led_loc, distance_weighting_factor, led_loc):
+
+    total_dist_dict = {}
+    neighbours_led_id_list, neighbours_dist_list = _find_neighbour_leds(led_loc, search_areas_dict, max_n_neighbours)
+
+    # Compute total distance from current led to neighbour leds and from neighbour led to ref led
+    # Distance from neighbour led to ref led is weighted less to prefer leds closer to current led
+    for neighbour_led_id, dist_neighbour in zip(neighbours_led_id_list, neighbours_dist_list):
+        neighbour_led_loc = search_areas_dict[neighbour_led_id]
+        dist_ref = np.linalg.norm(np.array(ref_led_loc) - np.array(neighbour_led_loc))
+        dist_total = distance_weighting_factor * dist_ref + dist_neighbour
+        total_dist_dict[neighbour_led_id] = dist_total
+    next_led_id = min(total_dist_dict, key=total_dist_dict.get)
+    return next_led_id
+
+def _find_neighbour_leds(led_loc, search_areas_dict, max_n_neighbours):
+    search_areas_dict_temp = search_areas_dict.copy()
+    neighbours_led_id_list = []
+    neighbours_dist_list = []
+    n_neighbours = min(max_n_neighbours, len(search_areas_dict))
+
+    # Compute distances from current led to nearest neighbour leds
+    for i in range(n_neighbours):
+        neighbour_led_loc, neighbour_led_id, dist_neighbour = _find_closest_node(led_loc,
+                                                                                 search_areas_dict_temp)
+        del search_areas_dict_temp[neighbour_led_id]
+        neighbours_led_id_list.append(neighbour_led_id)
+        neighbours_dist_list.append(dist_neighbour)
+    return neighbours_led_id_list, neighbours_dist_list
+def _find_closest_node(node: tuple, nodes_dict: dict) -> 'to be defined':
+    node = np.array(node)
+    nodes = np.array(list(nodes_dict.values()))
+    keys = np.array(list(nodes_dict.keys()))
+    distance_array = distance.cdist([node], nodes)
+    closest_index = distance_array.argmin()
+    dist = distance_array[0][closest_index]
+    return nodes[closest_index], keys[closest_index], dist
 
 
-def merge_indices_of_led_arrays(led_arrays: List[np.ndarray], config: ConfigData) -> List[List]:
+def _get_indices_of_outer_leds(config: ConfigData) -> np.ndarray:
     """
-    Merge indices of LED arrays based on the configuration data.
+    Retrieve the indices of outer LEDs based on the configuration data.
 
-    :param led_arrays: List containing LED arrays.
-    :type led_arrays: list
     :param config: An instance of ConfigData containing the configuration data.
     :type config: ConfigData
-    :return: List of merged LED arrays.
-    :rtype: list
+    :return: List containing indices of outer LEDs.
+    :rtype: numpy.ndarray
     """
-    merged_line_indices_groups = config.get2dnparray('analyse_positions', 'merge_led_arrays', 'var')
-    merged_led_arrays_indices = []
-    for merged_line_indices in merged_line_indices_groups:
-        merged_led_array = []
-        for line_index in merged_line_indices:
-            merged_led_array.extend(led_arrays[line_index])
-        merged_led_arrays_indices.append(sorted(merged_led_array))
-    return merged_led_arrays_indices
+    if config['analyse_positions']['line_edge_indices'] == 'None':
+        config.in_line_edge_indices()
+        with open('config.ini', 'w') as configfile:
+            config.write(configfile)
+    line_edge_indices = config.get2dnparray('analyse_positions', 'line_edge_indices')
+    # makes sure that line_edge_indices is a 2d list
+    if len(line_edge_indices.shape) == 1:
+        line_edge_indices = np.atleast_2d(line_edge_indices)
+    return line_edge_indices
+
+
+def _get_indices_of_ignored_leds(config: ConfigData) -> np.ndarray:
+    """
+    Retrieve the indices of ignored LEDs based on the configuration data.
+
+    :param config: An instance of ConfigData containing the configuration data.
+    :type config: ConfigData
+    :return: A numpy array containing indices of ignored LEDs.
+    :rtype: numpy.ndarray
+    """
+    if config['analyse_positions']['ignore_indices'] != 'None':
+        ignore_indices = np.array([int(i) for i in config['analyse_positions']['ignore_indices'].split(' ')])
+    else:
+        ignore_indices = np.array([])
+    return ignore_indices
+
+
+def _remove_ignored_leds(all_led_lines_dict: dict, config: ConfigData) -> dict:
+    ignored_indices = _get_indices_of_ignored_leds(config)
+    print('Removing ignored LEDs...\nLED IDs:')
+    for led_line in all_led_lines_dict.values():
+        for led_id in ignored_indices:
+            try:
+                led_line.remove(led_id)
+                print(led_id, end=" ")
+            except ValueError:
+                pass
+    print("\n")
+    return all_led_lines_dict
 
 
 def generate_line_indices_files(line_indices: List[np.ndarray], filename_extension: str = '') -> None:
@@ -94,6 +200,7 @@ def reorder_led_indices(line_indices: List[np.ndarray]) -> List[List[int]]:
 
     return line_indices_reordered
 
+
 def reorder_search_areas(search_areas, line_indices_old) -> None:
     """
     Reorders search areas based on the new order of LED indices.
@@ -105,152 +212,15 @@ def reorder_search_areas(search_areas, line_indices_old) -> None:
     :return: A numpy array of the reordered search areas.
     :rtype: np.ndarray
     """
+
     def flatten_list(nested_list):
         flat_list = []
         for sublist in nested_list:
             for item in sublist:
                 flat_list.append(item)
         return flat_list
+
     old_led_indices = flatten_list(line_indices_old)
     search_areas_reordered = search_areas[flatten_list(line_indices_old)]
     search_areas_reordered[:, 0] = range(len(old_led_indices))
     return search_areas_reordered
-
-
-def _get_indices_of_outer_leds(config: ConfigData) -> np.ndarray:
-    """
-    Retrieve the indices of outer LEDs based on the configuration data.
-
-    :param config: An instance of ConfigData containing the configuration data.
-    :type config: ConfigData
-    :return: List containing indices of outer LEDs.
-    :rtype: numpy.ndarray
-    """
-    if config['analyse_positions']['line_edge_indices'] == 'None':
-        config.in_line_edge_indices()
-        with open('config.ini', 'w') as configfile:
-            config.write(configfile)
-    line_edge_indices = config.get2dnparray('analyse_positions', 'line_edge_indices')
-    # makes sure that line_edge_indices is a 2d list
-    if len(line_edge_indices.shape) == 1:
-        line_edge_indices = np.atleast_2d(line_edge_indices)
-    return line_edge_indices
-
-
-def _calc_dists_between_led_arrays_and_search_areas(line_edge_indices:np.ndarray, search_areas:np.ndarray) -> np.ndarray:
-    """
-    Calculate the distances between LED arrays and the search areas.
-
-    :param line_edge_indices: List of indices indicating edges of the line.
-    :type line_edge_indices: list
-    :param search_areas: A numpy array containing LED search areas.
-    :type search_areas: numpy.ndarray
-    :return: distances_led_arrays_search_areas: A 2D numpy array containing distances between LED arrays and search areas.
-    :rtype: numpy.ndarray
-    """
-    distances_led_arrays_search_areas = np.zeros((search_areas.shape[0], len(line_edge_indices)))
-
-    for line_edge_idx in range(len(line_edge_indices)):
-        i1 = line_edge_indices[line_edge_idx][0]
-        i2 = line_edge_indices[line_edge_idx][1]
-
-        corner1 = np.array(search_areas[i1, 1:])
-        corner2 = np.array(search_areas[i2, 1:])
-
-        d = _calc_dists_to_line_segment(search_areas[:, 1:], corner1, corner2)
-
-        distances_led_arrays_search_areas[:, line_edge_idx] = d
-    return distances_led_arrays_search_areas
-
-
-def _calc_dists_to_line_segment(points: np.ndarray, c1: np.ndarray, c2: np.ndarray) -> np.ndarray:
-    """
-    Calculate the distance from points to a line segment defined by two corners.
-
-    :param points: A numpy array containing coordinates of points.
-    :type points: numpy.ndarray
-    :param c1: Coordinates of the first corner of the line segment.
-    :type c1: numpy.ndarray
-    :param c2: Coordinates of the second corner of the line segment.
-    :type c2: numpy.ndarray
-    :return: A numpy array containing the distances from the points to the line segment.
-    :rtype: numpy.ndarray
-    """
-    d = np.zeros(points.shape[0])
-
-    for led_id in range(points.shape[0]):
-        led = points[led_id]
-
-        dist_led_c1 = np.linalg.norm(led - c1)
-        dist_led_c2 = np.linalg.norm(led - c2)
-        segment_len = np.linalg.norm(c2 - c1)
-
-        if np.all(c1 == led) or np.all(c2 == led):
-            d[led_id] = 0
-            continue
-
-        if all(c1 == c2):
-            d[led_id] = dist_led_c1
-            continue
-
-        led_on_wrong_side_of_c1 = np.arccos(np.dot((led - c1) / dist_led_c1, (c2 - c1) / segment_len)) > np.pi / 2
-        if led_on_wrong_side_of_c1:
-            d[led_id] = dist_led_c1
-            continue
-
-        led_on_wrong_side_of_c2 = np.arccos(np.dot((led - c2) / dist_led_c2, (c1 - c2) / segment_len)) > np.pi / 2
-        if led_on_wrong_side_of_c2:
-            d[led_id] = dist_led_c2
-            continue
-
-        d[led_id] = np.abs(np.cross(c1 - c2, c1 - led)) / segment_len
-    return d
-
-
-def _match_leds_to_arrays_with_min_dist(dists_led_arrays_search_areas: np.ndarray, edge_indices: np.ndarray, config: ConfigData, search_areas: np.ndarray) -> np.ndarray:
-    """
-    Match LEDs to LED arrays based on minimum distances.
-
-    :param dists_led_arrays_search_areas: A 2D numpy array containing distances between LED arrays and search areas.
-    :type dists_led_arrays_search_areas: numpy.ndarray
-    :param edge_indices: A numpy array containing the indices indicating edges of LED arrays.
-    :type edge_indices: numpy.ndarray
-    :param config: An instance of ConfigData containing the configuration data.
-    :type config: ConfigData
-    :param search_areas: A numpy array containing LED search areas.
-    :type search_areas: numpy.ndarray
-    :return: A 2D numpy array with matched LED arrays.
-    :rtype: numpy.ndarray
-    """
-    ignore_indices = _get_indices_of_ignored_leds(config)
-    # construct 2D list for LED indices sorted by line
-    led_arrays = []
-    for edge_idx in edge_indices:
-        led_arrays.append([])
-
-    for iled in range(search_areas.shape[0]):
-        if iled in ignore_indices:
-            continue
-
-        idx_nearest_array = np.argmin(dists_led_arrays_search_areas[iled, :])
-        led_arrays[idx_nearest_array].append(iled)
-    return led_arrays
-
-
-def _get_indices_of_ignored_leds(config: ConfigData) -> np.ndarray:
-    """
-    Retrieve the indices of ignored LEDs based on the configuration data.
-
-    :param config: An instance of ConfigData containing the configuration data.
-    :type config: ConfigData
-    :return: A numpy array containing indices of ignored LEDs.
-    :rtype: numpy.ndarray
-    """
-    if config['analyse_positions']['ignore_indices'] != 'None':
-        ignore_indices = np.array([int(i) for i in config['analyse_positions']['ignore_indices'].split(' ')])
-    else:
-        ignore_indices = np.array([])
-    return ignore_indices
-
-
-
