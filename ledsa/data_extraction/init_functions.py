@@ -40,20 +40,20 @@ def request_config_parameters(config: ConfigData) -> None:
             config['DEFAULT']['exif_time_infront_real_time'] == 'None':
         config.in_time_img()
         config.save()
+    if config['DEFAULT']['exif_time_infront_real_time'] == 'None':
+        config.in_time_diff_to_img_time()
+        config.save()
     if config['find_search_areas']['reference_img'] == 'None':
         config.in_ref_img()
         config.save()
     if config['find_search_areas']['max_num_of_leds'] == 'None':
         config.in_max_num_of_leds()
         config.save()
-    if config['DEFAULT']['exif_time_infront_real_time'] == 'None':
-        config.in_time_diff_to_img_time()
+    if config['DEFAULT']['first_img_num'] == 'None':
+        config.in_first_img_num_experiment()
         config.save()
-    if config['DEFAULT']['first_img'] == 'None':
-        config.in_first_img_experiment()
-        config.save()
-    if config['DEFAULT']['last_img'] == 'None':
-        config.in_last_img_experiment()
+    if config['DEFAULT']['last_img_num'] == 'None':
+        config.in_last_img_num_experiment()
         config.save()
     if config['analyse_positions']['num_of_arrays'] == 'None':
         config.in_num_of_arrays()
@@ -180,18 +180,18 @@ def _build_img_data_string(build_type: str, config: ConfigData) -> str:
     """
     img_data = ''
     img_idx = 1
-    if config['analyse_photo']['first_img'] == 'None':
-        config.in_first_img_analysis()
+    if config['analyse_photo']['first_img_num'] == 'None':
+        config.in_first_img_num_analysis()
         config.save()
-    first_img = config.getint(build_type, 'first_img')
+    first_img_num = config.getint(build_type, 'first_img_num')
 
-    if config['analyse_photo']['last_img'] == 'None':
-        config.in_last_img_analysis()
+    if config['analyse_photo']['last_img_num'] == 'None':
+        config.in_last_img_num_analysis()
         config.save()
-    last_img = config.getint(build_type, 'last_img')
+    last_img_num = config.getint(build_type, 'last_img_num')
 
     img_increment = config.getint(build_type, 'skip_imgs') + 1 if build_type == 'analyse_photo' else 1
-    img_number_list = _find_img_number_list(first_img, last_img, img_increment)
+    img_number_list = _find_img_number_list(first_img_num, last_img_num, img_increment)
     for img_number in img_number_list:
         tag = 'EXIF DateTimeOriginal'
         experiment_time, time = _calc_experiment_and_real_time(build_type, config, tag, img_number)
