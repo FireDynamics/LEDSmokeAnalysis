@@ -22,7 +22,7 @@ Start Step One
     [Arguments]  ${use_config}=True
     Log     Starting python -m ledsa -s1
     ${leds} =   Execute Ledsa S1    ${use_config}
-    [Return]  ${leds}
+    RETURN  ${leds}
 
 Hundred leds should be found and the pdf created
     [Arguments]  ${leds}
