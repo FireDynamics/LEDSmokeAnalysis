@@ -264,7 +264,7 @@ def create_binary_data(channel: int) -> None:
     fit_params['max_col_val'] = fit_params['max_col_val'].astype(int)
     fit_params['sum_col_val'] = fit_params['sum_col_val'].astype(int)
     out_file_path = os.path.join('analysis', f'channel{channel}', 'all_parameters.h5')
-    fit_params.to_hdf(out_file_path, 'table', append=True)
+    fit_params.to_hdf(out_file_path, key='channel_values', format='table', append=True)
 
 def _get_column_names(channel: int) -> List[str]:
     """
