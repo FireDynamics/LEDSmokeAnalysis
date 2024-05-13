@@ -128,10 +128,10 @@ def read_hdf(channel: int, path='.') -> pd.DataFrame:
     """
     file_path = os.path.join(path, 'analysis', f'channel{channel}','all_parameters.h5',)
     try:
-        fit_parameters = pd.read_hdf(file_path, 'table' )
+        fit_parameters = pd.read_hdf(file_path, key='channel_values')
     except FileNotFoundError:
         create_binary_data(channel)
-        fit_parameters = pd.read_hdf(file_path, 'table')
+        fit_parameters = pd.read_hdf(file_path, key='channel_values')
     fit_parameters.set_index(['img_id', 'led_id'], inplace=True)
     return fit_parameters
 
@@ -151,10 +151,10 @@ def read_hdf_avg(channel: int, path='.') -> pd.DataFrame:
     """
     file_path = os.path.join(path, 'analysis', f'channel{channel}','all_parameters.h5',)
     try:
-        fit_parameters = pd.read_hdf(file_path, 'table')
+        fit_parameters = pd.read_hdf(file_path, key='channel_values')
     except FileNotFoundError:
         average_all_fitpar(channel)
-        fit_parameters = pd.read_hdf(file_path, 'table')
+        fit_parameters = pd.read_hdf(file_path, key='channel_values')
     fit_parameters.set_index(['img_id', 'led_id'], inplace=True)
     return fit_parameters
 
@@ -190,7 +190,7 @@ def average_all_fitpar(channel, n_summarize=2, num_ref_imgs=10) -> None:  # TODO
         pass
     all_fitpar.reset_index(inplace=True)
     file_path = os.path.join('analysis', f'channel{channel}', 'all_parameters_avg.h5'),
-    all_fitpar.to_hdf(file_path, 'table', append=True)
+    all_fitpar.to_hdf(file_path, key='channel_values', format='table', append=True)
 
 
 def extend_hdf(channel: int, quantity: str, values: np.ndarray) -> None:
@@ -205,9 +205,9 @@ def extend_hdf(channel: int, quantity: str, values: np.ndarray) -> None:
     :type values:  np.ndarray
     """
     file = os.path.join('analysis', f'channel{channel}', 'all_parameters.h5')
-    fit_parameters = pd.read_hdf(file, 'table')
+    fit_parameters = pd.read_hdf(file, key='channel_values')
     fit_parameters[quantity] = values
-    fit_parameters.to_hdf(file, 'table')
+    fit_parameters.to_hdf(file, key='channel_values', format='table')
 
 
 def create_binary_data(channel: int) -> None:
