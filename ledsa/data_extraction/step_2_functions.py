@@ -221,6 +221,8 @@ def reorder_search_areas(search_areas, line_indices_old) -> None:
         return flat_list
 
     old_led_indices = flatten_list(line_indices_old)
+    # TODO: Check whats right here!
     search_areas_reordered = search_areas[flatten_list(line_indices_old)]
-    search_areas_reordered[:, 0] = range(len(old_led_indices))
-    return search_areas_reordered
+    search_areas_reordered[:, 0] = range(len(old_led_indices)-1, -1, -1)
+    # search_areas_reordered[:, 0] = range(len(old_led_indices))
+    return np.flip(search_areas_reordered, axis=0)
