@@ -2,7 +2,9 @@ import argparse
 import os
 
 from ledsa.tools.photo_renamer import set_working_dir, get_files, rename_images_by_date
-from ledsa.analysis import ExtinctionCoefficientsNumeric as ECN
+from ledsa.analysis import ExtinctionCoefficientsNonLinear as ECN
+from ledsa.analysis import ExtinctionCoefficientsLinear as ECA
+
 from ledsa.analysis.ConfigDataAnalysis import ConfigDataAnalysis
 from ledsa.analysis.Experiment import Experiment
 from ledsa.analysis.ExperimentData import ExperimentData
@@ -166,18 +168,39 @@ def extionction_coefficient_calculation(args) -> None:
     """
     ex_data = ExperimentData()
     ex_data.request_config_parameters()
+
+    # Determine which solver to use based on config
+    solver = ex_data.solver.lower()
+
+    # Warn if linear solver is used but nonlinear parameters are provided
+    if solver == 'linear':
+        print("Using linear solver for extinction coefficient calculation.")
+        print("Note: weighting_preference and weighting_curvature parameters are ignored when using the linear solver.")
+    elif solver == 'nonlinear' or solver == 'numeric':
+        print("Using nonlinear solver for extinction coefficient calculation.")
+        solver = 'nonlinear'  # Normalize the name
+    else:
+        print(f"Warning: Unknown solver type '{solver}'. Defaulting to linear solver.")
+        print("Note: weighting_preference and weighting_curvature parameters are ignored when using the linear solver.")
+        solver = 'linear'
+
     for array in ex_data.led_arrays:
         for channel in ex_data.channels:
             out_file = os.path.join(os.getcwd(), '../analysis', 'AbsorptionCoefficients',
-                                    f'absorption_coefs_numeric_channel_{channel}_{ex_data.reference_property}_led_array_{array}.csv')
+                                    f'absorption_coefs_{solver}_channel_{channel}_{ex_data.reference_property}_led_array_{array}.csv')
             if not os.path.exists(out_file):
                 ex = Experiment(layers=ex_data.layers, led_array=array, camera=ex_data.camera, channel=channel,
                                 merge_led_arrays=ex_data.merge_led_arrays)
-                eca = ECN.ExtinctionCoefficientsNumeric(ex, reference_property=ex_data.reference_property,
-                                                        num_ref_imgs=ex_data.num_ref_images,
-                                                        weighting_curvature=ex_data.weighting_curvature,
-                                                        weighting_preference=ex_data.weighting_preference,
-                                                        num_iterations=ex_data.num_iterations)
+
+                if solver == 'nonlinear':
+                    eca = ECN.ExtinctionCoefficientsNonLinear(ex, reference_property=ex_data.reference_property,
+                                                           num_ref_imgs=ex_data.num_ref_images,
+                                                           weighting_curvature=ex_data.weighting_curvature,
+                                                           weighting_preference=ex_data.weighting_preference,
+                                                           num_iterations=ex_data.num_iterations)
+                else:  # linear solver
+                    eca = ECA.ExtinctionCoefficientsLinear(ex, reference_property=ex_data.reference_property,
+                                                         num_ref_imgs=ex_data.num_ref_images)
                 if ex_data.n_cpus > 1:
                     print(f"Calculation of extinction coefficients runs on {ex_data.n_cpus} cpus!")
                     eca.calc_and_set_coefficients_mp(ex_data.n_cpus)

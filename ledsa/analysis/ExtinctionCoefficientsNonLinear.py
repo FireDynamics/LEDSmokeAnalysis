@@ -24,7 +24,7 @@ class ExtinctionCoefficientsNonLinear(ExtinctionCoefficients):
     :vartype weighting_curvature: float
     :ivar num_iterations: Maximum number of iterations of the numerical solver.
     :vartype num_iterations: int
-    :ivar solver_type: Type of solver (linear or nonlinear).
+    :ivar solver: Type of solver (linear or nonlinear).
     :vartype type: str
     """
     def __init__(self, experiment=Experiment(layers=Layers(20, 1.0, 3.35), camera=Camera(pos_x=4.4, pos_y=2, pos_z=2.3),
@@ -53,7 +53,7 @@ class ExtinctionCoefficientsNonLinear(ExtinctionCoefficients):
         self.weighting_preference = weighting_preference
         self.weighting_curvature = weighting_curvature
         self.num_iterations = num_iterations
-        self.solver_type = 'nonlinear'
+        self.solver = 'nonlinear'
 
     def calc_coefficients_of_img(self, rel_intensities: np.ndarray) -> np.ndarray:
         """

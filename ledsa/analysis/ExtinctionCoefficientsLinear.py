@@ -16,8 +16,8 @@ class ExtinctionCoefficientsLinear(ExtinctionCoefficients):
     efficiently. A Tikhonov regularization is added via a finite-difference operator
     to enforce smoothness in the solution.
 
-    :ivar solver_type: Type of solver (linear or nonlinear).
-    :vartype solver_type: str
+    :ivar solver: Type of solver (linear or nonlinear).
+    :vartype solver: str
     """
 
     def __init__(self, experiment=Experiment(layers=Layers(20, 1.0, 3.35),
@@ -36,7 +36,7 @@ class ExtinctionCoefficientsLinear(ExtinctionCoefficients):
         :type average_images: bool
         """
         super().__init__(experiment, reference_property, num_ref_imgs, average_images)
-        self.solver_type = 'linear'
+        self.solver = 'linear'
 
     def calc_coefficients_of_img(self, rel_intensities: np.ndarray) -> np.ndarray:
         """

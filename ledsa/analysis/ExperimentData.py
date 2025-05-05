@@ -53,6 +53,7 @@ class ExperimentData:
         self.num_ref_images = None
         self.reference_property = None
         self.merge_led_arrays = None
+        self.solver = None
         self.load_config_parameters()  # Todo: Does that belong here?
 
     def load_config_parameters(self) -> None:
@@ -68,6 +69,7 @@ class ExperimentData:
         self.weighting_curvature = float(config_analysis['DEFAULT']['weighting_curvature'])
         self.num_iterations = int(config_analysis['DEFAULT']['num_iterations'])
         self.reference_property = config_analysis['DEFAULT']['reference_property']
+        self.solver = config_analysis['DEFAULT']['solver']
 
         self.led_arrays = config_analysis.get_list_of_values('model_parameters', 'led_arrays')
         if self.led_arrays is None:
