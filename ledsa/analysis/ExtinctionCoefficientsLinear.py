@@ -15,23 +15,28 @@ class ExtinctionCoefficientsLinear(ExtinctionCoefficients):
     the problem is recast as a linear least squares system that can be solved
     efficiently. A Tikhonov regularization is added via a finite-difference operator
     to enforce smoothness in the solution.
+
+    :ivar solver_type: Type of solver (linear or nonlinear).
+    :vartype solver_type: str
     """
 
     def __init__(self, experiment=Experiment(layers=Layers(20, 1.0, 3.35),
                                              camera=Camera(pos_x=4.4, pos_y=2, pos_z=2.3),
-                                             led_array=3, channel=0), reference_property='sum_col_val', num_ref_imgs=10, average_images=False, weighting_curvature=1e-6):
+                                             led_array=3, channel=0), reference_property='sum_col_val', num_ref_imgs=10, average_images=False):
         """
         Initialize the ExtinctionCoefficientsLinear object.
 
         :param experiment: Object representing the experimental setup.
+        :type experiment: Experiment
         :param reference_property: Reference property to be analyzed.
+        :type reference_property: str
         :param num_ref_imgs: Number of reference images.
+        :type num_ref_imgs: int
         :param average_images: Flag to determine if intensities are computed as an average from consecutive images.
-        :param weighting_curvature: Regularization parameter for the smoothness of the solution.
+        :type average_images: bool
         """
         super().__init__(experiment, reference_property, num_ref_imgs, average_images)
-        self.weighting_curvature = weighting_curvature
-        self.type = 'numeric'  # Type identifier for the method
+        self.solver_type = 'linear'
 
     def calc_coefficients_of_img(self, rel_intensities: np.ndarray) -> np.ndarray:
         """
@@ -40,7 +45,9 @@ class ExtinctionCoefficientsLinear(ExtinctionCoefficients):
         non-negative least squares with Tikhonov regularization.
 
         :param rel_intensities: Array of relative (normalized) LED intensities (I_e/I_0).
+        :type rel_intensities: np.ndarray
         :return: Array of the computed extinction coefficients (sigmas).
+        :rtype: np.ndarray
         """
         # Avoid log(0) by clipping intensities to a small positive value
         eps = 1e-10

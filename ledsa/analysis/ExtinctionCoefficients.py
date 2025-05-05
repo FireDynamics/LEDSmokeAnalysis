@@ -30,7 +30,7 @@ class ExtinctionCoefficients(ABC):
     :vartype cc_matrix: np.ndarray or None
     :ivar average_images: Flag to determine if intensities are computed as an average from two consecutive images.
     :vartype average_images: bool
-    :ivar type: Indication whether the calculation is to be carried out numerically or analytically.
+    :ivar solver_type: Indication whether the calculation is to be carried out numerically or analytically.
     :vartype type: str
     """
     def __init__(self, experiment=Experiment(layers=Layers(10, 1.0, 3.35), camera=Camera(pos_x=4.4, pos_y=2, pos_z=2.3),
@@ -57,7 +57,7 @@ class ExtinctionCoefficients(ABC):
         self.cc_matrix = None
         self.average_images = average_images
 
-        self.type = None
+        self.solver_type = None
 
     def __str__(self):
         out = str(self.experiment) + \
@@ -66,7 +66,7 @@ class ExtinctionCoefficients(ABC):
 
     def calc_and_set_coefficients(self) -> None:
         """
-        Serial calculation of extinction coefficients fo every image
+        Serial calculation of extinction coefficients for every image
 
         """
         # Load and calculate all needed variables
@@ -76,8 +76,8 @@ class ExtinctionCoefficients(ABC):
             rel_intensities = single_img_array / self.ref_intensities
 
             # Calculate the extinction coefficients depending on child class used
-            kappas = self.calc_coefficients_of_img(rel_intensities)
-            self.coefficients_per_image_and_layer.append(kappas)
+            sigmas = self.calc_coefficients_of_img(rel_intensities)
+            self.coefficients_per_image_and_layer.append(sigmas)
 
     def calc_and_set_coefficients_mp(self, cores=4) -> None:
         """
@@ -134,7 +134,7 @@ class ExtinctionCoefficients(ABC):
         path = self.experiment.path / 'analysis' / 'AbsorptionCoefficients'
         if not path.exists():
             path.mkdir(parents=True)
-        path = path / f'absorption_coefs_{self.type}_channel_{self.experiment.channel}_{self.reference_property}_led_array_{self.experiment.led_array}.csv'
+        path = path / f'absorption_coefs_{self.solver_type}_channel_{self.experiment.channel}_{self.reference_property}_led_array_{self.experiment.led_array}.csv'
         header = str(self)
         header += 'layer0'
         for i in range(self.experiment.layers.amount - 1):
