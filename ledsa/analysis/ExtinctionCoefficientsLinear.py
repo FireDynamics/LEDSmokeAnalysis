@@ -75,7 +75,7 @@ class ExtinctionCoefficientsLinear(ExtinctionCoefficients):
             L = np.eye(n_layers)
 
         # Set regularization parameter
-        lambda_reg = 1e1
+        lambda_reg = 1e-2
         sqrt_lambda = np.sqrt(lambda_reg)
 
         # Augment the system with regularization
@@ -88,4 +88,4 @@ class ExtinctionCoefficientsLinear(ExtinctionCoefficients):
         # Solve the non-negative least squares problem: min ||A_aug*x - b_aug||^2 subject to x >= 0
         sigmas, residuals = nnls(A_aug, b_aug)
 
-        return sigmas
+        return np.flip(sigmas)
