@@ -61,14 +61,12 @@ def run_data_extraction_arguments(args: argparse.Namespace) -> None:
     if args.red or args.green or args.blue or args.rgb and not args.step_3_fast:
         args.step_3 = True
 
-    if args.step_1 or args.step_2 or args.step_2_legacy:
+    if args.step_1 or args.step_2:
         de = DataExtractor(build_experiment_infos=False, channels=channels)
         if args.step_1:
             de.find_search_areas(de.config['find_search_areas']['reference_img'])
         if args.step_2:
             de.match_leds_to_led_arrays()
-        if args.step_2_legacy:
-            de.match_leds_to_led_arrays(legacy=True)
 
     if args.step_3:
         de = DataExtractor(build_experiment_infos=True, channels=channels)
