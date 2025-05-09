@@ -146,7 +146,7 @@ class DataExtractor:
     # ------------------------------------
     # """
 
-    def match_leds_to_led_arrays(self, legacy=False) -> None:
+    def match_leds_to_led_arrays(self) -> None:
         """
         Analyze which LEDs belong to which LED line and save this mapping.
         """
