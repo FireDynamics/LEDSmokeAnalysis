@@ -24,6 +24,10 @@ class LedsaATestLibrary:
 
     @keyword
     def create_test_data(self, num_of_leds=100, num_of_layers=20, bottom_border=0, top_border=3):
+        # Create test_data directory if it doesn't exist
+        if not os.path.exists('test_data'):
+            os.makedirs('test_data')
+
         camera = Camera(0, 0, 2)
         layers = Layers(num_of_layers, bottom_border, top_border)
         extinction_coefficients_set = []
@@ -49,7 +53,7 @@ class LedsaATestLibrary:
 
         for image_id, extinction_coefficients in enumerate(extinction_coefficients_set):
             ex = TestExperiment(camera=camera, layers=layers)
-            np.savetxt(f'test_extinction_coefficients_input_{image_id + 1}.csv', extinction_coefficients)
+            np.savetxt(os.path.join('test_data', f'test_extinction_coefficients_input_{image_id + 1}.csv'), extinction_coefficients)
             for z in np.linspace(bottom_border + 0.05, top_border - 0.05, num_of_leds):
                 ex.add_led(0, 4, z)
             ex.set_extinction_coefficients(extinction_coefficients)
@@ -62,14 +66,20 @@ class LedsaATestLibrary:
             np.loadtxt(os.path.join('analysis', 'AbsorptionCoefficients', filename), skiprows=5, delimiter=','))
         for image_id in range(first, last + 1):
             extinction_coefficients_input = np.flip(
-                np.loadtxt(f'test_extinction_coefficients_input_{image_id}.csv', delimiter=','))
+                np.loadtxt(os.path.join('test_data', f'test_extinction_coefficients_input_{image_id}.csv'), delimiter=','))
             num_of_layers = extinction_coefficients_input.shape[0]
-            plt.plot(extinction_coefficients_input, range(num_of_layers), '.-')
-            plt.plot(extinction_coefficients_computed[image_id - 1, :], range(num_of_layers), '.-')
-            plt.xlim(-0.1, 0.8)
+            plt.plot(extinction_coefficients_input, range(num_of_layers), '.-', label='Input')
+            plt.plot(extinction_coefficients_computed[image_id - 1, :], range(num_of_layers), '.-', label='Computed')
+            plt.xlabel('Extinction coefficient /~ $m^{-1}$')
+            plt.ylabel('Layer / m')
+            plt.title(f'Input vs Computed Extinction Coefficients - Image {image_id}')
+            plt.xlim(-0.1, 0.6)
             plt.ylim(num_of_layers, 0)
             plt.grid(linestyle='--', alpha=0.5)
-            plt.savefig(f'image_Id_{image_id}_{solver}.pdf')
+            plt.legend()
+            if not os.path.exists('results'):
+                os.makedirs('results')
+            plt.savefig(os.path.join('results', f'image_Id_{image_id}_{solver}.pdf'))
             plt.close()
 
     @keyword
@@ -78,14 +88,18 @@ class LedsaATestLibrary:
         extinction_coefficients_computed = (
             np.loadtxt(os.path.join('analysis', 'AbsorptionCoefficients', filename), skiprows=5, delimiter=','))
         extinction_coefficients_input = np.flip(
-            np.loadtxt(f'test_extinction_coefficients_input_{image_id}.csv', delimiter=','))
+            np.loadtxt(os.path.join('test_data', f'test_extinction_coefficients_input_{image_id}.csv'), delimiter=','))
         rmse = np.sqrt(
             np.mean((extinction_coefficients_input - extinction_coefficients_computed[int(image_id) - 1, :]) ** 2))
         return rmse
 
     @keyword
     def create_and_fill_config(self, first=1, last=4):
-        conf = ConfigData(load_config_file=False, img_directory='./', window_radius=10, pixel_value_percentile=99.875,
+        # Create test_data directory if it doesn't exist
+        if not os.path.exists('test_data'):
+            os.makedirs('test_data')
+
+        conf = ConfigData(load_config_file=False, img_directory='test_data/', window_radius=10, pixel_value_percentile=99.875,
                           channel=0, max_num_of_leds=1000, num_of_arrays=1, num_of_cores=1, date=None,
                           start_time=None, time_img=None, time_ref_img_time=None, time_diff_to_image_time=0,
                           img_name_string='test_img_{}.jpg', img_number_overflow=None, first_img_num_experiment=first,
@@ -116,7 +130,7 @@ class LedsaATestLibrary:
             out = self.execute_ledsa('-s1')
         else:
             self.execute_ledsa('--config')
-            inp = b'./\ntest_img_1.jpg\n12:00:00\ntest_img_1.jpg\n1000\n1\n1\n4'
+            inp = b'test_data/\ntest_img_1.jpg\n12:00:00\ntest_img_1.jpg\n1000\n1\n1\n4'
             out = self.execute_ledsa('-s1', inp)
             check_error_msg(out)
         return out[0].decode('ascii')[-9:-6]
@@ -140,6 +154,10 @@ def create_test_image(image_id, experiment):
     the third has 50%, 70% and 80% transmission on the top, middle and bottom LEDs.
     :return: None
     """
+    # Create test_data directory if it doesn't exist
+    if not os.path.exists('test_data'):
+        os.makedirs('test_data')
+
     num_of_leds = len(experiment.leds)
     transmissions = experiment.calc_all_led_transmissions()
     img_array = create_img_array(num_of_leds, transmissions)
@@ -150,7 +168,7 @@ def create_test_image(image_id, experiment):
     }
     exif_dict = {'Exif': exif_ifd}
     exif_bytes = piexif.dump(exif_dict)
-    img.save(f'test_img_{image_id + 1}.jpg', exif=exif_bytes)
+    img.save(os.path.join('test_data', f'test_img_{image_id + 1}.jpg'), exif=exif_bytes)
 
 
 def create_img_array(num_of_leds, transmissions):
