@@ -3,6 +3,7 @@ from subprocess import Popen, PIPE
 
 import matplotlib.pyplot as plt
 import numpy as np
+from numpy.random import normal
 import piexif
 from PIL import Image
 from robot.api.deco import keyword, library
@@ -41,6 +42,8 @@ class LedsaATestLibrary:
         def extco_quad(z):
             return 0.0435 * z ** 2 + normal(0, 0.01, z.shape)
 
+        extinction_coefficients_set.append(extco_const_initial(z_range))
+        extinction_coefficients_set.append(extco_const(z_range))
         extinction_coefficients_set.append(extco_lin(z_range))
         extinction_coefficients_set.append(extco_quad(z_range))
 
@@ -66,7 +69,7 @@ class LedsaATestLibrary:
             plt.xlim(-0.1, 0.8)
             plt.ylim(num_of_layers, 0)
             plt.grid(linestyle='--', alpha=0.5)
-            plt.savefig(f'image_Id_{image_id}.pdf')
+            plt.savefig(f'image_Id_{image_id}_{solver}.pdf')
             plt.close()
 
     @keyword
