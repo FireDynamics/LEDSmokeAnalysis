@@ -63,7 +63,7 @@ class LedsaATestLibrary:
     def plot_input_vs_computed_extinction_coefficients(self, solver, first=1, last=4, led_array=0, channel=0):
         filename = f'absorption_coefs_{solver}_channel_{channel}_sum_col_val_led_array_{led_array}.csv'
         extinction_coefficients_computed = (
-            np.loadtxt(os.path.join('analysis', 'AbsorptionCoefficients', filename), skiprows=5, delimiter=','))
+            np.loadtxt(os.path.join('analysis', 'extinction_coefficients', solver, filename), skiprows=5, delimiter=','))
         for image_id in range(first, last + 1):
             extinction_coefficients_input = np.flip(
                 np.loadtxt(os.path.join('test_data', f'test_extinction_coefficients_input_{image_id}.csv'), delimiter=','))

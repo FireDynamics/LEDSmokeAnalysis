@@ -127,7 +127,7 @@ class ExtinctionCoefficients(ABC):
         Save the computed extinction coefficients to a file.
 
         """
-        path = self.experiment.path / 'analysis' / 'AbsorptionCoefficients'
+        path = self.experiment.path / 'analysis' / 'extinction_coefficients' / self.solver
         if not path.exists():
             path.mkdir(parents=True)
         path = path / f'absorption_coefs_{self.solver}_channel_{self.experiment.channel}_{self.reference_property}_led_array_{self.experiment.led_array}.csv'
