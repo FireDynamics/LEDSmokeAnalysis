@@ -126,12 +126,19 @@ def read_hdf(channel: int, path='.') -> pd.DataFrame:
 
     :raises FileNotFoundError: If the HDF file is not found.
     """
-    file_path = os.path.join(path, 'analysis', f'channel{channel}','all_parameters.h5',)
+    file_path = os.path.join(path, 'analysis', f'channel{channel}', 'all_parameters.h5')
     try:
+        # Try reading with 'channel_values' key first
         fit_parameters = pd.read_hdf(file_path, key='channel_values')
-    except FileNotFoundError:
-        create_binary_data(channel)
-        fit_parameters = pd.read_hdf(file_path, key='channel_values')
+    except (FileNotFoundError, KeyError):
+        try:
+            # Try reading with '/table' key as fallback
+            fit_parameters = pd.read_hdf(file_path, key='/table')
+        except (FileNotFoundError, KeyError):
+            # If file doesn't exist or neither key works, create new binary data
+            create_binary_data(channel)
+            fit_parameters = pd.read_hdf(file_path, key='channel_values')
+    
     fit_parameters.set_index(['img_id', 'led_id'], inplace=True)
     return fit_parameters
 
