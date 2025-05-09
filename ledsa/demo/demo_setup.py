@@ -82,12 +82,11 @@ def _create_config_files(path):
     config_analysis = ConfigDataAnalysis(
         load_config_file=False,
         num_of_layers=20,
-        led_arrays=3,
         num_ref_images=10,
         num_of_cores=4,
         reference_property='sum_col_val',
         average_images=False,
-        solver='numeric',
+        solver='linear',
         weighting_preference=-6e-3,
         weighting_curvature=1e-6,
         num_iterations=200
@@ -96,6 +95,8 @@ def _create_config_files(path):
     config_analysis.set('DEFAULT', '   camera_channels', '0 1 2')
 
     config_analysis.set('model_parameters', '   domain_bounds', '0.99 3.35')
+    config_analysis.set('model_parameters', '   led_arrays', '0 1 2 3 4 5 6')
+
     config_analysis.save()
 
     os.chdir(owd)
