@@ -87,26 +87,20 @@ def _calculate_3d_coordinates() -> np.ndarray:
     print("Loaded coordinates from config.ini:")
     print(led_coordinates)
 
-    if conf['analyse_positions']['line_edge_indices'] == 'None':
-        conf.in_line_edge_indices()
-        conf.save()
-    edge_leds = conf.get2dnparray('analyse_positions', 'line_edge_indices')
-    print("Loaded line edge indices from config.ini:")
-    print(edge_leds)
-    if edge_leds.shape[0] != led_coordinates.shape[0]:
-        exit("The number of coordinate sets does not match the number of LED line edge indices!")
     # loop over the led-arrays
     for ledarray in range(int(conf['analyse_positions']['num_of_arrays'])):
         file_path = os.path.join('analysis', f'line_indices_{ledarray:03d}.csv')
         line_indices = read_table(file_path)
 
         # get the edge leds of an array to calculate from them the conversion matrix for this array
-        idx = np.where(search_areas[:, 0] == edge_leds[ledarray, 0])[0]
+        # Use the first LED in the line_indices file as the top edge LED
+        idx = np.where(search_areas[:, 0] == line_indices[-1])[0]
         pos = led_coordinates[ledarray][0:3]
         pix_pos = np.array([search_areas[idx, 1], search_areas[idx, 2]])
         top_led = LED(line_indices[0], pos, pix_pos)
 
-        idx = np.where(search_areas[:, 0] == edge_leds[ledarray, 1])[0]
+        # Use the last LED in the line_indices file as the bottom edge LED
+        idx = np.where(search_areas[:, 0] == line_indices[0])[0]
         pos = led_coordinates[ledarray, 3:6]
         pix_pos = np.array([search_areas[idx, 1], search_areas[idx, 2]])
         bot_led = LED(line_indices[-1], pos, pix_pos)
