@@ -8,7 +8,8 @@ from ledsa.analysis import ExtinctionCoefficientsLinear as ECA
 from ledsa.analysis.ConfigDataAnalysis import ConfigDataAnalysis
 from ledsa.analysis.Experiment import Experiment
 from ledsa.analysis.ExperimentData import ExperimentData
-# from ledsa.analysis.__main__ import apply_cc_on_ref_property
+from ledsa.analysis.data_preparation import apply_color_correction
+import numpy as np
 
 from ledsa.core.ConfigData import ConfigData
 from ledsa.data_extraction.DataExtractor import DataExtractor
@@ -130,6 +131,23 @@ def run_demo_arguments(args: argparse.Namespace, parser: argparse.ArgumentParser
             run_demo()
 
 
+def apply_cc_on_ref_property(ex_data, cc_channels=None) -> None:
+    """
+    Apply color correction on the reference property and save it in the binary as column {ref_property}_cc.
+
+    :param ex_data: Experiment data containing the reference property
+    :type ex_data: ExperimentData
+    :param cc_channels: Channels to apply color correction on, defaults to None
+    :type cc_channels: list, optional
+    """
+    try:
+        cc_matrix = np.genfromtxt('mean_all_cc_matrix_integral.csv', delimiter=',')
+    except FileNotFoundError:
+        print('File: mean_all_cc_matrix_integral.csv containing the color correction matrix not found')
+        exit(1)
+    apply_color_correction(cc_matrix, on=ex_data.reference_property, channels=cc_channels)
+
+
 def run_analysis_arguments(args) -> None:
     """
     Handle the configuration and preprocessing based on the command line arguments.
@@ -142,7 +160,7 @@ def run_analysis_arguments(args) -> None:
 
     if args.cc:
         ex_data = ExperimentData()
-        apply_cc_on_ref_property(ex_data)
+        apply_cc_on_ref_property(ex_data, args.cc_channels)
 
 
 def run_analysis_arguments_with_extinction_coefficient(args) -> None:
