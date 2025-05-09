@@ -33,9 +33,7 @@ class ExtinctionCoefficients(ABC):
     :ivar solver: Indication whether the calculation is to be carried out numerically or analytically.
     :vartype type: str
     """
-    def __init__(self, experiment=Experiment(layers=Layers(10, 1.0, 3.35), camera=Camera(pos_x=4.4, pos_y=2, pos_z=2.3),
-                                             led_array=3, channel=0),
-                 reference_property='sum_col_val', num_ref_imgs=10, average_images=False):
+    def __init__(self, experiment, reference_property='sum_col_val', num_ref_imgs=10, average_images=False):
         """
         :param experiment: Object representing the experimental setup.
         :type experiment: Experiment
@@ -50,13 +48,11 @@ class ExtinctionCoefficients(ABC):
         self.experiment = experiment
         self.reference_property = reference_property
         self.num_ref_imgs = num_ref_imgs
-
         self.calculated_img_data = pd.DataFrame()
         self.distances_per_led_and_layer = np.array([])
         self.ref_intensities = np.array([])
         self.cc_matrix = None
         self.average_images = average_images
-
         self.solver = None
 
     def __str__(self):

@@ -27,9 +27,7 @@ class ExtinctionCoefficientsNonLinear(ExtinctionCoefficients):
     :ivar solver: Type of solver (linear or nonlinear).
     :vartype type: str
     """
-    def __init__(self, experiment=Experiment(layers=Layers(20, 1.0, 3.35), camera=Camera(pos_x=4.4, pos_y=2, pos_z=2.3),
-                                             led_array=3, channel=0),
-                 reference_property='sum_col_val', num_ref_imgs=10, average_images=False, weighting_curvature=1e-6,
+    def __init__(self, experiment, reference_property='sum_col_val', num_ref_imgs=10, average_images=False, weighting_curvature=1e-6,
                  weighting_preference=-6e-3, num_iterations=200):
         """
         :param experiment: Object representing the experimental setup.

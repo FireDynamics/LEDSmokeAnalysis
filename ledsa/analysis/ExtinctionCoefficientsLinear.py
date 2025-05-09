@@ -20,9 +20,7 @@ class ExtinctionCoefficientsLinear(ExtinctionCoefficients):
     :vartype solver: str
     """
 
-    def __init__(self, experiment=Experiment(layers=Layers(20, 1.0, 3.35),
-                                             camera=Camera(pos_x=4.4, pos_y=2, pos_z=2.3),
-                                             led_array=3, channel=0), reference_property='sum_col_val', num_ref_imgs=10, average_images=False):
+    def __init__(self, experiment, reference_property='sum_col_val', num_ref_imgs=10, average_images=False):
         """
         Initialize the ExtinctionCoefficientsLinear object.
 
