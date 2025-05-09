@@ -99,7 +99,7 @@ class ExtinctionCoefficients(ABC):
 
     def set_all_member_variables(self) -> None:
         """
-        Calculate  distance traveled per layer, for every led, load image data from binary file and calculate reference intensities for each LED
+        Calculate distance traveled per layer, for every led, load image data from binary file and calculate reference intensities for each LED
 
         """
         camera = 0

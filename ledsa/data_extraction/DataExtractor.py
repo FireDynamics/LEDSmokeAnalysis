@@ -10,7 +10,6 @@ import ledsa.core.image_handling
 import ledsa.core.image_reading
 import ledsa.data_extraction.step_1_functions
 import ledsa.data_extraction.step_2_functions
-import ledsa.data_extraction.step_2_functions_legacy
 import ledsa.data_extraction.step_3_functions
 from ledsa.core.ConfigData import ConfigData
 from ledsa.data_extraction import init_functions as led
@@ -156,12 +155,8 @@ class DataExtractor:
         else:
             if self.search_areas is None:
                 self.load_search_areas()
-            if legacy:
-                self.line_indices = ledsa.data_extraction.step_2_functions_legacy.match_leds_to_led_arrays(
-                    self.search_areas, self.config)
-            else:
-                self.line_indices = ledsa.data_extraction.step_2_functions.match_leds_to_led_arrays(self.search_areas,
-                                                                                                self.config)
+            self.line_indices = ledsa.data_extraction.step_2_functions.match_leds_to_led_arrays(self.search_areas,
+                                                                                            self.config)
             self.search_areas = ledsa.data_extraction.step_2_functions.reorder_search_areas(self.search_areas,
                                                                                             self.line_indices)
             self.write_search_areas(reorder_leds=True)
