@@ -25,18 +25,21 @@ class LedsaATestLibrary:
     def create_test_data(self, num_of_leds=100, num_of_layers=20, bottom_border=0, top_border=3):
         camera = Camera(0, 0, 2)
         layers = Layers(num_of_layers, bottom_border, top_border)
-
         extinction_coefficients_set = []
-        extinction_coefficients_set.append(np.zeros(num_of_layers))
-        extinction_coefficients_set.append(0.2 * np.ones(num_of_layers))
 
         z_range = np.linspace(bottom_border, top_border, num_of_layers)
 
+        def extco_const_initial(z):
+            return np.zeros(z.shape)
+
+        def extco_const(z):
+            return 0.2 + normal(0, 0.01, z.shape)
+
         def extco_lin(z):
-            return 0.15 * z
+            return 0.15 * z + normal(0, 0.01, z.shape)
 
         def extco_quad(z):
-            return 0.0435 * z ** 2
+            return 0.0435 * z ** 2 + normal(0, 0.01, z.shape)
 
         extinction_coefficients_set.append(extco_lin(z_range))
         extinction_coefficients_set.append(extco_quad(z_range))
@@ -50,8 +53,8 @@ class LedsaATestLibrary:
             create_test_image(image_id, ex)
 
     @keyword
-    def plot_input_vs_computed_extinction_coefficients(self, first=1, last=4, led_array=0, channel=0):
-        filename = f'absorption_coefs_numeric_channel_{channel}_sum_col_val_led_array_{led_array}.csv'
+    def plot_input_vs_computed_extinction_coefficients(self, solver, first=1, last=4, led_array=0, channel=0):
+        filename = f'absorption_coefs_{solver}_channel_{channel}_sum_col_val_led_array_{led_array}.csv'
         extinction_coefficients_computed = (
             np.loadtxt(os.path.join('analysis', 'AbsorptionCoefficients', filename), skiprows=5, delimiter=','))
         for image_id in range(first, last + 1):
@@ -67,8 +70,8 @@ class LedsaATestLibrary:
             plt.close()
 
     @keyword
-    def check_input_vs_computed_extinction_coefficients(self, image_id, led_array=0, channel=0):
-        filename = f'absorption_coefs_numeric_channel_{channel}_sum_col_val_led_array_{led_array}.csv'
+    def check_input_vs_computed_extinction_coefficients(self, image_id, solver, led_array=0, channel=0):
+        filename = f'absorption_coefs_{solver}_channel_{channel}_sum_col_val_led_array_{led_array}.csv'
         extinction_coefficients_computed = (
             np.loadtxt(os.path.join('analysis', 'AbsorptionCoefficients', filename), skiprows=5, delimiter=','))
         extinction_coefficients_input = np.flip(
@@ -93,12 +96,12 @@ class LedsaATestLibrary:
         conf.save()
 
     @keyword
-    def create_and_fill_config_analysis(self):
+    def create_and_fill_config_analysis(self, solver):
         conf = ConfigDataAnalysis(load_config_file=False, camera_position=None, num_of_layers=20, domain_bounds=None,
                                   led_arrays=0, num_ref_images=1, camera_channels=0, num_of_cores=1,
                                   reference_property='sum_col_val',
-                                  average_images=False, solver='numeric', weighting_preference=-6e-3,
-                                  weighting_curvature=1e-6,
+                                  average_images=False, solver=solver, weighting_preference=-6e-4,
+                                  weighting_curvature=1e-7,
                                   num_iterations=2000)
         conf.set('experiment_geometry', '   camera_position', '0 0 2')
         conf.set('model_parameters', '   domain_bounds', '0 3')
