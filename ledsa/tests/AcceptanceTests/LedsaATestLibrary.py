@@ -87,7 +87,7 @@ class LedsaATestLibrary:
                           start_time=None, time_img=None, time_ref_img_time=None, time_diff_to_image_time=0,
                           img_name_string='test_img_{}.jpg', img_number_overflow=None, first_img_num_experiment=first,
                           last_img_num_experiment=last, reference_img='test_img_1.jpg', ignore_indices=None,
-                          line_edge_indices=None, reorder_led_indices=True, line_edge_coordinates=None,
+                          line_edge_indices=None, line_edge_coordinates=None,
                           first_img_num_analysis=first, last_img_num_analysis=last, skip_imgs=0, skip_leds=0,
                           merge_led_arrays=None)
         conf.set('analyse_positions', '   line_edge_indices', '49 0')
@@ -186,7 +186,3 @@ def check_error_msg(out):
         if out[1].decode('ascii') != '':
             BuiltIn().log(out[1].decode('ascii'), 'ERROR')
             exit()
-
-# ddd = LedsaATestLibrary()
-# ddd.create_test_data()
-# ddd.plot_input_vs_computed_extinction_coefficients()

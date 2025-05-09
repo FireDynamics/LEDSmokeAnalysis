@@ -15,7 +15,7 @@ class ConfigData(cp.ConfigParser):
                  max_num_of_leds=None, num_of_arrays=None, num_of_cores=1, date=None, start_time=None, time_img=None, time_ref_img_time=None,
                  time_diff_to_image_time=None, img_name_string=None, img_number_overflow=None,
                  first_img_num_experiment=None, last_img_num_experiment=None, reference_img=None, ignore_indices=None,
-                 line_edge_indices=None, reorder_led_indices=False, line_edge_coordinates=None, first_img_num_analysis=None,
+                 line_edge_indices=None, line_edge_coordinates=None, first_img_num_analysis=None,
                  last_img_num_analysis=None, skip_imgs=0, skip_leds=0, merge_led_arrays=None):  # TODO: merge LED arrays
         """
         :param load_config_file: Determines whether to load the config file on initialization. Defaults to True.
@@ -58,8 +58,6 @@ class ConfigData(cp.ConfigParser):
         :type ignore_indices: list[int] or None
         :param line_edge_indices: Pairs of LED IDs of the edges of each LED array. Defaults to None.
         :type line_edge_indices: list[int] or None
-        :param reorder_led_indices: States if LED IDs are reordered after matching to LED arrays. Defaults to False.
-        :type reorder_led_indices: bool
         :param line_edge_coordinates: Physical positions of each LED array edges given in line_edge_indices. Defaults to None.
         :type line_edge_coordinates: list[float] or None
         :param first_img_num_analysis: ID of the first image for analysis. Defaults to None. #TODO: rename analysis to extraction? Otherwise confusing
@@ -125,8 +123,6 @@ class ConfigData(cp.ConfigParser):
             self['analyse_positions']['   ignore_indices'] = str(ignore_indices)
             self.set('analyse_positions', '   # Pairs of led IDs of the edges of each led array')
             self['analyse_positions']['   line_edge_indices'] = str(line_edge_indices)
-            self.set('analyse_positions', '   # If True, LED IDs are reordered after assigning to the LED arrays')
-            self['analyse_positions']['   reorder_led_indices'] = str(reorder_led_indices)
             self.set('analyse_positions', '   # Six coordinates per led array representing the physical positions of '
                                           'the')
             self.set('analyse_positions', '   # edges given in line_edge_indices.')

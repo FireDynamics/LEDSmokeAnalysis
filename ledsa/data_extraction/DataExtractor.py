@@ -162,14 +162,13 @@ class DataExtractor:
             else:
                 self.line_indices = ledsa.data_extraction.step_2_functions.match_leds_to_led_arrays(self.search_areas,
                                                                                                 self.config)
-            if eval(self.config['analyse_positions']['reorder_led_indices']):
-                self.search_areas = ledsa.data_extraction.step_2_functions.reorder_search_areas(self.search_areas,
-                                                                                                self.line_indices)
-                self.write_search_areas(reorder_leds=True)
-                self.line_indices = ledsa.data_extraction.step_2_functions.reorder_led_indices(self.line_indices)
-                self.plot_search_areas(self.config['find_search_areas']['reference_img'], reorder_leds=True)
-                print("LED IDs reordered successfully!")
-                ledsa.core.file_handling.set_flag('reorder_leds')
+            self.search_areas = ledsa.data_extraction.step_2_functions.reorder_search_areas(self.search_areas,
+                                                                                            self.line_indices)
+            self.write_search_areas(reorder_leds=True)
+            self.line_indices = ledsa.data_extraction.step_2_functions.reorder_led_indices(self.line_indices)
+            self.plot_search_areas(self.config['find_search_areas']['reference_img'], reorder_leds=True)
+            print("LED IDs reordered successfully!")
+            ledsa.core.file_handling.set_flag('reorder_leds')
 
             ledsa.data_extraction.step_2_functions.generate_line_indices_files(self.line_indices)
             self.plot_led_arrays()
