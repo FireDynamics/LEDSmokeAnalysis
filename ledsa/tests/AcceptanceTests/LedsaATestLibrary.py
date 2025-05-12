@@ -61,7 +61,7 @@ class LedsaATestLibrary:
 
     @keyword
     def plot_input_vs_computed_extinction_coefficients(self, solver, first=1, last=4, led_array=0, channel=0):
-        filename = f'absorption_coefs_{solver}_channel_{channel}_sum_col_val_led_array_{led_array}.csv'
+        filename = f'extinction_coefficients_{solver}_channel_{channel}_sum_col_val_led_array_{led_array}.csv'
         extinction_coefficients_computed = (
             np.loadtxt(os.path.join('analysis', 'extinction_coefficients', solver, filename), skiprows=5, delimiter=','))
         for image_id in range(first, last + 1):
@@ -70,9 +70,9 @@ class LedsaATestLibrary:
             num_of_layers = extinction_coefficients_input.shape[0]
             plt.plot(extinction_coefficients_input, range(num_of_layers), '.-', label='Input')
             plt.plot(extinction_coefficients_computed[image_id - 1, :], range(num_of_layers), '.-', label='Computed')
-            plt.xlabel('Extinction coefficient /~ $m^{-1}$')
-            plt.ylabel('Layer / m')
-            plt.title(f'Input vs Computed Extinction Coefficients - Image {image_id}')
+            plt.xlabel('Extinction coefficient / $\mathrm{m}^{-1}$')
+            plt.ylabel('Layer / -')
+            plt.title(f'Input vs Computed {solver} Extinction Coefficients - Image {image_id}')
             plt.xlim(-0.1, 0.6)
             plt.ylim(num_of_layers, 0)
             plt.grid(linestyle='--', alpha=0.5)
@@ -84,9 +84,9 @@ class LedsaATestLibrary:
 
     @keyword
     def check_input_vs_computed_extinction_coefficients(self, image_id, solver, led_array=0, channel=0):
-        filename = f'absorption_coefs_{solver}_channel_{channel}_sum_col_val_led_array_{led_array}.csv'
+        filename = f'extinction_coefficients_{solver}_channel_{channel}_sum_col_val_led_array_{led_array}.csv'
         extinction_coefficients_computed = (
-            np.loadtxt(os.path.join('analysis', 'AbsorptionCoefficients', filename), skiprows=5, delimiter=','))
+            np.loadtxt(os.path.join('analysis', 'extinction_coefficients',solver, filename), skiprows=5, delimiter=','))
         extinction_coefficients_input = np.flip(
             np.loadtxt(os.path.join('test_data', f'test_extinction_coefficients_input_{image_id}.csv'), delimiter=','))
         rmse = np.sqrt(

@@ -130,7 +130,7 @@ class ExtinctionCoefficients(ABC):
         path = self.experiment.path / 'analysis' / 'extinction_coefficients' / self.solver
         if not path.exists():
             path.mkdir(parents=True)
-        path = path / f'absorption_coefs_{self.solver}_channel_{self.experiment.channel}_{self.reference_property}_led_array_{self.experiment.led_array}.csv'
+        path = path / f'extinction_coefficients_{self.solver}_channel_{self.experiment.channel}_{self.reference_property}_led_array_{self.experiment.led_array}.csv'
         header = str(self)
         header += 'layer0'
         for i in range(self.experiment.layers.amount - 1):

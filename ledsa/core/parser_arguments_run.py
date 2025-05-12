@@ -45,6 +45,14 @@ def run_data_extraction_arguments(args: argparse.Namespace) -> None:
         if len(args.config) == 3:
             ConfigData(load_config_file=False, img_directory=args.config[0], reference_img=args.config[1],
                        num_of_cores=args.config[2])
+    elif (args.step_1 or args.step_2 or args.step_3 or args.step_3_fast or args.restart or 
+          args.red or args.green or args.blue or args.rgb or args.coordinates):
+        # If any data extraction argument is given but not config, check if config file exists
+        try:
+            with open('config.ini', 'r') as f:
+                pass
+        except FileNotFoundError:
+            raise FileNotFoundError('config.ini not found in working directory! Please create it with argument "--config".')
 
     channels = []
     if args.rgb:
@@ -80,7 +88,7 @@ def run_data_extraction_arguments(args: argparse.Namespace) -> None:
         de.process_image_data()
 
     if args.restart:
-        channels = [0, 1, 2]  # TODO: just for testing
+        # Use the channels determined earlier in the function
         de = DataExtractor(build_experiment_infos=False, channels=channels, fit_leds=False)
         de.setup_restart()
         de.process_image_data()
@@ -202,8 +210,8 @@ def extionction_coefficient_calculation(args) -> None:
 
     for array in ex_data.led_arrays:
         for channel in ex_data.channels:
-            out_file = os.path.join(os.getcwd(), '../analysis', 'AbsorptionCoefficients',
-                                    f'absorption_coefs_{solver}_channel_{channel}_{ex_data.reference_property}_led_array_{array}.csv')
+            out_file = os.path.join(os.getcwd(), '../analysis', 'extinction_coefficients',
+                                    f'extinction_coefficients_{solver}_channel_{channel}_{ex_data.reference_property}_led_array_{array}.csv')
             if not os.path.exists(out_file):
                 ex = Experiment(layers=ex_data.layers, led_array=array, camera=ex_data.camera, channel=channel,
                                 merge_led_arrays=ex_data.merge_led_arrays)

@@ -99,7 +99,7 @@ class SimData:
         """
         extco_list = []
         files_list = glob.glob(
-            os.path.join(self.path_simulation, 'analysis/AbsorptionCoefficients/', f'absorption_coefs*.csv'))
+            os.path.join(self.path_simulation, 'analysis/extinction_coefficients/', f'extinction_coefficients*.csv'))
         for file in files_list:
             file_df = pd.read_csv(file, skiprows=4)
             channel = int(file.split('channel_')[1].split('_')[0])
