@@ -4,6 +4,7 @@ import os
 
 import matplotlib.pyplot as plt
 import numpy as np
+from tqdm import tqdm
 
 import ledsa.core.file_handling
 import ledsa.core.image_handling
@@ -230,11 +231,11 @@ class DataExtractor:
             from multiprocessing import Pool
             print('images are getting processed, this may take a while')
             with Pool(num_of_cores) as p:
-                p.map(self.process_img_file, img_filenames)
+                for _ in tqdm(p.imap(self.process_img_file, img_filenames), total=len(img_filenames), desc="Processing images", unit="image"):
+                    pass
         else:
-            for i in range(len(img_filenames)):
-                self.process_img_file(img_filenames[i])
-                print('image ', i + 1, '/', len(img_filenames), ' processed')
+            for img_filename in tqdm(img_filenames, desc="Processing images", unit="image"):
+                self.process_img_file(img_filename)
 
         os.remove('images_to_process.csv')
 
@@ -252,8 +253,6 @@ class DataExtractor:
                                                                                      self.line_indices,
                                                                                      self.config, self.fit_leds)
             ledsa.data_extraction.step_3_functions.create_fit_result_file(img_data, img_id, channel)
-        print('Image {} processed'.format(img_id))
-
     def setup_step3(self) -> None:
         """
         Setup the third step of the data extraction process by creating 'image_infos_analysis.csv' and 'images_to_process.csv' files.
