@@ -4,11 +4,12 @@ import os
 import pandas as pd
 
 from ledsa.core.image_reading import read_channel_data_from_img
+from ledsa.core.ConfigData import ConfigData
+from ledsa.analysis.ConfigDataAnalysis import ConfigDataAnalysis
 
 
 class SimData:
-    def __init__(self, path_simulation: str, path_images=None, read_all=True, average_images=False,
-                 remove_dublicates=False):
+    def __init__(self, path_simulation: str, read_all=True, remove_dublicates=False, load_config_params=True):
         """
         Initializes SimData with simulation and image analysis settings.
 
@@ -22,16 +23,46 @@ class SimData:
         :type average_images: bool, optional
         :param remove_duplicates: If True, removes duplicate entries from analysis, defaults to False.
         :type remove_duplicates: bool, optional
+        :param load_config_params: If True, loads parameters from config files, defaults to True.
+        :type load_config_params: bool, optional
+        :raises ValueError: If path_images is not provided when required for image analysis.
         """
+        self.solver = None
+        self.average_images = False
+        self.camera_channels = [0]
+        self.num_ref_images = None
+        self.n_layers = None
+        self.window_radius = None
+        self.path_images = None
+
+
+        if load_config_params:
+            os.chdir(path_simulation)
+            # Read configuration from config.ini and config_analysis.ini
+            self.config = ConfigData()
+            self.config_analysis = ConfigDataAnalysis()
+
+            # Get parameters from config file
+            self.window_radius = self.config['find_search_areas']['window_radius']
+            self.path_images = self.config['find_search_areas']['img_directory']
+
+            # Get parameters from config_analysis file
+            self.solver = self.config_analysis['DEFAULT']['solver']
+            self.average_images = self.config_analysis.getboolean('DEFAULT', 'average_images')
+            self.camera_channels = self.config_analysis.get_list_of_values('DEFAULT', 'camera_channels', dtype=int)
+            self.num_ref_images = int(self.config_analysis['DEFAULT']['num_ref_images'])
+            self.n_layers = int(self.config_analysis['model_parameters']['num_of_layers'])
+            domain_bounds = self.config_analysis.get_list_of_values('model_parameters', 'domain_bounds', dtype=float)
+            self.bottom_layer_height = domain_bounds[0]
+            self.top_layer_height = domain_bounds[1]
+
         self.path_simulation = path_simulation
-        self.path_images = path_images
         self.led_info_path = os.path.join(self.path_simulation, 'analysis', 'led_search_areas_with_coordinates.csv')
 
-        if average_images == True:
+        if self.average_images == True:
             image_infos_file = 'analysis/image_infos_analysis_avg.csv'
         else:
             image_infos_file = 'analysis/image_infos_analysis.csv'
-        self.average_images = average_images
         self.image_info_df = pd.read_csv(os.path.join(self.path_simulation, image_infos_file))
 
         if read_all == True:
@@ -47,21 +78,9 @@ class SimData:
             self.ch2_extcos = None
 
     height_from_layer = lambda self, layer: -1 * (
-                layer / self.n_layers * (self.top_layer - self.bottom_layer) - self.top_layer)
+            layer / self.n_layers * (self.top_layer_height - self.bottom_layer_height) - self.top_layer_height)
     layer_from_height = lambda self, height: int(
-        (self.top_layer - self.bottom_layer) / (self.top_layer - self.bottom_layer) * self.n_layers)
-
-    def set_layer_params(self, bottom: float, top: float):
-        """
-        Defines the parameters for the lowest and highest analysis layers.
-
-        :param bottom: Height above the floor for the lowest layer.
-        :type bottom: float
-        :param top: Height above the floor for the highest layer.
-        :type top: float
-        """
-        self.bottom_layer = bottom
-        self.top_layer = top
+        (self.top_layer_height - self.bottom_layer_height) / (self.top_layer_height - self.bottom_layer_height) * self.n_layers)
 
     def set_timeshift(self, timedelta: int):
         """
@@ -95,11 +114,10 @@ class SimData:
     def _get_extco_df_from_path(self):
         """
         Read all extinction coefficients from the simulation dir and put them in the all_extco_df.
-        Get number of layers found in the csv.
         """
         extco_list = []
         files_list = glob.glob(
-            os.path.join(self.path_simulation, 'analysis/extinction_coefficients/', f'extinction_coefficients*.csv'))
+            os.path.join(self.path_simulation, 'analysis', 'extinction_coefficients', self.solver, f'extinction_coefficients*.csv'))
         for file in files_list:
             file_df = pd.read_csv(file, skiprows=4)
             channel = int(file.split('channel_')[1].split('_')[0])
@@ -115,7 +133,6 @@ class SimData:
         self.all_extco_df.sort_index(ascending=True, axis=1, inplace=True)
         self.all_extco_df = self.all_extco_df[
             ~self.all_extco_df.index.duplicated(keep='first')]  # Remove dublicate timesteps
-        self.n_layers = n_layers
 
     def read_led_params(self):
         """Read led parameters for all color channels from the simulation path"""
@@ -170,11 +187,8 @@ class SimData:
         if yaxis == 'layer':
             ma_ch_extco_df.index.names = ["Layer"]
         elif yaxis == 'height':
-            ma_ch_extco_df.index = [self.height_from_layer(layer) for layer in ma_ch_extco_df.index]
+            ma_ch_extco_df.index = [round(self.height_from_layer(layer),2) for layer in ma_ch_extco_df.index]
             ma_ch_extco_df.index.names = ["Height"]
-        #
-        # ma_ch_extco_df.columns = range(ma_ch_extco_df.shape[1])
-        # ma_ch_extco_df.columns.names = ["Line"]
         return ma_ch_extco_df
 
     def get_extco_at_line(self, channel: int, line: int, yaxis='layer', window=1) -> pd.DataFrame:
@@ -277,7 +291,7 @@ class SimData:
         return rel_i_ma
 
     def get_ledparams_at_led_id(self, channel: int, led_id: int, param='sum_col_val', window=1,
-                                n_ref=10) -> pd.DataFrame:
+                                n_ref=None) -> pd.DataFrame:
         """
         Retrieves a DataFrame containing normalized LED parameters for a specific LED ID, optionally smoothed over time.
 
@@ -309,6 +323,8 @@ class SimData:
         if n_ref == False:
             rel_i = ii
         else:
+            # Use self.num_ref_images if n_ref is None
+            n_ref = self.num_ref_images if n_ref is None else n_ref
             i0 = ii.iloc[0:n_ref].mean()
             rel_i = ii / i0
         rel_i_ma = rel_i.rolling(window=window, closed='right').mean().shift(-int(window / 2) + 1)
@@ -342,7 +358,6 @@ class SimData:
         return pixel_positions
 
     def get_pixel_values_of_led(self, led_id: int, channel: int, timestep: int, radius=None):
-        # TODO: Radius to be written in out file, has otherwise to be defined here
         """
         Retrieves a cropped numpy array of pixel values around a specified LED, based on its ID, for a given image channel and timestep.
 
@@ -354,14 +369,18 @@ class SimData:
         :type channel: int
         :param timestep: The timestep at which the image was taken. This corresponds to a specific moment in the experimental timeline.
         :type timestep: int
-        :param radius: The radius around the LED's position from which to extract pixel values. If not specified, a default value should be used or defined externally. Defaults to None.
+        :param radius: The radius around the LED's position from which to extract pixel values. If not specified, the window_radius from the config file is used. Defaults to None.
         :type radius: int, optional
         :return: A numpy array containing the pixel values in the specified radius around the LED. The array is cropped from the original image, centered on the LED's position.
         :rtype: numpy.ndarray
-
-        Note:
-            If the radius parameter is not provided, it must be defined elsewhere or a default value should be used. This method assumes that the pixel positions and image file path are correctly determined beforehand.
+        :raises ValueError: If path_images is not available when trying to access image files.
         """
+        if not self.path_images:
+            raise ValueError("path_images is required for accessing image files")
+
+        # Use the provided radius or fall back to window_radius from config
+        radius = radius if radius is not None else self.window_radius
+
         if radius:
             pixel_positions = self.get_pixel_cordinates_of_LED(led_id)
             imagename = self.get_image_name_from_timestep(timestep)
@@ -369,5 +388,6 @@ class SimData:
             channel_array = read_channel_data_from_img(imagefile, channel)
             x = pixel_positions[0]
             y = pixel_positions[1]
-            channel_array_cropped = channel_array[x - radius:x + radius, y - radius:y + radius]
+            channel_array_cropped = np.flip(channel_array[x - radius:x + radius, y - radius:y + radius], axis=0)
             return channel_array_cropped
+        return None
