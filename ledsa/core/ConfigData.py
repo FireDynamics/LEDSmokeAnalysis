@@ -53,7 +53,7 @@ class ConfigData(cp.ConfigParser):
         :param last_img_experiment_id: ID of the last image of the experiment. Defaults to None.
         :type last_img_experiment_id: int or None
         :param ref_img_id: ID of the reference image used to identify and label the LEDs. Defaults to None.
-        :type ref_img_id: str or None
+        :type ref_img_id: int or None
         :param ignore_led_indices: Indices of LEDs to ignore during analysis. Defaults to None.
         :type ignore_led_indices: list[int] or None
         :param led_array_edge_indices: Pairs of LED indices of the edges of each LED array. Defaults to None.
@@ -273,7 +273,8 @@ class ConfigData(cp.ConfigParser):
         time = self['DEFAULT']['time_ref_img_time']
         print(self['DEFAULT']['img_directory'] + self['DEFAULT']['time_img_id'])
         tag = 'EXIF DateTimeOriginal'
-        exif_entry = get_exif_entry(self['DEFAULT']['img_directory'] + self['DEFAULT']['time_img_id'], tag)
+        exif_entry = get_exif_entry(self['DEFAULT']['img_directory'] + self['DEFAULT']['img_name_string'].format(
+            self['DEFAULT']['time_img_id']), tag)
         date, time_meta = exif_entry.split(' ')
         self['DEFAULT']['date'] = date
         img_time = _get_datetime_from_str(date, time_meta)

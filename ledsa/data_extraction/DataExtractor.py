@@ -89,10 +89,10 @@ class DataExtractor:
         Identify all LEDs in the reference image and define the areas where LEDs will be searched in the experiment images.
         """
         config = self.config['find_search_areas']
-        in_file_path = os.path.join(config['img_directory'], img_filename)
+        in_file_path = os.path.join(config['img_directory'], config['img_name_string'].format(config['ref_img_id']))
         channel = config['channel']
-        window_radius = int(config['window_radius'])
-        max_num_leds = int(config['max_num_of_leds'])
+        window_radius = int(config['search_area_radius'])
+        max_num_leds = int(config['max_num_leds'])
         pixel_value_percentile = float(config['pixel_value_percentile'])
         if channel == 'all':
             data, _ = ledsa.core.image_reading.read_img_array_from_raw_file(in_file_path, channel=0) # TODO: Channel to be removed here!
@@ -102,15 +102,13 @@ class DataExtractor:
 
         self.search_areas = ledsa.data_extraction.step_1_functions.find_search_areas(data, window_radius=window_radius, max_n_leds=max_num_leds, pixel_value_percentile=pixel_value_percentile)
         self.write_search_areas()
-        self.plot_search_areas(self.config['find_search_areas']['reference_img'])
+        self.plot_search_areas()
         ledsa.core.file_handling.remove_flag('reorder_leds')
 
-    def plot_search_areas(self, img_filename: str, reorder_leds=False) -> None:
+    def plot_search_areas(self, reorder_leds=False) -> None:
         """
         Plot the identified LED search areas with their ID labels.
 
-        :param img_filename: The name of the image file to be plotted.
-        :type img_filename: str
         :param reorder_leds: A flag indicating whether the LED IDs have been reordered. Affects the name of the output file.
         :type reorder_leds: bool
         """
@@ -123,9 +121,9 @@ class DataExtractor:
         if self.search_areas is None:
             self.load_search_areas()
 
-        in_file_path = os.path.join(config['img_directory'], img_filename)
+        in_file_path = os.path.join(config['img_directory'], config['img_name_string'].format(config['ref_img_id']))
         data = ledsa.core.image_reading.read_channel_data_from_img(in_file_path, channel=0)
-        window_radius = int(config['window_radius'])
+        window_radius = int(config['search_area_radius'])
         plt.figure(dpi=1200)
         ax = plt.gca()
         ledsa.data_extraction.step_1_functions.add_search_areas_to_plot(self.search_areas, window_radius, ax)
@@ -159,7 +157,7 @@ class DataExtractor:
                                                                                             self.line_indices)
             self.write_search_areas(reorder_leds=True)
             self.line_indices = ledsa.data_extraction.step_2_functions.reorder_led_indices(self.line_indices)
-            self.plot_search_areas(self.config['find_search_areas']['reference_img'], reorder_leds=True)
+            self.plot_search_areas(reorder_leds=True)
             print("LED IDs reordered successfully!")
             ledsa.core.file_handling.set_flag('reorder_leds')
 
@@ -167,7 +165,7 @@ class DataExtractor:
             self.plot_led_arrays()
 
 
-        if self.config['analyse_positions']['merge_led_arrays'] != 'None':
+        if self.config['analyse_positions']['merge_led_array_indices'] != 'None':
             self.line_indices = ledsa.data_extraction.step_2_functions.merge_indices_of_led_arrays(self.line_indices, self.config)
             self.plot_led_arrays(merge_led_arrays=True)
 
@@ -175,8 +173,8 @@ class DataExtractor:
         """
         Load LED line indices from the 'line_indices_{...}.csv' files.
         """
-        if self.config['analyse_positions']['merge_led_arrays'] != 'None':
-            num_arrays = len(self.config.get2dnparray('analyse_positions', 'merge_led_arrays', 'var'))
+        if self.config['analyse_positions']['merge_led_array_indices'] != 'None':
+            num_arrays = len(self.config.get2dnparray('analyse_positions', 'merge_led_array_indices', 'var'))
             file_extension = '_merge'
             print("ARRAY MERGE IS ACTIVE!")
         else:

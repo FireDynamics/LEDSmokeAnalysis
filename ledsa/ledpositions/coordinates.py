@@ -80,15 +80,15 @@ def _calculate_3d_coordinates() -> np.ndarray:
     file_path = os.path.join('analysis', 'led_search_areas.csv')
     search_areas = read_table(file_path, delim=',')
     search_areas = np.pad(search_areas, ((0, 0), (0, 3)), constant_values=(-1, -1))
-    if conf['analyse_positions']['line_edge_coordinates'] == 'None':
+    if conf['analyse_positions']['led_array_edge_coordinates'] == 'None':
         conf.in_led_array_edge_coordinates()
         conf.save()
-    led_coordinates = conf.get2dnparray('analyse_positions', 'line_edge_coordinates', 6, float)
+    led_coordinates = conf.get2dnparray('analyse_positions', 'led_array_edge_coordinates', 6, float)
     print("Loaded coordinates from config.ini:")
     print(led_coordinates)
 
     # loop over the led-arrays
-    for ledarray in range(int(conf['analyse_positions']['num_of_arrays'])):
+    for ledarray in range(int(conf['analyse_positions']['num_arrays'])):
         file_path = os.path.join('analysis', f'line_indices_{ledarray:03d}.csv')
         line_indices = read_table(file_path)
 

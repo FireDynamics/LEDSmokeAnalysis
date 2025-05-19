@@ -218,7 +218,7 @@ def _get_indices_of_outer_leds(config: ConfigData) -> np.ndarray:
                 config.write(configfile)
 
         # Get the line edge indices from config
-        line_edge_indices = config.get2dnparray('analyse_positions', 'line_edge_indices')
+        line_edge_indices = config.get2dnparray('analyse_positions', 'led_array_edge_indices')
 
         # Ensure line_edge_indices is a 2D array
         if len(line_edge_indices.shape) == 1:
@@ -244,7 +244,7 @@ def _get_indices_of_ignored_leds(config: ConfigData) -> np.ndarray:
         if config['analyse_positions']['ignore_indices'] != 'None':
             # Parse the space-separated list of indices
             ignore_indices = np.array([int(i) for i in 
-                                      config['analyse_positions']['ignore_indices'].split(' ')])
+                                      config['analyse_positions']['ignore_led_indices'].split(' ')])
         else:
             ignore_indices = np.array([])
 
@@ -391,12 +391,12 @@ def merge_indices_of_led_arrays(line_indices: List[List[int]], config: ConfigDat
     """
     try:
         # Check if merge_led_arrays is defined in config
-        if config['analyse_positions']['merge_led_arrays'] == 'None':
+        if config['analyse_positions']['merge_led_array_indices'] == 'None':
             # No merging needed
             return line_indices
 
         # Get the merge configuration
-        merge_config = config.get2dnparray('analyse_positions', 'merge_led_arrays', 'var')
+        merge_config = config.get2dnparray('analyse_positions', 'merge_led_array_indices', 'var')
 
         # Create a new list to hold the merged arrays
         merged_indices = []

@@ -40,7 +40,7 @@ def generate_analysis_data(img_filename: str, channel: int, search_areas: np.nda
     """
     file_path = os.path.join(conf['DEFAULT']['img_directory'], img_filename)
     data = read_channel_data_from_img(file_path, channel=channel)
-    window_radius = int(conf['find_search_areas']['window_radius'])
+    window_radius = int(conf['find_search_areas']['search_area_radius'])
     img_analysis_data = []
 
     if debug:
@@ -51,7 +51,7 @@ def generate_analysis_data(img_filename: str, channel: int, search_areas: np.nda
     num_of_arrays = len(line_indices)
     for led_array_idx in range(num_of_arrays):
         for iled in line_indices[led_array_idx]:
-            if iled % (int(conf['analyse_photo']['skip_leds']) + 1) == 0:
+            if iled % (int(conf['analyse_photo']['num_skip_leds']) + 1) == 0:
                 led_analysis_data = _generate_led_analysis_data(conf, channel, data, debug, iled, img_filename,
                                                                 led_array_idx, search_areas, window_radius, fit_leds)
                 img_analysis_data.append(led_analysis_data)

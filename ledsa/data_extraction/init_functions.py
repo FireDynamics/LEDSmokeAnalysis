@@ -36,14 +36,17 @@ def request_config_parameters(config: ConfigData) -> None:
     if config['DEFAULT']['img_directory'] == 'None':
         config.in_img_dir()
         config.save()
-    if config['DEFAULT']['time_img'] == 'None' and \
+    if config['DEFAULT']['img_name_string'] == 'None':
+        config.in_img_name_string()
+        config.save()
+    if config['DEFAULT']['time_img_id'] == 'None' and \
             config['DEFAULT']['exif_time_infront_real_time'] == 'None':
         config.in_time_img_id()
         config.save()
     if config['DEFAULT']['exif_time_infront_real_time'] == 'None':
         config.in_time_diff_to_img_time()
         config.save()
-    if config['find_search_areas']['reference_img'] == 'None':
+    if config['find_search_areas']['ref_img_id'] == 'None':
         config.in_ref_img_id()
         config.save()
     if config['find_search_areas']['max_num_leds'] == 'None':
@@ -78,9 +81,6 @@ def generate_image_infos_csv(config: ConfigData, build_experiment_infos=False, b
     if build_analysis_infos:
         config_switch.append('analyse_photo')
     for build_type in config_switch:
-        if config['DEFAULT']['img_name_string'] == 'None':
-            config.in_img_name_string()
-            config.save()
         if config['DEFAULT']['start_time'] == 'None':
             config.get_start_time()
             config.save()
@@ -190,7 +190,7 @@ def _build_img_data_string(build_type: str, config: ConfigData) -> str:
         config.save()
     last_img_id = config.getint(build_type, 'last_img_experiment_id' if build_type == 'DEFAULT' else 'last_img_analysis_id')
 
-    img_increment = config.getint(build_type, 'skip_imgs') + 1 if build_type == 'analyse_photo' else 1
+    img_increment = config.getint(build_type, 'num_skip_imgs') + 1 if build_type == 'analyse_photo' else 1
     img_id_list = _find_img_number_list(first_img_id, last_img_id, img_increment)
     for img_id in img_id_list:
         tag = 'EXIF DateTimeOriginal'

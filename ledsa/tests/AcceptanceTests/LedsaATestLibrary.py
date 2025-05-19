@@ -99,23 +99,23 @@ class LedsaATestLibrary:
         if not os.path.exists('test_data'):
             os.makedirs('test_data')
 
-        conf = ConfigData(load_config_file=False, img_directory='test_data/', window_radius=10, pixel_value_percentile=99.875,
-                          channel=0, max_num_of_leds=1000, num_of_arrays=1, num_of_cores=1, date=None,
-                          start_time=None, time_img=None, time_ref_img_time=None, time_diff_to_image_time=0,
-                          img_name_string='test_img_{}.jpg', img_number_overflow=None, first_img_num_experiment=first,
-                          last_img_num_experiment=last, reference_img='test_img_1.jpg', ignore_indices=None,
-                          line_edge_indices=None, line_edge_coordinates=None,
-                          first_img_num_analysis=first, last_img_num_analysis=last, skip_imgs=0, skip_leds=0,
-                          merge_led_arrays=None)
-        conf.set('analyse_positions', '   line_edge_indices', '49 0')
-        conf.set('analyse_positions', '   line_edge_coordinates', '0 4 0.05 0 4 2.95')
+        conf = ConfigData(load_config_file=False, img_directory='test_data/', search_area_radius=10, pixel_value_percentile=99.875,
+                          channel=0, max_num_leds=1000, num_arrays=1, num_cores=1, date=None,
+                          start_time=None, time_img_id=None, time_ref_img_time=None, time_diff_to_image_time=0,
+                          img_name_string='test_img_{}.jpg', num_img_overflow=None, first_img_experiment_id=first,
+                          last_img_experiment_id=last, ref_img_id=1, ignore_led_indices=None,
+                          led_array_edge_indices=None, led_array_edge_coordinates=None,
+                          first_img_analysis_id=first, last_img_analysis_id=last, num_skip_imgs=0, num_skip_leds=0,
+                          merge_led_array_indices=None)
+        conf.set('analyse_positions', '   led_array_edge_indices', '49 0')
+        conf.set('analyse_positions', '   led_array_edge_coordinates', '0 4 0.05 0 4 2.95')
         conf.set('DEFAULT', '   date', '2018:11:27')
         conf.save()
 
     @keyword
     def create_and_fill_config_analysis(self, solver):
-        conf = ConfigDataAnalysis(load_config_file=False, camera_position=None, num_of_layers=20, domain_bounds=None,
-                                  led_arrays=0, num_ref_images=1, camera_channels=0, num_of_cores=1,
+        conf = ConfigDataAnalysis(load_config_file=False, camera_position=None, num_layers=20, domain_bounds=None,
+                                  led_array_indices=0, num_ref_images=1, camera_channels=0, num_cores=1,
                                   reference_property='sum_col_val',
                                   average_images=False, solver=solver, weighting_preference=-6e-4,
                                   weighting_curvature=1e-7,
@@ -130,10 +130,10 @@ class LedsaATestLibrary:
             out = self.execute_ledsa('-s1')
         else:
             self.execute_ledsa('--config')
-            inp = b'test_data/\ntest_img_1.jpg\n12:00:00\ntest_img_1.jpg\n1000\n1\n1\n4'
+            inp = b'test_data/\ntest_img_{}.jpg\n1\n12:00:00\n1\n1000\n1\n1\n1'
             out = self.execute_ledsa('-s1', inp)
             check_error_msg(out)
-        return out[0].decode('ascii')[-9:-6]
+        return out[0].decode('utf-8')[-9:-6]
 
     @keyword
     def execute_ledsa(self, arg, inp=None):
@@ -204,6 +204,18 @@ def wait_for_process_to_finish(p, inp=None):
 
 def check_error_msg(out):
     if out[1] is not None:
-        if out[1].decode('ascii') != '':
-            BuiltIn().log(out[1].decode('ascii'), 'ERROR')
+        stderr_output = out[1].decode('utf-8')
+        # Filter out tqdm progress bar output
+        if stderr_output and not is_tqdm_output(stderr_output):
+            BuiltIn().log(stderr_output, 'ERROR')
             exit()
+
+def is_tqdm_output(text):
+    """
+    Check if the text is likely a tqdm progress bar output.
+
+    :param text: Text to check
+    :return: True if the text appears to be from tqdm, False otherwise
+    """
+
+    return "Processing images" in text

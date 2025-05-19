@@ -236,12 +236,12 @@ def create_binary_data(channel: int) -> None:
     first_img_id = int(config['analyse_photo']['first_img_analysis_id'])
     last_img_id = int(config['analyse_photo']['last_img_analysis_id'])
 
-    if config['DEFAULT']['img_number_overflow'] != 'None':
-        max_id = int(config['DEFAULT']['img_number_overflow'])
+    if config['DEFAULT']['num_img_overflow'] != 'None':
+        max_id = int(config['DEFAULT']['num_img_overflow'])
     else:
         max_id = 10 ** 7
     number_of_images = (max_id + last_img_id - first_img_id) % max_id + 1
-    number_of_images //= int(config['analyse_photo']['skip_imgs']) + 1
+    number_of_images //= int(config['analyse_photo']['num_skip_imgs']) + 1
     print('Loading fit parameters...')
     exception_counter = 0
     for image_id in range(1, number_of_images + 1):
