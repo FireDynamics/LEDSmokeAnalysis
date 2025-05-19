@@ -138,7 +138,7 @@ def read_hdf(channel: int, path='.') -> pd.DataFrame:
             # If file doesn't exist or neither key works, create new binary data
             create_binary_data(channel)
             fit_parameters = pd.read_hdf(file_path, key='channel_values')
-    
+
     fit_parameters.set_index(['img_id', 'led_id'], inplace=True)
     return fit_parameters
 
@@ -233,14 +233,14 @@ def create_binary_data(channel: int) -> None:
 
     # find time and fit parameter for every image
 
-    first_img_num = int(config['analyse_photo']['first_img_num'])
-    last_img_num = int(config['analyse_photo']['last_img_num'])
+    first_img_id = int(config['analyse_photo']['first_img_analysis_id'])
+    last_img_id = int(config['analyse_photo']['last_img_analysis_id'])
 
     if config['DEFAULT']['img_number_overflow'] != 'None':
         max_id = int(config['DEFAULT']['img_number_overflow'])
     else:
         max_id = 10 ** 7
-    number_of_images = (max_id + last_img_num - first_img_num) % max_id + 1
+    number_of_images = (max_id + last_img_id - first_img_id) % max_id + 1
     number_of_images //= int(config['analyse_photo']['skip_imgs']) + 1
     print('Loading fit parameters...')
     exception_counter = 0

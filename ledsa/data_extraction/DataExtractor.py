@@ -84,12 +84,9 @@ class DataExtractor:
         np.savetxt(out_file_path, self.search_areas, delimiter=',',
                    header=header, fmt='%d')
 
-    def find_search_areas(self, img_filename: str) -> None:
+    def find_search_areas(self) -> None:
         """
-        Identify all LEDs in a single image and define the areas where LEDs will be searched in the experiment images.
-
-        :param img_filename: The name of the image file to be processed.
-        :type img_filename: str
+        Identify all LEDs in the reference image and define the areas where LEDs will be searched in the experiment images.
         """
         config = self.config['find_search_areas']
         in_file_path = os.path.join(config['img_directory'], img_filename)
@@ -179,14 +176,14 @@ class DataExtractor:
         Load LED line indices from the 'line_indices_{...}.csv' files.
         """
         if self.config['analyse_positions']['merge_led_arrays'] != 'None':
-            num_of_arrays = len(self.config.get2dnparray('analyse_positions', 'merge_led_arrays', 'var'))
+            num_arrays = len(self.config.get2dnparray('analyse_positions', 'merge_led_arrays', 'var'))
             file_extension = '_merge'
             print("ARRAY MERGE IS ACTIVE!")
         else:
-            num_of_arrays = int(self.config['analyse_positions']['num_of_arrays'])
+            num_arrays = int(self.config['analyse_positions']['num_arrays'])
             file_extension = ''
         self.line_indices = []
-        for i in range(num_of_arrays):
+        for i in range(num_arrays):
             file_path = os.path.join('analysis', f'line_indices_{i:03}{file_extension}.csv')
             self.line_indices.append(ledsa.core.file_handling.read_table(file_path, dtype='int'))
 
@@ -226,11 +223,11 @@ class DataExtractor:
             self.load_line_indices()
 
         img_filenames = ledsa.core.file_handling.read_table('images_to_process.csv', dtype=str)
-        num_of_cores = int(config['num_of_cores'])
-        if num_of_cores > 1:
+        num_cores = int(config['num_cores'])
+        if num_cores > 1:
             from multiprocessing import Pool
             print('images are getting processed, this may take a while')
-            with Pool(num_of_cores) as p:
+            with Pool(num_cores) as p:
                 for _ in tqdm(p.imap(self.process_img_file, img_filenames), total=len(img_filenames), desc="Processing images", unit="image"):
                     pass
         else:

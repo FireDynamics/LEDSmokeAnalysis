@@ -38,25 +38,25 @@ def request_config_parameters(config: ConfigData) -> None:
         config.save()
     if config['DEFAULT']['time_img'] == 'None' and \
             config['DEFAULT']['exif_time_infront_real_time'] == 'None':
-        config.in_time_img()
+        config.in_time_img_id()
         config.save()
     if config['DEFAULT']['exif_time_infront_real_time'] == 'None':
         config.in_time_diff_to_img_time()
         config.save()
     if config['find_search_areas']['reference_img'] == 'None':
-        config.in_ref_img()
+        config.in_ref_img_id()
         config.save()
-    if config['find_search_areas']['max_num_of_leds'] == 'None':
-        config.in_max_num_of_leds()
+    if config['find_search_areas']['max_num_leds'] == 'None':
+        config.in_max_num_leds()
         config.save()
-    if config['DEFAULT']['first_img_num'] == 'None':
-        config.in_first_img_num_experiment()
+    if config['DEFAULT']['first_img_experiment_id'] == 'None':
+        config.in_first_img_experiment_id()
         config.save()
-    if config['DEFAULT']['last_img_num'] == 'None':
-        config.in_last_img_num_experiment()
+    if config['DEFAULT']['last_img_experiment_id'] == 'None':
+        config.in_last_img_experiment_id()
         config.save()
-    if config['analyse_positions']['num_of_arrays'] == 'None':
-        config.in_num_of_arrays()
+    if config['analyse_positions']['num_arrays'] == 'None':
+        config.in_num_arrays()
         config.save()
 
 
@@ -180,22 +180,22 @@ def _build_img_data_string(build_type: str, config: ConfigData) -> str:
     """
     img_data = ''
     img_idx = 1
-    if config['analyse_photo']['first_img_num'] == 'None':
-        config.in_first_img_num_analysis()
+    if config['analyse_photo']['first_img_analysis_id'] == 'None':
+        config.in_first_img_analysis_id()
         config.save()
-    first_img_num = config.getint(build_type, 'first_img_num')
+    first_img_id = config.getint(build_type, 'first_img_experiment_id')
 
-    if config['analyse_photo']['last_img_num'] == 'None':
-        config.in_last_img_num_analysis()
+    if config['analyse_photo']['last_img_analysis_id'] == 'None':
+        config.in_last_img_analysis_id()
         config.save()
-    last_img_num = config.getint(build_type, 'last_img_num')
+    last_img_id = config.getint(build_type, 'last_img_experiment_id' if build_type == 'DEFAULT' else 'last_img_analysis_id')
 
     img_increment = config.getint(build_type, 'skip_imgs') + 1 if build_type == 'analyse_photo' else 1
-    img_number_list = _find_img_number_list(first_img_num, last_img_num, img_increment)
-    for img_number in img_number_list:
+    img_id_list = _find_img_number_list(first_img_id, last_img_id, img_increment)
+    for img_id in img_id_list:
         tag = 'EXIF DateTimeOriginal'
-        experiment_time, time = _calc_experiment_and_real_time(build_type, config, tag, img_number)
-        img_data += (str(img_idx) + ',' + config[build_type]['img_name_string'].format(int(img_number)) +
+        experiment_time, time = _calc_experiment_and_real_time(build_type, config, tag, img_id)
+        img_data += (str(img_idx) + ',' + config[build_type]['img_name_string'].format(int(img_id)) +
                      ',' + time.strftime('%H:%M:%S') + ',' + str(experiment_time) + '\n')
         img_idx += 1
     return img_data

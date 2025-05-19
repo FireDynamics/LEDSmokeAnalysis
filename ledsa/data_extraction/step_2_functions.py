@@ -212,8 +212,8 @@ def _get_indices_of_outer_leds(config: ConfigData) -> np.ndarray:
     """
     try:
         # Check if line edge indices are defined in config
-        if config['analyse_positions']['line_edge_indices'] == 'None':
-            config.in_line_edge_indices()
+        if config['analyse_positions']['led_array_edge_indices'] == 'None':
+            config.in_led_array_edge_indices()
             with open('config.ini', 'w') as configfile:
                 config.write(configfile)
 

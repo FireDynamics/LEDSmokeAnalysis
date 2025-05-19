@@ -41,11 +41,11 @@ def run_data_extraction_arguments(args: argparse.Namespace) -> None:
         if len(args.config) == 1:
             ConfigData(load_config_file=False, img_directory=args.config[0])
         if len(args.config) == 2:
-            ConfigData(load_config_file=False, img_directory=args.config[0], reference_img=args.config[1])
+            ConfigData(load_config_file=False, img_directory=args.config[0], ref_img_id=args.config[1])
         if len(args.config) == 3:
-            ConfigData(load_config_file=False, img_directory=args.config[0], reference_img=args.config[1],
-                       num_of_cores=args.config[2])
-    elif (args.step_1 or args.step_2 or args.step_3 or args.step_3_fast or args.restart or 
+            ConfigData(load_config_file=False, img_directory=args.config[0], ref_img_id=args.config[1],
+                       num_cores=args.config[2])
+    elif (args.step_1 or args.step_2 or args.step_3 or args.step_3_fast or args.restart or
           args.red or args.green or args.blue or args.rgb or args.coordinates):
         # If any data extraction argument is given but not config, check if config file exists
         try:
@@ -134,7 +134,7 @@ def run_demo_arguments(args: argparse.Namespace, parser: argparse.ArgumentParser
     if args.run:
         from ledsa.demo.demo_run import run_demo
         if args.n_cores:
-            run_demo(num_of_cores=args.n_cores)
+            run_demo(num_cores=args.n_cores)
         else:
             run_demo()
 

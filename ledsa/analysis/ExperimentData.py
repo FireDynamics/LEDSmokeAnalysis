@@ -62,7 +62,7 @@ class ExperimentData:
 
         """
         config_analysis = self.config_analysis
-        num_layers = int(config_analysis['model_parameters']['num_of_layers'])
+        num_layers = int(config_analysis['model_parameters']['num_layers'])
         self.channels = config_analysis.get_list_of_values('DEFAULT', 'camera_channels')
         self.num_ref_images = int(config_analysis['DEFAULT']['num_ref_images'])
         self.weighting_preference = float(config_analysis['DEFAULT']['weighting_preference'])
@@ -71,11 +71,11 @@ class ExperimentData:
         self.reference_property = config_analysis['DEFAULT']['reference_property']
         self.solver = config_analysis['DEFAULT']['solver']
 
-        self.led_arrays = config_analysis.get_list_of_values('model_parameters', 'led_arrays')
+        self.led_arrays = config_analysis.get_list_of_values('model_parameters', 'led_array_indices')
         if self.led_arrays is None:
-            config_analysis.in_led_arrays()
+            config_analysis.in_led_array_indices()
             config_analysis.save()
-        self.led_arrays = config_analysis.get_list_of_values('model_parameters', 'led_arrays')
+        self.led_arrays = config_analysis.get_list_of_values('model_parameters', 'led_array_indices')
 
         domain_bounds = config_analysis.get_list_of_values('model_parameters', 'domain_bounds', dtype=float)
         if domain_bounds is None:
@@ -91,7 +91,7 @@ class ExperimentData:
 
         self.layers = Layers(num_layers, *domain_bounds)
         self.camera = Camera(*camera_position)
-        self.n_cpus = int(config_analysis['DEFAULT']['num_of_cores'])
+        self.n_cpus = int(config_analysis['DEFAULT']['num_cores'])
         self.merge_led_arrays = str(self.config['analyse_positions']['merge_led_arrays'])
 
     def request_config_parameters(self) -> None:
@@ -103,12 +103,12 @@ class ExperimentData:
         if config['experiment_geometry']['camera_position'] == 'None':
             config.in_camera_position()
             config.save()
-        if config['model_parameters']['num_of_layers'] == 'None':
-            config.in_num_of_layers()
+        if config['model_parameters']['num_layers'] == 'None':
+            config.in_num_layers()
             config.save()
         if config['model_parameters']['domain_bounds'] == 'None':
             config.in_domain_bounds()
             config.save()
-        if config['model_parameters']['led_arrays'] == 'None':
-            config.in_led_arrays()
+        if config['model_parameters']['led_array_indices'] == 'None':
+            config.in_led_array_indices()
             config.save()
