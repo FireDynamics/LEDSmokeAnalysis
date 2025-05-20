@@ -89,9 +89,9 @@ class ExtinctionCoefficients(ABC):
 
         # Calculate the extinction coefficients depending on child class used
         pool = Pool(processes=cores)
-        kappas = pool.map(self.calc_coefficients_of_img, rel_intensities)
+        sigmas = pool.map(self.calc_coefficients_of_img, rel_intensities)
         pool.close()
-        self.coefficients_per_image_and_layer = kappas
+        self.coefficients_per_image_and_layer = sigmas
 
     def set_all_member_variables(self) -> None:
         """
