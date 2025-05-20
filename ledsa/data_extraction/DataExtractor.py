@@ -91,7 +91,7 @@ class DataExtractor:
         config = self.config['find_search_areas']
         in_file_path = os.path.join(config['img_directory'], config['img_name_string'].format(config['ref_img_id']))
         channel = config['channel']
-        window_radius = int(config['search_area_radius'])
+        search_area_radius = int(config['search_area_radius'])
         max_num_leds = int(config['max_num_leds'])
         pixel_value_percentile = float(config['pixel_value_percentile'])
         if channel == 'all':
@@ -100,7 +100,7 @@ class DataExtractor:
             channel = int(channel)
             data = ledsa.core.image_reading.read_channel_data_from_img(in_file_path, channel=channel)
 
-        self.search_areas = ledsa.data_extraction.step_1_functions.find_search_areas(data, window_radius=window_radius, max_n_leds=max_num_leds, pixel_value_percentile=pixel_value_percentile)
+        self.search_areas = ledsa.data_extraction.step_1_functions.find_search_areas(data, search_area_radius=search_area_radius, max_n_leds=max_num_leds, pixel_value_percentile=pixel_value_percentile)
         self.write_search_areas()
         self.plot_search_areas()
         ledsa.core.file_handling.remove_flag('reorder_leds')
@@ -123,13 +123,13 @@ class DataExtractor:
 
         in_file_path = os.path.join(config['img_directory'], config['img_name_string'].format(config['ref_img_id']))
         data = ledsa.core.image_reading.read_channel_data_from_img(in_file_path, channel=0)
-        window_radius = int(config['search_area_radius'])
+        search_area_radius = int(config['search_area_radius'])
         plt.figure(dpi=1200)
         ax = plt.gca()
-        ledsa.data_extraction.step_1_functions.add_search_areas_to_plot(self.search_areas, window_radius, ax)
+        ledsa.data_extraction.step_1_functions.add_search_areas_to_plot(self.search_areas, search_area_radius, ax)
         plt.imshow(data, cmap='Greys')
-        plt.xlim(self.search_areas[:, 2].min() - 5 * window_radius, self.search_areas[:, 2].max() + 5 * window_radius)
-        plt.ylim(self.search_areas[:, 1].max() + 5 * window_radius, self.search_areas[:, 1].min() - 5 * window_radius)
+        plt.xlim(self.search_areas[:, 2].min() - 5 * search_area_radius, self.search_areas[:, 2].max() + 5 * search_area_radius)
+        plt.ylim(self.search_areas[:, 1].max() + 5 * search_area_radius, self.search_areas[:, 1].min() - 5 * search_area_radius)
         plt.colorbar()
         plot_filename = 'led_search_areas.plot_reordered.pdf' if reorder_leds else 'led_search_areas.plot.pdf'
         out_file_path = os.path.join('plots', plot_filename)
@@ -186,7 +186,6 @@ class DataExtractor:
             self.line_indices.append(ledsa.core.file_handling.read_table(file_path, dtype='int'))
 
     def plot_led_arrays(self, merge_led_arrays=False) -> None:
-        # TODO: check Docstrings
         """
         Plots the arrangement of LEDs as identified in the LED arrays and saves the plot as a PDF file.
 
@@ -195,9 +194,11 @@ class DataExtractor:
         """
         for i in range(len(self.line_indices)):
             plt.scatter(self.search_areas[self.line_indices[i], 2],
-                        self.search_areas[self.line_indices[i], 1],
-                        s=0.1, label='led strip {}'.format(i))
+                        -self.search_areas[self.line_indices[i], 1],
+                        s=0.1, label='LED Array {}'.format(i))
         plt.legend()
+        plt.xticks([])
+        plt.yticks([])
         plot_filename = 'led_arrays_merged.pdf' if merge_led_arrays else 'led_arrays.pdf'
         out_file_path = os.path.join('plots', plot_filename)
         plt.savefig(out_file_path)
