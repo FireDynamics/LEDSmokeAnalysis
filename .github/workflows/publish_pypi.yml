@@ -1,0 +1,42 @@
+# GitHub Actions workflow to build and upload a Python package to PyPI via Twine
+name: ublish to PyPI
+
+# Trigger the workflow when a GitHub release is published
+on:
+  release:
+    types:
+      - published
+
+permissions:
+  contents: read   # Read‑only access is enough for checking out the code
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest   # Use the latest Ubuntu runner provided by GitHub
+    steps:
+      # 1. Check out the repository code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Set up a Python 3.10 environment
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      # 3. Upgrade pip and install the "build" backend required for PEP 517/518 builds
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build
+
+      # 4. Build the source distribution (sdist) and wheel into the "dist/" folder
+      - name: Build package
+        run: python -m build
+
+      # 5. Publish the package to PyPI using the API token stored in the repository secrets
+      - name: Publish package to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          user: __token__                        # Standard username for token‑based uploads
+          password: ${{ secrets.PYPI_API_TOKEN }} # API token scoped to the PyPI project
