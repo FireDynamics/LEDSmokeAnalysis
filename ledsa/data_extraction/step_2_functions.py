@@ -241,14 +241,14 @@ def _get_indices_of_ignored_leds(config: ConfigData) -> np.ndarray:
     """
     try:
         # Check if ignore indices are defined in config
-        if config['analyse_positions']['ignore_indices'] != 'None':
+        if config['analyse_positions']['ignore_led_indices'] != 'None':
             # Parse the space-separated list of indices
-            ignore_indices = np.array([int(i) for i in 
+            ignore_led_indices = np.array([int(i) for i in
                                       config['analyse_positions']['ignore_led_indices'].split(' ')])
         else:
-            ignore_indices = np.array([])
+            ignore_led_indices = np.array([])
 
-        return ignore_indices
+        return ignore_led_indices
 
     except Exception as e:
         print(f"Error getting indices of ignored LEDs: {str(e)}")
