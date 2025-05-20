@@ -79,7 +79,7 @@ class SimData:
     height_from_layer = lambda self, layer: -1 * (
             layer / self.n_layers * (self.top_layer_height - self.bottom_layer_height) - self.top_layer_height)
     layer_from_height = lambda self, height: int(
-        (self.top_layer_height - self.bottom_layer_height) / (self.top_layer_height - self.bottom_layer_height) * self.n_layers)
+        (self.top_layer_height - height) / (self.top_layer_height - self.bottom_layer_height) * self.n_layers)
 
     def set_timeshift(self, timedelta: int):
         """
@@ -131,7 +131,7 @@ class SimData:
         self.all_extco_df = pd.concat(extco_list, axis=1)
         self.all_extco_df.sort_index(ascending=True, axis=1, inplace=True)
         self.all_extco_df = self.all_extco_df[
-            ~self.all_extco_df.index.duplicated(keep='first')]  # Remove duplicate timesteps
+            ~self.all_extco_df.index.duplicated(keep='first')]  # Remove duplicate times
 
     def read_led_params(self):
         """Read led parameters for all color channels from the simulation path"""
@@ -150,11 +150,11 @@ class SimData:
         self.ch1_ledparams_df = self.ch1_ledparams_df.groupby(['Experiment_Time[s]', 'height']).last()
         self.ch2_ledparams_df = self.ch2_ledparams_df.groupby(['Experiment_Time[s]', 'height']).last()
 
-    def get_extco_at_timestep(self, channel: int, timestep: int, yaxis='layer', window=1, smooth='ma') -> pd.DataFrame:
+    def get_extco_at_time(self, channel: int, time: int, yaxis='layer', window=1, smooth='ma') -> pd.DataFrame:
         """
-        Retrieves a DataFrame containing smoothed extinction coefficients at a specific timestep.
+        Retrieves a DataFrame containing smoothed extinction coefficients at a specific time.
 
-        This method extracts the extinction coefficients for a specified channel and timestep,
+        This method extracts the extinction coefficients for a specified channel and time,
         applies smoothing over time using either a moving average or median based on the specified window size.
         It restructures the DataFrame to have layers or heights as indices and LED arrays as columns.
         The method first selects the extinction coefficients for the specified channel. It then applies the specified smoothing
@@ -163,8 +163,8 @@ class SimData:
 
         :param channel: The channel index to extract extinction coefficients for.
         :type channel: int
-        :param timestep: The timestep at which to extract extinction coefficients.
-        :type timestep: int
+        :param time: The time at which to extract extinction coefficients.
+        :type time: int
         :param yaxis: Determines whether the y-axis of the returned DataFrame should represent 'layer' or 'height'. Defaults to 'layer'.
         :type yaxis: str, optional
         :param window: The window size for the moving average or median smoothing. Defaults to 1.
@@ -179,7 +179,7 @@ class SimData:
             ma_ch_extco_df = ch_extco_df.iloc[::-1].rolling(window=window, closed='left').median().iloc[::-1]
         else:
             ma_ch_extco_df = ch_extco_df.iloc[::-1].rolling(window=window, closed='left').mean().iloc[::-1]
-        ma_ch_extco_df = ma_ch_extco_df.loc[timestep, :]
+        ma_ch_extco_df = ma_ch_extco_df.loc[time, :]
         ma_ch_extco_df = ma_ch_extco_df.reset_index().pivot(columns='LED Array', index='Layer')
         ma_ch_extco_df.columns = ma_ch_extco_df.columns.droplevel()
         ma_ch_extco_df.index = range(ma_ch_extco_df.shape[0])
@@ -187,7 +187,7 @@ class SimData:
             ma_ch_extco_df.index.names = ["Layer"]
         elif yaxis == 'height':
             ma_ch_extco_df.index = [round(self.height_from_layer(layer),2) for layer in ma_ch_extco_df.index]
-            ma_ch_extco_df.index.names = ["Height"]
+            ma_ch_extco_df.index.names = ["Height / m"]
         return ma_ch_extco_df
 
     def get_extco_at_led_array(self, channel: int, led_array_id: int, yaxis='layer', window=1) -> pd.DataFrame:
@@ -217,7 +217,7 @@ class SimData:
             ma_ch_extco_df.columns.names = ["Layer"]
         elif yaxis == 'height':
             ma_ch_extco_df.columns = [self.height_from_layer(layer) for layer in ma_ch_extco_df.columns]
-            ma_ch_extco_df.columns.names = ["Height"]
+            ma_ch_extco_df.columns.names = ["Height / m"]
         return ma_ch_extco_df
 
     def get_extco_at_layer(self, channel: int, layer: int, window=1) -> pd.DataFrame:
@@ -240,6 +240,24 @@ class SimData:
         # ma_ch_extco_df = ch_extco_df.iloc[::-1].rolling(window=window, closed='left').mean().iloc[::-1]
 
         return ma_ch_extco_df
+
+    def get_extco_at_height(self, channel: int, height: float, window=1) -> pd.DataFrame:
+        """
+        Retrieves a DataFrame containing smoothed extinction coefficients for a specified layer at given height.
+        This method extracts the extinction coefficients for a given channel and layer, then applies a moving average smoothing over the specified window of time.
+        The result is a DataFrame with experimental time as the index and LED arrays as the columns, providing a time series of extinction coefficients at the specified height.
+
+        :param channel: The channel index from which to extract extinction coefficients. Each channel represents a different set of measurements or sensor readings.
+        :type channel: int
+        :param height: The height for which to extract extinction coefficients.
+        :type height: float
+        :param window: The window size for the moving average smoothing. The default is 1, implying no smoothing. A larger window size will average the data over more time points, smoothing out short-term fluctuations.
+        :type window: int, optional
+        :return: A pandas DataFrame with smoothed extinction coefficients. The DataFrame's index represents experimental time, and its columns represent different LED arrays within the specified height.
+        :rtype: pd.DataFrame
+        """
+        layer = self.layer_from_height(height)
+        return self.get_extco_at_layer(channel, layer, window)
 
     def get_ledparams_at_led_array(self, channel: int, led_array_id: int, param='sum_col_val', yaxis='led_id', window=1,
                                    n_ref=None) -> pd.DataFrame:
@@ -330,16 +348,16 @@ class SimData:
 
         return rel_i_ma
 
-    def get_image_name_from_timestep(self, timestep: int):
+    def get_image_name_from_time(self, time: int):
         """
-        Retrieves the image name corresponding to a specific timestep.
+        Retrieves the image name corresponding to a specific times.
 
-        :param timestep: The timestep index.
-        :type timestep: int
+        :param time: The time index.
+        :type time: int
         :return: The name of the image.
         :rtype: str
         """
-        imagename = self.image_info_df.loc[self.image_info_df['Experiment_Time[s]'] == timestep]['Name'].values[0]
+        imagename = self.image_info_df.loc[self.image_info_df['Experiment_Time[s]'] == time]['Name'].values[0]
         return imagename
 
     def get_pixel_cordinates_of_LED(self, led_id: int):
@@ -356,18 +374,18 @@ class SimData:
         led_info_df.loc[led_info_df.index == led_id][[' pixel position x', ' pixel position y']].values[0]
         return pixel_positions
 
-    def get_pixel_values_of_led(self, led_id: int, channel: int, timestep: int, radius=None):
+    def get_pixel_values_of_led(self, led_id: int, channel: int, time: int, radius=None):
         """
-        Retrieves a cropped numpy array of pixel values around a specified LED, based on its ID, for a given image channel and timestep.
+        Retrieves a cropped numpy array of pixel values around a specified LED, based on its ID, for a given image channel and time.
 
-        This method calculates the pixel values in a specified radius around an LED's position on an image. It first determines the LED's pixel coordinates, then retrieves the image corresponding to the specified timestep, and finally extracts a square array of pixel values centered on the LED's location.
+        This method calculates the pixel values in a specified radius around an LED's position on an image. It first determines the LED's pixel coordinates, then retrieves the image corresponding to the specified time, and finally extracts a square array of pixel values centered on the LED's location.
 
         :param led_id: The identifier for the LED of interest. This ID is used to look up the LED's position.
         :type led_id: int
         :param channel: The image channel from which to extract pixel values. Different channels may represent different color channels or sensor readings.
         :type channel: int
-        :param timestep: The timestep at which the image was taken. This corresponds to a specific moment in the experimental timeline.
-        :type timestep: int
+        :param time: The time at which the image was taken. This corresponds to a specific moment in the experimental timeline.
+        :type time: int
         :param radius: The radius around the LED's position from which to extract pixel values. If not specified, the search_area_radius from the config file is used. Defaults to None.
         :type radius: int, optional
         :return: A numpy array containing the pixel values in the specified radius around the LED. The array is cropped from the original image, centered on the LED's position.
@@ -382,7 +400,7 @@ class SimData:
 
         if radius:
             pixel_positions = self.get_pixel_cordinates_of_LED(led_id)
-            imagename = self.get_image_name_from_timestep(timestep)
+            imagename = self.get_image_name_from_time(time)
             imagefile = os.path.join(self.path_images, imagename)
             channel_array = read_channel_data_from_img(imagefile, channel)
             x = pixel_positions[0]
