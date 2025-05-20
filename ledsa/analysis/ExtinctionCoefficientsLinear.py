@@ -86,4 +86,4 @@ class ExtinctionCoefficientsLinear(ExtinctionCoefficients):
         # Solve the non-negative least squares problem: min ||A_aug*x - b_aug||^2 subject to x >= 0
         sigmas, residuals = nnls(A_aug, b_aug)
 
-        return np.flip(sigmas)
+        return sigmas

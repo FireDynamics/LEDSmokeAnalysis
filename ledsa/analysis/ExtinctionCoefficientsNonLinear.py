@@ -75,9 +75,7 @@ class ExtinctionCoefficientsNonLinear(ExtinctionCoefficients):
                        method='TNC', bounds=tuple(self.bounds),
                        options={'maxfun': self.num_iterations, 'gtol': 1e-5, 'disp': False})
         print(fit.message)
-
-        # Flip the array to maintain consistent ordering with other methods
-        sigmas = np.flip(fit.x)
+        sigmas = fit.x
         return sigmas
 
     def calc_intensities(self, sigmas: np.ndarray) -> np.ndarray:
