@@ -279,7 +279,7 @@ class Experiment:
         x, y, z = self.get_led_positions(ids)
         for i in range(len(ids)):
             self.leds.append(LED(ids[i], x[i], y[i], z[i]))
-        self.led_number = len(ids)
+        self.num_leds = len(ids)
 
     def get_led_ids(self) -> np.ndarray:
         """

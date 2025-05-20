@@ -1,6 +1,7 @@
 import glob
 import os
 
+import numpy as np
 import pandas as pd
 
 from ledsa.core.image_reading import read_channel_data_from_img
@@ -240,8 +241,8 @@ class SimData:
 
         return ma_ch_extco_df
 
-    def get_ledparams_at_line(self, channel: int, line: int, param='sum_col_val', yaxis='led_id', window=1,
-                              n_ref=10) -> pd.DataFrame:
+    def get_ledparams_at_led_array(self, channel: int, led_array_id: int, param='sum_col_val', yaxis='led_id', window=1,
+                                   n_ref=None) -> pd.DataFrame:
         """
         Retrieves a DataFrame containing normalized LED parameters for a specific LED array, optionally smoothed over
         time. This method selects LED parameter data for a given channel and LED array. It normalizes the data based on
@@ -276,6 +277,8 @@ class SimData:
         if n_ref == False:
             rel_i = ii
         else:
+            # Use self.num_ref_images if n_ref is None
+            n_ref = self.num_ref_images if n_ref is None else n_ref
             i0 = ii.groupby([index]).agg(lambda g: g.iloc[0:n_ref].mean())
             rel_i = ii / i0
 
