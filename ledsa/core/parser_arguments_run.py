@@ -165,6 +165,13 @@ def run_analysis_arguments(args) -> None:
     """
     if args.config_analysis is not None:
         ConfigDataAnalysis(load_config_file=False)
+    elif args.analysis or args.cc:
+        # If any analysis argument is given but not config_analysis, check if config_analysis.ini file exists
+        try:
+            with open('config_analysis.ini', 'r') as f:
+                pass
+        except FileNotFoundError:
+            raise FileNotFoundError('config_analysis.ini not found in working directory! Please create it with argument "--config_analysis".')
 
     if args.cc:
         ex_data = ExperimentData()
