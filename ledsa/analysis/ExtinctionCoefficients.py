@@ -98,10 +98,9 @@ class ExtinctionCoefficients(ABC):
         Calculate distance traveled per layer, for every led, load image data from binary file and calculate reference intensities for each LED
 
         """
-        camera = 0
         if len(self.distances_per_led_and_layer) == 0:
             self.distances_per_led_and_layer = self.calc_distance_array()
-            np.savetxt(f'cam_{camera}_distances_per_led_and_layer.txt', self.distances_per_led_and_layer)
+            np.savetxt(f'distances_per_led_and_layer.txt', self.distances_per_led_and_layer)
         if self.calculated_img_data.empty:
             self.load_img_data()
         if self.ref_intensities.shape[0] == 0:
