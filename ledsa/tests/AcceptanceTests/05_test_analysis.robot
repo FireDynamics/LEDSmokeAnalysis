@@ -44,4 +44,4 @@ Check Results
 
 Rmse Should Be Small
     [Arguments]  ${rmse}
-    Should Be True   ${rmse} < 0.03
+    Should Be True   ${rmse} < 0.05

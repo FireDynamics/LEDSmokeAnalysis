@@ -23,4 +23,4 @@ Pdf with LED arrays should be created
     File Should Exist   ${WORKDIR}${/}plots${/}led_arrays.pdf
 
 LED array indices tables should be created
-    File Should Exist   ${WORKDIR}${/}analysis${/}line_indices_000.csv
+    File Should Exist   ${WORKDIR}${/}analysis${/}led_array_indices_000.csv

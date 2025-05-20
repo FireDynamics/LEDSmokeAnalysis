@@ -65,11 +65,10 @@ class LedsaATestLibrary:
         extinction_coefficients_computed = (
             np.loadtxt(os.path.join('analysis', 'extinction_coefficients', solver, filename), skiprows=5, delimiter=','))
         for image_id in range(first, last + 1):
-            extinction_coefficients_input = np.flip(
-                np.loadtxt(os.path.join('test_data', f'test_extinction_coefficients_input_{image_id}.csv'), delimiter=','))
+            extinction_coefficients_input = np.loadtxt(os.path.join('test_data', f'test_extinction_coefficients_input_{image_id}.csv'), delimiter=',')
             num_of_layers = extinction_coefficients_input.shape[0]
-            plt.plot(extinction_coefficients_input, range(num_of_layers), '.-', label='Input')
-            plt.plot(extinction_coefficients_computed[image_id - 1, :], range(num_of_layers), '.-', label='Computed')
+            plt.plot(extinction_coefficients_input, range(num_of_layers, 0, -1), '.-', label='Input')
+            plt.plot(extinction_coefficients_computed[image_id - 1, :], range(num_of_layers, 0, -1), '.-', label='Computed')
             plt.xlabel('Extinction coefficient / $\mathrm{m}^{-1}$')
             plt.ylabel('Layer / -')
             plt.title(f'Input vs Computed {solver} Extinction Coefficients - Image {image_id}')
@@ -87,8 +86,7 @@ class LedsaATestLibrary:
         filename = f'extinction_coefficients_{solver}_channel_{channel}_sum_col_val_led_array_{led_array}.csv'
         extinction_coefficients_computed = (
             np.loadtxt(os.path.join('analysis', 'extinction_coefficients',solver, filename), skiprows=5, delimiter=','))
-        extinction_coefficients_input = np.flip(
-            np.loadtxt(os.path.join('test_data', f'test_extinction_coefficients_input_{image_id}.csv'), delimiter=','))
+        extinction_coefficients_input = np.loadtxt(os.path.join('test_data', f'test_extinction_coefficients_input_{image_id}.csv'), delimiter=',')
         rmse = np.sqrt(
             np.mean((extinction_coefficients_input - extinction_coefficients_computed[int(image_id) - 1, :]) ** 2))
         return rmse
