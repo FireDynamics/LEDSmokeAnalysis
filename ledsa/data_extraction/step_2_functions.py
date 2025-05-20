@@ -31,7 +31,7 @@ def match_leds_to_led_arrays(search_areas: np.ndarray,
 
         # Convert search areas to dictionary for easier access
         search_areas_dict = {row[0]: row[1:] for row in search_areas}
-        all_led_lines_dict = {}
+        all_led_arrays_dict = {}
 
         # Remove ignored LEDs if specified
         if ignore_leds is not None:
@@ -39,9 +39,9 @@ def match_leds_to_led_arrays(search_areas: np.ndarray,
                 if led_id in search_areas_dict:
                     del search_areas_dict[led_id]
 
-        # Process each LED line defined by edge indices
-        for led_line_id, ref_led_id_list in enumerate(edge_indices):
-            led_line_list = []
+        # Process each LED array defined by edge indices
+        for led_array_id, ref_led_id_list in enumerate(edge_indices):
+            led_array_list = []
 
             # Initialize with the first two reference LEDs
             try:
@@ -52,13 +52,13 @@ def match_leds_to_led_arrays(search_areas: np.ndarray,
                 ref_led_loc = search_areas_dict.get(ref_led_id)
 
                 if led_loc is None or ref_led_loc is None:
-                    raise ValueError(f"Reference LED ID {led_id if led_loc is None else ref_led_id} not found in search areas")
+                    raise ValueError(f"Reference LED ID {led_id if led_loc is None else ref_led_id} not found in search areas. Maybe the Edge LEDs are not defined correctly in the config file?")
 
-                # Process LEDs until we reach the end of the line or run out of LEDs
+                # Process LEDs until we reach the end of the LED array or run out of LEDs
                 while search_areas_dict:
-                    # Remove current LED from dictionary and add to line list
+                    # Remove current LED from dictionary and add to led_array_list
                     del search_areas_dict[led_id]
-                    led_line_list.append(led_id)
+                    led_array_list.append(led_id)
 
                     # Find the next LED in the sequence
                     try:
@@ -68,7 +68,7 @@ def match_leds_to_led_arrays(search_areas: np.ndarray,
 
                         # If we've reached a reference LED, handle accordingly
                         if led_id == ref_led_id_list[-1]:
-                            led_line_list.append(led_id)
+                            led_array_list.append(led_id)
                             del search_areas_dict[led_id]
                             break
                         elif led_id == ref_led_id:
@@ -76,17 +76,17 @@ def match_leds_to_led_arrays(search_areas: np.ndarray,
                                 ref_led_id = next(ref_led_id_iter)
                                 ref_led_loc = search_areas_dict[ref_led_id]
                             except StopIteration:
-                                # No more reference LEDs in this line
+                                # No more reference LEDs in this LED array
                                 break
                     except (KeyError, ValueError) as e:
-                        print(f"Error processing LED line {led_line_id}: {str(e)}")
+                        print(f"Error processing LED array {led_array_id}: {str(e)}")
                         break
 
             except StopIteration:
-                print(f"Warning: Not enough reference LEDs for line {led_line_id}")
+                print(f"Warning: Not enough reference LEDs for LED array {led_array_id}")
                 continue
 
-            all_led_lines_dict[led_line_id] = led_line_list
+            all_led_arrays_dict[led_array_id] = led_array_list
 
         # Report on unmatched LEDs
         num_non_matched_leds = len(search_areas_dict)
@@ -98,9 +98,9 @@ def match_leds_to_led_arrays(search_areas: np.ndarray,
             print("\n")
 
         # Remove ignored LEDs from the results
-        all_led_lines_dict = _remove_ignored_leds(all_led_lines_dict, ignored_indices)
+        all_led_arrays_dict = _remove_ignored_leds(all_led_arrays_dict, ignored_indices)
 
-        return list(all_led_lines_dict.values())
+        return list(all_led_arrays_dict.values())
 
     except Exception as e:
         print(f"Error in match_leds_to_led_arrays: {str(e)}")
@@ -211,20 +211,20 @@ def _get_indices_of_outer_leds(config: ConfigData) -> np.ndarray:
     :return: List containing indices of outer LEDs.
     """
     try:
-        # Check if line edge indices are defined in config
+        # Check if LED array edge indices are defined in config
         if config['analyse_positions']['led_array_edge_indices'] == 'None':
             config.in_led_array_edge_indices()
             with open('config.ini', 'w') as configfile:
                 config.write(configfile)
 
-        # Get the line edge indices from config
-        line_edge_indices = config.get2dnparray('analyse_positions', 'led_array_edge_indices')
+        # Get the LED array edge indices from config
+        led_array_edge_indices = config.get2dnparray('analyse_positions', 'led_array_edge_indices')
 
-        # Ensure line_edge_indices is a 2D array
-        if len(line_edge_indices.shape) == 1:
-            line_edge_indices = np.atleast_2d(line_edge_indices)
+        # Ensure led_array_edge_indices is a 2D array
+        if len(led_array_edge_indices.shape) == 1:
+            led_array_edge_indices = np.atleast_2d(led_array_edge_indices)
 
-        return line_edge_indices
+        return led_array_edge_indices
 
     except Exception as e:
         print(f"Error getting indices of outer LEDs: {str(e)}")
@@ -256,104 +256,104 @@ def _get_indices_of_ignored_leds(config: ConfigData) -> np.ndarray:
         return np.array([])
 
 
-def _remove_ignored_leds(all_led_lines_dict: Dict[int, List[int]], 
-                        ignored_indices: np.ndarray) -> Dict[int, List[int]]:
+def _remove_ignored_leds(all_led_arrays_dict: Dict[int, List[int]],
+                         ignored_indices: np.ndarray) -> Dict[int, List[int]]:
     """
-    Remove ignored LEDs from the LED lines dictionary.
+    Remove ignored LEDs from the LED arrays dictionary.
 
-    :param all_led_lines_dict: Dictionary mapping line IDs to lists of LED IDs
-    :param ignored_indices: Array of LED IDs to ignore
+    :param all_led_arrays_dict: Dictionary mapping LED array indices to lists of LED indices
+    :param ignored_indices: Array of LED indices to ignore
     :return: Updated dictionary with ignored LEDs removed
     """
     if len(ignored_indices) == 0:
-        return all_led_lines_dict
+        return all_led_arrays_dict
 
     print('Removing ignored LEDs...\nLED IDs:')
 
     # Create a copy to avoid modifying during iteration
-    result_dict = {k: v.copy() for k, v in all_led_lines_dict.items()}
+    result_dict = {k: v.copy() for k, v in all_led_arrays_dict.items()}
 
-    for led_line in result_dict.values():
+    for led_array in result_dict.values():
         for led_id in ignored_indices:
             try:
-                led_line.remove(led_id)
+                led_array.remove(led_id)
                 print(led_id, end=" ")
             except ValueError:
-                # LED ID not in this line, which is fine
+                # LED ID not in this LED array, which is fine
                 pass
 
     print("\n")
     return result_dict
 
 
-def generate_line_indices_files(line_indices: List[List[int]], 
-                               filename_extension: str = '') -> None:
+def generate_led_array_indices_files(led_array_indices: List[List[int]],
+                                     filename_extension: str = '') -> None:
     """
-    Generate files containing line indices.
+    Generate files containing LED array indices.
 
-    :param line_indices: List containing indices for each line.
+    :param led_array_indices: List containing indices for each LED array.
     :param filename_extension: Optional extension for the generated filename, defaults to ''.
     """
     try:
         # Create analysis directory if it doesn't exist
         os.makedirs('analysis', exist_ok=True)
 
-        # Generate a file for each line
-        for i, line in enumerate(line_indices):
-            file_path = os.path.join('analysis', f'line_indices_{i:03}{filename_extension}.csv')
+        # Generate a file for each LED array
+        for i, led_array in enumerate(led_array_indices):
+            file_path = os.path.join('analysis', f'led_array_indices_{i:03}{filename_extension}.csv')
 
             with open(file_path, 'w') as out_file:
-                for led_id in reversed(line):
+                for led_id in reversed(led_array):
                     out_file.write(f'{led_id}\n')
 
-        print(f"Generated {len(line_indices)} line indices files in the 'analysis' directory")
+        print(f"Generated {len(led_array_indices)} LED array indices files in the 'analysis' directory")
 
     except Exception as e:
-        print(f"Error generating line indices files: {str(e)}")
+        print(f"Error generating LED array indices files: {str(e)}")
         raise
 
 
-def reorder_led_indices(line_indices: List[List[int]]) -> List[List[int]]:
+def reorder_led_indices(led_array_indices: List[List[int]]) -> List[List[int]]:
     """
     Reorders LED indices to ensure continuous sequencing within each LED array.
 
-    :param line_indices: A list of lists, each containing the indices of LEDs within a particular array.
+    :param led_array_indices: A list of lists, each containing the indices of LEDs within a particular array.
     :return: A list of lists, where each inner list contains the reordered indices of LEDs for each array.
     """
     try:
         start_id = 0
-        line_start_indices = []
-        line_end_indices = []
+        led_array_start_indices = []
+        led_array_end_indices = []
 
-        # Populate line_start_indices and line_end_indices
-        for line in line_indices:
-            line_start_indices.append(start_id)
-            end_id = start_id + len(line)  # Calculate end_id
-            line_end_indices.append(end_id - 1)
+        # Populate led_array_start_indices and led_array_end_indices
+        for led_array in led_array_indices:
+            led_array_start_indices.append(start_id)
+            end_id = start_id + len(led_array)  # Calculate end_id
+            led_array_end_indices.append(end_id - 1)
             start_id = end_id  # Update start_id for the next iteration
 
-        # Create ranges for each line
+        # Create ranges for each LED array
         # This comprehension iterates over pairs of start and end indices
         # and creates a list of integers for each pair.
-        line_indices_reordered = [
+        led_array_indices_reordered = [
             list(range(start_id, end_id + 1)) 
-            for start_id, end_id in zip(line_start_indices, line_end_indices)
+            for start_id, end_id in zip(led_array_start_indices, led_array_end_indices)
         ]
 
-        return line_indices_reordered
+        return led_array_indices_reordered
 
     except Exception as e:
         print(f"Error reordering LED indices: {str(e)}")
         raise
 
 
-def reorder_search_areas(search_areas: np.ndarray, 
-                        line_indices_old: List[List[int]]) -> np.ndarray:
+def reorder_search_areas(search_areas: np.ndarray,
+                         led_array_indices_old: List[List[int]]) -> np.ndarray:
     """
     Reorders search areas based on the new order of LED indices.
 
     :param search_areas: A numpy array containing the original search areas.
-    :param line_indices_old: A list of lists containing the old LED indices before reordering.
+    :param led_array_indices_old: A list of lists containing the old LED indices before reordering.
     :return: A numpy array of the reordered search areas.
     """
     try:
@@ -366,7 +366,7 @@ def reorder_search_areas(search_areas: np.ndarray,
             return flat_list
 
         # Flatten the list of LED indices
-        old_led_indices = flatten_list(line_indices_old)
+        old_led_indices = flatten_list(led_array_indices_old)
 
         # Reorder search areas based on flattened indices
         search_areas_reordered = search_areas[old_led_indices]
@@ -381,11 +381,11 @@ def reorder_search_areas(search_areas: np.ndarray,
         raise
 
 
-def merge_indices_of_led_arrays(line_indices: List[List[int]], config: ConfigData) -> List[List[int]]:
+def merge_indices_of_led_arrays(led_array_indices: List[List[int]], config: ConfigData) -> List[List[int]]:
     """
     Merges LED arrays according to the configuration specified in 'merge_led_arrays'.
 
-    :param line_indices: A list of lists, each containing the indices of LEDs within a particular array.
+    :param led_array_indices: A list of lists, each containing the indices of LEDs within a particular array.
     :param config: Configuration data containing merge information.
     :return: A list of lists with merged LED arrays.
     """
@@ -393,7 +393,7 @@ def merge_indices_of_led_arrays(line_indices: List[List[int]], config: ConfigDat
         # Check if merge_led_arrays is defined in config
         if config['analyse_positions']['merge_led_array_indices'] == 'None':
             # No merging needed
-            return line_indices
+            return led_array_indices
 
         # Get the merge configuration
         merge_config = config.get2dnparray('analyse_positions', 'merge_led_array_indices', 'var')
@@ -408,8 +408,8 @@ def merge_indices_of_led_arrays(line_indices: List[List[int]], config: ConfigDat
 
             # Add all LEDs from the specified arrays to the merged array
             for array_index in merge_group:
-                if 0 <= array_index < len(line_indices):
-                    merged_array.extend(line_indices[array_index])
+                if 0 <= array_index < len(led_array_indices):
+                    merged_array.extend(led_array_indices[array_index])
                 else:
                     print(f"Warning: Array index {array_index} out of range, skipping")
 
@@ -417,12 +417,12 @@ def merge_indices_of_led_arrays(line_indices: List[List[int]], config: ConfigDat
             if merged_array:
                 merged_indices.append(merged_array)
 
-        # Generate line indices files with the merged arrays
-        generate_line_indices_files(merged_indices, '_merge')
+        # Generate LED array indices files with the merged arrays
+        generate_led_array_indices_files(merged_indices, '_merge')
 
         return merged_indices
 
     except Exception as e:
         print(f"Error merging LED array indices: {str(e)}")
         # Return the original indices as fallback
-        return line_indices
+        return led_array_indices

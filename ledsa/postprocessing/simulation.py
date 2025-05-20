@@ -19,8 +19,6 @@ class SimData:
         :type path_images: str, optional
         :param read_all: If True, reads all data on initialization, defaults to True.
         :type read_all: bool, optional
-        :param average_images: If True, averages images for analysis, defaults to False.
-        :type average_images: bool, optional
         :param remove_duplicates: If True, removes duplicate entries from analysis, defaults to False.
         :type remove_duplicates: bool, optional
         :param load_config_params: If True, loads parameters from config files, defaults to True.
@@ -32,7 +30,7 @@ class SimData:
         self.camera_channels = [0]
         self.num_ref_images = None
         self.n_layers = None
-        self.window_radius = None
+        self.search_area_radius = None
         self.path_images = None
 
 
@@ -43,7 +41,7 @@ class SimData:
             self.config_analysis = ConfigDataAnalysis()
 
             # Get parameters from config file
-            self.window_radius = self.config['find_search_areas']['window_radius']
+            self.search_area_radius = self.config['find_search_areas']['search_area_radius']
             self.path_images = self.config['find_search_areas']['img_directory']
 
             # Get parameters from config_analysis file
@@ -51,7 +49,7 @@ class SimData:
             self.average_images = self.config_analysis.getboolean('DEFAULT', 'average_images')
             self.camera_channels = self.config_analysis.get_list_of_values('DEFAULT', 'camera_channels', dtype=int)
             self.num_ref_images = int(self.config_analysis['DEFAULT']['num_ref_images'])
-            self.n_layers = int(self.config_analysis['model_parameters']['num_of_layers'])
+            self.n_layers = int(self.config_analysis['model_parameters']['num_layers'])
             domain_bounds = self.config_analysis.get_list_of_values('model_parameters', 'domain_bounds', dtype=float)
             self.bottom_layer_height = domain_bounds[0]
             self.top_layer_height = domain_bounds[1]
@@ -121,13 +119,13 @@ class SimData:
         for file in files_list:
             file_df = pd.read_csv(file, skiprows=4)
             channel = int(file.split('channel_')[1].split('_')[0])
-            line = int(file.split('array_')[1].split('.')[0])
+            led_array = int(file.split('array_')[1].split('.')[0])
             n_layers = len(file_df.columns)
             time = self.image_info_df['Experiment_Time[s]'].astype(int)
             file_df = file_df.merge(time, left_index=True, right_index=True)
             file_df.set_index('Experiment_Time[s]', inplace=True)
-            iterables = [[channel], [line], [i for i in range(0, n_layers)]]
-            file_df.columns = pd.MultiIndex.from_product(iterables, names=["Channel", "Line", "Layer"])
+            iterables = [[channel], [led_array], [i for i in range(0, n_layers)]]
+            file_df.columns = pd.MultiIndex.from_product(iterables, names=["Channel", "LED Array", "Layer"])
             extco_list.append(file_df)
         self.all_extco_df = pd.concat(extco_list, axis=1)
         self.all_extco_df.sort_index(ascending=True, axis=1, inplace=True)
@@ -156,11 +154,11 @@ class SimData:
         Retrieves a DataFrame containing smoothed extinction coefficients at a specific timestep.
 
         This method extracts the extinction coefficients for a specified channel and timestep,
-        applies smoothing over time using either a moving average or median based on the specified window size,
-        and restructures the DataFrame to have layers or heights as indices and lines as columns.
+        applies smoothing over time using either a moving average or median based on the specified window size.
+        It restructures the DataFrame to have layers or heights as indices and LED arrays as columns.
         The method first selects the extinction coefficients for the specified channel. It then applies the specified smoothing
         operation across a defined window of timesteps. The resulting data is then pivoted to organize extinction coefficients
-        by line and layer or height, depending on the 'yaxis' parameter, providing a structured view suitable for analysis or visualization.
+        by LED array and layer or height, depending on the 'yaxis' parameter, providing a structured view suitable for analysis or visualization.
 
         :param channel: The channel index to extract extinction coefficients for.
         :type channel: int
@@ -172,7 +170,7 @@ class SimData:
         :type window: int, optional
         :param smooth: The smoothing method to use, either 'ma' for moving average or 'median' for median. Defaults to 'ma'.
         :type smooth: str, optional
-        :return: A pandas DataFrame with the smoothed extinction coefficients. Indices represent either layers or heights, and columns represent lines.
+        :return: A pandas DataFrame with the smoothed extinction coefficients. Indices represent either layers or heights, and columns represent LED arrays.
         :rtype: pd.DataFrame
         """
         ch_extco_df = self.all_extco_df.xs(channel, level=0, axis=1)
@@ -181,7 +179,7 @@ class SimData:
         else:
             ma_ch_extco_df = ch_extco_df.iloc[::-1].rolling(window=window, closed='left').mean().iloc[::-1]
         ma_ch_extco_df = ma_ch_extco_df.loc[timestep, :]
-        ma_ch_extco_df = ma_ch_extco_df.reset_index().pivot(columns='Line', index='Layer')
+        ma_ch_extco_df = ma_ch_extco_df.reset_index().pivot(columns='LED Array', index='Layer')
         ma_ch_extco_df.columns = ma_ch_extco_df.columns.droplevel()
         ma_ch_extco_df.index = range(ma_ch_extco_df.shape[0])
         if yaxis == 'layer':
@@ -191,26 +189,26 @@ class SimData:
             ma_ch_extco_df.index.names = ["Height"]
         return ma_ch_extco_df
 
-    def get_extco_at_line(self, channel: int, line: int, yaxis='layer', window=1) -> pd.DataFrame:
+    def get_extco_at_led_array(self, channel: int, led_array_id: int, yaxis='layer', window=1) -> pd.DataFrame:
         """
-        Retrieves a DataFrame containing smoothed extinction coefficients for a specific line.
+        Retrieves a DataFrame containing smoothed extinction coefficients for a specific LED array.
 
-        This method extracts the extinction coefficients for a specified channel and line, applies a moving average smoothing over time based on the specified window size, and restructures the DataFrame to have experimental time as the index and layers (or heights) as columns.        The method first selects the relevant extinction coefficients for the specified channel and line. It then applies a moving average smoothing operation across a defined window of time steps. The resulting data is organized such that the experimental time is the index, providing a structured view suitable for analysis or visualization. Depending on the 'yaxis' parameter, the columns of the resulting DataFrame are labeled as either layers or converted to heights.
+        This method extracts the extinction coefficients for a specified channel and LED array, applies a moving average smoothing over time based on the specified window size, and restructures the DataFrame to have experimental time as the index and layers (or heights) as columns.
+        The method first selects the relevant extinction coefficients for the specified channel and LED array. It then applies a moving average smoothing operation across a defined window of time steps. The resulting data is organized such that the experimental time is the index, providing a structured view suitable for analysis or visualization. Depending on the 'yaxis' parameter, the columns of the resulting DataFrame are labeled as either layers or converted to heights.
 
 
         :param channel: The channel index from which to extract extinction coefficients.
         :type channel: int
-        :param line: The line number for which to extract extinction coefficients.
-        :type line: int
+        :param led_array_id: The ID for which to extract extinction coefficients.
+        :type led_array_id: int
         :param yaxis: Determines whether the DataFrame's columns should represent 'layer' or 'height'. The default is 'layer', which uses the layer numbers as column names. If set to 'height', the column names are converted to the corresponding heights based on layer numbers.
         :type yaxis: str, optional
         :param window: The window size for the moving average smoothing. The default is 1, which means no smoothing is applied. A window greater than 1 will smooth the data over the specified number of time steps.
         :type window: int, optional
         :return: A pandas DataFrame with the smoothed extinction coefficients. The index represents the experimental time, and the columns represent either layers or heights, depending on the 'yaxis' parameter.
         :rtype: pd.DataFrame
-
         """
-        ch_extco_df = self.all_extco_df.xs(channel, level=0, axis=1).xs(line, level=0, axis=1)
+        ch_extco_df = self.all_extco_df.xs(channel, level=0, axis=1).xs(led_array_id, level=0, axis=1)
         ma_ch_extco_df = ch_extco_df.rolling(window=window, closed='right').mean().shift(-int(window / 2) + 1)
         # ma_ch_extco_df = ch_extco_df.iloc[::-1].rolling(window=window, closed='left').mean().iloc[::-1]
 
@@ -224,8 +222,8 @@ class SimData:
     def get_extco_at_layer(self, channel: int, layer: int, window=1) -> pd.DataFrame:
         """
         Retrieves a DataFrame containing smoothed extinction coefficients for a specified layer.
-
-        This method extracts the extinction coefficients for a given channel and layer, then applies a moving average smoothing over the specified window of time. The result is a DataFrame with experimental time as the index and lines as the columns, providing a time series of extinction coefficients at the specified layer.
+        This method extracts the extinction coefficients for a given channel and layer, then applies a moving average smoothing over the specified window of time.
+        The result is a DataFrame with experimental time as the index and LED arrays as the columns, providing a time series of extinction coefficients at the specified layer.
 
         :param channel: The channel index from which to extract extinction coefficients. Each channel represents a different set of measurements or sensor readings.
         :type channel: int
@@ -233,10 +231,8 @@ class SimData:
         :type layer: int
         :param window: The window size for the moving average smoothing. The default is 1, implying no smoothing. A larger window size will average the data over more time points, smoothing out short-term fluctuations.
         :type window: int, optional
-        :return: A pandas DataFrame with smoothed extinction coefficients. The DataFrame's index represents experimental time, and its columns represent different lines within the specified layer.
+        :return: A pandas DataFrame with smoothed extinction coefficients. The DataFrame's index represents experimental time, and its columns represent different LED arrays within the specified layer.
         :rtype: pd.DataFrame
-
-        By selecting extinction coefficients for a specific channel and layer, this method focuses analysis on the variations over time within that layer. The smoothing process, using a moving average, helps to reduce noise and reveal underlying trends in the extinction coefficients. The method returns a structured DataFrame that is ready for further analysis or visualization, aiding in the interpretation of the experimental data.
         """
         ch_extco_df = self.all_extco_df.xs(channel, level=0, axis=1).xs(layer, level=1, axis=1)
         ma_ch_extco_df = ch_extco_df.rolling(window=window, closed='right').mean().shift(-int(window / 2) + 1)
@@ -247,14 +243,16 @@ class SimData:
     def get_ledparams_at_line(self, channel: int, line: int, param='sum_col_val', yaxis='led_id', window=1,
                               n_ref=10) -> pd.DataFrame:
         """
-         Retrieves a DataFrame containing normalized LED parameters for a specific line, optionally smoothed over time.
-
-         This method selects LED parameter data for a given channel and line, normalizes the data based on the average of the first `n_ref` entries (if `n_ref` is not False), and applies a moving average smoothing over the specified window of time. The result is a DataFrame with experimental time as the index and LED identifiers (or heights) as the columns, depending on the `yaxis` parameter.
+        Retrieves a DataFrame containing normalized LED parameters for a specific LED array, optionally smoothed over
+        time. This method selects LED parameter data for a given channel and LED array. It normalizes the data based on
+        the average of the first `n_ref` entries (if `n_ref` is not False), and applies a moving average smoothing
+        over the specified window of time. The result is a DataFrame with experimental time as the index and LED
+        identifiers (or heights) as the columns, depending on the `yaxis` parameter.
 
          :param channel: The channel index from which to extract LED parameters. Channels typically represent different sensor readings or experimental conditions.
          :type channel: int
-         :param line: The line number for which to extract LED parameters. Lines may represent different spatial locations or orientations in the experimental setup.
-         :type line: int
+         :param led_array_id: The ID of the LED array for which to extract LED parameters. LED arrays may represent different spatial locations or orientations in the experimental setup.
+         :type led_array_id: int
          :param param: The specific LED parameter to extract and analyze, such as 'sum_col_val'. Defaults to 'sum_col_val'.
          :type param: str, optional
          :param yaxis: Determines the labeling of the DataFrame's columns, either 'led_id' for LED identifiers or 'height' for physical heights. Defaults to 'led_id'.
@@ -265,8 +263,6 @@ class SimData:
          :type n_ref: int or bool, optional
          :return: A pandas DataFrame with normalized (and optionally smoothed) LED parameters. The index represents experimental time, and columns represent LED identifiers or heights.
          :rtype: pd.DataFrame
-
-         This method is useful for analyzing temporal variations in specific LED parameters across different spatial lines within an experimental setup. By normalizing the data and applying a smoothing operation, it helps to reveal underlying trends and patterns in the LED parameters over time.
          """
         if channel == 0:
             led_params = self.ch0_ledparams_df
@@ -276,7 +272,7 @@ class SimData:
             led_params = self.ch2_ledparams_df
         index = 'height' if yaxis == 'height' else 'led_id'
         led_params = led_params.reset_index().set_index(['Experiment_Time[s]', index])
-        ii = led_params[led_params['line'] == line][[param]]
+        ii = led_params[led_params['led_array_id'] == led_array_id][[param]]
         if n_ref == False:
             rel_i = ii
         else:
@@ -369,7 +365,7 @@ class SimData:
         :type channel: int
         :param timestep: The timestep at which the image was taken. This corresponds to a specific moment in the experimental timeline.
         :type timestep: int
-        :param radius: The radius around the LED's position from which to extract pixel values. If not specified, the window_radius from the config file is used. Defaults to None.
+        :param radius: The radius around the LED's position from which to extract pixel values. If not specified, the search_area_radius from the config file is used. Defaults to None.
         :type radius: int, optional
         :return: A numpy array containing the pixel values in the specified radius around the LED. The array is cropped from the original image, centered on the LED's position.
         :rtype: numpy.ndarray
@@ -378,8 +374,8 @@ class SimData:
         if not self.path_images:
             raise ValueError("path_images is required for accessing image files")
 
-        # Use the provided radius or fall back to window_radius from config
-        radius = radius if radius is not None else self.window_radius
+        # Use the provided radius or fall back to search_area_radius from config
+        radius = radius if radius is not None else self.search_area_radius
 
         if radius:
             pixel_positions = self.get_pixel_cordinates_of_LED(led_id)

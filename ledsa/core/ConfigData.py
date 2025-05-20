@@ -26,8 +26,8 @@ class ConfigData(cp.ConfigParser):
         :type search_area_radius: int
         :param pixel_value_percentile: Threshold percentile of pixel value for LED detection. Defaults to 99.875.
         :type pixel_value_percentile: float
-        :param channel: Camera channel on which the LED should be detected. Defaults to 0.
-        :type channel: int
+        :param channel: Camera channel on which the LED should be detected. Defaults to 0. Can also be "all".
+        :type channel: str or int
         :param max_num_leds: Maximum number of LEDs to be detected on the reference image. Defaults to None
         :type max_num_leds: int
         :param num_arrays: Number of LED arrays. Defaults to None.
@@ -321,8 +321,8 @@ class ConfigData(cp.ConfigParser):
               'each array. Separate the two labels with a whitespace.')
         labels = str()
         for i in range(int(self['analyse_positions']['num_arrays'])):
-            line = input(str(i) + '. array: ')
-            labels += '\t    ' + line + '\n'
+            led_array = input(str(i) + '. array: ')
+            labels += '\t    ' + led_array + '\n'
         self['analyse_positions']['led_array_edge_indices'] = '\n' + labels
 
     def in_led_array_edge_coordinates(self) -> None:
@@ -338,8 +338,8 @@ class ConfigData(cp.ConfigParser):
               'order of the led array edge indices. Separate the two coordinates with a whitespace.')
         coordinates = str()
         for i in range(int(self['analyse_positions']['num_arrays'])):
-            line = input(str(i) + '. array: ')
-            coordinates += '\t    ' + line + '\n'
+            led_array = input(str(i) + '. array: ')
+            coordinates += '\t    ' + led_array + '\n'
         self['analyse_positions']['led_array_edge_coordinates'] = '\n' + coordinates
 
     # get the start time from the first experiment image

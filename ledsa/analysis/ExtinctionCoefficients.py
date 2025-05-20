@@ -117,10 +117,10 @@ class ExtinctionCoefficients(ABC):
             create_analysis_infos_avg()
         else:
             img_data = read_hdf(self.experiment.channel, path=self.experiment.path)
-        img_data_cropped = img_data[['line', self.reference_property]]
-        self.calculated_img_data = img_data_cropped[img_data_cropped['line'] == self.experiment.led_array]
+        img_data_cropped = img_data[['led_array_id', self.reference_property]]
+        self.calculated_img_data = img_data_cropped[img_data_cropped['led_array_id'] == self.experiment.led_array]
         if self.calculated_img_data.empty:
-            exit(f"Apparently there are no intensity values for line {self.experiment.led_array}!")
+            exit(f"Apparently there are no intensity values for led array {self.experiment.led_array}!")
 
     def save(self) -> None:
         """
@@ -144,7 +144,7 @@ class ExtinctionCoefficients(ABC):
         :return: Array of distances traversed between camera and LEDs in each layer.
         :rtype: np.ndarray
         """
-        distances = np.zeros((self.experiment.led_number, self.experiment.layers.amount))
+        distances = np.zeros((self.experiment.num_leds, self.experiment.layers.amount))
         count = 0
         for led in self.experiment.leds:
             d = self.experiment.calc_traversed_dist_per_layer(led)

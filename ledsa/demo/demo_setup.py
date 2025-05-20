@@ -54,7 +54,7 @@ def _create_config_files(path):
         time_img_id=None,
         time_ref_img_time=None,
         time_diff_to_image_time=-1,
-        ref_img_id="V001_Cam01_1.CR2",
+        ref_img_id=1,
         pixel_value_percentile=99.875,
         channel='all',
         max_num_leds=1000,
@@ -68,8 +68,8 @@ def _create_config_files(path):
     )
     config.set('analyse_positions', '   ignore_indices', '781 675 746')
 
-    config.set('analyse_positions', '   line_edge_indices', '\n   457 246\n    12 347\n    578 671\n    31 535\n    825 838\n    198 698\n    965 782\n   ')
-    config.set('analyse_positions', '   line_edge_coordinates','\n   6.86 3.13 1.14 5.98 2.83 3.32\n   '
+    config.set('analyse_positions', '   led_array_edge_indices', '\n   457 246\n    12 347\n    578 671\n    31 535\n    825 838\n    198 698\n    965 782\n   ')
+    config.set('analyse_positions', '   led_array_edge_coordinates','\n   6.86 3.13 1.14 5.98 2.83 3.32\n   '
                                                                 '5.96 2.83 0.99 5.98 2.83 3.35\n   '
                                                                 '5.96 2.83 1.17 5.05 2.62 3.32\n   '
                                                                 '5.02 2.62 1.0 5.05 2.62 3.34\n   '

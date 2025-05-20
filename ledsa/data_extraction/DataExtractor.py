@@ -144,7 +144,7 @@ class DataExtractor:
 
     def match_leds_to_led_arrays(self) -> None:
         """
-        Analyze which LEDs belong to which LED line and save this mapping.
+        Analyze which LEDs belong to which LED array and save this mapping.
         """
         if ledsa.core.file_handling.check_flag('reorder_leds'):
             exit("LED IDs have been reordered. Please run step S1 again before trying to match LEDs to LED lines!")
@@ -161,7 +161,7 @@ class DataExtractor:
             print("LED IDs reordered successfully!")
             ledsa.core.file_handling.set_flag('reorder_leds')
 
-            ledsa.data_extraction.step_2_functions.generate_line_indices_files(self.line_indices)
+            ledsa.data_extraction.step_2_functions.generate_led_array_indices_files(self.line_indices)
             self.plot_led_arrays()
 
 
@@ -169,9 +169,9 @@ class DataExtractor:
             self.line_indices = ledsa.data_extraction.step_2_functions.merge_indices_of_led_arrays(self.line_indices, self.config)
             self.plot_led_arrays(merge_led_arrays=True)
 
-    def load_line_indices(self) -> None:
+    def load_led_array_indices(self) -> None:
         """
-        Load LED line indices from the 'line_indices_{...}.csv' files.
+        Load LED array indices from the 'led_array_indices_{...}.csv' files.
         """
         if self.config['analyse_positions']['merge_led_array_indices'] != 'None':
             num_arrays = len(self.config.get2dnparray('analyse_positions', 'merge_led_array_indices', 'var'))
@@ -182,7 +182,7 @@ class DataExtractor:
             file_extension = ''
         self.line_indices = []
         for i in range(num_arrays):
-            file_path = os.path.join('analysis', f'line_indices_{i:03}{file_extension}.csv')
+            file_path = os.path.join('analysis', f'led_array_indices_{i:03}{file_extension}.csv')
             self.line_indices.append(ledsa.core.file_handling.read_table(file_path, dtype='int'))
 
     def plot_led_arrays(self, merge_led_arrays=False) -> None:
@@ -218,7 +218,7 @@ class DataExtractor:
         if self.search_areas is None:
             self.load_search_areas()
         if self.line_indices is None:
-            self.load_line_indices()
+            self.load_led_array_indices()
 
         img_filenames = ledsa.core.file_handling.read_table('images_to_process.csv', dtype=str)
         num_cores = int(config['num_cores'])

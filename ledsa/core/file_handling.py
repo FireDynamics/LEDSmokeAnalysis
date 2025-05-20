@@ -178,7 +178,7 @@ def average_all_fitpar(channel, n_summarize=2, num_ref_imgs=10) -> None:  # TODO
     :type num_ref_imgs: int
     """
     fit_parameters = read_hdf(channel)
-    fit_parameters_grouped = fit_parameters.groupby(['line', 'led_id'])
+    fit_parameters_grouped = fit_parameters.groupby(['led_array_id', 'led_id'])
     avg_dataset_list = []
     for name, dataset in fit_parameters_grouped:
         head = dataset.iloc[:num_ref_imgs]
@@ -190,7 +190,7 @@ def average_all_fitpar(channel, n_summarize=2, num_ref_imgs=10) -> None:  # TODO
         combined_dataset = pd.concat([head, avg_dataset])
         avg_dataset_list.append(combined_dataset)
     all_fitpar = pd.concat(avg_dataset_list)
-    all_fitpar[["line", "sum_col_val"]] = all_fitpar[["line", "sum_col_val"]].astype(int)
+    all_fitpar[["led_array_id", "sum_col_val"]] = all_fitpar[["led_array_id", "sum_col_val"]].astype(int)
     try: # TODO: Resolve
         all_fitpar[["sum_col_val_cc"]] = all_fitpar[["sum_col_val_cc"]].astype(int)
     except:
@@ -267,7 +267,7 @@ def create_binary_data(channel: int) -> None:
     print(f'{number_of_images - exception_counter} of {number_of_images} loaded.')
     fit_params['img_id'] = fit_params['img_id'].astype(int)
     fit_params['led_id'] = fit_params['led_id'].astype(int)
-    fit_params['line'] = fit_params['line'].astype(int)
+    fit_params['led_array_id'] = fit_params['led_array_id'].astype(int)
     fit_params['max_col_val'] = fit_params['max_col_val'].astype(int)
     fit_params['sum_col_val'] = fit_params['sum_col_val'].astype(int)
     out_file_path = os.path.join('analysis', f'channel{channel}', 'all_parameters.h5')
@@ -284,7 +284,7 @@ def _get_column_names(channel: int) -> List[str]:
     """
     file_path = os.path.join('analysis', f'channel{channel}', '1_led_positions.csv')
     parameters = ledsa.core.file_handling.read_table(file_path, delim=',', silent=True)
-    columns = ["img_id", "led_id", "line",
+    columns = ["img_id", "led_id", "led_array_id",
                "sum_col_val", "mean_col_val", "max_col_val"]
     if parameters.shape[1] > len(columns):
         columns.extend(["led_center_x", "led_center_y"])
@@ -306,11 +306,11 @@ def _get_old_columns(params: np.ndarray) -> List[str]:
     """
     columns = []
     if params.shape[1] == 15:
-        columns = ["img_id", "led_id", "line",
+        columns = ["img_id", "led_id", "led_array_id",
                    "x", "y", "dx", "dy", "A", "alpha", "wx", "wy", "fit_success", "fit_fun", "fit_nfev",
                    "sum_col_val", "mean_col_val"]
     if params.shape[1] == 4:
-        columns = ["img_id", "led_id", "line",
+        columns = ["img_id", "led_id", "led_array_id",
                    "sum_col_val", "mean_col_val"]
     return columns
 

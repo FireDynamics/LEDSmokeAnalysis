@@ -91,7 +91,7 @@ class ExtinctionCoefficientsNonLinear(ExtinctionCoefficients):
         :rtype: np.ndarray
         """
         # Get the number of LEDs on the LED array
-        n_leds = self.experiment.led_number
+        n_leds = self.experiment.num_leds
         intensities = np.zeros(n_leds)
 
         # Calculate intensity for each LED

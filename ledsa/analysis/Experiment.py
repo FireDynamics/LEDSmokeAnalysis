@@ -147,11 +147,11 @@ class Experiment:
         :param merge_led_arrays: Whether to merge LED arrays, defaults to False.
         :type merge_led_arrays: bool, optional
         """
+        self.num_leds = None
         self.layers = layers
         self.led_array = led_array
         self.camera = camera
         self.leds = []
-        self.led_number = 3  # used for acceptance tests
         self.path = path
         self.channel = channel
         self.merge_led_arrays = merge_led_arrays
@@ -289,11 +289,11 @@ class Experiment:
         :rtype: np.ndarray
         """
         file_name_extension = '_merge' if self.merge_led_arrays != 'None' else ''
-        file_name = f'line_indices_{self.led_array:03d}{file_name_extension}.csv'
+        file_name = f'led_array_indices_{self.led_array:03d}{file_name_extension}.csv'
         file_path = os.path.join(self.path, 'analysis', file_name)
 
-        line_indices = np.loadtxt(file_path, dtype=int)
-        return line_indices
+        led_array_indices = np.loadtxt(file_path, dtype=int)
+        return led_array_indices
 
     def get_led_positions(self, ids: np.ndarray) -> List[np.ndarray]:
         """
