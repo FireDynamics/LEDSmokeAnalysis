@@ -10,7 +10,7 @@ from ledsa.analysis.ConfigDataAnalysis import ConfigDataAnalysis
 
 
 class SimData:
-    def __init__(self, path_simulation: str, read_all=True, remove_dublicates=False, load_config_params=True):
+    def __init__(self, path_simulation: str, read_all=True, remove_duplicates=False, load_config_params=True):
         """
         Initializes SimData with simulation and image analysis settings.
 
@@ -66,8 +66,8 @@ class SimData:
 
         if read_all == True:
             self.read_all()
-        if remove_dublicates == True:
-            self.remove_dublicate_heights()
+        if remove_duplicates == True:
+            self.remove_duplicate_heights()
         else:
             self.ch0_ledparams = None
             self.ch1_ledparams = None
@@ -131,7 +131,7 @@ class SimData:
         self.all_extco_df = pd.concat(extco_list, axis=1)
         self.all_extco_df.sort_index(ascending=True, axis=1, inplace=True)
         self.all_extco_df = self.all_extco_df[
-            ~self.all_extco_df.index.duplicated(keep='first')]  # Remove dublicate timesteps
+            ~self.all_extco_df.index.duplicated(keep='first')]  # Remove duplicate timesteps
 
     def read_led_params(self):
         """Read led parameters for all color channels from the simulation path"""
@@ -144,7 +144,7 @@ class SimData:
         self.read_led_params()
         self._get_extco_df_from_path()
 
-    def remove_dublicate_heights(self):
+    def remove_duplicate_heights(self):
         """    Removes duplicate height entries for each LED parameter DataFrame across all colorchannels."""
         self.ch0_ledparams_df = self.ch0_ledparams_df.groupby(['Experiment_Time[s]', 'height']).last()
         self.ch1_ledparams_df = self.ch1_ledparams_df.groupby(['Experiment_Time[s]', 'height']).last()
