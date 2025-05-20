@@ -66,7 +66,7 @@ def _create_config_files(path):
         num_skip_leds=0,
         merge_led_array_indices=None
     )
-    config.set('analyse_positions', '   ignore_indices', '781 675 746')
+    config.set('analyse_positions', '   ignore_led_indices', '781 675 746')
 
     config.set('analyse_positions', '   led_array_edge_indices', '\n   457 246\n    12 347\n    578 671\n    31 535\n    825 838\n    198 698\n    965 782\n   ')
     config.set('analyse_positions', '   led_array_edge_coordinates','\n   6.86 3.13 1.14 5.98 2.83 3.32\n   '
