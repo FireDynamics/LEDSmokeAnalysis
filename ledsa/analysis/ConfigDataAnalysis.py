@@ -40,6 +40,8 @@ class ConfigDataAnalysis(cp.ConfigParser):
         :type weighting_curvature: float
         :param num_iterations: Maximum number of iterations for the nonlinear solver. Defaults to 200.
         :type num_iterations: int
+        :param lambda_reg: Regularization parameter for the linear solver. Defaults to 1e-3.
+        :type lambda_reg: float
         """
         cp.ConfigParser.__init__(self, allow_no_value=True)
         if load_config_file:
