@@ -34,17 +34,24 @@ class LedsaATestLibrary:
 
         z_range = np.linspace(bottom_border, top_border, num_of_layers)
 
+        EPS = 1e-10  # guarantees strictly positive output
+        SIGMA_NOISE = 0.05
+
+        def _add_noise(x, *, sigma=SIGMA_NOISE):
+            return np.clip(x + normal(0, sigma, x.shape), a_min=0.0, a_max=None) + EPS
+
         def extco_const_initial(z):
-            return np.zeros(z.shape)
+            # start from a tiny positive floor instead of 0 to avoid log(0)
+            return np.full_like(z, EPS)
 
         def extco_const(z):
-            return 0.2 + normal(0, 0.01, z.shape)
+            return _add_noise(np.full_like(z, 0.2))
 
         def extco_lin(z):
-            return 0.15 * z + normal(0, 0.01, z.shape)
+            return _add_noise(0.15 * z)
 
         def extco_quad(z):
-            return 0.0435 * z ** 2 + normal(0, 0.01, z.shape)
+            return _add_noise(0.0435 * z ** 2)
 
         extinction_coefficients_set.append(extco_const_initial(z_range))
         extinction_coefficients_set.append(extco_const(z_range))
