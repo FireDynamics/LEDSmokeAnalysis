@@ -124,7 +124,7 @@ class LedsaATestLibrary:
                                   reference_property='sum_col_val',
                                   average_images=False, solver=solver, weighting_preference=-6e-4,
                                   weighting_curvature=1e-7,
-                                  num_iterations=2000)
+                                  num_iterations=2000, lambda_reg=1e-3)
         conf.set('experiment_geometry', '   camera_position', '0 0 2')
         conf.set('model_parameters', '   domain_bounds', '0 3')
         conf.save()

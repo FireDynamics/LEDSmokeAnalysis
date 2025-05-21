@@ -10,7 +10,7 @@ class ConfigDataAnalysis(cp.ConfigParser):
                  led_array_indices=None, num_ref_images=10, camera_channels=0, num_cores=1,
                  reference_property='sum_col_val',
                  average_images=False, solver='linear', weighting_preference=-6e-3, weighting_curvature=1e-6,
-                 num_iterations=200):
+                 num_iterations=200, lambda_reg=1e-3):
         """
         :param load_config_file: Determines whether to load the config file on initialization. Defaults to True.
         :type load_config_file: bool
@@ -57,10 +57,12 @@ class ConfigDataAnalysis(cp.ConfigParser):
             self['DEFAULT']['   average_images'] = str(average_images)
             self.set('DEFAULT', '   # Extinction coefficients can be computed by linear or numeric solver ')
             self['DEFAULT']['   solver'] = str(solver)
-            self.set('DEFAULT', '   # Options for numeric solver ')
+            self.set('DEFAULT', '   # Options for nonlinear solver (ignored when linear solver is used) ')
             self['DEFAULT']['   weighting_preference'] = str(weighting_preference)
             self['DEFAULT']['   weighting_curvature'] = str(weighting_curvature)
             self['DEFAULT']['   num_iterations'] = str(num_iterations)
+            self.set('DEFAULT', '   # Options for linear solver (ignored when nonlinear solver is used) ')
+            self['DEFAULT']['   lambda_reg'] = str(lambda_reg)
 
             self['experiment_geometry'] = {}
             self.set('experiment_geometry', '# Global X Y Z position of the camera ')

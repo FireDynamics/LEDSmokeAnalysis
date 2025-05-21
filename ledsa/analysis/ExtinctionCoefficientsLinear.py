@@ -19,7 +19,7 @@ class ExtinctionCoefficientsLinear(ExtinctionCoefficients):
     :vartype solver: str
     """
 
-    def __init__(self, experiment, reference_property='sum_col_val', num_ref_imgs=10, average_images=False):
+    def __init__(self, experiment, reference_property='sum_col_val', num_ref_imgs=10, average_images=False, lambda_reg=1e-3,):
         """
         Initialize the ExtinctionCoefficientsLinear object.
 
@@ -31,8 +31,11 @@ class ExtinctionCoefficientsLinear(ExtinctionCoefficients):
         :type num_ref_imgs: int
         :param average_images: Flag to determine if intensities are computed as an average from consecutive images.
         :type average_images: bool
+        :param lambda_reg: Regularization parameter for Tikhonov regularization.
+        :type lambda_reg: float
         """
         super().__init__(experiment, reference_property, num_ref_imgs, average_images)
+        self.lambda_reg = lambda_reg
         self.solver = 'linear'
 
     def calc_coefficients_of_img(self, rel_intensities: np.ndarray) -> np.ndarray:
@@ -71,9 +74,7 @@ class ExtinctionCoefficientsLinear(ExtinctionCoefficients):
             # Fallback: use an identity if there aren't enough layers
             L = np.eye(n_layers)
 
-        # Set regularization parameter
-        lambda_reg = 1e-2
-        sqrt_lambda = np.sqrt(lambda_reg)
+        sqrt_lambda = np.sqrt(self.lambda_reg)
 
         # Augment the system with regularization
         # A_aug = [A; sqrt(lambda)*L], where A is the distance matrix

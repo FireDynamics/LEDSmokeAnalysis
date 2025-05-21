@@ -40,7 +40,7 @@ class ExtinctionCoefficientsNonLinear(ExtinctionCoefficients):
         :type average_images: bool
         :param weighting_curvature: Weighting factor for the smoothness of the solution.
         :type weighting_curvature: float
-        :param weighting_preference: Weighting factor for the preference to push the numerical solver to high or low values for the extinction coeffiientes.
+        :param weighting_preference: Weighting factor for the preference to push the numerical solver to high or low values for the extinction coefficients.
         :type weighting_preference: float
         :param num_iterations: Maximum number of iterations of the numerical solver.
         :type num_iterations: int
