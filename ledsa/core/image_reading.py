@@ -38,8 +38,8 @@ def _read_channel_data_from_img_file(filename: str, channel: int) -> np.ndarray:
     :return: A 2D numpy array containing the data of the specified color channel from the image.
     :rtype: np.ndarray
     """
-    data = plt.imread(filename)
-    return data[:, :, channel]
+    img_array = read_img_array_from_img_file(filename)
+    return img_array[:, :, channel]
 
 
 def _read_channel_data_from_raw_file(filename: str, channel: int) -> np.ndarray:
@@ -73,6 +73,10 @@ def read_img_array_from_raw_file(filename: str, channel: int) -> np.ndarray:
     img_array = (img_array * (white_level / (white_level - black_level))).astype(np.int16)
     img_array = np.clip(img_array, 0, white_level)
     return img_array, filter_array
+
+def read_img_array_from_img_file(filename: str) -> np.ndarray:
+    img_array = plt.imread(filename)
+    return img_array
 
 
 def get_exif_entry(filename: str, tag: str) -> str:
