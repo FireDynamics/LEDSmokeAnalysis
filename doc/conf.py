@@ -32,6 +32,17 @@ extensions = [
     'sphinx_copybutton'
 ]
 
+autodoc_mock_imports = [
+    "pandas",
+    "matplotlib",
+    "tqdm",
+    "scipy",
+    "exifread",
+    "rawpy",
+    "opencv-python",
+]
+
+
 templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
