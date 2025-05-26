@@ -34,9 +34,8 @@ jobs:
       - name: Build package
         run: python -m build
 
-      # 5. Publish the package to PyPI using the API token stored in the repository secrets
-      - name: Publish package to PyPI
+      # 5. Publish the package to PyPI through OICD
+      - name: Upload to PyPI through OIDC
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          user: __token__                        # Standard username for token‑based uploads
-          password: ${{ secrets.PYPI_API_TOKEN }} # API token scoped to the PyPI project
+          attestations: true
