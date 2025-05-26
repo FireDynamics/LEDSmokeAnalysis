@@ -1,5 +1,5 @@
 # GitHub Actions workflow to build and upload a Python package to PyPI via Twine
-name: ublish to PyPI
+name: publish to PyPI
 
 # Trigger the workflow when a GitHub release is published
 on:
