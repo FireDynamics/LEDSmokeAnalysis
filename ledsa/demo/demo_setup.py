@@ -32,7 +32,7 @@ def setup_demo(destination_path: str, image_data_url: str) -> None:
                 print("No changes were made to the demo setup.")
                 exit(0)
         image_dest_path, simulation_dest_path = _setup_directories(destination_path)
-        # _download_and_extract_images(image_data_url, image_dest_path, simulation_dest_path)
+        _download_and_extract_images(image_data_url, image_dest_path, simulation_dest_path)
         _create_config_files(os.path.join(destination_path, 'simulation'))
         print("Demo setup successfully")
     else:
