@@ -46,7 +46,7 @@ jobs:
       # 6. Always upload the test logs & reports as a GitHub Actions artifact so they can be inspected
       - name: Upload Robot Framework logs
         if: always()  # Run this step regardless of test success/failure
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: robot-framework-logs  # Artifact name in the Actions UI
           path: results/  # Directory (or file) to upload
