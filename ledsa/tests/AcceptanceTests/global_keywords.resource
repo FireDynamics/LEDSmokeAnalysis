@@ -5,6 +5,7 @@ Library     LedsaATestLibrary.py
 
 *** Variables ***
 ${WORKDIR}     ${TEMPDIR}${/}ledsa
+
 *** Keywords ***
 Change Directory
     [Arguments]     ${dir}
@@ -16,6 +17,6 @@ Create Config
     Create And Fill Config
 
 Create Config Analysis
-    Log     Creating config_analysis.ini
-    Create And Fill Config Analysis
-
+    [Arguments]  ${solver}
+    Log     Creating config_analysis.ini with ${solver} solver
+    Create And Fill Config Analysis    ${solver}

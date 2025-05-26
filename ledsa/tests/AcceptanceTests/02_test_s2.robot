@@ -9,8 +9,9 @@ Force Tags  step_2
 *** Test Cases ***
 Step Two
     Start Step Two
-    Pdf with lines should be created
-    Line indice tabels should be created
+    Pdf with LED arrays should be created
+    LED array indices tables should be created
+
 
 
 *** Keywords ***
@@ -18,8 +19,8 @@ Start Step Two
     Log     Starting python -m ledsa -s2
     Execute Ledsa   -s2
 
-Pdf with lines should be created
+Pdf with LED arrays should be created
     File Should Exist   ${WORKDIR}${/}plots${/}led_arrays.pdf
 
-Line indice tabels should be created
-    File Should Exist   ${WORKDIR}${/}analysis${/}line_indices_000.csv
+LED array indices tables should be created
+    File Should Exist   ${WORKDIR}${/}analysis${/}led_array_indices_000.csv

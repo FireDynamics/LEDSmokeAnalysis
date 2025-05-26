@@ -1,7 +1,7 @@
+# GitHub Actions workflow to run Robot Framework acceptance tests and upload logs
 name: Run Robot Framework Tests
 
-# This workflow gets triggered on pushes and pull requests to the master branch.
-# Tests are not run at changes on the README file.
+# Trigger workflow on pushes and PRs to master, except when only README.md changes
 on:
   push:
     branches:
@@ -13,40 +13,40 @@ on:
       - 'README.md'
 
 jobs:
-    run_tests:
-        runs-on: ubuntu-latest
-        steps:
-        # checkout code from the repository
-        - name: Checkout repository
-          uses: actions/checkout@v3
+  run_tests:
+    runs-on: ubuntu-latest  # Use the latest Ubuntu runner
+    steps:
+      # 1. Check out the repository code
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-        # Sets up the specified Python version
-        - name: Set up Python
-          uses: actions/setup-python@v4
-          with:
-            python-version: '3.10'
-            cache: 'pip'
+      # 2. Set up Python 3.10 (with pip cache enabled)
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          cache: 'pip'
 
-        # Install LEDSA and dependencies
-        - name: Install LEDSA package and dependencies
-          run: pip install .
+      # 3. Install the LEDSA package (and its dependencies) from the repository root
+      - name: Install LEDSA package and dependencies
+        run: pip install .
 
-        # create folder for test reports
-        - name: Create folder for reports
-          run: mkdir reports
+      # 4. Create a directory where Robot Framework will place its reports (HTML, XML, etc.)
+      - name: Create folder for reports
+        run: mkdir reports
 
-        # run Robot Framework tests
-        - name: Run Robot Framework Tests
-          run: |
-            robot \
-            --outputdir reports \
-            ledsa/tests/AcceptanceTests
+      # 5. Execute Robot Framework acceptance tests located in ledsa/tests/AcceptanceTests
+      #    The --outputdir option tells Robot where to store its output files.
+      - name: Run Robot Framework Tests
+        run: |
+          robot \
+          --outputdir reports \
+          ledsa/tests/AcceptanceTests
 
-        # If the tests fail, this step ensures the logs are uploaded for inspection
-        - name: Upload Robot Framework logs
-          # This condition ensures the step runs regardless of the test outcome
-          if: always()
-          uses: actions/upload-artifact@v2
-          with:
-            name: robot-framework-logs
-            path: results/
+      # 6. Always upload the test logs & reports as a GitHub Actions artifact so they can be inspected
+      - name: Upload Robot Framework logs
+        if: always()  # Run this step regardless of test success/failure
+        uses: actions/upload-artifact@v2
+        with:
+          name: robot-framework-logs  # Artifact name in the Actions UI
+          path: results/  # Directory (or file) to upload

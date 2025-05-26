@@ -9,7 +9,7 @@ import scipy.optimize
 from ledsa.core.ConfigData import ConfigData
 from ledsa.core.file_handling import read_table
 from ledsa.core.image_handling import get_img_name
-from ledsa.core.image_reading import read_img
+from ledsa.core.image_reading import read_channel_data_from_img
 from ledsa.data_extraction.LEDAnalysisData import LEDAnalysisData
 from ledsa.data_extraction.model import target_function
 
@@ -39,22 +39,21 @@ def generate_analysis_data(img_filename: str, channel: int, search_areas: np.nda
     :rtype: List[LEDAnalysisData]
     """
     file_path = os.path.join(conf['DEFAULT']['img_directory'], img_filename)
-    data = read_img(file_path, channel=channel)
-    window_radius = int(conf['find_search_areas']['window_radius'])
+    data = read_channel_data_from_img(file_path, channel=channel)
+    search_area_radius = int(conf['find_search_areas']['search_area_radius'])
     img_analysis_data = []
 
     if debug:
         analysis_res = _generate_led_analysis_data(conf, channel, data, debug, debug_led, img_filename, 0, search_areas,
-                                                   window_radius, fit_leds)
+                                                   search_area_radius, fit_leds)
         return analysis_res
 
     num_of_arrays = len(line_indices)
     for led_array_idx in range(num_of_arrays):
-        print('processing LED array ', led_array_idx, '...')
         for iled in line_indices[led_array_idx]:
-            if iled % (int(conf['analyse_photo']['skip_leds']) + 1) == 0:
+            if iled % (int(conf['analyse_photo']['num_skip_leds']) + 1) == 0:
                 led_analysis_data = _generate_led_analysis_data(conf, channel, data, debug, iled, img_filename,
-                                                                led_array_idx, search_areas, window_radius, fit_leds)
+                                                                led_array_idx, search_areas, search_area_radius, fit_leds)
                 img_analysis_data.append(led_analysis_data)
     return img_analysis_data
 
@@ -108,7 +107,7 @@ def find_and_save_not_analysed_imgs(channel: int) -> None:
     _save_list_of_remaining_imgs_needed_to_be_processed(remaining_imgs)
 
 
-def _generate_led_analysis_data(conf: ConfigData, channel: int, data: np.ndarray, debug: bool, iled: int, img_filename: str, led_array_idx: int, search_areas: np.ndarray, window_radius: int, fit_leds: bool = True) -> LEDAnalysisData:
+def _generate_led_analysis_data(conf: ConfigData, channel: int, data: np.ndarray, debug: bool, iled: int, img_filename: str, led_array_idx: int, search_areas: np.ndarray, search_area_radius: int, fit_leds: bool = True) -> LEDAnalysisData:
     """
     Generate analysis data for a specific LED.
 
@@ -128,8 +127,8 @@ def _generate_led_analysis_data(conf: ConfigData, channel: int, data: np.ndarray
     :type led_array_idx: int
     :param search_areas: Array containing the pixel positions of all search areas on the image.
     :type search_areas: np.ndarray
-    :param window_radius: Radius of the search area.
-    :type window_radius: int
+    :param search_area_radius: Radius of the search area.
+    :type search_area_radius: int
     :param fit_leds: If True, the LED is fitted to a model function.
     :type fit_leds: bool
     :return: Analysis data for the LED.
@@ -138,23 +137,23 @@ def _generate_led_analysis_data(conf: ConfigData, channel: int, data: np.ndarray
     led_data = LEDAnalysisData(iled, led_array_idx, fit_leds)
     center_search_area_x = int(search_areas[iled, 1])
     center_search_area_y = int(search_areas[iled, 2])
-    search_area = np.index_exp[center_search_area_x - window_radius:
-                               center_search_area_x + window_radius,
-                               center_search_area_y - window_radius:
-                               center_search_area_y + window_radius]
+    search_area = np.index_exp[center_search_area_x - search_area_radius:
+                               center_search_area_x + search_area_radius,
+                               center_search_area_y - search_area_radius:
+                               center_search_area_y + search_area_radius]
 
     if fit_leds:
         start_time = time.process_time()
         led_data.fit_results, mesh = _fit_model_to_led(data[search_area])
         end_time = time.process_time()
         led_data.fit_time = end_time - start_time
-        led_data.led_center_x = led_data.fit_results.x[0] + center_search_area_x - window_radius
-        led_data.led_center_y = led_data.fit_results.x[1] + center_search_area_y - window_radius
+        led_data.led_center_x = led_data.fit_results.x[0] + center_search_area_x - search_area_radius
+        led_data.led_center_y = led_data.fit_results.x[1] + center_search_area_y - search_area_radius
         if debug:
             return led_data.fit_results.x
         if not led_data.fit_results.success:  # A > 255 or A < 0:
             _log_warnings(img_filename, channel, led_data, center_search_area_x, center_search_area_y,
-                          data[search_area].shape, window_radius, conf)
+                          data[search_area].shape, search_area_radius, conf)
 
     led_data.mean_color_value = np.mean(data[search_area])
     led_data.sum_color_value = np.sum(data[search_area])
@@ -245,7 +244,7 @@ def _fit_model_to_led(search_area: np.ndarray) -> Tuple[scipy.optimize.OptimizeR
     return res, mesh
 
 
-def _log_warnings(img_filename, channel, led_data, cx, cy, size_of_search_area, window_radius, conf) -> None:
+def _log_warnings(img_filename, channel, led_data, cx, cy, size_of_search_area, search_area_radius, conf) -> None:
     """
     Log warnings that occur during LED fitting.
 
@@ -259,8 +258,8 @@ def _log_warnings(img_filename, channel, led_data, cx, cy, size_of_search_area, 
     :type cy: int
     :param size_of_search_area: Dimensions of the search area.
     :type size_of_search_area: tuple[int, int]
-    :param window_radius: Radius of the search area window.
-    :type window_radius: int
+    :param search_area_radius: Radius of the search area.
+    :type search_area_radius: int
     :param conf: Configuration data for the analysis.
     :type conf: ConfigData
     """
@@ -270,7 +269,7 @@ def _log_warnings(img_filename, channel, led_data, cx, cy, size_of_search_area, 
     log = f'Irregularities while fitting:\n    {img_file_path} {led_data.led_id} {led_data.led_array} {res} ' \
           f'{led_data.fit_results.success} {led_data.fit_results.fun} {led_data.fit_results.nfev} ' \
           f'{size_of_search_area[0]} {size_of_search_area[1]} {led_data.led_center_x} {led_data.led_center_y} ' \
-          f'{window_radius} {cx} {cy} {channel}'
+          f'{search_area_radius} {cx} {cy} {channel}'
     dir_path = 'logfiles'
     if not os.path.exists(dir_path):
         os.makedirs(dir_path)

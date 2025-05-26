@@ -1,0 +1,44 @@
+# GitHub Actions workflow to build and deploy Sphinx documentation to GitHub Pages
+name: Docs
+
+# Trigger the workflow on pushes, pull requests, or manual dispatch events
+on:
+  push:              # 1. Rebuild docs on every push to any branch
+  pull_request:      # 2. Also run on every pull request
+  workflow_dispatch: # 3. Allow manual triggers from the GitHub UI
+
+permissions:
+  contents: write   # Required so the deploy step can push to gh-pages
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest   # Use the latest Ubuntu runner provided by GitHub
+    steps:
+      # 1. Check out the repository contents
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # 2. Set up a Python environment (defaults to latest 3.x)
+      - name: Set up Python
+        uses: actions/setup-python@v3
+
+      # 3. Install Sphinx and its themes/extensions
+      - name: Install dependencies
+        run: |
+          pip install sphinx sphinx_rtd_theme
+          pip install sphinx-copybutton
+
+      # 4. Build the HTML documentation
+      - name: Build Sphinx docs
+        run: |
+          sphinx-build doc _build
+
+      # 5. Deploy the docs to the gh-pages branch (only on push to master)
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v3
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' }}
+        with:
+          publish_branch: gh-pages         # Target branch for the published site
+          github_token: ${{ secrets.GITHUB_TOKEN }} # Auth token provided by GitHub
+          publish_dir: _build/             # Directory containing the built HTML
+          force_orphan: true               # Create branch history from scratch each deployment

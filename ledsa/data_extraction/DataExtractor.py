@@ -4,6 +4,7 @@ import os
 
 import matplotlib.pyplot as plt
 import numpy as np
+from tqdm import tqdm
 
 import ledsa.core.file_handling
 import ledsa.core.image_handling
@@ -30,6 +31,7 @@ class DataExtractor:
     :ivar line_indices: 2D list with dimension (# of LED arrays) x (# of LEDs per array) or None.
     :vartype line_indices: list[list[int]], optional
     """
+
     def __init__(self, channels=(0), load_config_file=True, build_experiment_infos=True, fit_leds=True):
         """
         :param channels: Channels to be processed. Defaults to (0).
@@ -66,47 +68,73 @@ class DataExtractor:
         Load LED search areas from the 'led_search_areas.csv' file. #TODO be consistent with search areas and ROIS
         """
         file_path = os.path.join('analysis', 'led_search_areas.csv')
-        self.search_areas = ledsa.core.file_handling.read_table(file_path, delim=',')
+        self.search_areas = ledsa.core.file_handling.read_table(file_path, delim=',', dtype='int')
 
-    def find_search_areas(self, img_filename: str) -> None:
+    def write_search_areas(self, reorder_leds=False) -> None:
         """
-        Identify all LEDs in a single image and define the areas where LEDs will be searched in the experiment images.
+        Writes LED search areas to a CSV file.
 
-        :param img_filename: The name of the image file to be processed.
-        :type img_filename: str
+        :param reorder_leds: A flag indicating whether the LED IDs have been reordered. Affects the header of the output file.
+        :type reorder_leds: bool
+        """
+        out_file_path = os.path.join('analysis', 'led_search_areas.csv')
+        header = 'LED id (reordered), pixel position x, pixel position y' if reorder_leds else ('LED id, pixel '
+                                                                                                'position x, '
+                                                                                                'pixel position y')
+        np.savetxt(out_file_path, self.search_areas, delimiter=',',
+                   header=header, fmt='%d')
+
+    def find_search_areas(self) -> None:
+        """
+        Identify all LEDs in the reference image and define the areas where LEDs will be searched in the experiment images.
         """
         config = self.config['find_search_areas']
-        in_file_path = os.path.join(config['img_directory'], img_filename)
-        data = ledsa.core.image_reading.read_img(in_file_path, channel=0)
+        in_file_path = os.path.join(config['img_directory'], config['img_name_string'].format(config['ref_img_id']))
+        channel = config['channel']
+        search_area_radius = int(config['search_area_radius'])
+        max_num_leds = int(config['max_num_leds'])
+        pixel_value_percentile = float(config['pixel_value_percentile'])
+        if channel == 'all':
+            data, _ = ledsa.core.image_reading.read_img_array_from_raw_file(in_file_path, channel=0) # TODO: Channel to be removed here!
+        else:
+            channel = int(channel)
+            data = ledsa.core.image_reading.read_channel_data_from_img(in_file_path, channel=channel)
 
-        self.search_areas = ledsa.data_extraction.step_1_functions.find_search_areas(data, skip=1, window_radius=int(
-            config['window_radius']), threshold_factor=float(config['threshold_factor']))
+        self.search_areas = ledsa.data_extraction.step_1_functions.find_search_areas(data, search_area_radius=search_area_radius, max_n_leds=max_num_leds, pixel_value_percentile=pixel_value_percentile)
+        self.write_search_areas()
+        self.plot_search_areas()
+        ledsa.core.file_handling.remove_flag('reorder_leds')
 
-        out_file_path = os.path.join('analysis', 'led_search_areas.csv')
-        np.savetxt(out_file_path, self.search_areas, delimiter=',',
-                   header='LED id, pixel position x, pixel position y', fmt='%d')
-
-    def plot_search_areas(self, img_filename: str) -> None:
+    def plot_search_areas(self, reorder_leds=False) -> None:
         """
         Plot the identified LED search areas with their ID labels.
 
-        :param img_filename: The name of the image file to be plotted.
-        :type img_filename: str
+        :param reorder_leds: A flag indicating whether the LED IDs have been reordered. Affects the name of the output file.
+        :type reorder_leds: bool
         """
+        try:
+            os.remove(os.path.join('plots', 'led_search_areas.plot_reordered.pdf'))
+        except OSError:
+            pass
+
         config = self.config['find_search_areas']
         if self.search_areas is None:
             self.load_search_areas()
 
-        in_file_path = os.path.join(config['img_directory'], img_filename)
-        data = ledsa.core.image_reading.read_img(in_file_path, channel=0)
-
+        in_file_path = os.path.join(config['img_directory'], config['img_name_string'].format(config['ref_img_id']))
+        data = ledsa.core.image_reading.read_channel_data_from_img(in_file_path, channel=0)
+        search_area_radius = int(config['search_area_radius'])
         plt.figure(dpi=1200)
         ax = plt.gca()
-        ledsa.data_extraction.step_1_functions.add_search_areas_to_plot(self.search_areas, ax, config)
+        ledsa.data_extraction.step_1_functions.add_search_areas_to_plot(self.search_areas, search_area_radius, ax)
         plt.imshow(data, cmap='Greys')
+        plt.xlim(self.search_areas[:, 2].min() - 5 * search_area_radius, self.search_areas[:, 2].max() + 5 * search_area_radius)
+        plt.ylim(self.search_areas[:, 1].max() + 5 * search_area_radius, self.search_areas[:, 1].min() - 5 * search_area_radius)
         plt.colorbar()
-        out_file_path = os.path.join('plots', 'led_search_areas.plot.pdf')
+        plot_filename = 'led_search_areas.plot_reordered.pdf' if reorder_leds else 'led_search_areas.plot.pdf'
+        out_file_path = os.path.join('plots', plot_filename)
         plt.savefig(out_file_path)
+        plt.close()
 
     # """
     # ------------------------------------
@@ -116,38 +144,65 @@ class DataExtractor:
 
     def match_leds_to_led_arrays(self) -> None:
         """
-        Analyze which LEDs belong to which LED line and save this mapping.
+        Analyze which LEDs belong to which LED array and save this mapping.
         """
-        if self.search_areas is None:
-            self.load_search_areas()
-        self.line_indices = ledsa.data_extraction.step_2_functions.match_leds_to_led_arrays(self.search_areas,
+        if ledsa.core.file_handling.check_flag('reorder_leds'):
+            exit("LED IDs have been reordered. Please run step S1 again before trying to match LEDs to LED lines!")
+        else:
+            if self.search_areas is None:
+                self.load_search_areas()
+            self.line_indices = ledsa.data_extraction.step_2_functions.match_leds_to_led_arrays(self.search_areas,
                                                                                             self.config)
-        ledsa.data_extraction.step_2_functions.generate_line_indices_files(self.line_indices)
-        ledsa.data_extraction.step_2_functions.generate_labeled_led_arrays_plot(self.line_indices, self.search_areas)
-        self.line_indices, merge = ledsa.data_extraction.step_2_functions.merge_led_arrays(self.line_indices,
-                                                                                           self.config)
-        if merge:
-            ledsa.data_extraction.step_2_functions.generate_labeled_led_arrays_plot(self.line_indices,
-                                                                                    self.search_areas,
-                                                                                    filename_extension='_merge')
-            ledsa.data_extraction.step_2_functions.generate_line_indices_files(self.line_indices,
-                                                                               filename_extension='_merge')
+            self.search_areas = ledsa.data_extraction.step_2_functions.reorder_search_areas(self.search_areas,
+                                                                                            self.line_indices)
+            self.write_search_areas(reorder_leds=True)
+            self.line_indices = ledsa.data_extraction.step_2_functions.reorder_led_indices(self.line_indices)
+            self.plot_search_areas(reorder_leds=True)
+            print("LED IDs reordered successfully!")
+            ledsa.core.file_handling.set_flag('reorder_leds')
 
-    def load_line_indices(self) -> None:
+            ledsa.data_extraction.step_2_functions.generate_led_array_indices_files(self.line_indices)
+            self.plot_led_arrays()
+
+
+        if self.config['analyse_positions']['merge_led_array_indices'] != 'None':
+            self.line_indices = ledsa.data_extraction.step_2_functions.merge_indices_of_led_arrays(self.line_indices, self.config)
+            self.plot_led_arrays(merge_led_arrays=True)
+
+    def load_led_array_indices(self) -> None:
         """
-        Load LED line indices from the 'line_indices_{...}.csv' files.
+        Load LED array indices from the 'led_array_indices_{...}.csv' files.
         """
-        if self.config['analyse_positions']['merge_led_arrays'] != 'None':
-            num_of_arrays = len(self.config.get2dnparray('analyse_positions', 'merge_led_arrays', 'var'))
+        if self.config['analyse_positions']['merge_led_array_indices'] != 'None':
+            num_arrays = len(self.config.get2dnparray('analyse_positions', 'merge_led_array_indices', 'var'))
             file_extension = '_merge'
             print("ARRAY MERGE IS ACTIVE!")
         else:
-            num_of_arrays = int(self.config['analyse_positions']['num_of_arrays'])
+            num_arrays = int(self.config['analyse_positions']['num_arrays'])
             file_extension = ''
         self.line_indices = []
-        for i in range(num_of_arrays):
-            file_path = os.path.join('analysis', f'line_indices_{i:03}{file_extension}.csv')
+        for i in range(num_arrays):
+            file_path = os.path.join('analysis', f'led_array_indices_{i:03}{file_extension}.csv')
             self.line_indices.append(ledsa.core.file_handling.read_table(file_path, dtype='int'))
+
+    def plot_led_arrays(self, merge_led_arrays=False) -> None:
+        """
+        Plots the arrangement of LEDs as identified in the LED arrays and saves the plot as a PDF file.
+
+        :param merge_led_arrays: A flag indicating whether LED arrays have been merged. Affects the naming of the output file.
+        :type merge_led_arrays: bool
+        """
+        for i in range(len(self.line_indices)):
+            plt.scatter(self.search_areas[self.line_indices[i], 2],
+                        -self.search_areas[self.line_indices[i], 1],
+                        s=0.1, label='LED Array {}'.format(i))
+        plt.legend()
+        plt.xticks([])
+        plt.yticks([])
+        plot_filename = 'led_arrays_merged.pdf' if merge_led_arrays else 'led_arrays.pdf'
+        out_file_path = os.path.join('plots', plot_filename)
+        plt.savefig(out_file_path)
+        plt.close()
 
     # """
     # ------------------------------------
@@ -164,19 +219,19 @@ class DataExtractor:
         if self.search_areas is None:
             self.load_search_areas()
         if self.line_indices is None:
-            self.load_line_indices()
+            self.load_led_array_indices()
 
         img_filenames = ledsa.core.file_handling.read_table('images_to_process.csv', dtype=str)
-        num_of_cores = int(config['num_of_cores'])
-        if num_of_cores > 1:
+        num_cores = int(config['num_cores'])
+        if num_cores > 1:
             from multiprocessing import Pool
             print('images are getting processed, this may take a while')
-            with Pool(num_of_cores) as p:
-                p.map(self.process_img_file, img_filenames)
+            with Pool(num_cores) as p:
+                for _ in tqdm(p.imap(self.process_img_file, img_filenames), total=len(img_filenames), desc="Processing images", unit="image"):
+                    pass
         else:
-            for i in range(len(img_filenames)):
-                self.process_img_file(img_filenames[i])
-                print('image ', i + 1, '/', len(img_filenames), ' processed')
+            for img_filename in tqdm(img_filenames, desc="Processing images", unit="image"):
+                self.process_img_file(img_filename)
 
         os.remove('images_to_process.csv')
 
@@ -194,8 +249,6 @@ class DataExtractor:
                                                                                      self.line_indices,
                                                                                      self.config, self.fit_leds)
             ledsa.data_extraction.step_3_functions.create_fit_result_file(img_data, img_id, channel)
-        print('Image {} processed'.format(img_id))
-
     def setup_step3(self) -> None:
         """
         Setup the third step of the data extraction process by creating 'image_infos_analysis.csv' and 'images_to_process.csv' files.

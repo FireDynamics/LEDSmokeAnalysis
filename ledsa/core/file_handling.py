@@ -8,9 +8,49 @@ import ledsa.core
 from ledsa.core.ConfigData import ConfigData
 
 
+def set_flag(flag: str) -> None:
+    """
+    Creates a flag file in the current directory to indicate if a certain task has been performed.
+
+    :param flag: The name of the flag to set.
+    :type flag: str
+    """
+    with open(f'.{flag}.flag', 'w') as flag_file:
+        pass
+
+
+def check_flag(flag: str) -> bool:
+    """
+    Checks if a flag file exists in the current directory.
+
+    :param flag: The name of the flag to check.
+    :type flag: str
+    :return: True if the flag file exists, False otherwise.
+    :rtype: bool
+    """
+    return os.path.exists(f'.{flag}.flag')
+
+
+def remove_flag(flag: str) -> None:
+    """
+    Removes a flag file from the current directory if it exists.
+
+    :param flag: The name of the flag to remove.
+    :type flag: str
+    :raises OSError: If an error occurs during file removal. This exception is caught and suppressed within the function.
+    """
+    try:
+        os.remove(f'.{flag}.flag')
+    except OSError:
+        pass
+
 def create_analysis_infos_avg():  # TODO: Move funtion somewhere else
-    n_summarize = 2
-    n_skip_images = 10
+    """
+    Generate CSV files with image information for experiment and/or analysis averaged over n images from the existing
+    image_infos_analysis.csv file. Skips the first n images. Contains image name, exif time and experiment time
+    """
+    n_summarize = 2 # TODO: remove hardcoding
+    n_skip_images = 10 # TODO: Remove hardcoding
     in_file_path = os.path.join('analysis', 'image_infos_analysis.csv')
     image_infos = pd.read_csv(in_file_path)
     img_names = image_infos['Name'].tolist()
@@ -86,12 +126,19 @@ def read_hdf(channel: int, path='.') -> pd.DataFrame:
 
     :raises FileNotFoundError: If the HDF file is not found.
     """
-    file_path = os.path.join(path, 'analysis', f'channel{channel}','all_parameters.h5',)
+    file_path = os.path.join(path, 'analysis', f'channel{channel}', 'all_parameters.h5')
     try:
-        fit_parameters = pd.read_hdf(file_path, 'table' )
-    except FileNotFoundError:
-        create_binary_data(channel)
-        fit_parameters = pd.read_hdf(file_path, 'table')
+        # Try reading with 'channel_values' key first
+        fit_parameters = pd.read_hdf(file_path, key='channel_values')
+    except (FileNotFoundError, KeyError):
+        try:
+            # Try reading with '/table' key as fallback
+            fit_parameters = pd.read_hdf(file_path, key='/table')
+        except (FileNotFoundError, KeyError):
+            # If file doesn't exist or neither key works, create new binary data
+            create_binary_data(channel)
+            fit_parameters = pd.read_hdf(file_path, key='channel_values')
+
     fit_parameters.set_index(['img_id', 'led_id'], inplace=True)
     return fit_parameters
 
@@ -111,10 +158,10 @@ def read_hdf_avg(channel: int, path='.') -> pd.DataFrame:
     """
     file_path = os.path.join(path, 'analysis', f'channel{channel}','all_parameters.h5',)
     try:
-        fit_parameters = pd.read_hdf(file_path, 'table')
+        fit_parameters = pd.read_hdf(file_path, key='channel_values')
     except FileNotFoundError:
         average_all_fitpar(channel)
-        fit_parameters = pd.read_hdf(file_path, 'table')
+        fit_parameters = pd.read_hdf(file_path, key='channel_values')
     fit_parameters.set_index(['img_id', 'led_id'], inplace=True)
     return fit_parameters
 
@@ -131,7 +178,7 @@ def average_all_fitpar(channel, n_summarize=2, num_ref_imgs=10) -> None:  # TODO
     :type num_ref_imgs: int
     """
     fit_parameters = read_hdf(channel)
-    fit_parameters_grouped = fit_parameters.groupby(['line', 'led_id'])
+    fit_parameters_grouped = fit_parameters.groupby(['led_array_id', 'led_id'])
     avg_dataset_list = []
     for name, dataset in fit_parameters_grouped:
         head = dataset.iloc[:num_ref_imgs]
@@ -143,14 +190,14 @@ def average_all_fitpar(channel, n_summarize=2, num_ref_imgs=10) -> None:  # TODO
         combined_dataset = pd.concat([head, avg_dataset])
         avg_dataset_list.append(combined_dataset)
     all_fitpar = pd.concat(avg_dataset_list)
-    all_fitpar[["line", "sum_col_val"]] = all_fitpar[["line", "sum_col_val"]].astype(int)
+    all_fitpar[["led_array_id", "sum_col_val"]] = all_fitpar[["led_array_id", "sum_col_val"]].astype(int)
     try: # TODO: Resolve
         all_fitpar[["sum_col_val_cc"]] = all_fitpar[["sum_col_val_cc"]].astype(int)
     except:
         pass
     all_fitpar.reset_index(inplace=True)
     file_path = os.path.join('analysis', f'channel{channel}', 'all_parameters_avg.h5'),
-    all_fitpar.to_hdf(file_path, 'table', append=True)
+    all_fitpar.to_hdf(file_path, key='channel_values', format='table', append=True)
 
 
 def extend_hdf(channel: int, quantity: str, values: np.ndarray) -> None:
@@ -165,9 +212,9 @@ def extend_hdf(channel: int, quantity: str, values: np.ndarray) -> None:
     :type values:  np.ndarray
     """
     file = os.path.join('analysis', f'channel{channel}', 'all_parameters.h5')
-    fit_parameters = pd.read_hdf(file, 'table')
+    fit_parameters = pd.read_hdf(file, key='channel_values')
     fit_parameters[quantity] = values
-    fit_parameters.to_hdf(file, 'table')
+    fit_parameters.to_hdf(file, key='channel_values', format='table')
 
 
 def create_binary_data(channel: int) -> None:
@@ -186,15 +233,15 @@ def create_binary_data(channel: int) -> None:
 
     # find time and fit parameter for every image
 
-    first_img = int(config['analyse_photo']['first_img'])
-    last_img = int(config['analyse_photo']['last_img'])
+    first_img_id = int(config['analyse_photo']['first_img_analysis_id'])
+    last_img_id = int(config['analyse_photo']['last_img_analysis_id'])
 
-    if config['DEFAULT']['img_number_overflow'] != 'None':
-        max_id = int(config['DEFAULT']['img_number_overflow'])
+    if config['DEFAULT']['num_img_overflow'] != 'None':
+        max_id = int(config['DEFAULT']['num_img_overflow'])
     else:
         max_id = 10 ** 7
-    number_of_images = (max_id + last_img - first_img) % max_id + 1
-    number_of_images //= int(config['analyse_photo']['skip_imgs']) + 1
+    number_of_images = (max_id + last_img_id - first_img_id) % max_id + 1
+    number_of_images //= int(config['analyse_photo']['num_skip_imgs']) + 1
     print('Loading fit parameters...')
     exception_counter = 0
     for image_id in range(1, number_of_images + 1):
@@ -220,11 +267,11 @@ def create_binary_data(channel: int) -> None:
     print(f'{number_of_images - exception_counter} of {number_of_images} loaded.')
     fit_params['img_id'] = fit_params['img_id'].astype(int)
     fit_params['led_id'] = fit_params['led_id'].astype(int)
-    fit_params['line'] = fit_params['line'].astype(int)
+    fit_params['led_array_id'] = fit_params['led_array_id'].astype(int)
     fit_params['max_col_val'] = fit_params['max_col_val'].astype(int)
     fit_params['sum_col_val'] = fit_params['sum_col_val'].astype(int)
     out_file_path = os.path.join('analysis', f'channel{channel}', 'all_parameters.h5')
-    fit_params.to_hdf(out_file_path, 'table', append=True)
+    fit_params.to_hdf(out_file_path, key='channel_values', format='table', append=True)
 
 def _get_column_names(channel: int) -> List[str]:
     """
@@ -237,7 +284,7 @@ def _get_column_names(channel: int) -> List[str]:
     """
     file_path = os.path.join('analysis', f'channel{channel}', '1_led_positions.csv')
     parameters = ledsa.core.file_handling.read_table(file_path, delim=',', silent=True)
-    columns = ["img_id", "led_id", "line",
+    columns = ["img_id", "led_id", "led_array_id",
                "sum_col_val", "mean_col_val", "max_col_val"]
     if parameters.shape[1] > len(columns):
         columns.extend(["led_center_x", "led_center_y"])
@@ -259,11 +306,11 @@ def _get_old_columns(params: np.ndarray) -> List[str]:
     """
     columns = []
     if params.shape[1] == 15:
-        columns = ["img_id", "led_id", "line",
+        columns = ["img_id", "led_id", "led_array_id",
                    "x", "y", "dx", "dy", "A", "alpha", "wx", "wy", "fit_success", "fit_fun", "fit_nfev",
                    "sum_col_val", "mean_col_val"]
     if params.shape[1] == 4:
-        columns = ["img_id", "led_id", "line",
+        columns = ["img_id", "led_id", "led_array_id",
                    "sum_col_val", "mean_col_val"]
     return columns
 

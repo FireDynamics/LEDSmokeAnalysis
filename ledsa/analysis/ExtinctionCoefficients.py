@@ -30,12 +30,10 @@ class ExtinctionCoefficients(ABC):
     :vartype cc_matrix: np.ndarray or None
     :ivar average_images: Flag to determine if intensities are computed as an average from two consecutive images.
     :vartype average_images: bool
-    :ivar type: Indication whether the calculation is to be carried out numerically or analytically.
+    :ivar solver: Indication whether the calculation is to be carried out numerically or analytically.
     :vartype type: str
     """
-    def __init__(self, experiment=Experiment(layers=Layers(10, 1.0, 3.35), camera=Camera(pos_x=4.4, pos_y=2, pos_z=2.3),
-                                             led_array=3, channel=0),
-                 reference_property='sum_col_val', num_ref_imgs=10, average_images=False):
+    def __init__(self, experiment, reference_property='sum_col_val', num_ref_imgs=10, average_images=False):
         """
         :param experiment: Object representing the experimental setup.
         :type experiment: Experiment
@@ -50,14 +48,12 @@ class ExtinctionCoefficients(ABC):
         self.experiment = experiment
         self.reference_property = reference_property
         self.num_ref_imgs = num_ref_imgs
-
         self.calculated_img_data = pd.DataFrame()
         self.distances_per_led_and_layer = np.array([])
         self.ref_intensities = np.array([])
         self.cc_matrix = None
         self.average_images = average_images
-
-        self.type = None
+        self.solver = None
 
     def __str__(self):
         out = str(self.experiment) + \
@@ -66,7 +62,7 @@ class ExtinctionCoefficients(ABC):
 
     def calc_and_set_coefficients(self) -> None:
         """
-        Serial calculation of extinction coefficients fo every image
+        Serial calculation of extinction coefficients for every image
 
         """
         # Load and calculate all needed variables
@@ -76,8 +72,8 @@ class ExtinctionCoefficients(ABC):
             rel_intensities = single_img_array / self.ref_intensities
 
             # Calculate the extinction coefficients depending on child class used
-            kappas = self.calc_coefficients_of_img(rel_intensities)
-            self.coefficients_per_image_and_layer.append(kappas)
+            sigmas = self.calc_coefficients_of_img(rel_intensities)
+            self.coefficients_per_image_and_layer.append(sigmas)
 
     def calc_and_set_coefficients_mp(self, cores=4) -> None:
         """
@@ -93,19 +89,18 @@ class ExtinctionCoefficients(ABC):
 
         # Calculate the extinction coefficients depending on child class used
         pool = Pool(processes=cores)
-        kappas = pool.map(self.calc_coefficients_of_img, rel_intensities)
+        sigmas = pool.map(self.calc_coefficients_of_img, rel_intensities)
         pool.close()
-        self.coefficients_per_image_and_layer = kappas
+        self.coefficients_per_image_and_layer = sigmas
 
     def set_all_member_variables(self) -> None:
         """
-        Calculate  distance traveled per layer, for every led, load image data from binary file and calculate reference intensities for each LED
+        Calculate distance traveled per layer, for every led, load image data from binary file and calculate reference intensities for each LED
 
         """
-        camera = 0
         if len(self.distances_per_led_and_layer) == 0:
             self.distances_per_led_and_layer = self.calc_distance_array()
-            np.savetxt(f'cam_{camera}_distances_per_led_and_layer.txt', self.distances_per_led_and_layer)
+            np.savetxt(f'distances_per_led_and_layer.txt', self.distances_per_led_and_layer)
         if self.calculated_img_data.empty:
             self.load_img_data()
         if self.ref_intensities.shape[0] == 0:
@@ -121,20 +116,20 @@ class ExtinctionCoefficients(ABC):
             create_analysis_infos_avg()
         else:
             img_data = read_hdf(self.experiment.channel, path=self.experiment.path)
-        img_data_cropped = img_data[['line', self.reference_property]]
-        self.calculated_img_data = img_data_cropped[img_data_cropped['line'] == self.experiment.led_array]
+        img_data_cropped = img_data[['led_array_id', self.reference_property]]
+        self.calculated_img_data = img_data_cropped[img_data_cropped['led_array_id'] == self.experiment.led_array]
         if self.calculated_img_data.empty:
-            exit(f"Apparently there are no intensity values for line {self.experiment.led_array}!")
+            exit(f"Apparently there are no intensity values for led array {self.experiment.led_array}!")
 
     def save(self) -> None:
         """
         Save the computed extinction coefficients to a file.
 
         """
-        path = self.experiment.path / 'analysis' / 'AbsorptionCoefficients'
+        path = self.experiment.path / 'analysis' / 'extinction_coefficients' / self.solver
         if not path.exists():
             path.mkdir(parents=True)
-        path = path / f'absorption_coefs_{self.type}_channel_{self.experiment.channel}_{self.reference_property}_led_array_{self.experiment.led_array}.csv'
+        path = path / f'extinction_coefficients_{self.solver}_channel_{self.experiment.channel}_{self.reference_property}_led_array_{self.experiment.led_array}.csv'
         header = str(self)
         header += 'layer0'
         for i in range(self.experiment.layers.amount - 1):
@@ -148,7 +143,7 @@ class ExtinctionCoefficients(ABC):
         :return: Array of distances traversed between camera and LEDs in each layer.
         :rtype: np.ndarray
         """
-        distances = np.zeros((self.experiment.led_number, self.experiment.layers.amount))
+        distances = np.zeros((self.experiment.num_leds, self.experiment.layers.amount))
         count = 0
         for led in self.experiment.leds:
             d = self.experiment.calc_traversed_dist_per_layer(led)

@@ -42,7 +42,7 @@ class LED:
         x = linalg.solve(a, b)
         return np.transpose(x)
 
-    def get_line(self, led2) -> np.ndarray:
+    def get_led_array(self, led2) -> np.ndarray:
         """
         Compute the X and Y pixel delta between the current LED and another LED.
 
@@ -68,7 +68,7 @@ def calculate_coordinates() -> None:
 
 # calculates from the measured room coordinates of two points per led array the room coordinates of each other point by
 # calculating the linear transformation between pixel and room coordinates and applying it to the projection of each led
-# onto the corresponding line
+# onto the corresponding LED array
 def _calculate_3d_coordinates() -> np.ndarray:
     """
     Calculate the 3D coordinates of LEDs using a configuration and search areas.
@@ -80,45 +80,39 @@ def _calculate_3d_coordinates() -> np.ndarray:
     file_path = os.path.join('analysis', 'led_search_areas.csv')
     search_areas = read_table(file_path, delim=',')
     search_areas = np.pad(search_areas, ((0, 0), (0, 3)), constant_values=(-1, -1))
-    if conf['analyse_positions']['line_edge_coordinates'] == 'None':
-        conf.in_line_edge_coordinates()
+    if conf['analyse_positions']['led_array_edge_coordinates'] == 'None':
+        conf.in_led_array_edge_coordinates()
         conf.save()
-    led_coordinates = conf.get2dnparray('analyse_positions', 'line_edge_coordinates', 6, float)
+    led_coordinates = conf.get2dnparray('analyse_positions', 'led_array_edge_coordinates', 6, float)
     print("Loaded coordinates from config.ini:")
     print(led_coordinates)
 
-    if conf['analyse_positions']['line_edge_indices'] == 'None':
-        conf.in_line_edge_indices()
-        conf.save()
-    edge_leds = conf.get2dnparray('analyse_positions', 'line_edge_indices')
-    print("Loaded line edge indices from config.ini:")
-    print(edge_leds)
-    if edge_leds.shape[0] != led_coordinates.shape[0]:
-        exit("The number of coordinate sets does not match the number of LED line edge indices!")
     # loop over the led-arrays
-    for ledarray in range(int(conf['analyse_positions']['num_of_arrays'])):
-        file_path = os.path.join('analysis', f'line_indices_{ledarray:03d}.csv')
-        line_indices = read_table(file_path)
+    for ledarray in range(int(conf['analyse_positions']['num_arrays'])):
+        file_path = os.path.join('analysis', f'led_array_indices_{ledarray:03d}.csv')
+        led_array_indices = read_table(file_path)
 
         # get the edge leds of an array to calculate from them the conversion matrix for this array
-        idx = np.where(search_areas[:, 0] == edge_leds[ledarray, 0])[0]
+        # Use the first LED in the LED array indices file as the top edge LED
+        idx = np.where(search_areas[:, 0] == led_array_indices[-1])[0]
         pos = led_coordinates[ledarray][0:3]
         pix_pos = np.array([search_areas[idx, 1], search_areas[idx, 2]])
-        top_led = LED(line_indices[0], pos, pix_pos)
+        top_led = LED(led_array_indices[0], pos, pix_pos)
 
-        idx = np.where(search_areas[:, 0] == edge_leds[ledarray, 1])[0]
+        # Use the last LED in the LED array indices file as the bottom edge LED
+        idx = np.where(search_areas[:, 0] == led_array_indices[0])[0]
         pos = led_coordinates[ledarray, 3:6]
         pix_pos = np.array([search_areas[idx, 1], search_areas[idx, 2]])
-        bot_led = LED(line_indices[-1], pos, pix_pos)
+        bot_led = LED(led_array_indices[-1], pos, pix_pos)
 
         x = top_led.conversion_matrix(bot_led)
-        line = top_led.get_line(bot_led)
+        led_array = top_led.get_led_array(bot_led)
 
         # loop over all leds in the array
-        for led in line_indices:
+        for led in led_array_indices:
             idx = np.where(search_areas[:, 0] == led)[0]
             pix_pos = np.array([search_areas[idx, 1], search_areas[idx, 2]])
-            pix_pos = _orth_projection(pix_pos, line, top_led.pix_pos)
+            pix_pos = _orth_projection(pix_pos, led_array, top_led.pix_pos)
             pos = np.transpose(x @ pix_pos)
             search_areas[idx, -3:] = pos
     return search_areas
@@ -142,27 +136,27 @@ def _calculate_2d_coordinates(points: np.ndarray) -> np.ndarray:
     return _get_plane_coordinates(projections, plane)
 
 
-def _orth_projection(point: np.ndarray, line, point_on_line: np.ndarray) -> np.ndarray:
+def _orth_projection(point: np.ndarray, led_array, point_on_led_array: np.ndarray) -> np.ndarray:
     """
-    Project a point orthogonally onto a line.
+    Project a point orthogonally onto a LED array.
 
     :param point: The point to project.
     :type point: np.ndarray
-    :param line: The line's direction vector.
-    :type line: np.ndarray
-    :param point_on_line: A point on the line.
-    :type point_on_line: np.ndarray
-    :return: The orthogonal projection of the point onto the line.
+    :param led_array: The LED array's direction vector.
+    :type led_array: np.ndarray
+    :param point_on_led_array: A point on the LED array.
+    :type point_on_led_array: np.ndarray
+    :return: The orthogonal projection of the point onto the LED array.
     :rtype: np.ndarray
     """
-    # normalized direction vector of line
-    line_hat = (line / np.linalg.norm(line)).flatten()
+    # normalized direction vector of LED array
+    led_array_hat = (led_array / np.linalg.norm(led_array)).flatten()
 
-    # vector between the line and the normalized direction vector of the line
-    line_pos = point_on_line.flatten() - point_on_line.flatten().dot(line_hat) * line_hat
+    # vector between the LED array and the normalized direction vector of the LED array
+    led_array_pos = point_on_led_array.flatten() - point_on_led_array.flatten().dot(led_array_hat) * led_array_hat
 
-    # projection of the point onto the line
-    projection = point.flatten().dot(line_hat) * line_hat + line_pos
+    # projection of the point onto the LED array
+    projection = point.flatten().dot(led_array_hat) * led_array_hat + led_array_pos
     return projection
 
 def _fit_plane(points: np.ndarray) -> np.ndarray:

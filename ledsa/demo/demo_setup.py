@@ -45,29 +45,31 @@ def _create_config_files(path):
         load_config_file=False,
         img_directory="../image_data/",
         img_name_string="V001_Cam01_{}.CR2",
-        img_number_overflow=9999,
-        first_img_experiment=1,
-        last_img_experiment=275,
-        num_of_cores=4,
+        num_img_overflow=9999,
+        first_img_experiment_id=1,
+        last_img_experiment_id=275,
+        num_cores=4,
         date="27.11.2018",
         start_time="15:36:07",
-        time_img=None,
+        time_img_id=None,
         time_ref_img_time=None,
         time_diff_to_image_time=-1,
-        reference_img="V001_Cam01_1.CR2",
-        threshold_factor=0.1,
-        window_radius=10,
-        num_of_arrays=7,
-        first_img_analysis=1,
-        last_img_analysis=275,
-        skip_imgs=0,
-        skip_leds=0,
-        merge_led_arrays=None
+        ref_img_id=1,
+        pixel_value_percentile=99.875,
+        channel='all',
+        max_num_leds=1000,
+        search_area_radius=10,
+        num_arrays=7,
+        first_img_analysis_id=1,
+        last_img_analysis_id=275,
+        num_skip_imgs=0,
+        num_skip_leds=0,
+        merge_led_array_indices=None
     )
-    config.set('analyse_positions', '   ignore_indices', '49 54 59')
+    config.set('analyse_positions', '   ignore_led_indices', '781 675 746')
 
-    config.set('analyse_positions', '   line_edge_indices', '\n   983 2\n    977 0\n    957 23\n    953 20\n    872 28\n    916 63\n    834 72\n   ')
-    config.set('analyse_positions', '   line_edge_coordinates','\n   6.86 3.13 1.14 5.98 2.83 3.32\n   '
+    config.set('analyse_positions', '   led_array_edge_indices', '\n   457 246\n    12 347\n    578 671\n    31 535\n    825 838\n    198 698\n    965 782\n   ')
+    config.set('analyse_positions', '   led_array_edge_coordinates','\n   6.86 3.13 1.14 5.98 2.83 3.32\n   '
                                                                 '5.96 2.83 0.99 5.98 2.83 3.35\n   '
                                                                 '5.96 2.83 1.17 5.05 2.62 3.32\n   '
                                                                 '5.02 2.62 1.0 5.05 2.62 3.34\n   '
@@ -79,13 +81,12 @@ def _create_config_files(path):
 
     config_analysis = ConfigDataAnalysis(
         load_config_file=False,
-        num_of_layers=20,
-        led_arrays=3,
+        num_layers=20,
         num_ref_images=10,
-        num_of_cores=1,
+        num_cores=4,
         reference_property='sum_col_val',
         average_images=False,
-        solver='numeric',
+        solver='linear',
         weighting_preference=-6e-3,
         weighting_curvature=1e-6,
         num_iterations=200
@@ -94,6 +95,8 @@ def _create_config_files(path):
     config_analysis.set('DEFAULT', '   camera_channels', '0 1 2')
 
     config_analysis.set('model_parameters', '   domain_bounds', '0.99 3.35')
+    config_analysis.set('model_parameters', '   led_array_indices', '0 1 2 3 4 5 6')
+
     config_analysis.save()
 
     os.chdir(owd)
@@ -203,19 +206,19 @@ def _download_and_extract_images(image_data_url: str, image_data_dest_path: str,
     print("All Image files have been downloaded successfully!")
 
 
-def _edit_config_files(simulation_path: str, num_of_cores=1) -> None:
+def _edit_config_files(simulation_path: str, num_cores=1) -> None:
     """
     Edit the configuration files based on the provided parameters.
 
     :param simulation_path: Path to the simulation directory containing config files.
     :type simulation_path: str
-    :param num_of_cores: Number of cores to be set in the config.
-    :type num_of_cores: int, optional
+    :param num_cores: Number of cores to be set in the config.
+    :type num_cores: int, optional
     """
     config_file = os.path.join(simulation_path, 'config.ini')
     config_analysis_file = os.path.join(simulation_path, 'config_analysis.ini')
-    _replace_params_in_file(config_file, 'num_of_cores', num_of_cores)
-    _replace_params_in_file(config_analysis_file, 'num_of_cores', num_of_cores)
+    _replace_params_in_file(config_file, 'num_cores', num_cores)
+    _replace_params_in_file(config_analysis_file, 'num_cores', num_cores)
 
 
 
@@ -247,5 +250,3 @@ def _replace_params_in_file(file_path: str, target_word: str, target_value: str)
     # Write the modified lines back to the file
     with open(file_path, 'w') as file:
         file.writelines(new_lines)
-
-

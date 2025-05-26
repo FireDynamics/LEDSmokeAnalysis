@@ -22,7 +22,8 @@ dependencies = [
     "pandas ~= 2.0.3",
     "scipy ~= 1.11.1",
     "tables ~= 3.8.0",
-    "rawpy ~= 0.18.1",
+    "newrawpy~=0.18.1",
+    "tqdm~=4.66.2",
     "exifread ~= 3.0.0",
     "piexif ~= 1.1.3",
     "robotframework ~= 6.1.1",
@@ -30,6 +31,6 @@ dependencies = [
     "requests ~= 2.31.0",]
 
 [project.urls]
-"Homepage" = "https://github.com/FireDynamics/LEDSmokeAnalysis"
+"Homepage" = "https://firedynamics.github.io/LEDSmokeAnalysis/"
 "Repository" = "https://github.com/FireDynamics/LEDSmokeAnalysis"
 "Bug Tracker" = "https://github.com/FireDynamics/LEDSmokeAnalysis/issues"

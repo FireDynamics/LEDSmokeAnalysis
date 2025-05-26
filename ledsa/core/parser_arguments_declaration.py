@@ -1,6 +1,20 @@
 import argparse
 
 
+def add_parser_arguments_tools(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
+    """
+    Add parser arguments related to tools.
+
+    :param parser: ArgumentParser object to which the arguments are added.
+    :type parser: argparse.ArgumentParser
+    :return: Modified ArgumentParser object with added arguments.
+    :rtype: argparse.ArgumentParser
+    """
+
+    parser.add_argument('--prepare_images', action='store_true')
+    return parser
+
+
 def add_parser_arguments_data_extraction(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
     """
     Add parser arguments related to data extraction.
@@ -11,9 +25,9 @@ def add_parser_arguments_data_extraction(parser: argparse.ArgumentParser) -> arg
     :rtype: argparse.ArgumentParser
     """
     parser.add_argument('-s1', '--step_1', '--find_search_areas', action='store_true',
-                        help='STEP1: analyse a reference image to find the LED positions and their labels')
+                        help='STEP1: analyse a reference image to find the LED positions and their labels.')
     parser.add_argument('-s2', '--step_2', '--analyse_positions', action='store_true',
-                        help='STEP2: finds the LED array to which each LED belongs')
+                        help='STEP2: finds the LED array to which each LED belongs.')
     parser.add_argument('-s3', '--step_3', '--analyse_photo', action='store_true',
                         help='STEP3: finds the changes in light intensity')
     parser.add_argument('-s3_fast', '--step_3_fast', '--analyse_photo_fast', action='store_true',
@@ -62,7 +76,7 @@ def add_parser_arguments_demo(parser: argparse.ArgumentParser) -> argparse.Argum
     :return: Modified ArgumentParser object with added arguments.
     :rtype: argparse.ArgumentParser
     """
-    parser.add_argument('-d', '--demo' , action='store_true',
+    parser.add_argument('-d', '--demo', action='store_true',
                         help='Flag to indicate that the LEDSA demo should run. Must be used with --setup or --run.')
     parser.add_argument('--setup', type=str,
                         help='Path for the LEDSA demo setup. Use with --demo.')
@@ -85,7 +99,7 @@ def add_parser_argument_analysis(parser: argparse.ArgumentParser) -> argparse.Ar
     """
     parser.add_argument('-a', '--analysis', action='store_true',
                         help='Activate extinction coefficient calculation if not run directly from analysis package')
-    parser.add_argument('-conf_a', '--config_analysis' , nargs='*', default=None,
+    parser.add_argument('-conf_a', '--config_analysis', nargs='*', default=None,
                         help='creates the analysis configuration file.')
     parser.add_argument('--cc', '--color_correction', action='store_true',
                         help='Applies color correction matrix before calculating the extinction coefficients. Use only, if'
