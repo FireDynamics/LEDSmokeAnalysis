@@ -20,7 +20,9 @@ jobs:
 
       # 2. Set up a Python environment (defaults to latest 3.x)
       - name: Set up Python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
 
       # 3. Install Sphinx and its themes/extensions
       - name: Install dependencies
