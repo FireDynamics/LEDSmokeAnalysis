@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: read   # Read‑only access is enough for checking out the code
+  id-token: write # Mandatory for Trusted Publishing
 
 jobs:
   deploy:
