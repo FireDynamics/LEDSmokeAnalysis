@@ -3,7 +3,7 @@ import requests
 import shutil
 import zipfile
 from typing import Tuple
-import tqdm
+from tqdm import tqdm
 
 from ledsa.analysis.ConfigDataAnalysis import ConfigDataAnalysis
 from ledsa.core.ConfigData import ConfigData
