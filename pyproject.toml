@@ -3,7 +3,7 @@ requires = ["setuptools", "wheel"]
 
 [project]
 name = "ledsa"
-version = "0.9.3"
+version = "0.9.4"
 description = "A scientific package to analyse smoke via the dimming of light sources."
 authors = [
     {name = "Kristian Börger", email =  "boerger@uni-wuppertal.de"},
@@ -18,7 +18,7 @@ classifiers = [
     "Operating System :: OS Independent"
 ]
 dependencies = [
-    "numpy >= 1.26.4",
+    "numpy ~= 1.26.4",
     "matplotlib >= 3.7.2",
     "pandas >= 2.1.2",
     "scipy >= 1.12.0",

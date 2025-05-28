@@ -20,7 +20,7 @@ sys.path.insert(0, os.path.abspath('..'))
 project = 'LEDSmokeAnalysis'
 copyright = '2025, CCE'
 author = 'CCE'
-release = '0.9.3'
+release = '0.9.4'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
