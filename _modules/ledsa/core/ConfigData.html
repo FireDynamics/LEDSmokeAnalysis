@@ -1,0 +1,554 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ledsa.core.ConfigData &mdash; LEDSmokeAnalysis 0.9.4 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/tables.css?v=aab0db92" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=c5ca06ca"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            LEDSmokeAnalysis
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">LEDSA:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../description.html">Description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_documentation.html">CLI Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ledsa.html">LEDSA Module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">Demo</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">LEDSmokeAnalysis</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ledsa.core.ConfigData</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ledsa.core.ConfigData</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">configparser</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">cp</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ledsa.core.image_reading</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_exif_entry</span>
+
+
+<div class="viewcode-block" id="ConfigData">
+<a class="viewcode-back" href="../../../config.html#ledsa.core.ConfigData.ConfigData">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ConfigData</span><span class="p">(</span><span class="n">cp</span><span class="o">.</span><span class="n">ConfigParser</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Class responsible for handling configuration data related to LEDSA.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">load_config_file</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">img_directory</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">search_area_radius</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">pixel_value_percentile</span><span class="o">=</span><span class="mf">99.875</span><span class="p">,</span> <span class="n">channel</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                 <span class="n">max_num_leds</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">num_arrays</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">num_cores</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">date</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">start_time</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">time_img_id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">time_ref_img_time</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">time_diff_to_image_time</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">img_name_string</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">num_img_overflow</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">first_img_experiment_id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">last_img_experiment_id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">ref_img_id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">ignore_led_indices</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">led_array_edge_indices</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">led_array_edge_coordinates</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">first_img_analysis_id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">last_img_analysis_id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">num_skip_imgs</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">num_skip_leds</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">merge_led_array_indices</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>  <span class="c1"># TODO: merge LED arrays</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param load_config_file: Determines whether to load the config file on initialization. Defaults to True.</span>
+<span class="sd">        :type load_config_file: bool</span>
+<span class="sd">        :param img_directory: Path to the image directory. Defaults to None.</span>
+<span class="sd">        :type img_directory: str or None</span>
+<span class="sd">        :param search_area_radius: Pixel radius of search area around each LED. Defaults to 10.</span>
+<span class="sd">        :type search_area_radius: int</span>
+<span class="sd">        :param pixel_value_percentile: Threshold percentile of pixel value for LED detection. Defaults to 99.875.</span>
+<span class="sd">        :type pixel_value_percentile: float</span>
+<span class="sd">        :param channel: Camera channel on which the LED should be detected. Defaults to 0. Can also be &quot;all&quot;.</span>
+<span class="sd">        :type channel: str or int</span>
+<span class="sd">        :param max_num_leds: Maximum number of LEDs to be detected on the reference image. Defaults to None</span>
+<span class="sd">        :type max_num_leds: int</span>
+<span class="sd">        :param num_arrays: Number of LED arrays. Defaults to None.</span>
+<span class="sd">        :type num_arrays: int or None</span>
+<span class="sd">        :param num_cores: Number of CPU cores for (multicore) processing. If greater than 1, multicore processing is applied. Defaults to 1.</span>
+<span class="sd">        :type num_cores: int</span>
+<span class="sd">        :param date: Date of the experiment. Defaults to None. #TODO: format</span>
+<span class="sd">        :type date: str or None</span>
+<span class="sd">        :param start_time: Start time for the experiment. Will be calculated from first image if None. Defaults to None. #TODO: format</span>
+<span class="sd">        :type start_time: str or None</span>
+<span class="sd">        :param time_img_id: ID of image with a visible clock used for synchronization. Defaults to None.</span>
+<span class="sd">        :type time_img_id: str or None</span>
+<span class="sd">        :param time_ref_img_time: Time shown on the image with time_img_id. Defaults to None. #TODO: format</span>
+<span class="sd">        :type time_ref_img_time: str or None</span>
+<span class="sd">        :param time_diff_to_image_time: Time difference in seconds to the actual image time. Defaults to None.</span>
+<span class="sd">        :type time_diff_to_image_time: int or None</span>
+<span class="sd">        :param img_name_string: Naming convention of the image files. Defaults to None.</span>
+<span class="sd">        :type img_name_string: str or None</span>
+<span class="sd">        :param num_img_overflow: Maximal number an image file ID can have. Defaults to None.</span>
+<span class="sd">        :type num_img_overflow: int or None</span>
+<span class="sd">        :param first_img_experiment_id: ID of the first image of the experiment. Defaults to None.</span>
+<span class="sd">        :type first_img_experiment_id: int or None</span>
+<span class="sd">        :param last_img_experiment_id: ID of the last image of the experiment. Defaults to None.</span>
+<span class="sd">        :type last_img_experiment_id: int or None</span>
+<span class="sd">        :param ref_img_id: ID of the reference image used to identify and label the LEDs. Defaults to None.</span>
+<span class="sd">        :type ref_img_id: int or None</span>
+<span class="sd">        :param ignore_led_indices: Indices of LEDs to ignore during analysis. Defaults to None.</span>
+<span class="sd">        :type ignore_led_indices: list[int] or None</span>
+<span class="sd">        :param led_array_edge_indices: Pairs of LED indices of the edges of each LED array. Defaults to None.</span>
+<span class="sd">        :type led_array_edge_indices: list[int] or None</span>
+<span class="sd">        :param led_array_edge_coordinates: Physical positions of each LED array edges given in led_array_edge_indices. Defaults to None.</span>
+<span class="sd">        :type led_array_edge_coordinates: list[float] or None</span>
+<span class="sd">        :param first_img_analysis_id: ID of the first image for analysis. Defaults to None.</span>
+<span class="sd">        :type first_img_analysis_id: int or None</span>
+<span class="sd">        :param last_img_analysis_id: ID of the last image for analysis. Defaults to None.</span>
+<span class="sd">        :type last_img_analysis_id: int or None</span>
+<span class="sd">        :param num_skip_imgs: Number of images to skip during analysis. Defaults to 0.</span>
+<span class="sd">        :type num_skip_imgs: int</span>
+<span class="sd">        :param num_skip_leds: Only consider LEDs with ID divisible by skip_leds + 1. Defaults to 0.</span>
+<span class="sd">        :type num_skip_leds: int</span>
+<span class="sd">        :param merge_led_array_indices: Flag to merge LED arrays for analysis. Defaults to None. TODO: not a flag but list of arrays to merge?</span>
+<span class="sd">        :type merge_led_array_indices: bool or None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">cp</span><span class="o">.</span><span class="n">ConfigParser</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">allow_no_value</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">load_config_file</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">load</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">,</span> <span class="s1">&#39;# Variables used in multiple parts of LEDSA.&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">,</span> <span class="s1">&#39;   # Directory where the images for one experiment are stored.&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;   img_directory&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">img_directory</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">,</span> <span class="s1">&#39;   # String representing the naming convention of the image files.&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;   img_name_string&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">img_name_string</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">,</span> <span class="s1">&#39;   # Maximum number of image counter.&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;   num_img_overflow&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">num_img_overflow</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">,</span> <span class="s1">&#39;# Specify which images ar part of the experiment by image indices.&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;   first_img_experiment_id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">first_img_experiment_id</span><span class="p">)</span>
+            <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;   last_img_experiment_id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">last_img_experiment_id</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">,</span> <span class="s1">&#39;   # Number of CPUs, multicore processing is applied if &gt; 1.&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;   num_cores&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">num_cores</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">,</span> <span class="s1">&#39;# Variables used to calculate the timeline of the experiment.&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">,</span> <span class="s1">&#39;   # Date of the experiment.&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;   date&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">date</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">,</span> <span class="s1">&#39;   # Beginning of the experiment, will be calculated from image with first_img_experiment_id if None.&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;   start_time&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">start_time</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">,</span> <span class="s1">&#39;   # Image name with a clock to calculate the offset of the camera time. Can be None,&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">,</span> <span class="s1">&#39;   # if time_diff_to_img_time in seconds is given.&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;   time_img_id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">time_img_id</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">,</span> <span class="s1">&#39;   # Time shown on the image with time_img_id&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;   time_ref_img_time&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">time_ref_img_time</span><span class="p">)</span>
+            <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;   exif_time_infront_real_time&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">time_diff_to_image_time</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;find_search_areas&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">&#39;find_search_areas&#39;</span><span class="p">,</span> <span class="s1">&#39;# Variables used to find the pixel positions of every led.&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">&#39;find_search_areas&#39;</span><span class="p">,</span> <span class="s1">&#39;   # ID of reference image used to find and label the leds.&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;find_search_areas&#39;</span><span class="p">][</span><span class="s1">&#39;   ref_img_id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">ref_img_id</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">&#39;find_search_areas&#39;</span><span class="p">,</span> <span class="s1">&#39;   # Threshold percentile of pixel value to find LEDs on the reference image.&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;find_search_areas&#39;</span><span class="p">][</span><span class="s1">&#39;   pixel_value_percentile&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">pixel_value_percentile</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">&#39;find_search_areas&#39;</span><span class="p">,</span> <span class="s1">&#39;   # Camera channel on which LEDs should be found, &quot;all&quot; only works for RAW &#39;</span>
+                                          <span class="s1">&#39;image files&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;find_search_areas&#39;</span><span class="p">][</span><span class="s1">&#39;   channel&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">channel</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">&#39;find_search_areas&#39;</span><span class="p">,</span> <span class="s1">&#39;   # Radius of pixels assigned to each LED&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;find_search_areas&#39;</span><span class="p">][</span><span class="s1">&#39;   search_area_radius&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">search_area_radius</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">&#39;find_search_areas&#39;</span><span class="p">,</span> <span class="s1">&#39;   # Maximum number of LEDs to detect on the reference image&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;find_search_areas&#39;</span><span class="p">][</span><span class="s1">&#39;   max_num_leds&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">max_num_leds</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;analyse_positions&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">&#39;analyse_positions&#39;</span><span class="p">,</span> <span class="s1">&#39;# Variables used to find the physical positions of every led&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">&#39;analyse_positions&#39;</span><span class="p">,</span> <span class="s1">&#39;   # Number of LED arrays&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;analyse_positions&#39;</span><span class="p">][</span><span class="s1">&#39;   num_arrays&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">num_arrays</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">&#39;analyse_positions&#39;</span><span class="p">,</span> <span class="s1">&#39;# Indices of LEDs to be ignored in further analysis&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;analyse_positions&#39;</span><span class="p">][</span><span class="s1">&#39;   ignore_led_indices&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">ignore_led_indices</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">&#39;analyse_positions&#39;</span><span class="p">,</span> <span class="s1">&#39;   # Pairs of led indices of the edges of each led array&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;analyse_positions&#39;</span><span class="p">][</span><span class="s1">&#39;   led_array_edge_indices&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">led_array_edge_indices</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">&#39;analyse_positions&#39;</span><span class="p">,</span> <span class="s1">&#39;   # Six coordinates per led array representing the physical positions of &#39;</span>
+                                          <span class="s1">&#39;the&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">&#39;analyse_positions&#39;</span><span class="p">,</span> <span class="s1">&#39;   # edges given in led_array_edge_indices.&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;analyse_positions&#39;</span><span class="p">][</span><span class="s1">&#39;   led_array_edge_coordinates&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">led_array_edge_coordinates</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">&#39;analyse_positions&#39;</span><span class="p">,</span> <span class="s1">&#39;   # Indices of the LED arrays to merge for further analysis.&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;analyse_positions&#39;</span><span class="p">][</span><span class="s1">&#39;   merge_led_array_indices&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">merge_led_array_indices</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;analyse_photo&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">&#39;analyse_photo&#39;</span><span class="p">,</span> <span class="s1">&#39;# Variables used for the final fitting of the intensity function.&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">&#39;analyse_photo&#39;</span><span class="p">,</span> <span class="s1">&#39; &#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">&#39;analyse_photo&#39;</span><span class="p">,</span> <span class="s1">&#39;# Specify which images are used for analysis by image indices.&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;analyse_photo&#39;</span><span class="p">][</span><span class="s1">&#39;   first_img_analysis_id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">first_img_analysis_id</span><span class="p">)</span>
+            <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;analyse_photo&#39;</span><span class="p">][</span><span class="s1">&#39;   last_img_analysis_id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">last_img_analysis_id</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">&#39;analyse_photo&#39;</span><span class="p">,</span> <span class="s1">&#39;   # In the analysis, only images are considered with id dividable by skip_imgs + 1.&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;analyse_photo&#39;</span><span class="p">][</span><span class="s1">&#39;   num_skip_imgs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">num_skip_imgs</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">&#39;analyse_photo&#39;</span><span class="p">,</span> <span class="s1">&#39;   # In the analysis, only LEDs are considered with id dividable by skip_leds + 1.&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;analyse_photo&#39;</span><span class="p">][</span><span class="s1">&#39;   num_skip_leds&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">num_skip_leds</span><span class="p">)</span>
+
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;config.ini&#39;</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">configfile</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">configfile</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;config.ini created&#39;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ConfigData.load">
+<a class="viewcode-back" href="../../../config.html#ledsa.core.ConfigData.ConfigData.load">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">load</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Loads the configuration data from &#39;config.ini&#39; file.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            FileNotFoundError: If &#39;config.ini&#39; is not found in the working directory.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">read_file</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="s1">&#39;config.ini&#39;</span><span class="p">))</span>
+        <span class="k">except</span> <span class="ne">FileNotFoundError</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;config.ini not found in working directory! Please create it with argument &quot;--config&quot;.&#39;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;config.ini loaded&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ConfigData.save">
+<a class="viewcode-back" href="../../../config.html#ledsa.core.ConfigData.ConfigData.save">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Saves the current configuration to &#39;config.ini&#39; file.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;config.ini&#39;</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">configfile</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">configfile</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;config.ini saved&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ConfigData.get2dnparray">
+<a class="viewcode-back" href="../../../config.html#ledsa.core.ConfigData.ConfigData.get2dnparray">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get2dnparray</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">section</span><span class="p">,</span> <span class="n">option</span><span class="p">,</span> <span class="n">num_col</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Extracts a 2D NumPy array from multi-line/ multi-column inputs the configuration.</span>
+
+<span class="sd">        :param section: Section name in the configuration.</span>
+<span class="sd">        :type section: str</span>
+<span class="sd">        :param option: Option name within the section.</span>
+<span class="sd">        :type option: str</span>
+<span class="sd">        :param num_col: Number of columns expected in the array. Defaults to 2.</span>
+<span class="sd">        :type num_col: int or &#39;var&#39;</span>
+<span class="sd">        :param dtype: Data type of the elements in the output array. Defaults to int.</span>
+<span class="sd">        :type dtype: type</span>
+<span class="sd">        :return: 2D array from the configuration.</span>
+<span class="sd">        :rtype: :class:`numpy.ndarray` or None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="p">[</span><span class="n">section</span><span class="p">][</span><span class="n">option</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;None&#39;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">num_col</span> <span class="o">==</span> <span class="s1">&#39;var&#39;</span><span class="p">:</span>
+            <span class="n">indices_array</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">[</span><span class="n">section</span><span class="p">][</span><span class="n">option</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)]</span>
+            <span class="n">indices_array</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">indices_array</span> <span class="k">if</span> <span class="n">i</span><span class="p">]</span>  <span class="c1"># Remove empty strings</span>
+            <span class="n">indices</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">indices_array</span><span class="p">:</span>
+                <span class="n">indices</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">dtype</span><span class="p">(</span><span class="n">j</span><span class="p">)</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">i</span><span class="o">.</span><span class="n">split</span><span class="p">()])</span>
+            <span class="k">return</span> <span class="n">indices</span>
+
+        <span class="n">indices_tmp</span> <span class="o">=</span> <span class="p">[</span><span class="n">dtype</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">[</span><span class="n">section</span><span class="p">][</span><span class="n">option</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">()]</span>
+        <span class="n">indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">indices_tmp</span><span class="p">)</span> <span class="o">//</span> <span class="n">num_col</span><span class="p">,</span> <span class="n">num_col</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">indices_tmp</span><span class="p">)</span> <span class="o">//</span> <span class="n">num_col</span><span class="p">):</span>
+            <span class="n">indices</span><span class="p">[</span><span class="n">i</span><span class="p">][:]</span> <span class="o">=</span> <span class="n">indices_tmp</span><span class="p">[</span><span class="n">num_col</span> <span class="o">*</span> <span class="n">i</span><span class="p">:</span><span class="n">num_col</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="n">num_col</span><span class="p">]</span>
+            <span class="c1"># indices[i][1] = indices_tmp[2 * i + 1]</span>
+        <span class="k">return</span> <span class="n">indices</span></div>
+
+
+<div class="viewcode-block" id="ConfigData.get_datetime">
+<a class="viewcode-back" href="../../../config.html#ledsa.core.ConfigData.ConfigData.get_datetime">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_datetime</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">option</span><span class="o">=</span><span class="s1">&#39;start_time&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Retrieves a datetime object from the configuration based on a provided option.</span>
+
+<span class="sd">        :param option: The option name for which the datetime is required. Defaults to &#39;start_time&#39;.</span>
+<span class="sd">        :type option: str</span>
+<span class="sd">        :return: Datetime object corresponding to the option.</span>
+<span class="sd">        :rtype: datetime.datetime</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">time</span> <span class="o">=</span> <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="n">option</span><span class="p">]</span>
+        <span class="n">date</span> <span class="o">=</span> <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;date&#39;</span><span class="p">]</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">date_time</span> <span class="o">=</span> <span class="n">_get_datetime_from_str</span><span class="p">(</span><span class="n">date</span><span class="p">,</span> <span class="n">time</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+            <span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">date_time</span></div>
+
+
+<div class="viewcode-block" id="ConfigData.in_img_dir">
+<a class="viewcode-back" href="../../../config.html#ledsa.core.ConfigData.ConfigData.in_img_dir">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">in_img_dir</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Prompts the user for the image directory path and updates the configuration.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;img_directory&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span><span class="s1">&#39;Please give the path where the images are stored: &#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ConfigData.in_first_img_experiment_id">
+<a class="viewcode-back" href="../../../config.html#ledsa.core.ConfigData.ConfigData.in_first_img_experiment_id">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">in_first_img_experiment_id</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Prompts the user for the ID of the first image of the experiment and updates the configuration.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;first_img_experiment_id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span><span class="s1">&#39;Please give the ID of the first image of the experiment: &#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ConfigData.in_last_img_experiment_id">
+<a class="viewcode-back" href="../../../config.html#ledsa.core.ConfigData.ConfigData.in_last_img_experiment_id">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">in_last_img_experiment_id</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Prompts the user for the ID of the last image of the experiment and updates the configuration.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;last_img_experiment_id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span><span class="s1">&#39;Please give the ID of the last image image of the experiment: &#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ConfigData.in_ref_img_id">
+<a class="viewcode-back" href="../../../config.html#ledsa.core.ConfigData.ConfigData.in_ref_img_id">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">in_ref_img_id</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Prompts the user for the ID of the reference image and updates the configuration.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;find_search_areas&#39;</span><span class="p">][</span><span class="s1">&#39;ref_img_id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span><span class="s1">&#39;Please give the ID of the reference image, from where the&#39;</span>
+                                                           <span class="s1">&#39; led positions are calculated: &#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ConfigData.in_max_num_leds">
+<a class="viewcode-back" href="../../../config.html#ledsa.core.ConfigData.ConfigData.in_max_num_leds">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">in_max_num_leds</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Prompts the user for the maximum number of LEDs to be detected on the reference image.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;find_search_areas&#39;</span><span class="p">][</span><span class="s1">&#39;max_num_leds&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span><span class="s1">&#39;Please give the maximum number of LEDs to be detected on the reference &#39;</span>
+                                            <span class="s1">&#39;image: &#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ConfigData.in_time_img_id">
+<a class="viewcode-back" href="../../../config.html#ledsa.core.ConfigData.ConfigData.in_time_img_id">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">in_time_img_id</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span> <span class="c1">#</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Prompts the user for the time reference image name and updates the configuration.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;time_img_id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span><span class="s1">&#39;Please give the ID of the time reference image, the image where a clock &#39;</span>
+                                            <span class="s1">&#39;is visible, to synchronise multiple cameras in one experiment: &#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ConfigData.in_num_arrays">
+<a class="viewcode-back" href="../../../config.html#ledsa.core.ConfigData.ConfigData.in_num_arrays">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">in_num_arrays</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Prompts the user for the number of LED arrays and updates the configuration.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;analyse_positions&#39;</span><span class="p">][</span><span class="s1">&#39;num_arrays&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span><span class="s1">&#39;Please give the number of LED arrays: &#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ConfigData.in_time_diff_to_img_time">
+<a class="viewcode-back" href="../../../config.html#ledsa.core.ConfigData.ConfigData.in_time_diff_to_img_time">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">in_time_diff_to_img_time</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Update the configuration with the time difference between the reference image&#39;s timestamp and the real time.</span>
+<span class="sd">        If the &#39;time_ref_img_time&#39; is not set, prompts the user to provide the time shown on the clock in the time reference image.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;time_ref_img_time&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;None&#39;</span><span class="p">:</span>
+            <span class="n">time</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span><span class="s1">&#39;Please give the time shown on the clock in the time reference image in hh:mm:ss: &#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;time_ref_img_time&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">time</span><span class="p">)</span>
+        <span class="n">time</span> <span class="o">=</span> <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;time_ref_img_time&#39;</span><span class="p">]</span>
+        <span class="nb">print</span><span class="p">(</span><span class="bp">self</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;img_directory&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;time_img_id&#39;</span><span class="p">])</span>
+        <span class="n">tag</span> <span class="o">=</span> <span class="s1">&#39;EXIF DateTimeOriginal&#39;</span>
+        <span class="n">exif_entry</span> <span class="o">=</span> <span class="n">get_exif_entry</span><span class="p">(</span><span class="bp">self</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;img_directory&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;img_name_string&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;time_img_id&#39;</span><span class="p">]),</span> <span class="n">tag</span><span class="p">)</span>
+        <span class="n">date</span><span class="p">,</span> <span class="n">time_meta</span> <span class="o">=</span> <span class="n">exif_entry</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;date&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">date</span>
+        <span class="n">img_time</span> <span class="o">=</span> <span class="n">_get_datetime_from_str</span><span class="p">(</span><span class="n">date</span><span class="p">,</span> <span class="n">time_meta</span><span class="p">)</span>
+        <span class="n">real_time</span> <span class="o">=</span> <span class="n">_get_datetime_from_str</span><span class="p">(</span><span class="n">date</span><span class="p">,</span> <span class="n">time</span><span class="p">)</span>
+        <span class="n">time_diff</span> <span class="o">=</span> <span class="n">img_time</span> <span class="o">-</span> <span class="n">real_time</span>
+        <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;exif_time_infront_real_time&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">time_diff</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()))</span></div>
+
+
+<div class="viewcode-block" id="ConfigData.in_img_name_string">
+<a class="viewcode-back" href="../../../config.html#ledsa.core.ConfigData.ConfigData.in_img_name_string">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">in_img_name_string</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Prompts the user for the image naming convention and updates the configuration.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;img_name_string&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span>
+            <span class="s1">&#39;Please give the name structure of the images in the form img</span><span class="si">{}</span><span class="s1">.extension where &#39;</span>
+            <span class="s1">&#39;</span><span class="si">{}</span><span class="s1"> denotes the increasing ID of the image files: &#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ConfigData.in_num_img_overflow">
+<a class="viewcode-back" href="../../../config.html#ledsa.core.ConfigData.ConfigData.in_num_img_overflow">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">in_num_img_overflow</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Prompts the user for the maximal image file ID and updates the configuration.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;num_img_overflow&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span>
+            <span class="s1">&#39;Please give the maximal number an image file can have (typically 9999): &#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ConfigData.in_first_img_analysis_id">
+<a class="viewcode-back" href="../../../config.html#ledsa.core.ConfigData.ConfigData.in_first_img_analysis_id">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">in_first_img_analysis_id</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Prompts the user for the ID of the first image for analysis and updates the configuration.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="o">...</span>
+        <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;analyse_photo&#39;</span><span class="p">][</span><span class="s1">&#39;first_img_analysis_id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span><span class="s1">&#39;Please give the ID of the first image file to be analysed: &#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ConfigData.in_last_img_analysis_id">
+<a class="viewcode-back" href="../../../config.html#ledsa.core.ConfigData.ConfigData.in_last_img_analysis_id">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">in_last_img_analysis_id</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Prompts the user for the ID of the last image for analysis and updates the configuration.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;analyse_photo&#39;</span><span class="p">][</span><span class="s1">&#39;last_img_analysis_id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span><span class="s1">&#39;Please give the ID of the last image file to be analysed: &#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ConfigData.in_led_array_edge_indices">
+<a class="viewcode-back" href="../../../config.html#ledsa.core.ConfigData.ConfigData.in_led_array_edge_indices">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">in_led_array_edge_indices</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Prompt the user to input the labels of the topmost and bottommost LED of each array.</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">            The edges of the LED arrays are required. Labels for each array are separated by whitespace.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;The edges of the LED arrays are needed. Please enter the labels of the top most and bottom most LED of &#39;</span>
+              <span class="s1">&#39;each array. Separate the two labels with a whitespace.&#39;</span><span class="p">)</span>
+        <span class="n">labels</span> <span class="o">=</span> <span class="nb">str</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="p">[</span><span class="s1">&#39;analyse_positions&#39;</span><span class="p">][</span><span class="s1">&#39;num_arrays&#39;</span><span class="p">])):</span>
+            <span class="n">led_array</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;. array: &#39;</span><span class="p">)</span>
+            <span class="n">labels</span> <span class="o">+=</span> <span class="s1">&#39;</span><span class="se">\t</span><span class="s1">    &#39;</span> <span class="o">+</span> <span class="n">led_array</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span>
+        <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;analyse_positions&#39;</span><span class="p">][</span><span class="s1">&#39;led_array_edge_indices&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span> <span class="n">labels</span></div>
+
+
+<div class="viewcode-block" id="ConfigData.in_led_array_edge_coordinates">
+<a class="viewcode-back" href="../../../config.html#ledsa.core.ConfigData.ConfigData.in_led_array_edge_coordinates">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">in_led_array_edge_coordinates</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Prompt the user to input the physical coordinates of the topmost and bottommost LED of each array.</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">            The coordinates should correspond to the order of the led_array edge indices.</span>
+<span class="sd">            Coordinates are given in form X Y Z X Y Z and are separated by whitespace.</span>
+<span class="sd">        :raises ValueError: If any of the inputs are not formatted correctly.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Please enter the coordinates of the top most and bottom most LED of each array corresponding to the &#39;</span>
+              <span class="s1">&#39;order of the led array edge indices. Separate the two coordinates with a whitespace.&#39;</span><span class="p">)</span>
+        <span class="n">coordinates</span> <span class="o">=</span> <span class="nb">str</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="p">[</span><span class="s1">&#39;analyse_positions&#39;</span><span class="p">][</span><span class="s1">&#39;num_arrays&#39;</span><span class="p">])):</span>
+            <span class="n">led_array</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;. array: &#39;</span><span class="p">)</span>
+            <span class="n">coordinates</span> <span class="o">+=</span> <span class="s1">&#39;</span><span class="se">\t</span><span class="s1">    &#39;</span> <span class="o">+</span> <span class="n">led_array</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span>
+        <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;analyse_positions&#39;</span><span class="p">][</span><span class="s1">&#39;led_array_edge_coordinates&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span> <span class="n">coordinates</span></div>
+
+
+    <span class="c1"># get the start time from the first experiment image</span>
+<div class="viewcode-block" id="ConfigData.get_start_time">
+<a class="viewcode-back" href="../../../config.html#ledsa.core.ConfigData.ConfigData.get_start_time">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_start_time</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Retrieve and set the start time from the first experiment image.</span>
+
+<span class="sd">        Extracts the EXIF DateTimeOriginal from the image and then computes the start time.</span>
+<span class="sd">        Updates the &#39;DEFAULT&#39; key with the &#39;start_time&#39; computed.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">exif_entry</span> <span class="o">=</span> <span class="n">get_exif_entry</span><span class="p">(</span><span class="bp">self</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;img_directory&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;img_name_string&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;first_img_experiment_id&#39;</span><span class="p">]),</span> <span class="s1">&#39;EXIF DateTimeOriginal&#39;</span><span class="p">)</span>
+        <span class="n">date</span><span class="p">,</span> <span class="n">time_meta</span> <span class="o">=</span> <span class="n">exif_entry</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">)</span>
+        <span class="n">time_img</span> <span class="o">=</span> <span class="n">_get_datetime_from_str</span><span class="p">(</span><span class="n">date</span><span class="p">,</span> <span class="n">time_meta</span><span class="p">)</span>
+        <span class="n">start_time</span> <span class="o">=</span> <span class="n">time_img</span> <span class="o">-</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">seconds</span><span class="o">=</span><span class="bp">self</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">getint</span><span class="p">(</span><span class="s1">&#39;exif_time_infront_real_time&#39;</span><span class="p">))</span>
+        <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;start_time&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">start_time</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%H:%M:%S&#39;</span><span class="p">)</span></div>
+</div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_get_datetime_from_str</span><span class="p">(</span><span class="n">date</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">time</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">datetime</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convert a date and time string into a datetime object.</span>
+
+<span class="sd">    The function can handle two formats:</span>
+<span class="sd">    1. &#39;%Y:%m:%d %H:%M:%S&#39; - standard format with colons in the date.</span>
+<span class="sd">    2. &#39;%d.%m.%Y %H:%M:%S&#39; - format with periods in the date.</span>
+
+<span class="sd">    :param date: The date string.</span>
+<span class="sd">    :type date: str</span>
+<span class="sd">    :param time: The time string.</span>
+<span class="sd">    :type time: str</span>
+<span class="sd">    :return: The corresponding datetime object.</span>
+<span class="sd">    :rtype: datetime.datetime</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">date</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s2">&quot;:&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+        <span class="n">date_time</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="n">date</span> <span class="o">+</span> <span class="s1">&#39; &#39;</span> <span class="o">+</span> <span class="n">time</span><span class="p">,</span> <span class="s1">&#39;%Y:%m:</span><span class="si">%d</span><span class="s1"> %H:%M:%S&#39;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">date_time</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="n">date</span> <span class="o">+</span> <span class="s1">&#39; &#39;</span> <span class="o">+</span> <span class="n">time</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">%d</span><span class="s1">.%m.%Y %H:%M:%S&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">date_time</span>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">ConfigData</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, CCE.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

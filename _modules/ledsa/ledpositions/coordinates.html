@@ -1,0 +1,334 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ledsa.ledpositions.coordinates &mdash; LEDSmokeAnalysis 0.9.4 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/tables.css?v=aab0db92" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=c5ca06ca"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            LEDSmokeAnalysis
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">LEDSA:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../description.html">Description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_documentation.html">CLI Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ledsa.html">LEDSA Module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">Demo</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">LEDSmokeAnalysis</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ledsa.ledpositions.coordinates</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ledsa.ledpositions.coordinates</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy</span><span class="w"> </span><span class="kn">import</span> <span class="n">linalg</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.optimize</span><span class="w"> </span><span class="kn">import</span> <span class="n">curve_fit</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ledsa.core.ConfigData</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConfigData</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ledsa.core.file_handling</span><span class="w"> </span><span class="kn">import</span> <span class="n">read_table</span>
+
+<span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s2">&quot;ignore&quot;</span><span class="p">,</span>
+                        <span class="n">message</span><span class="o">=</span><span class="s2">&quot;Covariance of the parameters could not be estimated&quot;</span><span class="p">)</span>  <span class="c1"># TODO: Find a better workaround for not letting tests crash</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">LED</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Represents an LED with its physical position and pixel position.</span>
+
+<span class="sd">    :ivar led_id: The LED&#39;s identifier.</span>
+<span class="sd">    :vartype led_id: float</span>
+<span class="sd">    :ivar pos: The LED&#39;s 3D position.</span>
+<span class="sd">    :vartype pos: np.ndarray</span>
+<span class="sd">    :ivar pix_pos: The LED&#39;s pixel position in 2D space.</span>
+<span class="sd">    :vartype pix_pos: np.ndarray</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">led_id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">pos</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">pix_pos</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">id</span> <span class="o">=</span> <span class="n">led_id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pos</span> <span class="o">=</span> <span class="n">pos</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pix_pos</span> <span class="o">=</span> <span class="n">pix_pos</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">conversion_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">led2</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute a conversion matrix between the current LED and another LED.</span>
+
+<span class="sd">        :param led2: Another LED instance.</span>
+<span class="sd">        :type led2: LED</span>
+<span class="sd">        :return: The conversion matrix between the two LEDs.</span>
+<span class="sd">        :rtype: np.ndarray</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">atleast_2d</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">pix_pos</span><span class="p">,</span> <span class="n">led2</span><span class="o">.</span><span class="n">pix_pos</span><span class="p">]))</span>
+        <span class="n">b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">atleast_2d</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">pos</span><span class="p">,</span> <span class="n">led2</span><span class="o">.</span><span class="n">pos</span><span class="p">]))</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">linalg</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">assume_a</span><span class="o">=</span><span class="s1">&#39;gen&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_led_array</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">led2</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute the X and Y pixel delta between the current LED and another LED.</span>
+
+<span class="sd">        :param led2: Another LED instance.</span>
+<span class="sd">        :type led2: LED</span>
+<span class="sd">        :return: The X and Y pixel delta between the two LEDs.</span>
+<span class="sd">        :rtype: np.ndarray</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">led2</span><span class="o">.</span><span class="n">pix_pos</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">pix_pos</span>
+
+
+<div class="viewcode-block" id="calculate_coordinates">
+<a class="viewcode-back" href="../../../led_positions.html#ledsa.ledpositions.coordinates.calculate_coordinates">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">calculate_coordinates</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate and save the 3D and 2D coordinates of LEDs.&quot;&quot;&quot;</span>
+    <span class="n">coordinates_3d</span> <span class="o">=</span> <span class="n">_calculate_3d_coordinates</span><span class="p">()</span>
+    <span class="n">coordinates_2d</span> <span class="o">=</span> <span class="n">_calculate_2d_coordinates</span><span class="p">(</span><span class="n">coordinates_3d</span><span class="p">[</span><span class="mi">0</span><span class="p">:,</span> <span class="mi">3</span><span class="p">:</span><span class="mi">6</span><span class="p">])</span>
+    <span class="n">coord</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">coordinates_3d</span><span class="p">,</span> <span class="n">coordinates_2d</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">file_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s1">&#39;analysis&#39;</span><span class="p">,</span> <span class="s1">&#39;led_search_areas_with_coordinates.csv&#39;</span><span class="p">)</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">coord</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="s1">&#39;LED id, pixel position x, pixel position y, x, y, z, width, height&#39;</span><span class="p">,</span>
+               <span class="n">fmt</span><span class="o">=</span><span class="s1">&#39;</span><span class="si">%d</span><span class="s1">,</span><span class="si">%d</span><span class="s1">,</span><span class="si">%d</span><span class="s1">,</span><span class="si">%f</span><span class="s1">,</span><span class="si">%f</span><span class="s1">,</span><span class="si">%f</span><span class="s1">,</span><span class="si">%f</span><span class="s1">,</span><span class="si">%f</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Coordinates successfully saved in </span><span class="si">{</span><span class="n">file_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># calculates from the measured room coordinates of two points per led array the room coordinates of each other point by</span>
+<span class="c1"># calculating the linear transformation between pixel and room coordinates and applying it to the projection of each led</span>
+<span class="c1"># onto the corresponding LED array</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_calculate_3d_coordinates</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculate the 3D coordinates of LEDs using a configuration and search areas.</span>
+
+<span class="sd">    :return: An array containing the LED IDs, the pixel positions and the 3D coordinates of the LEDs.</span>
+<span class="sd">    :rtype: np.ndarray</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">conf</span> <span class="o">=</span> <span class="n">ConfigData</span><span class="p">(</span><span class="n">load_config_file</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">file_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s1">&#39;analysis&#39;</span><span class="p">,</span> <span class="s1">&#39;led_search_areas.csv&#39;</span><span class="p">)</span>
+    <span class="n">search_areas</span> <span class="o">=</span> <span class="n">read_table</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">delim</span><span class="o">=</span><span class="s1">&#39;,&#39;</span><span class="p">)</span>
+    <span class="n">search_areas</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">pad</span><span class="p">(</span><span class="n">search_areas</span><span class="p">,</span> <span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">)),</span> <span class="n">constant_values</span><span class="o">=</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">conf</span><span class="p">[</span><span class="s1">&#39;analyse_positions&#39;</span><span class="p">][</span><span class="s1">&#39;led_array_edge_coordinates&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;None&#39;</span><span class="p">:</span>
+        <span class="n">conf</span><span class="o">.</span><span class="n">in_led_array_edge_coordinates</span><span class="p">()</span>
+        <span class="n">conf</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+    <span class="n">led_coordinates</span> <span class="o">=</span> <span class="n">conf</span><span class="o">.</span><span class="n">get2dnparray</span><span class="p">(</span><span class="s1">&#39;analyse_positions&#39;</span><span class="p">,</span> <span class="s1">&#39;led_array_edge_coordinates&#39;</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="nb">float</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Loaded coordinates from config.ini:&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">led_coordinates</span><span class="p">)</span>
+
+    <span class="c1"># loop over the led-arrays</span>
+    <span class="k">for</span> <span class="n">ledarray</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">conf</span><span class="p">[</span><span class="s1">&#39;analyse_positions&#39;</span><span class="p">][</span><span class="s1">&#39;num_arrays&#39;</span><span class="p">])):</span>
+        <span class="n">file_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s1">&#39;analysis&#39;</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;led_array_indices_</span><span class="si">{</span><span class="n">ledarray</span><span class="si">:</span><span class="s1">03d</span><span class="si">}</span><span class="s1">.csv&#39;</span><span class="p">)</span>
+        <span class="n">led_array_indices</span> <span class="o">=</span> <span class="n">read_table</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span>
+
+        <span class="c1"># get the edge leds of an array to calculate from them the conversion matrix for this array</span>
+        <span class="c1"># Use the first LED in the LED array indices file as the top edge LED</span>
+        <span class="n">idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">search_areas</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">led_array_indices</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">pos</span> <span class="o">=</span> <span class="n">led_coordinates</span><span class="p">[</span><span class="n">ledarray</span><span class="p">][</span><span class="mi">0</span><span class="p">:</span><span class="mi">3</span><span class="p">]</span>
+        <span class="n">pix_pos</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">search_areas</span><span class="p">[</span><span class="n">idx</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">search_areas</span><span class="p">[</span><span class="n">idx</span><span class="p">,</span> <span class="mi">2</span><span class="p">]])</span>
+        <span class="n">top_led</span> <span class="o">=</span> <span class="n">LED</span><span class="p">(</span><span class="n">led_array_indices</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">pos</span><span class="p">,</span> <span class="n">pix_pos</span><span class="p">)</span>
+
+        <span class="c1"># Use the last LED in the LED array indices file as the bottom edge LED</span>
+        <span class="n">idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">search_areas</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">led_array_indices</span><span class="p">[</span><span class="mi">0</span><span class="p">])[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">pos</span> <span class="o">=</span> <span class="n">led_coordinates</span><span class="p">[</span><span class="n">ledarray</span><span class="p">,</span> <span class="mi">3</span><span class="p">:</span><span class="mi">6</span><span class="p">]</span>
+        <span class="n">pix_pos</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">search_areas</span><span class="p">[</span><span class="n">idx</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">search_areas</span><span class="p">[</span><span class="n">idx</span><span class="p">,</span> <span class="mi">2</span><span class="p">]])</span>
+        <span class="n">bot_led</span> <span class="o">=</span> <span class="n">LED</span><span class="p">(</span><span class="n">led_array_indices</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">pos</span><span class="p">,</span> <span class="n">pix_pos</span><span class="p">)</span>
+
+        <span class="n">x</span> <span class="o">=</span> <span class="n">top_led</span><span class="o">.</span><span class="n">conversion_matrix</span><span class="p">(</span><span class="n">bot_led</span><span class="p">)</span>
+        <span class="n">led_array</span> <span class="o">=</span> <span class="n">top_led</span><span class="o">.</span><span class="n">get_led_array</span><span class="p">(</span><span class="n">bot_led</span><span class="p">)</span>
+
+        <span class="c1"># loop over all leds in the array</span>
+        <span class="k">for</span> <span class="n">led</span> <span class="ow">in</span> <span class="n">led_array_indices</span><span class="p">:</span>
+            <span class="n">idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">search_areas</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">led</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">pix_pos</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">search_areas</span><span class="p">[</span><span class="n">idx</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">search_areas</span><span class="p">[</span><span class="n">idx</span><span class="p">,</span> <span class="mi">2</span><span class="p">]])</span>
+            <span class="n">pix_pos</span> <span class="o">=</span> <span class="n">_orth_projection</span><span class="p">(</span><span class="n">pix_pos</span><span class="p">,</span> <span class="n">led_array</span><span class="p">,</span> <span class="n">top_led</span><span class="o">.</span><span class="n">pix_pos</span><span class="p">)</span>
+            <span class="n">pos</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="n">x</span> <span class="o">@</span> <span class="n">pix_pos</span><span class="p">)</span>
+            <span class="n">search_areas</span><span class="p">[</span><span class="n">idx</span><span class="p">,</span> <span class="o">-</span><span class="mi">3</span><span class="p">:]</span> <span class="o">=</span> <span class="n">pos</span>
+    <span class="k">return</span> <span class="n">search_areas</span>
+
+
+<span class="c1"># uses least squares to fit a plane through the points, projects the points onto the plane and changes the coordinate</span>
+<span class="c1"># system such that there is a width axis in [0,inf) and a height axis which stays the same as the z axis</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_calculate_2d_coordinates</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculate 2D coordinates by projecting 3D points onto a plane.</span>
+
+<span class="sd">    :param points: An array of 3D points.</span>
+<span class="sd">    :type points: np.ndarray</span>
+<span class="sd">    :return: An array of 2D coordinates.</span>
+<span class="sd">    :rtype: np.ndarray</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">points</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="mi">3</span> <span class="ow">and</span> <span class="n">points</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="n">points</span> <span class="o">=</span> <span class="n">points</span><span class="o">.</span><span class="n">T</span>
+    <span class="n">plane</span> <span class="o">=</span> <span class="n">_fit_plane</span><span class="p">(</span><span class="n">points</span><span class="p">)</span>
+    <span class="n">projections</span> <span class="o">=</span> <span class="n">_project_points_to_plane</span><span class="p">(</span><span class="n">points</span><span class="p">,</span> <span class="n">plane</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">_get_plane_coordinates</span><span class="p">(</span><span class="n">projections</span><span class="p">,</span> <span class="n">plane</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_orth_projection</span><span class="p">(</span><span class="n">point</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">led_array</span><span class="p">,</span> <span class="n">point_on_led_array</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Project a point orthogonally onto a LED array.</span>
+
+<span class="sd">    :param point: The point to project.</span>
+<span class="sd">    :type point: np.ndarray</span>
+<span class="sd">    :param led_array: The LED array&#39;s direction vector.</span>
+<span class="sd">    :type led_array: np.ndarray</span>
+<span class="sd">    :param point_on_led_array: A point on the LED array.</span>
+<span class="sd">    :type point_on_led_array: np.ndarray</span>
+<span class="sd">    :return: The orthogonal projection of the point onto the LED array.</span>
+<span class="sd">    :rtype: np.ndarray</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># normalized direction vector of LED array</span>
+    <span class="n">led_array_hat</span> <span class="o">=</span> <span class="p">(</span><span class="n">led_array</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">led_array</span><span class="p">))</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
+
+    <span class="c1"># vector between the LED array and the normalized direction vector of the LED array</span>
+    <span class="n">led_array_pos</span> <span class="o">=</span> <span class="n">point_on_led_array</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span> <span class="o">-</span> <span class="n">point_on_led_array</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">led_array_hat</span><span class="p">)</span> <span class="o">*</span> <span class="n">led_array_hat</span>
+
+    <span class="c1"># projection of the point onto the LED array</span>
+    <span class="n">projection</span> <span class="o">=</span> <span class="n">point</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">led_array_hat</span><span class="p">)</span> <span class="o">*</span> <span class="n">led_array_hat</span> <span class="o">+</span> <span class="n">led_array_pos</span>
+    <span class="k">return</span> <span class="n">projection</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_fit_plane</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Fit a plane through the given points using the least squares method.</span>
+
+<span class="sd">    :param points: An array of points with 3d physical coordinates to fit the plane through.</span>
+<span class="sd">    :type points: np.ndarray</span>
+<span class="sd">    :return: The optimization coefficients of the fitted plane.</span>
+<span class="sd">    :rtype: np.ndarray</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">plane_func</span><span class="p">(</span><span class="n">point</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">d</span><span class="p">):</span>
+        <span class="k">return</span> <span class="o">-</span><span class="mf">1.</span> <span class="o">/</span> <span class="n">b</span> <span class="o">*</span> <span class="p">(</span><span class="n">a</span> <span class="o">*</span> <span class="n">point</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">d</span><span class="p">)</span>
+
+    <span class="n">popt</span><span class="p">,</span> <span class="n">pcov</span> <span class="o">=</span> <span class="n">curve_fit</span><span class="p">(</span><span class="n">plane_func</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">points</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">popt</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">popt</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">popt</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_project_points_to_plane</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">plane</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Project points onto a specified plane.</span>
+
+<span class="sd">    :param points: An array of points to project with 3d physical coordinates to fit the plane through.</span>
+<span class="sd">    :type points: np.ndarray</span>
+<span class="sd">    :param plane: The coefficients of the plane as normal vector.</span>
+<span class="sd">    :type plane: np.ndarray</span>
+<span class="sd">    :return: An array of the projected points onto the plane with 3d physical coordinates.</span>
+<span class="sd">    :rtype: np.ndarray</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="o">-</span><span class="p">(</span><span class="n">plane</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">points</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">plane</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">points</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">plane</span><span class="p">[</span><span class="mi">3</span><span class="p">])</span> <span class="o">/</span> <span class="p">(</span><span class="n">plane</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">plane</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">atleast_2d</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+    <span class="n">plane</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">atleast_2d</span><span class="p">(</span><span class="n">plane</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">3</span><span class="p">])</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">points</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">plane</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">t</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+    <span class="n">projection</span> <span class="o">=</span> <span class="n">points</span> <span class="o">+</span> <span class="n">plane</span><span class="o">.</span><span class="n">T</span> <span class="o">*</span> <span class="n">t</span>
+    <span class="k">return</span> <span class="n">projection</span>
+
+
+<span class="c1"># Transforms the coordinate system of points on a plane orthogonal to the xy-plane from 3D to 2D.</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_get_plane_coordinates</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">plane</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convert 3D points on a plane to 2D plane coordinates.</span>
+
+<span class="sd">    :param points:An array of points to project with 3d physical coordinates on a plane.</span>
+<span class="sd">    :type points: np.ndarray</span>
+<span class="sd">    :param plane: The coefficients of the plane as normal vector.</span>
+<span class="sd">    :type plane: np.ndarray</span>
+<span class="sd">    :return: An array of the 2D physical coordinates of the points on the plane.</span>
+<span class="sd">    :rtype: np.ndarray</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">plane_coordinates</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">((</span><span class="mi">2</span><span class="p">,</span> <span class="n">points</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+
+    <span class="c1"># move the plane so it goes through the origin</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">points</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">plane</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">/</span> <span class="n">plane</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="c1"># coordinate transformation x -&gt; width</span>
+    <span class="n">plane_coordinates</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">points</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">y</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">plane</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">2</span><span class="p">])</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">plane</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">2</span><span class="p">]))</span>
+
+    <span class="c1"># transform so width is in [0,inf)</span>
+    <span class="n">plane_coordinates</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">plane_coordinates</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">plane_coordinates</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+    <span class="n">plane_coordinates</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">points</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">plane_coordinates</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, CCE.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

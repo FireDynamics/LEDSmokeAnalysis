@@ -1,0 +1,430 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Postprocessing &mdash; LEDSmokeAnalysis 0.9.4 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="_static/tables.css?v=aab0db92" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=c5ca06ca"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="_static/copybutton.js?v=f281be69"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Demo" href="demo.html" />
+    <link rel="prev" title="LED Positions" href="led_positions.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            LEDSmokeAnalysis
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">LEDSA:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="description.html">Description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cli_documentation.html">CLI Documentation</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="ledsa.html">LEDSA Module</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="config.html">Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="data_extraction.html">Data Extraction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="analysis.html">Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="led_positions.html">LED Positions</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Postprocessing</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#ledsa.postprocessing.simulation.SimData"><code class="docutils literal notranslate"><span class="pre">SimData</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#ledsa.postprocessing.simulation.SimData.get_extco_at_height"><code class="docutils literal notranslate"><span class="pre">SimData.get_extco_at_height()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ledsa.postprocessing.simulation.SimData.get_extco_at_layer"><code class="docutils literal notranslate"><span class="pre">SimData.get_extco_at_layer()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ledsa.postprocessing.simulation.SimData.get_extco_at_led_array"><code class="docutils literal notranslate"><span class="pre">SimData.get_extco_at_led_array()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ledsa.postprocessing.simulation.SimData.get_extco_at_time"><code class="docutils literal notranslate"><span class="pre">SimData.get_extco_at_time()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ledsa.postprocessing.simulation.SimData.get_image_name_from_time"><code class="docutils literal notranslate"><span class="pre">SimData.get_image_name_from_time()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ledsa.postprocessing.simulation.SimData.get_ledparams_at_led_array"><code class="docutils literal notranslate"><span class="pre">SimData.get_ledparams_at_led_array()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ledsa.postprocessing.simulation.SimData.get_ledparams_at_led_id"><code class="docutils literal notranslate"><span class="pre">SimData.get_ledparams_at_led_id()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ledsa.postprocessing.simulation.SimData.get_pixel_cordinates_of_LED"><code class="docutils literal notranslate"><span class="pre">SimData.get_pixel_cordinates_of_LED()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ledsa.postprocessing.simulation.SimData.get_pixel_values_of_led"><code class="docutils literal notranslate"><span class="pre">SimData.get_pixel_values_of_led()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ledsa.postprocessing.simulation.SimData.height_from_layer"><code class="docutils literal notranslate"><span class="pre">SimData.height_from_layer()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ledsa.postprocessing.simulation.SimData.layer_from_height"><code class="docutils literal notranslate"><span class="pre">SimData.layer_from_height()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ledsa.postprocessing.simulation.SimData.read_all"><code class="docutils literal notranslate"><span class="pre">SimData.read_all()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ledsa.postprocessing.simulation.SimData.read_led_params"><code class="docutils literal notranslate"><span class="pre">SimData.read_led_params()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ledsa.postprocessing.simulation.SimData.remove_duplicate_heights"><code class="docutils literal notranslate"><span class="pre">SimData.remove_duplicate_heights()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ledsa.postprocessing.simulation.SimData.set_timeshift"><code class="docutils literal notranslate"><span class="pre">SimData.set_timeshift()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="demo.html">Demo</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">LEDSmokeAnalysis</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="ledsa.html">LEDSA Module</a></li>
+      <li class="breadcrumb-item active">Postprocessing</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/postprocessing.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-ledsa.postprocessing.simulation">
+<span id="postprocessing"></span><h1>Postprocessing<a class="headerlink" href="#module-ledsa.postprocessing.simulation" title="Link to this heading"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="ledsa.postprocessing.simulation.SimData">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ledsa.postprocessing.simulation.</span></span><span class="sig-name descname"><span class="pre">SimData</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path_simulation</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">read_all</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">remove_duplicates</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">load_config_params</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ledsa/postprocessing/simulation.html#SimData"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ledsa.postprocessing.simulation.SimData" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="ledsa.postprocessing.simulation.SimData.get_extco_at_height">
+<span class="sig-name descname"><span class="pre">get_extco_at_height</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">channel</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">height</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">window</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">pandas.DataFrame</span></span></span><a class="reference internal" href="_modules/ledsa/postprocessing/simulation.html#SimData.get_extco_at_height"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ledsa.postprocessing.simulation.SimData.get_extco_at_height" title="Link to this definition"></a></dt>
+<dd><p>Retrieves a DataFrame containing smoothed extinction coefficients for a specified layer at given height.
+This method extracts the extinction coefficients for a given channel and layer, then applies a moving average smoothing over the specified window of time.
+The result is a DataFrame with experimental time as the index and LED arrays as the columns, providing a time series of extinction coefficients at the specified height.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>channel</strong> (<em>int</em>) – The channel index from which to extract extinction coefficients. Each channel represents a different set of measurements or sensor readings.</p></li>
+<li><p><strong>height</strong> (<em>float</em>) – The height for which to extract extinction coefficients.</p></li>
+<li><p><strong>window</strong> (<em>int</em><em>, </em><em>optional</em>) – The window size for the moving average smoothing. The default is 1, implying no smoothing. A larger window size will average the data over more time points, smoothing out short-term fluctuations.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A pandas DataFrame with smoothed extinction coefficients. The DataFrame’s index represents experimental time, and its columns represent different LED arrays within the specified height.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ledsa.postprocessing.simulation.SimData.get_extco_at_layer">
+<span class="sig-name descname"><span class="pre">get_extco_at_layer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">channel</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">window</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">pandas.DataFrame</span></span></span><a class="reference internal" href="_modules/ledsa/postprocessing/simulation.html#SimData.get_extco_at_layer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ledsa.postprocessing.simulation.SimData.get_extco_at_layer" title="Link to this definition"></a></dt>
+<dd><p>Retrieves a DataFrame containing smoothed extinction coefficients for a specified layer.
+This method extracts the extinction coefficients for a given channel and layer, then applies a moving average smoothing over the specified window of time.
+The result is a DataFrame with experimental time as the index and LED arrays as the columns, providing a time series of extinction coefficients at the specified layer.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>channel</strong> (<em>int</em>) – The channel index from which to extract extinction coefficients. Each channel represents a different set of measurements or sensor readings.</p></li>
+<li><p><strong>layer</strong> (<em>int</em>) – The layer number for which to extract extinction coefficients. Layers correspond to different vertical positions or depths in the experimental setup.</p></li>
+<li><p><strong>window</strong> (<em>int</em><em>, </em><em>optional</em>) – The window size for the moving average smoothing. The default is 1, implying no smoothing. A larger window size will average the data over more time points, smoothing out short-term fluctuations.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A pandas DataFrame with smoothed extinction coefficients. The DataFrame’s index represents experimental time, and its columns represent different LED arrays within the specified layer.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ledsa.postprocessing.simulation.SimData.get_extco_at_led_array">
+<span class="sig-name descname"><span class="pre">get_extco_at_led_array</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">channel</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">led_array_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">yaxis</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'layer'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">window</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">pandas.DataFrame</span></span></span><a class="reference internal" href="_modules/ledsa/postprocessing/simulation.html#SimData.get_extco_at_led_array"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ledsa.postprocessing.simulation.SimData.get_extco_at_led_array" title="Link to this definition"></a></dt>
+<dd><p>Retrieves a DataFrame containing smoothed extinction coefficients for a specific LED array.</p>
+<p>This method extracts the extinction coefficients for a specified channel and LED array, applies a moving average smoothing over time based on the specified window size, and restructures the DataFrame to have experimental time as the index and layers (or heights) as columns.
+The method first selects the relevant extinction coefficients for the specified channel and LED array. It then applies a moving average smoothing operation across a defined window of time steps. The resulting data is organized such that the experimental time is the index, providing a structured view suitable for analysis or visualization. Depending on the ‘yaxis’ parameter, the columns of the resulting DataFrame are labeled as either layers or converted to heights.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>channel</strong> (<em>int</em>) – The channel index from which to extract extinction coefficients.</p></li>
+<li><p><strong>led_array_id</strong> (<em>int</em>) – The ID for which to extract extinction coefficients.</p></li>
+<li><p><strong>yaxis</strong> (<em>str</em><em>, </em><em>optional</em>) – Determines whether the DataFrame’s columns should represent ‘layer’ or ‘height’. The default is ‘layer’, which uses the layer numbers as column names. If set to ‘height’, the column names are converted to the corresponding heights based on layer numbers.</p></li>
+<li><p><strong>window</strong> (<em>int</em><em>, </em><em>optional</em>) – The window size for the moving average smoothing. The default is 1, which means no smoothing is applied. A window greater than 1 will smooth the data over the specified number of time steps.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A pandas DataFrame with the smoothed extinction coefficients. The index represents the experimental time, and the columns represent either layers or heights, depending on the ‘yaxis’ parameter.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ledsa.postprocessing.simulation.SimData.get_extco_at_time">
+<span class="sig-name descname"><span class="pre">get_extco_at_time</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">channel</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">time</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">yaxis</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'layer'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">window</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">smooth</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'ma'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">pandas.DataFrame</span></span></span><a class="reference internal" href="_modules/ledsa/postprocessing/simulation.html#SimData.get_extco_at_time"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ledsa.postprocessing.simulation.SimData.get_extco_at_time" title="Link to this definition"></a></dt>
+<dd><p>Retrieves a DataFrame containing smoothed extinction coefficients at a specific time.</p>
+<p>This method extracts the extinction coefficients for a specified channel and time,
+applies smoothing over time using either a moving average or median based on the specified window size.
+It restructures the DataFrame to have layers or heights as indices and LED arrays as columns.
+The method first selects the extinction coefficients for the specified channel. It then applies the specified smoothing
+operation across a defined window of timesteps. The resulting data is then pivoted to organize extinction coefficients
+by LED array and layer or height, depending on the ‘yaxis’ parameter, providing a structured view suitable for analysis or visualization.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>channel</strong> (<em>int</em>) – The channel index to extract extinction coefficients for.</p></li>
+<li><p><strong>time</strong> (<em>int</em>) – The time at which to extract extinction coefficients.</p></li>
+<li><p><strong>yaxis</strong> (<em>str</em><em>, </em><em>optional</em>) – Determines whether the y-axis of the returned DataFrame should represent ‘layer’ or ‘height’. Defaults to ‘layer’.</p></li>
+<li><p><strong>window</strong> (<em>int</em><em>, </em><em>optional</em>) – The window size for the moving average or median smoothing. Defaults to 1.</p></li>
+<li><p><strong>smooth</strong> (<em>str</em><em>, </em><em>optional</em>) – The smoothing method to use, either ‘ma’ for moving average or ‘median’ for median. Defaults to ‘ma’.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A pandas DataFrame with the smoothed extinction coefficients. Indices represent either layers or heights, and columns represent LED arrays.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ledsa.postprocessing.simulation.SimData.get_image_name_from_time">
+<span class="sig-name descname"><span class="pre">get_image_name_from_time</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">time</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ledsa/postprocessing/simulation.html#SimData.get_image_name_from_time"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ledsa.postprocessing.simulation.SimData.get_image_name_from_time" title="Link to this definition"></a></dt>
+<dd><p>Retrieves the image name corresponding to a specific times.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>time</strong> (<em>int</em>) – The time index.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The name of the image.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ledsa.postprocessing.simulation.SimData.get_ledparams_at_led_array">
+<span class="sig-name descname"><span class="pre">get_ledparams_at_led_array</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">channel</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">led_array_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">param</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'sum_col_val'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">yaxis</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'led_id'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">window</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_ref</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">pandas.DataFrame</span></span></span><a class="reference internal" href="_modules/ledsa/postprocessing/simulation.html#SimData.get_ledparams_at_led_array"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ledsa.postprocessing.simulation.SimData.get_ledparams_at_led_array" title="Link to this definition"></a></dt>
+<dd><p>Retrieves a DataFrame containing normalized LED parameters for a specific LED array, optionally smoothed over
+time. This method selects LED parameter data for a given channel and LED array. It normalizes the data based on
+the average of the first <cite>n_ref</cite> entries (if <cite>n_ref</cite> is not False), and applies a moving average smoothing
+over the specified window of time. The result is a DataFrame with experimental time as the index and LED
+identifiers (or heights) as the columns, depending on the <cite>yaxis</cite> parameter.</p>
+<blockquote>
+<div><dl class="field-list simple">
+<dt class="field-odd">param channel<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The channel index from which to extract LED parameters. Channels typically represent different sensor readings or experimental conditions.</p>
+</dd>
+<dt class="field-even">type channel<span class="colon">:</span></dt>
+<dd class="field-even"><p>int</p>
+</dd>
+<dt class="field-odd">param led_array_id<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The ID of the LED array for which to extract LED parameters. LED arrays may represent different spatial locations or orientations in the experimental setup.</p>
+</dd>
+<dt class="field-even">type led_array_id<span class="colon">:</span></dt>
+<dd class="field-even"><p>int</p>
+</dd>
+<dt class="field-odd">param param<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The specific LED parameter to extract and analyze, such as ‘sum_col_val’. Defaults to ‘sum_col_val’.</p>
+</dd>
+<dt class="field-even">type param<span class="colon">:</span></dt>
+<dd class="field-even"><p>str, optional</p>
+</dd>
+<dt class="field-odd">param yaxis<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Determines the labeling of the DataFrame’s columns, either ‘led_id’ for LED identifiers or ‘height’ for physical heights. Defaults to ‘led_id’.</p>
+</dd>
+<dt class="field-even">type yaxis<span class="colon">:</span></dt>
+<dd class="field-even"><p>str, optional</p>
+</dd>
+<dt class="field-odd">param window<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The window size for the moving average smoothing. A value of 1 implies no smoothing. A larger window size averages the data over more time points, reducing short-term fluctuations.</p>
+</dd>
+<dt class="field-even">type window<span class="colon">:</span></dt>
+<dd class="field-even"><p>int, optional</p>
+</dd>
+<dt class="field-odd">param n_ref<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The number of initial entries to average for normalization. If set to False, absolute values are returned without normalization. Defaults to 10.</p>
+</dd>
+<dt class="field-even">type n_ref<span class="colon">:</span></dt>
+<dd class="field-even"><p>int or bool, optional</p>
+</dd>
+<dt class="field-odd">return<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A pandas DataFrame with normalized (and optionally smoothed) LED parameters. The index represents experimental time, and columns represent LED identifiers or heights.</p>
+</dd>
+<dt class="field-even">rtype<span class="colon">:</span></dt>
+<dd class="field-even"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ledsa.postprocessing.simulation.SimData.get_ledparams_at_led_id">
+<span class="sig-name descname"><span class="pre">get_ledparams_at_led_id</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">channel</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">led_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">param</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'sum_col_val'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">window</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_ref</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">pandas.DataFrame</span></span></span><a class="reference internal" href="_modules/ledsa/postprocessing/simulation.html#SimData.get_ledparams_at_led_id"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ledsa.postprocessing.simulation.SimData.get_ledparams_at_led_id" title="Link to this definition"></a></dt>
+<dd><p>Retrieves a DataFrame containing normalized LED parameters for a specific LED ID, optionally smoothed over time.</p>
+<p>This method selects LED parameter data for a given channel and LED ID, normalizes the data based on the average of the first <cite>n_ref</cite> entries (if <cite>n_ref</cite> is not False), and applies a moving average smoothing over the specified window of time. The result is a DataFrame with experimental time as the index, providing a time series of the specified LED parameter for the selected LED.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>channel</strong> (<em>int</em>) – The channel index from which to extract LED parameters. Channels typically represent different sets of measurements or sensor readings.</p></li>
+<li><p><strong>led_id</strong> (<em>int</em>) – The identifier of the LED for which to extract parameters. This ID is used to select the specific LED’s data from the dataset.</p></li>
+<li><p><strong>param</strong> (<em>str</em><em>, </em><em>optional</em>) – The specific LED parameter to extract and analyze, such as ‘sum_col_val’. This parameter determines which aspect of the LED’s data is analyzed. Defaults to ‘sum_col_val’.</p></li>
+<li><p><strong>window</strong> (<em>int</em><em>, </em><em>optional</em>) – The window size for the moving average smoothing. A value of 1 implies no smoothing, while a larger window size averages the data over more time points, thereby smoothing out short-term fluctuations.</p></li>
+<li><p><strong>n_ref</strong> (<em>int</em><em> or </em><em>bool</em><em>, </em><em>optional</em>) – The number of initial entries to average for normalization. If set to False, absolute values are returned without normalization. This parameter allows for the normalization of data to account for initial conditions or baseline measurements. Defaults to 10.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A pandas DataFrame with normalized (and optionally smoothed) LED parameters for the specified LED ID. The DataFrame’s index represents experimental time.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+<p>This method enables the analysis of temporal variations in specific LED parameters for an individual LED, facilitating the examination of changes or trends in the LED’s behavior over the course of an experiment. By normalizing and smoothing the data, the method helps reveal underlying patterns that may not be immediately apparent from the raw data.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ledsa.postprocessing.simulation.SimData.get_pixel_cordinates_of_LED">
+<span class="sig-name descname"><span class="pre">get_pixel_cordinates_of_LED</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">led_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ledsa/postprocessing/simulation.html#SimData.get_pixel_cordinates_of_LED"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ledsa.postprocessing.simulation.SimData.get_pixel_cordinates_of_LED" title="Link to this definition"></a></dt>
+<dd><p>Returns the pixel coordinates of a specified LED.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>led_id</strong> (<em>int</em>) – The identifier for the LED.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A list containing the x and y pixel coordinates of the LED.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ledsa.postprocessing.simulation.SimData.get_pixel_values_of_led">
+<span class="sig-name descname"><span class="pre">get_pixel_values_of_led</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">led_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">channel</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">time</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ledsa/postprocessing/simulation.html#SimData.get_pixel_values_of_led"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ledsa.postprocessing.simulation.SimData.get_pixel_values_of_led" title="Link to this definition"></a></dt>
+<dd><p>Retrieves a cropped numpy array of pixel values around a specified LED, based on its ID, for a given image channel and time.</p>
+<p>This method calculates the pixel values in a specified radius around an LED’s position on an image. It first determines the LED’s pixel coordinates, then retrieves the image corresponding to the specified time, and finally extracts a square array of pixel values centered on the LED’s location.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>led_id</strong> (<em>int</em>) – The identifier for the LED of interest. This ID is used to look up the LED’s position.</p></li>
+<li><p><strong>channel</strong> (<em>int</em>) – The image channel from which to extract pixel values. Different channels may represent different color channels or sensor readings.</p></li>
+<li><p><strong>time</strong> (<em>int</em>) – The time at which the image was taken. This corresponds to a specific moment in the experimental timeline.</p></li>
+<li><p><strong>radius</strong> (<em>int</em><em>, </em><em>optional</em>) – The radius around the LED’s position from which to extract pixel values. If not specified, the search_area_radius from the config file is used. Defaults to None.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A numpy array containing the pixel values in the specified radius around the LED. The array is cropped from the original image, centered on the LED’s position.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>numpy.ndarray</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If path_images is not available when trying to access image files.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ledsa.postprocessing.simulation.SimData.height_from_layer">
+<span class="sig-name descname"><span class="pre">height_from_layer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">layer</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ledsa.postprocessing.simulation.SimData.height_from_layer" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ledsa.postprocessing.simulation.SimData.layer_from_height">
+<span class="sig-name descname"><span class="pre">layer_from_height</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">height</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ledsa.postprocessing.simulation.SimData.layer_from_height" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ledsa.postprocessing.simulation.SimData.read_all">
+<span class="sig-name descname"><span class="pre">read_all</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ledsa/postprocessing/simulation.html#SimData.read_all"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ledsa.postprocessing.simulation.SimData.read_all" title="Link to this definition"></a></dt>
+<dd><p>Read led parameters and extionciton coefficients for all color channels from the simulation path</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ledsa.postprocessing.simulation.SimData.read_led_params">
+<span class="sig-name descname"><span class="pre">read_led_params</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ledsa/postprocessing/simulation.html#SimData.read_led_params"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ledsa.postprocessing.simulation.SimData.read_led_params" title="Link to this definition"></a></dt>
+<dd><p>Read led parameters for all color channels from the simulation path</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ledsa.postprocessing.simulation.SimData.remove_duplicate_heights">
+<span class="sig-name descname"><span class="pre">remove_duplicate_heights</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ledsa/postprocessing/simulation.html#SimData.remove_duplicate_heights"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ledsa.postprocessing.simulation.SimData.remove_duplicate_heights" title="Link to this definition"></a></dt>
+<dd><p>Removes duplicate height entries for each LED parameter DataFrame across all colorchannels.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ledsa.postprocessing.simulation.SimData.set_timeshift">
+<span class="sig-name descname"><span class="pre">set_timeshift</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">timedelta</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ledsa/postprocessing/simulation.html#SimData.set_timeshift"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ledsa.postprocessing.simulation.SimData.set_timeshift" title="Link to this definition"></a></dt>
+<dd><p>Sets the time shift for the experiment’s start time.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>timedelta</strong> (<em>int</em>) – Time shift in seconds.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="led_positions.html" class="btn btn-neutral float-left" title="LED Positions" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="demo.html" class="btn btn-neutral float-right" title="Demo" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, CCE.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

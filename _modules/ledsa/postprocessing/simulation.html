@@ -1,0 +1,561 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ledsa.postprocessing.simulation &mdash; LEDSmokeAnalysis 0.9.4 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/tables.css?v=aab0db92" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=c5ca06ca"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            LEDSmokeAnalysis
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">LEDSA:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../description.html">Description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_documentation.html">CLI Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ledsa.html">LEDSA Module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">Demo</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">LEDSmokeAnalysis</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ledsa.postprocessing.simulation</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ledsa.postprocessing.simulation</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">glob</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ledsa.core.image_reading</span><span class="w"> </span><span class="kn">import</span> <span class="n">read_channel_data_from_img</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ledsa.core.ConfigData</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConfigData</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ledsa.analysis.ConfigDataAnalysis</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConfigDataAnalysis</span>
+
+
+<div class="viewcode-block" id="SimData">
+<a class="viewcode-back" href="../../../postprocessing.html#ledsa.postprocessing.simulation.SimData">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SimData</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path_simulation</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">read_all</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">remove_duplicates</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">load_config_params</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initializes SimData with simulation and image analysis settings.</span>
+
+<span class="sd">        :param path_simulation: Directory containing simulation data.</span>
+<span class="sd">        :type path_simulation: str</span>
+<span class="sd">        :param path_images: Directory containing experimental images, defaults to None.</span>
+<span class="sd">        :type path_images: str, optional</span>
+<span class="sd">        :param read_all: If True, reads all data on initialization, defaults to True.</span>
+<span class="sd">        :type read_all: bool, optional</span>
+<span class="sd">        :param remove_duplicates: If True, removes duplicate entries from analysis, defaults to False.</span>
+<span class="sd">        :type remove_duplicates: bool, optional</span>
+<span class="sd">        :param load_config_params: If True, loads parameters from config files, defaults to True.</span>
+<span class="sd">        :type load_config_params: bool, optional</span>
+<span class="sd">        :raises ValueError: If path_images is not provided when required for image analysis.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">solver</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">average_images</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">camera_channels</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_ref_images</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_layers</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">search_area_radius</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">path_images</span> <span class="o">=</span> <span class="kc">None</span>
+
+
+        <span class="k">if</span> <span class="n">load_config_params</span><span class="p">:</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">chdir</span><span class="p">(</span><span class="n">path_simulation</span><span class="p">)</span>
+            <span class="c1"># Read configuration from config.ini and config_analysis.ini</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">ConfigData</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">config_analysis</span> <span class="o">=</span> <span class="n">ConfigDataAnalysis</span><span class="p">()</span>
+
+            <span class="c1"># Get parameters from config file</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">search_area_radius</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;find_search_areas&#39;</span><span class="p">][</span><span class="s1">&#39;search_area_radius&#39;</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">path_images</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;find_search_areas&#39;</span><span class="p">][</span><span class="s1">&#39;img_directory&#39;</span><span class="p">]</span>
+
+            <span class="c1"># Get parameters from config_analysis file</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">solver</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config_analysis</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;solver&#39;</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">average_images</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config_analysis</span><span class="o">.</span><span class="n">getboolean</span><span class="p">(</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">,</span> <span class="s1">&#39;average_images&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">camera_channels</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config_analysis</span><span class="o">.</span><span class="n">get_list_of_values</span><span class="p">(</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">,</span> <span class="s1">&#39;camera_channels&#39;</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">num_ref_images</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config_analysis</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;num_ref_images&#39;</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">n_layers</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config_analysis</span><span class="p">[</span><span class="s1">&#39;model_parameters&#39;</span><span class="p">][</span><span class="s1">&#39;num_layers&#39;</span><span class="p">])</span>
+            <span class="n">domain_bounds</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config_analysis</span><span class="o">.</span><span class="n">get_list_of_values</span><span class="p">(</span><span class="s1">&#39;model_parameters&#39;</span><span class="p">,</span> <span class="s1">&#39;domain_bounds&#39;</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">bottom_layer_height</span> <span class="o">=</span> <span class="n">domain_bounds</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">top_layer_height</span> <span class="o">=</span> <span class="n">domain_bounds</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">path_simulation</span> <span class="o">=</span> <span class="n">path_simulation</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">led_info_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path_simulation</span><span class="p">,</span> <span class="s1">&#39;analysis&#39;</span><span class="p">,</span> <span class="s1">&#39;led_search_areas_with_coordinates.csv&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">average_images</span> <span class="o">==</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="n">image_infos_file</span> <span class="o">=</span> <span class="s1">&#39;analysis/image_infos_analysis_avg.csv&#39;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">image_infos_file</span> <span class="o">=</span> <span class="s1">&#39;analysis/image_infos_analysis.csv&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">image_info_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path_simulation</span><span class="p">,</span> <span class="n">image_infos_file</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">read_all</span> <span class="o">==</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">read_all</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">remove_duplicates</span> <span class="o">==</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">remove_duplicate_heights</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ch0_ledparams</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ch1_ledparams</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ch2_ledparams</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ch0_extcos</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ch1_extcos</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ch2_extcos</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="n">height_from_layer</span> <span class="o">=</span> <span class="k">lambda</span> <span class="bp">self</span><span class="p">,</span> <span class="n">layer</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span> <span class="o">*</span> <span class="p">(</span>
+            <span class="n">layer</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_layers</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">top_layer_height</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">bottom_layer_height</span><span class="p">)</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">top_layer_height</span><span class="p">)</span>
+    <span class="n">layer_from_height</span> <span class="o">=</span> <span class="k">lambda</span> <span class="bp">self</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span>
+        <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">top_layer_height</span> <span class="o">-</span> <span class="n">height</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">top_layer_height</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">bottom_layer_height</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_layers</span><span class="p">)</span>
+
+<div class="viewcode-block" id="SimData.set_timeshift">
+<a class="viewcode-back" href="../../../postprocessing.html#ledsa.postprocessing.simulation.SimData.set_timeshift">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">set_timeshift</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timedelta</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Sets the time shift for the experiment&#39;s start time.</span>
+
+<span class="sd">        :param timedelta: Time shift in seconds.</span>
+<span class="sd">        :type timedelta: int</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">all_extco_df</span><span class="o">.</span><span class="n">index</span> <span class="o">+=</span> <span class="n">timedelta</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_ledparams_df_from_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Reads experimental parameters from a binary HDF5 table based on color channel.</span>
+
+<span class="sd">        :param channel: The color channel index to read the parameters for.</span>
+<span class="sd">        :type channel: int</span>
+<span class="sd">        :return: DataFrame with LED parameters.</span>
+<span class="sd">        :rtype: pd.DataFrame</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">average_images</span> <span class="o">==</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="n">file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path_simulation</span><span class="p">,</span> <span class="s1">&#39;analysis&#39;</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;channel</span><span class="si">{</span><span class="n">channel</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="s1">&#39;all_parameters_avg.h5&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path_simulation</span><span class="p">,</span> <span class="s1">&#39;analysis&#39;</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;channel</span><span class="si">{</span><span class="n">channel</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="s1">&#39;all_parameters.h5&#39;</span><span class="p">)</span>
+        <span class="n">table</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_hdf</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s1">&#39;channel_values&#39;</span><span class="p">)</span>
+        <span class="n">time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">image_info_df</span><span class="p">[</span><span class="s1">&#39;Experiment_Time[s]&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+        <span class="n">table</span> <span class="o">=</span> <span class="n">table</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">time</span><span class="p">,</span> <span class="n">left_on</span><span class="o">=</span><span class="s1">&#39;img_id&#39;</span><span class="p">,</span> <span class="n">right_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">table</span><span class="o">.</span><span class="n">set_index</span><span class="p">([</span><span class="s1">&#39;Experiment_Time[s]&#39;</span><span class="p">,</span> <span class="s1">&#39;led_id&#39;</span><span class="p">],</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">led_heights</span> <span class="o">=</span> <span class="n">table</span><span class="p">[</span><span class="s1">&#39;height&#39;</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">table</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_extco_df_from_path</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Read all extinction coefficients from the simulation dir and put them in the all_extco_df.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">extco_list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">files_list</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path_simulation</span><span class="p">,</span> <span class="s1">&#39;analysis&#39;</span><span class="p">,</span> <span class="s1">&#39;extinction_coefficients&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">solver</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;extinction_coefficients*.csv&#39;</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="n">files_list</span><span class="p">:</span>
+            <span class="n">file_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">skiprows</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+            <span class="n">channel</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">file</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;channel_&#39;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="n">led_array</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">file</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;array_&#39;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="n">n_layers</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">file_df</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span>
+            <span class="n">time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">image_info_df</span><span class="p">[</span><span class="s1">&#39;Experiment_Time[s]&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+            <span class="n">file_df</span> <span class="o">=</span> <span class="n">file_df</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">time</span><span class="p">,</span> <span class="n">left_index</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">right_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">file_df</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s1">&#39;Experiment_Time[s]&#39;</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">iterables</span> <span class="o">=</span> <span class="p">[[</span><span class="n">channel</span><span class="p">],</span> <span class="p">[</span><span class="n">led_array</span><span class="p">],</span> <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">n_layers</span><span class="p">)]]</span>
+            <span class="n">file_df</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">MultiIndex</span><span class="o">.</span><span class="n">from_product</span><span class="p">(</span><span class="n">iterables</span><span class="p">,</span> <span class="n">names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;Channel&quot;</span><span class="p">,</span> <span class="s2">&quot;LED Array&quot;</span><span class="p">,</span> <span class="s2">&quot;Layer&quot;</span><span class="p">])</span>
+            <span class="n">extco_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">file_df</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">all_extco_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">extco_list</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">all_extco_df</span><span class="o">.</span><span class="n">sort_index</span><span class="p">(</span><span class="n">ascending</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">all_extco_df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">all_extco_df</span><span class="p">[</span>
+            <span class="o">~</span><span class="bp">self</span><span class="o">.</span><span class="n">all_extco_df</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">duplicated</span><span class="p">(</span><span class="n">keep</span><span class="o">=</span><span class="s1">&#39;first&#39;</span><span class="p">)]</span>  <span class="c1"># Remove duplicate times</span>
+
+<div class="viewcode-block" id="SimData.read_led_params">
+<a class="viewcode-back" href="../../../postprocessing.html#ledsa.postprocessing.simulation.SimData.read_led_params">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">read_led_params</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Read led parameters for all color channels from the simulation path&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ch0_ledparams_df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_ledparams_df_from_path</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ch1_ledparams_df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_ledparams_df_from_path</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ch2_ledparams_df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_ledparams_df_from_path</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SimData.read_all">
+<a class="viewcode-back" href="../../../postprocessing.html#ledsa.postprocessing.simulation.SimData.read_all">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">read_all</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Read led parameters and extionciton coefficients for all color channels from the simulation path&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">read_led_params</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_get_extco_df_from_path</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="SimData.remove_duplicate_heights">
+<a class="viewcode-back" href="../../../postprocessing.html#ledsa.postprocessing.simulation.SimData.remove_duplicate_heights">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">remove_duplicate_heights</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;    Removes duplicate height entries for each LED parameter DataFrame across all colorchannels.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ch0_ledparams_df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ch0_ledparams_df</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s1">&#39;Experiment_Time[s]&#39;</span><span class="p">,</span> <span class="s1">&#39;height&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">last</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ch1_ledparams_df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ch1_ledparams_df</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s1">&#39;Experiment_Time[s]&#39;</span><span class="p">,</span> <span class="s1">&#39;height&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">last</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ch2_ledparams_df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ch2_ledparams_df</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s1">&#39;Experiment_Time[s]&#39;</span><span class="p">,</span> <span class="s1">&#39;height&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">last</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="SimData.get_extco_at_time">
+<a class="viewcode-back" href="../../../postprocessing.html#ledsa.postprocessing.simulation.SimData.get_extco_at_time">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_extco_at_time</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">time</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">yaxis</span><span class="o">=</span><span class="s1">&#39;layer&#39;</span><span class="p">,</span> <span class="n">window</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">smooth</span><span class="o">=</span><span class="s1">&#39;ma&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Retrieves a DataFrame containing smoothed extinction coefficients at a specific time.</span>
+
+<span class="sd">        This method extracts the extinction coefficients for a specified channel and time,</span>
+<span class="sd">        applies smoothing over time using either a moving average or median based on the specified window size.</span>
+<span class="sd">        It restructures the DataFrame to have layers or heights as indices and LED arrays as columns.</span>
+<span class="sd">        The method first selects the extinction coefficients for the specified channel. It then applies the specified smoothing</span>
+<span class="sd">        operation across a defined window of timesteps. The resulting data is then pivoted to organize extinction coefficients</span>
+<span class="sd">        by LED array and layer or height, depending on the &#39;yaxis&#39; parameter, providing a structured view suitable for analysis or visualization.</span>
+
+<span class="sd">        :param channel: The channel index to extract extinction coefficients for.</span>
+<span class="sd">        :type channel: int</span>
+<span class="sd">        :param time: The time at which to extract extinction coefficients.</span>
+<span class="sd">        :type time: int</span>
+<span class="sd">        :param yaxis: Determines whether the y-axis of the returned DataFrame should represent &#39;layer&#39; or &#39;height&#39;. Defaults to &#39;layer&#39;.</span>
+<span class="sd">        :type yaxis: str, optional</span>
+<span class="sd">        :param window: The window size for the moving average or median smoothing. Defaults to 1.</span>
+<span class="sd">        :type window: int, optional</span>
+<span class="sd">        :param smooth: The smoothing method to use, either &#39;ma&#39; for moving average or &#39;median&#39; for median. Defaults to &#39;ma&#39;.</span>
+<span class="sd">        :type smooth: str, optional</span>
+<span class="sd">        :return: A pandas DataFrame with the smoothed extinction coefficients. Indices represent either layers or heights, and columns represent LED arrays.</span>
+<span class="sd">        :rtype: pd.DataFrame</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">ch_extco_df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">all_extco_df</span><span class="o">.</span><span class="n">xs</span><span class="p">(</span><span class="n">channel</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">smooth</span> <span class="o">==</span> <span class="s1">&#39;median&#39;</span><span class="p">:</span>
+            <span class="n">ma_ch_extco_df</span> <span class="o">=</span> <span class="n">ch_extco_df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="o">=</span><span class="n">window</span><span class="p">,</span> <span class="n">closed</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">median</span><span class="p">()</span><span class="o">.</span><span class="n">iloc</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">ma_ch_extco_df</span> <span class="o">=</span> <span class="n">ch_extco_df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="o">=</span><span class="n">window</span><span class="p">,</span> <span class="n">closed</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">iloc</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">ma_ch_extco_df</span> <span class="o">=</span> <span class="n">ma_ch_extco_df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">time</span><span class="p">,</span> <span class="p">:]</span>
+        <span class="n">ma_ch_extco_df</span> <span class="o">=</span> <span class="n">ma_ch_extco_df</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span><span class="o">.</span><span class="n">pivot</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="s1">&#39;LED Array&#39;</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="s1">&#39;Layer&#39;</span><span class="p">)</span>
+        <span class="n">ma_ch_extco_df</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="n">ma_ch_extco_df</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">droplevel</span><span class="p">()</span>
+        <span class="n">ma_ch_extco_df</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="n">ma_ch_extco_df</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">yaxis</span> <span class="o">==</span> <span class="s1">&#39;layer&#39;</span><span class="p">:</span>
+            <span class="n">ma_ch_extco_df</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">names</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Layer&quot;</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">yaxis</span> <span class="o">==</span> <span class="s1">&#39;height&#39;</span><span class="p">:</span>
+            <span class="n">ma_ch_extco_df</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="p">[</span><span class="nb">round</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">height_from_layer</span><span class="p">(</span><span class="n">layer</span><span class="p">),</span><span class="mi">2</span><span class="p">)</span> <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="n">ma_ch_extco_df</span><span class="o">.</span><span class="n">index</span><span class="p">]</span>
+            <span class="n">ma_ch_extco_df</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">names</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Height / m&quot;</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">ma_ch_extco_df</span></div>
+
+
+<div class="viewcode-block" id="SimData.get_extco_at_led_array">
+<a class="viewcode-back" href="../../../postprocessing.html#ledsa.postprocessing.simulation.SimData.get_extco_at_led_array">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_extco_at_led_array</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">led_array_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">yaxis</span><span class="o">=</span><span class="s1">&#39;layer&#39;</span><span class="p">,</span> <span class="n">window</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Retrieves a DataFrame containing smoothed extinction coefficients for a specific LED array.</span>
+
+<span class="sd">        This method extracts the extinction coefficients for a specified channel and LED array, applies a moving average smoothing over time based on the specified window size, and restructures the DataFrame to have experimental time as the index and layers (or heights) as columns.</span>
+<span class="sd">        The method first selects the relevant extinction coefficients for the specified channel and LED array. It then applies a moving average smoothing operation across a defined window of time steps. The resulting data is organized such that the experimental time is the index, providing a structured view suitable for analysis or visualization. Depending on the &#39;yaxis&#39; parameter, the columns of the resulting DataFrame are labeled as either layers or converted to heights.</span>
+
+
+<span class="sd">        :param channel: The channel index from which to extract extinction coefficients.</span>
+<span class="sd">        :type channel: int</span>
+<span class="sd">        :param led_array_id: The ID for which to extract extinction coefficients.</span>
+<span class="sd">        :type led_array_id: int</span>
+<span class="sd">        :param yaxis: Determines whether the DataFrame&#39;s columns should represent &#39;layer&#39; or &#39;height&#39;. The default is &#39;layer&#39;, which uses the layer numbers as column names. If set to &#39;height&#39;, the column names are converted to the corresponding heights based on layer numbers.</span>
+<span class="sd">        :type yaxis: str, optional</span>
+<span class="sd">        :param window: The window size for the moving average smoothing. The default is 1, which means no smoothing is applied. A window greater than 1 will smooth the data over the specified number of time steps.</span>
+<span class="sd">        :type window: int, optional</span>
+<span class="sd">        :return: A pandas DataFrame with the smoothed extinction coefficients. The index represents the experimental time, and the columns represent either layers or heights, depending on the &#39;yaxis&#39; parameter.</span>
+<span class="sd">        :rtype: pd.DataFrame</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">ch_extco_df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">all_extco_df</span><span class="o">.</span><span class="n">xs</span><span class="p">(</span><span class="n">channel</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">xs</span><span class="p">(</span><span class="n">led_array_id</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">ma_ch_extco_df</span> <span class="o">=</span> <span class="n">ch_extco_df</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="o">=</span><span class="n">window</span><span class="p">,</span> <span class="n">closed</span><span class="o">=</span><span class="s1">&#39;right&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="o">-</span><span class="nb">int</span><span class="p">(</span><span class="n">window</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="c1"># ma_ch_extco_df = ch_extco_df.iloc[::-1].rolling(window=window, closed=&#39;left&#39;).mean().iloc[::-1]</span>
+
+        <span class="k">if</span> <span class="n">yaxis</span> <span class="o">==</span> <span class="s1">&#39;layer&#39;</span><span class="p">:</span>
+            <span class="n">ma_ch_extco_df</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">names</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Layer&quot;</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">yaxis</span> <span class="o">==</span> <span class="s1">&#39;height&#39;</span><span class="p">:</span>
+            <span class="n">ma_ch_extco_df</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">height_from_layer</span><span class="p">(</span><span class="n">layer</span><span class="p">)</span> <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="n">ma_ch_extco_df</span><span class="o">.</span><span class="n">columns</span><span class="p">]</span>
+            <span class="n">ma_ch_extco_df</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">names</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Height / m&quot;</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">ma_ch_extco_df</span></div>
+
+
+<div class="viewcode-block" id="SimData.get_extco_at_layer">
+<a class="viewcode-back" href="../../../postprocessing.html#ledsa.postprocessing.simulation.SimData.get_extco_at_layer">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_extco_at_layer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">layer</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">window</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Retrieves a DataFrame containing smoothed extinction coefficients for a specified layer.</span>
+<span class="sd">        This method extracts the extinction coefficients for a given channel and layer, then applies a moving average smoothing over the specified window of time.</span>
+<span class="sd">        The result is a DataFrame with experimental time as the index and LED arrays as the columns, providing a time series of extinction coefficients at the specified layer.</span>
+
+<span class="sd">        :param channel: The channel index from which to extract extinction coefficients. Each channel represents a different set of measurements or sensor readings.</span>
+<span class="sd">        :type channel: int</span>
+<span class="sd">        :param layer: The layer number for which to extract extinction coefficients. Layers correspond to different vertical positions or depths in the experimental setup.</span>
+<span class="sd">        :type layer: int</span>
+<span class="sd">        :param window: The window size for the moving average smoothing. The default is 1, implying no smoothing. A larger window size will average the data over more time points, smoothing out short-term fluctuations.</span>
+<span class="sd">        :type window: int, optional</span>
+<span class="sd">        :return: A pandas DataFrame with smoothed extinction coefficients. The DataFrame&#39;s index represents experimental time, and its columns represent different LED arrays within the specified layer.</span>
+<span class="sd">        :rtype: pd.DataFrame</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">ch_extco_df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">all_extco_df</span><span class="o">.</span><span class="n">xs</span><span class="p">(</span><span class="n">channel</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">xs</span><span class="p">(</span><span class="n">layer</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">ma_ch_extco_df</span> <span class="o">=</span> <span class="n">ch_extco_df</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="o">=</span><span class="n">window</span><span class="p">,</span> <span class="n">closed</span><span class="o">=</span><span class="s1">&#39;right&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="o">-</span><span class="nb">int</span><span class="p">(</span><span class="n">window</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="c1"># ma_ch_extco_df = ch_extco_df.iloc[::-1].rolling(window=window, closed=&#39;left&#39;).mean().iloc[::-1]</span>
+
+        <span class="k">return</span> <span class="n">ma_ch_extco_df</span></div>
+
+
+<div class="viewcode-block" id="SimData.get_extco_at_height">
+<a class="viewcode-back" href="../../../postprocessing.html#ledsa.postprocessing.simulation.SimData.get_extco_at_height">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_extco_at_height</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">window</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Retrieves a DataFrame containing smoothed extinction coefficients for a specified layer at given height.</span>
+<span class="sd">        This method extracts the extinction coefficients for a given channel and layer, then applies a moving average smoothing over the specified window of time.</span>
+<span class="sd">        The result is a DataFrame with experimental time as the index and LED arrays as the columns, providing a time series of extinction coefficients at the specified height.</span>
+
+<span class="sd">        :param channel: The channel index from which to extract extinction coefficients. Each channel represents a different set of measurements or sensor readings.</span>
+<span class="sd">        :type channel: int</span>
+<span class="sd">        :param height: The height for which to extract extinction coefficients.</span>
+<span class="sd">        :type height: float</span>
+<span class="sd">        :param window: The window size for the moving average smoothing. The default is 1, implying no smoothing. A larger window size will average the data over more time points, smoothing out short-term fluctuations.</span>
+<span class="sd">        :type window: int, optional</span>
+<span class="sd">        :return: A pandas DataFrame with smoothed extinction coefficients. The DataFrame&#39;s index represents experimental time, and its columns represent different LED arrays within the specified height.</span>
+<span class="sd">        :rtype: pd.DataFrame</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">layer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">layer_from_height</span><span class="p">(</span><span class="n">height</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_extco_at_layer</span><span class="p">(</span><span class="n">channel</span><span class="p">,</span> <span class="n">layer</span><span class="p">,</span> <span class="n">window</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SimData.get_ledparams_at_led_array">
+<a class="viewcode-back" href="../../../postprocessing.html#ledsa.postprocessing.simulation.SimData.get_ledparams_at_led_array">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_ledparams_at_led_array</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">led_array_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">param</span><span class="o">=</span><span class="s1">&#39;sum_col_val&#39;</span><span class="p">,</span> <span class="n">yaxis</span><span class="o">=</span><span class="s1">&#39;led_id&#39;</span><span class="p">,</span> <span class="n">window</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                                   <span class="n">n_ref</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Retrieves a DataFrame containing normalized LED parameters for a specific LED array, optionally smoothed over</span>
+<span class="sd">        time. This method selects LED parameter data for a given channel and LED array. It normalizes the data based on</span>
+<span class="sd">        the average of the first `n_ref` entries (if `n_ref` is not False), and applies a moving average smoothing</span>
+<span class="sd">        over the specified window of time. The result is a DataFrame with experimental time as the index and LED</span>
+<span class="sd">        identifiers (or heights) as the columns, depending on the `yaxis` parameter.</span>
+
+<span class="sd">         :param channel: The channel index from which to extract LED parameters. Channels typically represent different sensor readings or experimental conditions.</span>
+<span class="sd">         :type channel: int</span>
+<span class="sd">         :param led_array_id: The ID of the LED array for which to extract LED parameters. LED arrays may represent different spatial locations or orientations in the experimental setup.</span>
+<span class="sd">         :type led_array_id: int</span>
+<span class="sd">         :param param: The specific LED parameter to extract and analyze, such as &#39;sum_col_val&#39;. Defaults to &#39;sum_col_val&#39;.</span>
+<span class="sd">         :type param: str, optional</span>
+<span class="sd">         :param yaxis: Determines the labeling of the DataFrame&#39;s columns, either &#39;led_id&#39; for LED identifiers or &#39;height&#39; for physical heights. Defaults to &#39;led_id&#39;.</span>
+<span class="sd">         :type yaxis: str, optional</span>
+<span class="sd">         :param window: The window size for the moving average smoothing. A value of 1 implies no smoothing. A larger window size averages the data over more time points, reducing short-term fluctuations.</span>
+<span class="sd">         :type window: int, optional</span>
+<span class="sd">         :param n_ref: The number of initial entries to average for normalization. If set to False, absolute values are returned without normalization. Defaults to 10.</span>
+<span class="sd">         :type n_ref: int or bool, optional</span>
+<span class="sd">         :return: A pandas DataFrame with normalized (and optionally smoothed) LED parameters. The index represents experimental time, and columns represent LED identifiers or heights.</span>
+<span class="sd">         :rtype: pd.DataFrame</span>
+<span class="sd">         &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">channel</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">led_params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ch0_ledparams_df</span>
+        <span class="k">elif</span> <span class="n">channel</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">led_params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ch1_ledparams_df</span>
+        <span class="k">elif</span> <span class="n">channel</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="n">led_params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ch2_ledparams_df</span>
+        <span class="n">index</span> <span class="o">=</span> <span class="s1">&#39;height&#39;</span> <span class="k">if</span> <span class="n">yaxis</span> <span class="o">==</span> <span class="s1">&#39;height&#39;</span> <span class="k">else</span> <span class="s1">&#39;led_id&#39;</span>
+        <span class="n">led_params</span> <span class="o">=</span> <span class="n">led_params</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span><span class="o">.</span><span class="n">set_index</span><span class="p">([</span><span class="s1">&#39;Experiment_Time[s]&#39;</span><span class="p">,</span> <span class="n">index</span><span class="p">])</span>
+        <span class="n">ii</span> <span class="o">=</span> <span class="n">led_params</span><span class="p">[</span><span class="n">led_params</span><span class="p">[</span><span class="s1">&#39;led_array_id&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">led_array_id</span><span class="p">][[</span><span class="n">param</span><span class="p">]]</span>
+        <span class="k">if</span> <span class="n">n_ref</span> <span class="o">==</span> <span class="kc">False</span><span class="p">:</span>
+            <span class="n">rel_i</span> <span class="o">=</span> <span class="n">ii</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Use self.num_ref_images if n_ref is None</span>
+            <span class="n">n_ref</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_ref_images</span> <span class="k">if</span> <span class="n">n_ref</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">n_ref</span>
+            <span class="n">i0</span> <span class="o">=</span> <span class="n">ii</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="n">index</span><span class="p">])</span><span class="o">.</span><span class="n">agg</span><span class="p">(</span><span class="k">lambda</span> <span class="n">g</span><span class="p">:</span> <span class="n">g</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">n_ref</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span>
+            <span class="n">rel_i</span> <span class="o">=</span> <span class="n">ii</span> <span class="o">/</span> <span class="n">i0</span>
+
+        <span class="n">rel_i</span> <span class="o">=</span> <span class="n">rel_i</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span><span class="o">.</span><span class="n">pivot</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="n">index</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="s1">&#39;Experiment_Time[s]&#39;</span><span class="p">)</span>
+        <span class="n">rel_i</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="n">rel_i</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">droplevel</span><span class="p">()</span>
+        <span class="c1"># rel_i_ma = rel_i.iloc[::-1].rolling(window=window, closed=&#39;left&#39;).mean().iloc[::-1]</span>
+        <span class="n">rel_i_ma</span> <span class="o">=</span> <span class="n">rel_i</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="o">=</span><span class="n">window</span><span class="p">,</span> <span class="n">closed</span><span class="o">=</span><span class="s1">&#39;right&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="o">-</span><span class="nb">int</span><span class="p">(</span><span class="n">window</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">rel_i_ma</span></div>
+
+
+<div class="viewcode-block" id="SimData.get_ledparams_at_led_id">
+<a class="viewcode-back" href="../../../postprocessing.html#ledsa.postprocessing.simulation.SimData.get_ledparams_at_led_id">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_ledparams_at_led_id</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">led_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">param</span><span class="o">=</span><span class="s1">&#39;sum_col_val&#39;</span><span class="p">,</span> <span class="n">window</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                                <span class="n">n_ref</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Retrieves a DataFrame containing normalized LED parameters for a specific LED ID, optionally smoothed over time.</span>
+
+<span class="sd">        This method selects LED parameter data for a given channel and LED ID, normalizes the data based on the average of the first `n_ref` entries (if `n_ref` is not False), and applies a moving average smoothing over the specified window of time. The result is a DataFrame with experimental time as the index, providing a time series of the specified LED parameter for the selected LED.</span>
+
+<span class="sd">        :param channel: The channel index from which to extract LED parameters. Channels typically represent different sets of measurements or sensor readings.</span>
+<span class="sd">        :type channel: int</span>
+<span class="sd">        :param led_id: The identifier of the LED for which to extract parameters. This ID is used to select the specific LED&#39;s data from the dataset.</span>
+<span class="sd">        :type led_id: int</span>
+<span class="sd">        :param param: The specific LED parameter to extract and analyze, such as &#39;sum_col_val&#39;. This parameter determines which aspect of the LED&#39;s data is analyzed. Defaults to &#39;sum_col_val&#39;.</span>
+<span class="sd">        :type param: str, optional</span>
+<span class="sd">        :param window: The window size for the moving average smoothing. A value of 1 implies no smoothing, while a larger window size averages the data over more time points, thereby smoothing out short-term fluctuations.</span>
+<span class="sd">        :type window: int, optional</span>
+<span class="sd">        :param n_ref: The number of initial entries to average for normalization. If set to False, absolute values are returned without normalization. This parameter allows for the normalization of data to account for initial conditions or baseline measurements. Defaults to 10.</span>
+<span class="sd">        :type n_ref: int or bool, optional</span>
+<span class="sd">        :return: A pandas DataFrame with normalized (and optionally smoothed) LED parameters for the specified LED ID. The DataFrame&#39;s index represents experimental time.</span>
+<span class="sd">        :rtype: pd.DataFrame</span>
+
+<span class="sd">        This method enables the analysis of temporal variations in specific LED parameters for an individual LED, facilitating the examination of changes or trends in the LED&#39;s behavior over the course of an experiment. By normalizing and smoothing the data, the method helps reveal underlying patterns that may not be immediately apparent from the raw data.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">channel</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">led_params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ch0_ledparams_df</span>
+        <span class="k">elif</span> <span class="n">channel</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">led_params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ch1_ledparams_df</span>
+        <span class="k">elif</span> <span class="n">channel</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="n">led_params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ch2_ledparams_df</span>
+        <span class="n">led_params</span> <span class="o">=</span> <span class="n">led_params</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span><span class="o">.</span><span class="n">set_index</span><span class="p">([</span><span class="s1">&#39;Experiment_Time[s]&#39;</span><span class="p">])</span>
+        <span class="n">ii</span> <span class="o">=</span> <span class="n">led_params</span><span class="p">[</span><span class="n">led_params</span><span class="p">[</span><span class="s1">&#39;led_id&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">led_id</span><span class="p">][[</span><span class="n">param</span><span class="p">]]</span>
+        <span class="k">if</span> <span class="n">n_ref</span> <span class="o">==</span> <span class="kc">False</span><span class="p">:</span>
+            <span class="n">rel_i</span> <span class="o">=</span> <span class="n">ii</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Use self.num_ref_images if n_ref is None</span>
+            <span class="n">n_ref</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_ref_images</span> <span class="k">if</span> <span class="n">n_ref</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">n_ref</span>
+            <span class="n">i0</span> <span class="o">=</span> <span class="n">ii</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">n_ref</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+            <span class="n">rel_i</span> <span class="o">=</span> <span class="n">ii</span> <span class="o">/</span> <span class="n">i0</span>
+        <span class="n">rel_i_ma</span> <span class="o">=</span> <span class="n">rel_i</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="o">=</span><span class="n">window</span><span class="p">,</span> <span class="n">closed</span><span class="o">=</span><span class="s1">&#39;right&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="o">-</span><span class="nb">int</span><span class="p">(</span><span class="n">window</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">rel_i_ma</span></div>
+
+
+<div class="viewcode-block" id="SimData.get_image_name_from_time">
+<a class="viewcode-back" href="../../../postprocessing.html#ledsa.postprocessing.simulation.SimData.get_image_name_from_time">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_image_name_from_time</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">time</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Retrieves the image name corresponding to a specific times.</span>
+
+<span class="sd">        :param time: The time index.</span>
+<span class="sd">        :type time: int</span>
+<span class="sd">        :return: The name of the image.</span>
+<span class="sd">        :rtype: str</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">imagename</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">image_info_df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">image_info_df</span><span class="p">[</span><span class="s1">&#39;Experiment_Time[s]&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">time</span><span class="p">][</span><span class="s1">&#39;Name&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">imagename</span></div>
+
+
+<div class="viewcode-block" id="SimData.get_pixel_cordinates_of_LED">
+<a class="viewcode-back" href="../../../postprocessing.html#ledsa.postprocessing.simulation.SimData.get_pixel_cordinates_of_LED">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_pixel_cordinates_of_LED</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">led_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns the pixel coordinates of a specified LED.</span>
+
+<span class="sd">        :param led_id: The identifier for the LED.</span>
+<span class="sd">        :type led_id: int</span>
+<span class="sd">        :return: A list containing the x and y pixel coordinates of the LED.</span>
+<span class="sd">        :rtype: list</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">led_info_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">led_info_path</span><span class="p">)</span>
+        <span class="n">pixel_positions</span> <span class="o">=</span> \
+        <span class="n">led_info_df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">led_info_df</span><span class="o">.</span><span class="n">index</span> <span class="o">==</span> <span class="n">led_id</span><span class="p">][[</span><span class="s1">&#39; pixel position x&#39;</span><span class="p">,</span> <span class="s1">&#39; pixel position y&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">pixel_positions</span></div>
+
+
+<div class="viewcode-block" id="SimData.get_pixel_values_of_led">
+<a class="viewcode-back" href="../../../postprocessing.html#ledsa.postprocessing.simulation.SimData.get_pixel_values_of_led">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_pixel_values_of_led</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">led_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">time</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Retrieves a cropped numpy array of pixel values around a specified LED, based on its ID, for a given image channel and time.</span>
+
+<span class="sd">        This method calculates the pixel values in a specified radius around an LED&#39;s position on an image. It first determines the LED&#39;s pixel coordinates, then retrieves the image corresponding to the specified time, and finally extracts a square array of pixel values centered on the LED&#39;s location.</span>
+
+<span class="sd">        :param led_id: The identifier for the LED of interest. This ID is used to look up the LED&#39;s position.</span>
+<span class="sd">        :type led_id: int</span>
+<span class="sd">        :param channel: The image channel from which to extract pixel values. Different channels may represent different color channels or sensor readings.</span>
+<span class="sd">        :type channel: int</span>
+<span class="sd">        :param time: The time at which the image was taken. This corresponds to a specific moment in the experimental timeline.</span>
+<span class="sd">        :type time: int</span>
+<span class="sd">        :param radius: The radius around the LED&#39;s position from which to extract pixel values. If not specified, the search_area_radius from the config file is used. Defaults to None.</span>
+<span class="sd">        :type radius: int, optional</span>
+<span class="sd">        :return: A numpy array containing the pixel values in the specified radius around the LED. The array is cropped from the original image, centered on the LED&#39;s position.</span>
+<span class="sd">        :rtype: numpy.ndarray</span>
+<span class="sd">        :raises ValueError: If path_images is not available when trying to access image files.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">path_images</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;path_images is required for accessing image files&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Use the provided radius or fall back to search_area_radius from config</span>
+        <span class="n">radius</span> <span class="o">=</span> <span class="n">radius</span> <span class="k">if</span> <span class="n">radius</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">search_area_radius</span>
+
+        <span class="k">if</span> <span class="n">radius</span><span class="p">:</span>
+            <span class="n">pixel_positions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_pixel_cordinates_of_LED</span><span class="p">(</span><span class="n">led_id</span><span class="p">)</span>
+            <span class="n">imagename</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_image_name_from_time</span><span class="p">(</span><span class="n">time</span><span class="p">)</span>
+            <span class="n">imagefile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path_images</span><span class="p">,</span> <span class="n">imagename</span><span class="p">)</span>
+            <span class="n">channel_array</span> <span class="o">=</span> <span class="n">read_channel_data_from_img</span><span class="p">(</span><span class="n">imagefile</span><span class="p">,</span> <span class="n">channel</span><span class="p">)</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">pixel_positions</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="n">pixel_positions</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">channel_array_cropped</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">flip</span><span class="p">(</span><span class="n">channel_array</span><span class="p">[</span><span class="n">x</span> <span class="o">-</span> <span class="n">radius</span><span class="p">:</span><span class="n">x</span> <span class="o">+</span> <span class="n">radius</span><span class="p">,</span> <span class="n">y</span> <span class="o">-</span> <span class="n">radius</span><span class="p">:</span><span class="n">y</span> <span class="o">+</span> <span class="n">radius</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">channel_array_cropped</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, CCE.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
