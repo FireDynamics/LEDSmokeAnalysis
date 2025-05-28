@@ -37,9 +37,9 @@ class LED:
         :return: The conversion matrix between the two LEDs.
         :rtype: np.ndarray
         """
-        a = np.array([self.pix_pos, led2.pix_pos])
-        b = np.array([self.pos, led2.pos])
-        x = linalg.solve(a, b)
+        a = np.atleast_2d(np.array([self.pix_pos, led2.pix_pos]))
+        b = np.atleast_2d(np.array([self.pos, led2.pos]))
+        x = linalg.solve(a, b, assume_a='gen')
         return np.transpose(x)
 
     def get_led_array(self, led2) -> np.ndarray:
