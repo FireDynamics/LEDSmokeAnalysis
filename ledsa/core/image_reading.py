@@ -22,7 +22,7 @@ def read_channel_data_from_img(filename: str, channel: int) -> np.ndarray:
     extension = os.path.splitext(filename)[-1]
     if extension in ['.JPG', '.JPEG', '.jpg', '.jpeg', '.PNG', '.png']:
         channel_array = _read_channel_data_from_img_file(filename, channel)
-    elif extension in ['.CR2']:
+    elif extension in ['.CR2','.CR3']:
         channel_array = _read_channel_data_from_raw_file(filename, channel)
     return channel_array
 
