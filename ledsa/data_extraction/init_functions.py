@@ -125,7 +125,7 @@ def _get_datetime_from_str(date: str, time: str) -> datetime:
     """
     Convert date and time strings to a datetime object.
 
-    :param date: Date string in the format '%Y:%m:%d' or '%d.%m.%Y'.
+    :param date: Date string in the format '%Y:%m:%d' or '%d.%m.%Y' or '%Y-%m-%d'.
     :type date: str
     :param time: Time string in the format '%H:%M:%S'.
     :type time: str
@@ -134,6 +134,8 @@ def _get_datetime_from_str(date: str, time: str) -> datetime:
     """
     if date.find(":") != -1:
         date_time = datetime.strptime(date + ' ' + time, '%Y:%m:%d %H:%M:%S')
+    elif date.find("-") != -1:
+        date_time = datetime.strptime(date + ' ' + time, '%Y-%m-%d %H:%M:%S')
     else:
         date_time = datetime.strptime(date + ' ' + time, '%d.%m.%Y %H:%M:%S')
     return date_time

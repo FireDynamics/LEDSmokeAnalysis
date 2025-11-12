@@ -368,6 +368,7 @@ def _get_datetime_from_str(date: str, time: str) -> datetime:
     The function can handle two formats:
     1. '%Y:%m:%d %H:%M:%S' - standard format with colons in the date.
     2. '%d.%m.%Y %H:%M:%S' - format with periods in the date.
+    3. '%d-%m-%Y %H:%M:%S' - format with hyphens in the date.
 
     :param date: The date string.
     :type date: str
@@ -378,6 +379,8 @@ def _get_datetime_from_str(date: str, time: str) -> datetime:
     """
     if date.find(":") != -1:
         date_time = datetime.strptime(date + ' ' + time, '%Y:%m:%d %H:%M:%S')
+    elif date.find("-") != -1:
+        date_time = datetime.strptime(date + ' ' + time, '%Y-%m-%d %H:%M:%S')
     else:
         date_time = datetime.strptime(date + ' ' + time, '%d.%m.%Y %H:%M:%S')
     return date_time
