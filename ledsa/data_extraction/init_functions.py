@@ -92,7 +92,7 @@ def generate_image_infos_csv(config: ConfigData, build_experiment_infos=False, b
             _save_analysis_infos(img_data)
 
 
-def _calc_experiment_and_real_time(build_type: str, config: ConfigData, tag: str, img_number: int) -> None:
+def _calc_experiment_and_real_time(build_type: str, config: ConfigData, tag: str, img_number: str) -> None:
     """
     Calculate experiment and real-time based on image metadata and config settings.
 
@@ -108,7 +108,7 @@ def _calc_experiment_and_real_time(build_type: str, config: ConfigData, tag: str
     :rtype: tuple
     """
     exif_entry = get_exif_entry(os.path.join(config['DEFAULT']['img_directory'],
-                                config['DEFAULT']['img_name_string'].format(int(img_number))), tag)
+                                config['DEFAULT']['img_name_string'].format(img_number)), tag)
     date, time_meta = exif_entry.split(' ')
     date_time_img = _get_datetime_from_str(date, time_meta)
 
@@ -197,7 +197,7 @@ def _build_img_data_string(build_type: str, config: ConfigData) -> str:
     for img_id in img_id_list:
         tag = 'EXIF DateTimeOriginal'
         experiment_time, time = _calc_experiment_and_real_time(build_type, config, tag, img_id)
-        img_data += (str(img_idx) + ',' + config[build_type]['img_name_string'].format(int(img_id)) +
+        img_data += (str(img_idx) + ',' + config[build_type]['img_name_string'].format(img_id) +
                      ',' + time.strftime('%H:%M:%S') + ',' + str(experiment_time) + '\n')
         img_idx += 1
     return img_data
