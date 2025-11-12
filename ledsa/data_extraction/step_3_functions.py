@@ -58,7 +58,7 @@ def generate_analysis_data(img_filename: str, channel: int, search_areas: np.nda
     return img_analysis_data
 
 
-def create_fit_result_file(img_data: List[LEDAnalysisData], img_id: int, channel: int) -> None: # TODO: rename because misleading
+def create_fit_result_file(img_data: List[LEDAnalysisData], img_id: str, channel: int) -> None: # TODO: rename because misleading
     """
       Create a result file for a single image, containing the pixel values and, if applicable, the fit results of all LEDs.
 

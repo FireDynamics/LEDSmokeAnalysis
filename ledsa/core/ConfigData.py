@@ -1,3 +1,4 @@
+import os
 import configparser as cp
 from datetime import datetime, timedelta
 
@@ -271,10 +272,11 @@ class ConfigData(cp.ConfigParser):
             time = input('Please give the time shown on the clock in the time reference image in hh:mm:ss: ')
             self['DEFAULT']['time_ref_img_time'] = str(time)
         time = self['DEFAULT']['time_ref_img_time']
-        print(self['DEFAULT']['img_directory'] + self['DEFAULT']['time_img_id'])
+        print(os.path.join(self['DEFAULT']['img_directory'], self['DEFAULT']['img_name_string'].format(
+            self['DEFAULT']['time_img_id'])))
         tag = 'EXIF DateTimeOriginal'
-        exif_entry = get_exif_entry(self['DEFAULT']['img_directory'] + self['DEFAULT']['img_name_string'].format(
-            self['DEFAULT']['time_img_id']), tag)
+        exif_entry = get_exif_entry(os.path.join(self['DEFAULT']['img_directory'], self['DEFAULT']['img_name_string'].format(
+            self['DEFAULT']['time_img_id'])), tag)
         date, time_meta = exif_entry.split(' ')
         self['DEFAULT']['date'] = date
         img_time = _get_datetime_from_str(date, time_meta)
@@ -351,8 +353,8 @@ class ConfigData(cp.ConfigParser):
         Updates the 'DEFAULT' key with the 'start_time' computed.
 
         """
-        exif_entry = get_exif_entry(self['DEFAULT']['img_directory'] + self['DEFAULT']['img_name_string'].format(
-            self['DEFAULT']['first_img_experiment_id']), 'EXIF DateTimeOriginal')
+        exif_entry = get_exif_entry(os.path.join(self['DEFAULT']['img_directory'], self['DEFAULT']['img_name_string'].format(
+            self['DEFAULT']['first_img_experiment_id'])), 'EXIF DateTimeOriginal')
         date, time_meta = exif_entry.split(' ')
         time_img = _get_datetime_from_str(date, time_meta)
         start_time = time_img - timedelta(seconds=self['DEFAULT'].getint('exif_time_infront_real_time'))
@@ -366,6 +368,7 @@ def _get_datetime_from_str(date: str, time: str) -> datetime:
     The function can handle two formats:
     1. '%Y:%m:%d %H:%M:%S' - standard format with colons in the date.
     2. '%d.%m.%Y %H:%M:%S' - format with periods in the date.
+    3. '%d-%m-%Y %H:%M:%S' - format with hyphens in the date.
 
     :param date: The date string.
     :type date: str
@@ -376,6 +379,8 @@ def _get_datetime_from_str(date: str, time: str) -> datetime:
     """
     if date.find(":") != -1:
         date_time = datetime.strptime(date + ' ' + time, '%Y:%m:%d %H:%M:%S')
+    elif date.find("-") != -1:
+        date_time = datetime.strptime(date + ' ' + time, '%Y-%m-%d %H:%M:%S')
     else:
         date_time = datetime.strptime(date + ' ' + time, '%d.%m.%Y %H:%M:%S')
     return date_time
