@@ -1,5 +1,7 @@
 import os
-
+from hachoir.parser import createParser
+from hachoir.metadata import extractMetadata
+from pathlib import Path
 import exifread
 import numpy as np
 import rawpy
@@ -91,6 +93,27 @@ def get_exif_entry(filename: str, tag: str) -> str:
     :rtype: str
     :raises KeyError: If the EXIF tag is not found in the image metadata.
     """
+    if '.CR3' in filename:
+        parser = createParser(str(filename))
+        if not parser:
+            raise ValueError(f"Konnte Datei nicht parsen: {filename}")
+
+        metadata = extractMetadata(parser)
+        if not metadata:
+            raise ValueError("Keine Metadaten gefunden.")
+
+        # Alle Metadaten anzeigen, falls du schauen willst was verfügbar ist
+        # print(metadata.exportPlaintext())
+
+        # Versuch, die Aufnahmezeit zu finden
+        try:
+            for line in metadata.exportPlaintext():
+                if "Creation date" in line or "Date/Time Original" in line:
+                    return line.split(":", 1)[1].strip()
+        except:
+            print("Keine Aufnahmezeit gefunden.")
+            exit(1)
+
     with open(filename, 'rb') as f:
         exif = exifread.process_file(f, details=False, stop_tag=tag)
     try:
