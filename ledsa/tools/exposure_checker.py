@@ -4,7 +4,7 @@ import pandas as pd
 
 # Configure the image path and range
 image_dir = os.getcwd()  # Update this to your image directory
-list_image = [f for f in os.listdir(image_dir) if '.CR3' in f or '.CR2' in f or '.NEF' in f]
+list_image = [f for f in os.listdir(image_dir) if '.CR3' in f or '.CR2' in f or '.NEF' in f or '.ARW' in f or '.DNG' in f]
 
 # image_name_string = "DSC_{:04d}.CR3"  # F-string template for image names
 # image_range = range(23, 24)  # Range of image numbers to process
