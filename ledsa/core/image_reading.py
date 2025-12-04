@@ -24,7 +24,7 @@ def read_channel_data_from_img(filename: str, channel: int) -> np.ndarray:
     extension = os.path.splitext(filename)[-1]
     if extension in ['.JPG', '.JPEG', '.jpg', '.jpeg', '.PNG', '.png']:
         channel_array = _read_channel_data_from_img_file(filename, channel)
-    elif extension in ['.CR2','.CR3','.NEF','.ARW']:
+    elif extension in ['.CR2','.CR3','.NEF','.ARW','.DNG']:
         channel_array = _read_channel_data_from_raw_file(filename, channel)
     return channel_array
 
@@ -108,7 +108,7 @@ def get_exif_entry(filename: str, tag: str) -> str:
         # Versuch, die Aufnahmezeit zu finden
         try:
             for line in metadata.exportPlaintext():
-                if "Creation date" in line or "Date/Time Original" in line:
+                if tag in line:
                     return line.split(":", 1)[1].strip()
         except:
             print("Keine Aufnahmezeit gefunden.")
