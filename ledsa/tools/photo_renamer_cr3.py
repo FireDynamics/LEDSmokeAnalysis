@@ -4,9 +4,8 @@ from datetime import datetime
 from os import path
 import csv
 import pandas as pd
-import exifread
+from ledsa.core.image_reading import get_exif_entry
 
-#does not work for Images in CR3 format
 
 def set_working_dir():
     """
@@ -34,9 +33,7 @@ def get_files():
     """
     # Get file type inputs from user
     image_types = input("What image types do you want to take into account? (Seperate by \",\"):")
-    raw_types = input("What raw types do you want to take into account? (Seperate by \",\"):")
     image_types = [x.strip() for x in image_types.split(',')]
-    raw_types = [x.strip() for x in raw_types.split(',')]
     image_dict = {}
     image_files = []
 
@@ -48,31 +45,21 @@ def get_files():
     for image in image_files:
         # Extract EXIF datetime data
         with open(image, 'rb') as image_file:
-            tag_datetime = 'DateTimeOriginal'
-            tag_subsectime = 'SubSecTimeDigitized'
-            exif = exifread.process_file(image_file, details=False)
-            capture_date = exif[f"EXIF {tag_datetime}"].values
-            try:
-                # Try parsing with subsecond precision
-                subsec_time = exif[f"EXIF {tag_subsectime}"].values
-                datetime_object = datetime.strptime(capture_date + "." + subsec_time, '%Y:%m:%d %H:%M:%S.%f')
-            except:
-                # Fall back to second precision
-                datetime_object = datetime.strptime(capture_date, '%Y:%m:%d %H:%M:%S')
-
-        # Find matching raw file if it exists
-        for file_type in raw_types:
-            raw_file = image.rsplit(".", 1)[0] + "." + file_type
-            if path.isfile(raw_file):
-                raw_file = raw_file
-                break
+            if '.CR3' in image:
+                tag_datetime = 'Creation date'
             else:
-                raw_file = "NaT"
-
-        image_dict[image] = [datetime_object, raw_file]
+                tag_datetime = 'EXIF DateTimeOriginal'
+            capture_date = get_exif_entry(image,tag_datetime)
+            # Fall back to second precision
+            if '-' in capture_date:
+                datetime_object = datetime.strptime(capture_date, '%Y-%m-%d %H:%M:%S')
+            else:
+                datetime_object = datetime.strptime(capture_date, '%Y:%m:%d %H:%M:%S')
+        image_file.close()
+        image_dict[image] = [datetime_object]
 
     # Create and sort DataFrame
-    image_df = pd.DataFrame.from_dict(image_dict, columns=["capture_date", "raw_file"], orient='index')
+    image_df = pd.DataFrame.from_dict(image_dict, columns=["capture_date"], orient='index')
     image_df = image_df.sort_values(by=['capture_date'], ascending=True)
     return image_df
 
@@ -100,20 +87,14 @@ def rename_images_by_date(image_df):
     # Preview rename changes and write to log
     with open(filename, 'w') as log_file:
         writer = csv.writer(log_file)
-        writer.writerow(("old_image_name", "new_image_name", "old_raw_name", "new_raw_name"))
+        writer.writerow(("old_image_name", "new_image_name"))
         for index, row in image_df.iterrows():
-            image_year = row['capture_date'].strftime('%-y%m%d')
-            raw_old_name = row['raw_file']
+            image_year = row['capture_date'].strftime('%y%m%d')
 
             # Generate new filenames
-            if pd.isnull(raw_old_name):
-                raw_new_name = "NaT"
-            else:
-                file_extension = raw_old_name.split('.')[-1]
-                raw_new_name = "{0}_{1}_{2}.{3}".format(image_year, name, count, file_extension)
-            new_image_name = "{0}_{1}_{2}.jpg".format(image_year, name, count)
-            print("{0} --> {1}    {2} --> {3}".format(index, new_image_name, raw_old_name, raw_new_name))
-            writer.writerow((index, new_image_name, raw_old_name, raw_new_name))
+            new_image_name = "{0}_{1}.{2}".format(name, f'{count:04d}',index.split('.')[-1])
+            print("{0} --> {1}".format(index, new_image_name))
+            writer.writerow((index, new_image_name))
             count += 1
 
     # Process user choice to proceed or cancel
@@ -123,14 +104,9 @@ def rename_images_by_date(image_df):
             # Perform the actual renaming
             count = 1
             for index, row in image_df.iterrows():
-                image_year = row['capture_date'].strftime('%-y%m%d')
-                raw_old_name = row['raw_file']
+                image_year = row['capture_date'].strftime('%y%m%d')
+                new_image_name = "{0}_{1}.{2}".format(name, f'{count:04d}',index.split('.')[-1])
 
-                if not pd.isnull(raw_old_name):
-                    file_extension = raw_old_name.split('.')[-1]
-                    raw_new_name = "{0}_{1}_{2}.{3}".format(image_year, name, count, file_extension)
-                    os.rename(raw_old_name, raw_new_name)
-                new_image_name = "{0}_{1}_{2}.jpg".format(image_year, name, count)
                 os.rename(index, new_image_name)
                 count += 1
             print("Files successfully renamed!".format(count))

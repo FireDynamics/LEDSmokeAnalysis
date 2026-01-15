@@ -93,6 +93,8 @@ def get_exif_entry(filename: str, tag: str) -> str:
     :rtype: str
     :raises KeyError: If the EXIF tag is not found in the image metadata.
     """
+    
+    #Read Metadata CR3 (! ISO, Blende und Verschlusszeit kann durch diese Methode nicht ausgegeben werden)
     if '.CR3' in filename:
         parser = createParser(str(filename))
         if not parser:
@@ -102,10 +104,6 @@ def get_exif_entry(filename: str, tag: str) -> str:
         if not metadata:
             raise ValueError("Keine Metadaten gefunden.")
 
-        # Alle Metadaten anzeigen, falls du schauen willst was verfügbar ist
-        # print(metadata.exportPlaintext())
-
-        # Versuch, die Aufnahmezeit zu finden
         try:
             for line in metadata.exportPlaintext():
                 if tag in line:
