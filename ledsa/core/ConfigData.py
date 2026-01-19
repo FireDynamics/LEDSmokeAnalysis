@@ -274,7 +274,7 @@ class ConfigData(cp.ConfigParser):
         print(self['DEFAULT']['img_directory'] + self['DEFAULT']['time_img_id'])
         tag = 'DateTimeOriginal'
         exif_entry = get_exif_entry(self['DEFAULT']['img_directory'] + self['DEFAULT']['img_name_string'].format(
-            self['DEFAULT']['time_img_id']), tag)
+            int(self['DEFAULT']['time_img_id'])), tag)
         date, time_meta = exif_entry.split(' ')
         self['DEFAULT']['date'] = date
         img_time = _get_datetime_from_str(date, time_meta)
