@@ -166,7 +166,7 @@ def create_test_image(image_id, experiment):
     num_of_leds = len(experiment.leds)
     transmissions = experiment.calc_all_led_transmissions()
     img_array = create_img_array(num_of_leds, transmissions)
-
+    img_array = np.clip(img_array, 0, 255).astype(np.uint8)
     img = Image.fromarray(img_array, 'RGB')
 
     # Save image without EXIF data
