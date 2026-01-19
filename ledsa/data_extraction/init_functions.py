@@ -107,8 +107,8 @@ def _calc_experiment_and_real_time(build_type: str, config: ConfigData, tag: str
     :return: Tuple containing experiment time and real time.
     :rtype: tuple
     """
-    exif_entry = get_exif_entry(config['DEFAULT']['img_directory'] +
-                                config['DEFAULT']['img_name_string'].format(int(img_number)), tag)
+    exif_entry = get_exif_entry(os.path.join(config['DEFAULT']['img_directory'],
+                                config['DEFAULT']['img_name_string'].format(int(img_number))), tag)
     date, time_meta = exif_entry.split(' ')
     date_time_img = _get_datetime_from_str(date, time_meta)
 
