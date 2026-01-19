@@ -193,7 +193,7 @@ def _build_img_data_string(build_type: str, config: ConfigData) -> str:
     img_increment = config.getint(build_type, 'num_skip_imgs') + 1 if build_type == 'analyse_photo' else 1
     img_id_list = _find_img_number_list(first_img_id, last_img_id, img_increment)
     for img_id in img_id_list:
-        tag = 'EXIF DateTimeOriginal'
+        tag = 'DateTimeOriginal'
         experiment_time, time = _calc_experiment_and_real_time(build_type, config, tag, img_id)
         img_data += (str(img_idx) + ',' + config[build_type]['img_name_string'].format(int(img_id)) +
                      ',' + time.strftime('%H:%M:%S') + ',' + str(experiment_time) + '\n')
