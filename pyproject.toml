@@ -3,7 +3,7 @@ requires = ["setuptools", "wheel"]
 
 [project]
 name = "ledsa"
-version = "0.9.4"
+version = "0.9.5"
 description = "A scientific package to analyse smoke via the dimming of light sources."
 authors = [
     {name = "Kristian Börger", email =  "boerger@uni-wuppertal.de"},
