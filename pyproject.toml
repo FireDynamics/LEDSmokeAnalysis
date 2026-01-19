@@ -26,7 +26,7 @@ dependencies = [
     "newrawpy >= 0.18.1; platform_machine == 'arm64'",
     "rawpy >= 0.18.1; platform_machine != 'arm64'",
     "tqdm >=4.66.2",
-    "exifread >= 3.0.0",
+    "exiv2 >= 0.18.0",
     "piexif >= 1.1.3",
     "robotframework >= 6.1.1",
     "pillow >= 10.2.0",

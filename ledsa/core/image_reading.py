@@ -1,6 +1,6 @@
 import os
 
-import exifread
+import exiv2
 import numpy as np
 import rawpy
 from matplotlib import pyplot as plt
@@ -22,7 +22,7 @@ def read_channel_data_from_img(filename: str, channel: int) -> np.ndarray:
     extension = os.path.splitext(filename)[-1]
     if extension in ['.JPG', '.JPEG', '.jpg', '.jpeg', '.PNG', '.png']:
         channel_array = _read_channel_data_from_img_file(filename, channel)
-    elif extension in ['.CR2']:
+    elif extension in ['.CR2', '.CR3']:
         channel_array = _read_channel_data_from_raw_file(filename, channel)
     return channel_array
 
@@ -91,10 +91,12 @@ def get_exif_entry(filename: str, tag: str) -> str:
     :rtype: str
     :raises KeyError: If the EXIF tag is not found in the image metadata.
     """
-    with open(filename, 'rb') as f:
-        exif = exifread.process_file(f, details=False, stop_tag=tag)
+    img = exiv2.ImageFactory.open(filename)
+    img.readMetadata()
+    exiv_data = img.exifData()
+    full_tag = f'Exif.Photo.{tag}'
     try:
-        return exif[tag].values
+        return exiv_data[full_tag].print()
     except KeyError:
         print("No EXIF metadata found")
         exit(1)
