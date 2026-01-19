@@ -4,7 +4,7 @@ from subprocess import Popen, PIPE
 import matplotlib.pyplot as plt
 import numpy as np
 from numpy.random import normal
-import piexif
+import exiv2
 from PIL import Image
 from robot.api.deco import keyword, library
 from robot.libraries.BuiltIn import BuiltIn
@@ -168,12 +168,18 @@ def create_test_image(image_id, experiment):
     img_array = create_img_array(num_of_leds, transmissions)
 
     img = Image.fromarray(img_array, 'RGB')
-    exif_ifd = {
-        piexif.ExifIFD.DateTimeOriginal: f'2021:01:01 12:00:{0 + image_id:01d}'
-    }
-    exif_dict = {'Exif': exif_ifd}
-    exif_bytes = piexif.dump(exif_dict)
-    img.save(os.path.join('test_data', f'test_img_{image_id + 1}.jpg'), exif=exif_bytes)
+
+    # Save image without EXIF data
+    out = os.path.join("test_data", f"test_img_{image_id + 1}.jpg")
+    img.save(out)
+
+    # Add EXIF data to the image afterward
+    img2 = exiv2.ImageFactory.open(out)
+    img2.readMetadata()
+    ex = img2.exifData()
+    ex["Exif.Photo.DateTimeOriginal"] = f"2021:01:01 12:00:{image_id:02d}"
+    img2.setExifData(ex)
+    img2.writeMetadata()
 
 
 def create_img_array(num_of_leds, transmissions):
