@@ -6,6 +6,7 @@ import pandas as pd
 
 from ledsa.analysis.Experiment import Experiment, Layers, Camera
 from ledsa.core.file_handling import read_hdf, read_hdf_avg, extend_hdf, create_analysis_infos_avg
+from ledsa.data_extraction.data_integrity import check_intensity_normalization
 
 
 class ExtinctionCoefficients(ABC):
@@ -157,9 +158,9 @@ class ExtinctionCoefficients(ABC):
 
          """
         ref_img_data = self.calculated_img_data.query(f'img_id <= {self.num_ref_imgs}')
-        ref_intensities = ref_img_data.groupby(level='led_id').mean()
-
-        self.ref_intensities = ref_intensities[self.reference_property].to_numpy()
+        ref_intensities = ref_img_data.groupby(level='led_id')[self.reference_property].mean()
+        check_intensity_normalization(ref_img_data, ref_intensities, self.reference_property)
+        self.ref_intensities = ref_intensities.to_numpy()
 
     def apply_color_correction(self, cc_matrix, on='sum_col_val',
                                nchannels=3) -> None:  # TODO: remove hardcoding of nchannels
