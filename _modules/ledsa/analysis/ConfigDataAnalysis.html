@@ -1,0 +1,299 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ledsa.analysis.ConfigDataAnalysis &mdash; LEDSmokeAnalysis 0.9.4 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/tables.css?v=aab0db92" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=c5ca06ca"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            LEDSmokeAnalysis
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">LEDSA:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../description.html">Description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_documentation.html">CLI Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ledsa.html">LEDSA Module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">Demo</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">LEDSmokeAnalysis</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ledsa.analysis.ConfigDataAnalysis</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ledsa.analysis.ConfigDataAnalysis</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">configparser</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">cp</span>
+
+
+<div class="viewcode-block" id="ConfigDataAnalysis">
+<a class="viewcode-back" href="../../../config.html#ledsa.analysis.ConfigDataAnalysis.ConfigDataAnalysis">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ConfigDataAnalysis</span><span class="p">(</span><span class="n">cp</span><span class="o">.</span><span class="n">ConfigParser</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Class responsible for handling the configuration data related to LEDSA&#39;s data analysis.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">load_config_file</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">camera_position</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">num_layers</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">domain_bounds</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">led_array_indices</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">num_ref_images</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">camera_channels</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">num_cores</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                 <span class="n">reference_property</span><span class="o">=</span><span class="s1">&#39;sum_col_val&#39;</span><span class="p">,</span>
+                 <span class="n">average_images</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">solver</span><span class="o">=</span><span class="s1">&#39;linear&#39;</span><span class="p">,</span> <span class="n">weighting_preference</span><span class="o">=-</span><span class="mf">6e-3</span><span class="p">,</span> <span class="n">weighting_curvature</span><span class="o">=</span><span class="mf">1e-6</span><span class="p">,</span>
+                 <span class="n">num_iterations</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span> <span class="n">lambda_reg</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param load_config_file: Determines whether to load the config file on initialization. Defaults to True.</span>
+<span class="sd">        :type load_config_file: bool</span>
+<span class="sd">        :param camera_position: Global X, Y, Z position of the camera. Defaults to None.</span>
+<span class="sd">        :type camera_position: list[float] or None</span>
+<span class="sd">        :param num_layers: Number of horizontal smoke layers. Defaults to 20.</span>
+<span class="sd">        :type num_layers: int</span>
+<span class="sd">        :param domain_bounds: Lower and upper bounds of the computational domain. Defaults to None.</span>
+<span class="sd">        :type domain_bounds: list[float] or None</span>
+<span class="sd">        :param led_array_indices: Indices of the LED arrays for which the extinction coefficients should be computed. Defaults to None.</span>
+<span class="sd">        :type led_array_indices: list[int] or None</span>
+<span class="sd">        :param num_ref_images: Number of images used to compute normalize LED intensities. Defaults to 10.</span>
+<span class="sd">        :type num_ref_images: int</span>
+<span class="sd">        :param camera_channels: Camera channels to be considered in the analysis. Defaults to 0.</span>
+<span class="sd">        :type camera_channels: List[int]</span>
+<span class="sd">        :param num_cores: Number of CPU cores for (multicore) processing. If greater than 1, multicore processing is applied. Defaults to 1.</span>
+<span class="sd">        :type num_cores: int</span>
+<span class="sd">        :param reference_property: Property used for reference in LEDSA. Defaults to &#39;sum_col_val&#39;.</span>
+<span class="sd">        :type reference_property: str</span>
+<span class="sd">        :param average_images: Determines if intensities are computed as an average from two consecutive images. Defaults to False.</span>
+<span class="sd">        :type average_images: bool</span>
+<span class="sd">        :param solver: Method used to compute extinction coefficients - can be &#39;linear&#39; or &#39;nonlinear&#39;. Defaults to &#39;linear&#39;.</span>
+<span class="sd">        :type solver: str</span>
+<span class="sd">        :param weighting_preference: Weighting factor for the preference to push the nonlinear solver to high or low values for the extinction coeffiientes. Defaults to -6e-3.</span>
+<span class="sd">        :type weighting_preference: float</span>
+<span class="sd">        :param weighting_curvature:  Weighting factor for the smoothness of the solution. Defaults to 1e-6.</span>
+<span class="sd">        :type weighting_curvature: float</span>
+<span class="sd">        :param num_iterations: Maximum number of iterations for the nonlinear solver. Defaults to 200.</span>
+<span class="sd">        :type num_iterations: int</span>
+<span class="sd">        :param lambda_reg: Regularization parameter for the linear solver. Defaults to 1e-3.</span>
+<span class="sd">        :type lambda_reg: float</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">cp</span><span class="o">.</span><span class="n">ConfigParser</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">allow_no_value</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">load_config_file</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">load</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">,</span> <span class="s1">&#39;# Variables used in multiple parts of LEDSA&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">,</span> <span class="s1">&#39;   # Number of CPUs, multicore processing is applied if &gt; 1&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;   num_cores&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">num_cores</span><span class="p">)</span>
+            <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;   reference_property&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">reference_property</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">,</span> <span class="s1">&#39;   # Number images used to compute normalize LED intensities&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;   num_ref_images&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">num_ref_images</span><span class="p">)</span>
+            <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;   camera_channels&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">camera_channels</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">,</span> <span class="s1">&#39;   # Intensities are computed as average from two consecutive images if set to True &#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;   average_images&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">average_images</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">,</span> <span class="s1">&#39;   # Extinction coefficients can be computed by linear or numeric solver &#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;   solver&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">solver</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">,</span> <span class="s1">&#39;   # Options for nonlinear solver (ignored when linear solver is used) &#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;   weighting_preference&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">weighting_preference</span><span class="p">)</span>
+            <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;   weighting_curvature&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">weighting_curvature</span><span class="p">)</span>
+            <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;   num_iterations&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">num_iterations</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">,</span> <span class="s1">&#39;   # Options for linear solver (ignored when nonlinear solver is used) &#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;   lambda_reg&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">lambda_reg</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;experiment_geometry&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">&#39;experiment_geometry&#39;</span><span class="p">,</span> <span class="s1">&#39;# Global X Y Z position of the camera &#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;experiment_geometry&#39;</span><span class="p">][</span><span class="s1">&#39;   camera_position&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">camera_position</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;model_parameters&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">&#39;model_parameters&#39;</span><span class="p">,</span> <span class="s1">&#39;# Parameters regarding the discretization of the spatial domain &#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">&#39;model_parameters&#39;</span><span class="p">,</span> <span class="s1">&#39;   # LED arrays for that the extinction coefficients should be computed  &#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;model_parameters&#39;</span><span class="p">][</span><span class="s1">&#39;   led_array_indices&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">led_array_indices</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">&#39;model_parameters&#39;</span><span class="p">,</span> <span class="s1">&#39;   # Number of horizontal smoke layers  &#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;model_parameters&#39;</span><span class="p">][</span><span class="s1">&#39;   num_layers&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">num_layers</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">&#39;model_parameters&#39;</span><span class="p">,</span> <span class="s1">&#39;   # Lower and upper bounds of the computational domain  &#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;model_parameters&#39;</span><span class="p">][</span><span class="s1">&#39;   domain_bounds&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">domain_bounds</span><span class="p">)</span>
+
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;config_analysis.ini&#39;</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">configfile</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">configfile</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;config_analysis.ini created&#39;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ConfigDataAnalysis.load">
+<a class="viewcode-back" href="../../../config.html#ledsa.analysis.ConfigDataAnalysis.ConfigDataAnalysis.load">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">load</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Loads the configuration data from &#39;config_analysis.ini&#39; file.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            FileNotFoundError: If &#39;config_analysis.ini&#39; is not found in the working directory.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">read_file</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="s1">&#39;config_analysis.ini&#39;</span><span class="p">))</span>
+        <span class="k">except</span> <span class="ne">FileNotFoundError</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="s1">&#39;config_analysis.ini not found in working directory! Please create it with argument &quot;--config_analysis&quot;.&#39;</span><span class="p">)</span>
+            <span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;config_analysis.ini loaded!&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ConfigDataAnalysis.save">
+<a class="viewcode-back" href="../../../config.html#ledsa.analysis.ConfigDataAnalysis.ConfigDataAnalysis.save">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Saves the current configuration to &#39;config_analysis.ini&#39; file.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;config_analysis.ini&#39;</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">configfile</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">configfile</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;config_analysis.ini saved&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ConfigDataAnalysis.get_list_of_values">
+<a class="viewcode-back" href="../../../config.html#ledsa.analysis.ConfigDataAnalysis.ConfigDataAnalysis.get_list_of_values">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_list_of_values</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">section</span><span class="p">:</span><span class="nb">str</span><span class="p">,</span> <span class="n">option</span><span class="p">:</span><span class="nb">str</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns a list of values of a specified dtype from a given section and option.</span>
+
+<span class="sd">        :param section: Section in the configuration file.</span>
+<span class="sd">        :type section: str</span>
+<span class="sd">        :param option: Option under the specified section.</span>
+<span class="sd">        :type option: str</span>
+<span class="sd">        :param dtype: Data type of the values to be returned. Defaults to int.</span>
+<span class="sd">        :type dtype: type</span>
+<span class="sd">        :return: List of values or None if the option&#39;s value is &#39;None&#39;.</span>
+<span class="sd">        :rtype: list or None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="p">[</span><span class="n">section</span><span class="p">][</span><span class="n">option</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;None&#39;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="n">values</span> <span class="o">=</span> <span class="p">[</span><span class="n">dtype</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">[</span><span class="n">section</span><span class="p">][</span><span class="n">option</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">()]</span>
+        <span class="k">return</span> <span class="n">values</span></div>
+
+
+<div class="viewcode-block" id="ConfigDataAnalysis.in_camera_channels">
+<a class="viewcode-back" href="../../../config.html#ledsa.analysis.ConfigDataAnalysis.ConfigDataAnalysis.in_camera_channels">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">in_camera_channels</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Prompts the user to input the camera channels to analyse and updates the configuration.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;camera_channels&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span><span class="s1">&#39;Please give the camera channels that should be considered in the &#39;</span>
+                                                   <span class="s1">&#39;analysis: &#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ConfigDataAnalysis.in_camera_position">
+<a class="viewcode-back" href="../../../config.html#ledsa.analysis.ConfigDataAnalysis.ConfigDataAnalysis.in_camera_position">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">in_camera_position</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Prompts the user to input the camera&#39;s global X, Y, Z coordinates and updates the configuration.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;experiment_geometry&#39;</span><span class="p">][</span><span class="s1">&#39;camera_position&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span><span class="s1">&#39;Please give the global X Y Z [m] coordinates of the &#39;</span>
+                                                               <span class="s1">&#39;camera : &#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ConfigDataAnalysis.in_num_layers">
+<a class="viewcode-back" href="../../../config.html#ledsa.analysis.ConfigDataAnalysis.ConfigDataAnalysis.in_num_layers">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">in_num_layers</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Prompts the user to input the number of layers for spatial domain discretization and updates the configuration.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;model_parameters&#39;</span><span class="p">][</span><span class="s1">&#39;num_layers&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span><span class="s1">&#39;Please give number of layers the spatial domain should &#39;</span>
+                                                          <span class="s1">&#39;be discretized to : &#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ConfigDataAnalysis.in_domain_bounds">
+<a class="viewcode-back" href="../../../config.html#ledsa.analysis.ConfigDataAnalysis.ConfigDataAnalysis.in_domain_bounds">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">in_domain_bounds</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Prompts the user to input the lower and upper height of the spatial domain and updates the configuration.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;model_parameters&#39;</span><span class="p">][</span><span class="s1">&#39;domain_bounds&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span><span class="s1">&#39;Please give lower and upper height [m] of the spatial &#39;</span>
+                                                          <span class="s1">&#39;domain : &#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ConfigDataAnalysis.in_led_array_indices">
+<a class="viewcode-back" href="../../../config.html#ledsa.analysis.ConfigDataAnalysis.ConfigDataAnalysis.in_led_array_indices">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">in_led_array_indices</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Prompts the user to input the indices of (merged) LED Arrays for computation and updates the configuration.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;model_parameters&#39;</span><span class="p">][</span><span class="s1">&#39;led_array_indices&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span><span class="s1">&#39;Please give indices of (merged) LED Arrays to compute: &#39;</span><span class="p">)</span></div>
+</div>
+
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;main&#39;</span><span class="p">:</span>
+    <span class="n">ConfigDataAnalysis</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, CCE.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
