@@ -89,7 +89,7 @@ class DataExtractor:
         Identify all LEDs in the reference image and define the areas where LEDs will be searched in the experiment images.
         """
         config = self.config['find_search_areas']
-        in_file_path = os.path.join(config['img_directory'], config['img_name_string'].format(config['ref_img_id']))
+        in_file_path = os.path.join(config['img_directory'], config['img_name_string'].format(int(config['ref_img_id'])))
         channel = config['channel']
         search_area_radius = int(config['search_area_radius'])
         max_num_leds = int(config['max_num_leds'])
@@ -121,7 +121,7 @@ class DataExtractor:
         if self.search_areas is None:
             self.load_search_areas()
 
-        in_file_path = os.path.join(config['img_directory'], config['img_name_string'].format(config['ref_img_id']))
+        in_file_path = os.path.join(config['img_directory'], config['img_name_string'].format(int(config['ref_img_id'])))
         data = ledsa.core.image_reading.read_channel_data_from_img(in_file_path, channel=0)
         search_area_radius = int(config['search_area_radius'])
         plt.figure(dpi=1200)

@@ -4,9 +4,8 @@ from datetime import datetime
 from os import path
 import csv
 import pandas as pd
-import exifread
 
-#does not work for Images in CR3 format
+from ledsa.core.image_reading import get_exif_entry
 
 def set_working_dir():
     """
@@ -50,11 +49,10 @@ def get_files():
         with open(image, 'rb') as image_file:
             tag_datetime = 'DateTimeOriginal'
             tag_subsectime = 'SubSecTimeDigitized'
-            exif = exifread.process_file(image_file, details=False)
-            capture_date = exif[f"EXIF {tag_datetime}"].values
+            capture_date = get_exif_entry(image, tag_datetime)
             try:
                 # Try parsing with subsecond precision
-                subsec_time = exif[f"EXIF {tag_subsectime}"].values
+                subsec_time = get_exif_entry(image, tag_subsectime)
                 datetime_object = datetime.strptime(capture_date + "." + subsec_time, '%Y:%m:%d %H:%M:%S.%f')
             except:
                 # Fall back to second precision

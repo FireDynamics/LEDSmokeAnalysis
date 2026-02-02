@@ -115,7 +115,7 @@ def get_exif_entry(filename: str, tag: str) -> str:
     with open(filename, 'rb') as f:
         exif = exifread.process_file(f, details=False, stop_tag=tag)
     try:
-        return exif[tag].values
+        return exiv_data[full_tag].print()
     except KeyError:
         print("No EXIF metadata found")
         exit(1)
