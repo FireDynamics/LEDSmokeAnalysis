@@ -131,10 +131,15 @@ class ExtinctionCoefficients(ABC):
             path.mkdir(parents=True)
         path = path / f'extinction_coefficients_{self.solver}_channel_{self.experiment.channel}_{self.reference_property}_led_array_{self.experiment.led_array}.csv'
         header = str(self)
+        header += 'Experiment_Time[s],'
         header += 'layer0'
         for i in range(self.experiment.layers.amount - 1):
             header += f',layer{i + 1}'
-        np.savetxt(path, self.coefficients_per_image_and_layer, delimiter=',', header=header)
+            
+        experiment_times = _get_experiment_times_from_image_infos_file(self.average_images)
+        coefficients_per_time_and_layer = np.column_stack(
+            (experiment_times, self.coefficients_per_image_and_layer))
+        np.savetxt(path, coefficients_per_time_and_layer, delimiter=',', header=header)
 
     def calc_distance_array(self) -> np.ndarray:
         """

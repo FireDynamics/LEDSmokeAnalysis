@@ -68,9 +68,8 @@ class LedsaATestLibrary:
 
     @keyword
     def plot_input_vs_computed_extinction_coefficients(self, solver, first=1, last=4, led_array=0, channel=0):
-        filename = f'extinction_coefficients_{solver}_channel_{channel}_sum_col_val_led_array_{led_array}.csv'
-        extinction_coefficients_computed = (
-            np.loadtxt(os.path.join('analysis', 'extinction_coefficients', solver, filename), skiprows=5, delimiter=','))
+        time, extinction_coefficients_computed = load_extinction_coefficients_computed(solver, channel, led_array)
+
         for image_id in range(first, last + 1):
             extinction_coefficients_input = np.loadtxt(os.path.join('test_data', f'test_extinction_coefficients_input_{image_id}.csv'), delimiter=',')
             num_of_layers = extinction_coefficients_input.shape[0]
@@ -78,7 +77,7 @@ class LedsaATestLibrary:
             plt.plot(extinction_coefficients_computed[image_id - 1, :], range(num_of_layers, 0, -1), '.-', label='Computed')
             plt.xlabel('Extinction coefficient / $\mathrm{m}^{-1}$')
             plt.ylabel('Layer / -')
-            plt.title(f'Input vs Computed {solver} Extinction Coefficients - Image {image_id}')
+            plt.title(f'Input vs Computed {solver} Extinction Coefficients - Image {image_id}, t = {time[image_id - 1]} s')
             plt.xlim(-0.1, 0.6)
             plt.ylim(num_of_layers, 0)
             plt.grid(linestyle='--', alpha=0.5)
@@ -90,9 +89,7 @@ class LedsaATestLibrary:
 
     @keyword
     def check_input_vs_computed_extinction_coefficients(self, image_id, solver, led_array=0, channel=0):
-        filename = f'extinction_coefficients_{solver}_channel_{channel}_sum_col_val_led_array_{led_array}.csv'
-        extinction_coefficients_computed = (
-            np.loadtxt(os.path.join('analysis', 'extinction_coefficients',solver, filename), skiprows=5, delimiter=','))
+        _, extinction_coefficients_computed = load_extinction_coefficients_computed(solver, channel, led_array)
         extinction_coefficients_input = np.loadtxt(os.path.join('test_data', f'test_extinction_coefficients_input_{image_id}.csv'), delimiter=',')
         rmse = np.sqrt(
             np.mean((extinction_coefficients_input - extinction_coefficients_computed[int(image_id) - 1, :]) ** 2))
@@ -152,6 +149,16 @@ class LedsaATestLibrary:
         file.write("2,3,4\n1,2,7\n3,4,5")
         file.close()
 
+def load_extinction_coefficients_computed(solver, channel, led_array):
+    filename = f'extinction_coefficients_{solver}_channel_{channel}_sum_col_val_led_array_{led_array}.csv'
+    data = np.loadtxt(
+        os.path.join('analysis', 'extinction_coefficients', solver, filename),
+        skiprows=5,
+        delimiter=','
+    )
+    time = data[:, 0]
+    extinction_coefficients_computed = data[:, 1:]
+    return time, extinction_coefficients_computed
 
 def create_test_image(image_id, experiment):
     """ Creates three test images with black and gray pixels representing 3 leds and sets the exif data needed
