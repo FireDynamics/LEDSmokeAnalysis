@@ -219,3 +219,11 @@ def multiindex_series_to_nparray(multi_series: pd.Series) -> np.ndarray:
     for i in range(num_imgs):
         array[i] = multi_series.loc[i + 1]
     return array
+
+def _get_experiment_times_from_image_infos_file(average_images):
+    if average_images == True:
+        image_infos_file = 'analysis/image_infos_analysis_avg.csv'
+    else:
+        image_infos_file = 'analysis/image_infos_analysis.csv'
+    image_info_df = pd.read_csv(image_infos_file)
+    return image_info_df['Experiment_Time[s]'].to_numpy()
