@@ -1,0 +1,461 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ledsa.analysis.Experiment &mdash; LEDSmokeAnalysis 0.9.4 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/tables.css?v=aab0db92" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=c5ca06ca"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            LEDSmokeAnalysis
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">LEDSA:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../description.html">Description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_documentation.html">CLI Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ledsa.html">LEDSA Module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">Demo</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">LEDSmokeAnalysis</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ledsa.analysis.Experiment</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ledsa.analysis.Experiment</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+
+<div class="viewcode-block" id="Layer">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.Experiment.Layer">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Layer</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Represents a spatial layer with a bottom and top border.</span>
+
+<span class="sd">    :ivar bottom_border: The z-coordinate of the bottom border of the layer</span>
+<span class="sd">    :vartype bottom_border: float</span>
+<span class="sd">    :ivar top_border: The z-coordinate of the top border of the layer</span>
+<span class="sd">    :vartype top_border: float</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">bottom_border</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">top_border</span><span class="p">:</span> <span class="nb">float</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__contains__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Check if a given object&#39;s z-coordinate falls within this layer.</span>
+
+<span class="sd">        :param obj: The object to check</span>
+<span class="sd">        :type obj: object with attribute &#39;pos_z&#39;</span>
+<span class="sd">        :return: True if object is contained within the layer, False otherwise</span>
+<span class="sd">        :rtype: bool</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">bottom_border</span> <span class="o">&lt;=</span> <span class="n">obj</span><span class="o">.</span><span class="n">pos_z</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">top_border</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="kc">False</span></div>
+
+
+
+<div class="viewcode-block" id="Layers">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.Experiment.Layers">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Layers</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Represents a collection of spatial layers.</span>
+
+<span class="sd">    :ivar amount: The number of layers</span>
+<span class="sd">    :vartype amount: int</span>
+<span class="sd">    :ivar bottom_border: The z-coordinate of the bottom-most border of the layers</span>
+<span class="sd">    :vartype bottom_border: float</span>
+<span class="sd">    :ivar top_border: The z-coordinate of the top-most border of the layers</span>
+<span class="sd">    :vartype top_border: float</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">amount</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">bottom_border</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">top_border</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">layers</span><span class="p">:</span> <span class="p">[</span><span class="n">Layer</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">borders</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layers</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">borders</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bottom_border</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">top_border</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">amount</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">amount</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Layer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">borders</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">borders</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]))</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">layer</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="n">layer</span><span class="p">]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s1">&#39;num_of_layers: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">amount</span><span class="si">}</span><span class="s1">, bottom_border: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">bottom_border</span><span class="si">}</span><span class="s1">, top_border: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">top_border</span><span class="si">}</span><span class="se">\n</span><span class="s1">&#39;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s1">&#39;Layers(amount=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">amount</span><span class="si">}</span><span class="s1">, bottom_border=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">bottom_border</span><span class="si">}</span><span class="s1">, top_border=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">top_border</span><span class="si">}</span><span class="s1">)&#39;</span></div>
+
+
+
+<div class="viewcode-block" id="Camera">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.Experiment.Camera">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Camera</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Contains a camera&#39;s position in 3D space.</span>
+
+<span class="sd">    :ivar pos_x: The x-coordinate of the camera</span>
+<span class="sd">    :vartype pos_x: float</span>
+<span class="sd">    :ivar pos_y: The y-coordinate of the camera</span>
+<span class="sd">    :vartype pos_y: float</span>
+<span class="sd">    :ivar pos_z: The z-coordinate of the camera</span>
+<span class="sd">    :vartype pos_z: float</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">pos_x</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">pos_y</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">pos_z</span><span class="p">:</span> <span class="nb">float</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s1">&#39;Camera: (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">pos_x</span><span class="si">}</span><span class="s1">, </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">pos_y</span><span class="si">}</span><span class="s1">, </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">pos_z</span><span class="si">}</span><span class="s1">)</span><span class="se">\n</span><span class="s1">&#39;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s1">&#39;Camera(pos_x=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">pos_x</span><span class="si">}</span><span class="s1">, pos_y=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">pos_y</span><span class="si">}</span><span class="s1">, pos_z=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">pos_z</span><span class="si">}</span><span class="s1">)&#39;</span></div>
+
+
+
+<div class="viewcode-block" id="LED">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.Experiment.LED">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">LED</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Represents a LED light source in 3D space.</span>
+
+<span class="sd">    :ivar id: The identifier for the LED</span>
+<span class="sd">    :vartype id: int</span>
+<span class="sd">    :ivar pos_x: The x-coordinate of the LED</span>
+<span class="sd">    :vartype pos_x: float</span>
+<span class="sd">    :ivar pos_y: The y-coordinate of the LED</span>
+<span class="sd">    :vartype pos_y: float</span>
+<span class="sd">    :ivar pos_z: The z-coordinate of the LED</span>
+<span class="sd">    :vartype pos_z: float</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">pos_x</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">pos_y</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">pos_z</span><span class="p">:</span> <span class="nb">float</span></div>
+
+
+
+<div class="viewcode-block" id="Experiment">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.Experiment.Experiment">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">Experiment</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Represents an experimental setup involving layers, an LED array, and a camera.</span>
+
+<span class="sd">    :ivar layers: The spatial layers involved in the experiment.</span>
+<span class="sd">    :vartype layers: Layers</span>
+<span class="sd">    :ivar led_array: The identifier for the LED array.</span>
+<span class="sd">    :vartype led_array: int</span>
+<span class="sd">    :ivar camera: The camera involved in the experiment.</span>
+<span class="sd">    :vartype camera: Camera</span>
+<span class="sd">    :ivar leds: List of LED light sources.</span>
+<span class="sd">    :vartype leds: List[LED]</span>
+<span class="sd">    :ivar led_number: Number of LEDs on LED array.</span>
+<span class="sd">    :vartype led_number: int</span>
+<span class="sd">    :ivar path: File path for experiment data.</span>
+<span class="sd">    :vartype path: Path</span>
+<span class="sd">    :ivar channel: The camera channel to be analysed.</span>
+<span class="sd">    :vartype channel: int</span>
+<span class="sd">    :ivar merge_led_arrays: Whether to merge LED arrays.</span>
+<span class="sd">    :vartype merge_led_arrays: bool</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">layers</span><span class="p">:</span> <span class="n">Layers</span><span class="p">,</span> <span class="n">led_array</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">camera</span><span class="p">:</span> <span class="n">Camera</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">),</span> <span class="n">channel</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                 <span class="n">merge_led_arrays</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param layers: The spatial layers involved in the experiment.</span>
+<span class="sd">        :type layers: Layers</span>
+<span class="sd">        :param led_array: The identifier for the LED array.</span>
+<span class="sd">        :type led_array: int</span>
+<span class="sd">        :param camera: The camera involved in the experiment.</span>
+<span class="sd">        :type camera: Camera</span>
+<span class="sd">        :param path: The file path for experiment data, defaults to current directory.</span>
+<span class="sd">        :type path: Path, optional</span>
+<span class="sd">        :param channel: The camera channel to be analysed, defaults to 0.</span>
+<span class="sd">        :type channel: int, optional</span>
+<span class="sd">        :param merge_led_arrays: Whether to merge LED arrays, defaults to False.</span>
+<span class="sd">        :type merge_led_arrays: bool, optional</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_leds</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layers</span> <span class="o">=</span> <span class="n">layers</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">led_array</span> <span class="o">=</span> <span class="n">led_array</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">camera</span> <span class="o">=</span> <span class="n">camera</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">leds</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">path</span> <span class="o">=</span> <span class="n">path</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">channel</span> <span class="o">=</span> <span class="n">channel</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">merge_led_arrays</span> <span class="o">=</span> <span class="n">merge_led_arrays</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set_leds</span><span class="p">()</span>
+        <span class="k">except</span> <span class="ne">IOError</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">err</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;channel: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">channel</span><span class="si">}</span><span class="s1">, led_array: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">led_array</span><span class="si">}</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span> \
+              <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">layers</span><span class="p">)</span> <span class="o">+</span> \
+              <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">camera</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">out</span>
+
+<div class="viewcode-block" id="Experiment.calc_traversed_dist_per_layer">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.Experiment.Experiment.calc_traversed_dist_per_layer">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">calc_traversed_dist_per_layer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">led</span><span class="p">:</span> <span class="n">LED</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate the distance traversed by light from an LED through each layer to the camera.</span>
+
+<span class="sd">        :param led: The LED light source</span>
+<span class="sd">        :type led: LED</span>
+<span class="sd">        :return: Array of distances traversed in each layer</span>
+<span class="sd">        :rtype: np.ndarray</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">horizontal_dist</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">camera</span><span class="o">.</span><span class="n">pos_x</span> <span class="o">-</span> <span class="n">led</span><span class="o">.</span><span class="n">pos_x</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">camera</span><span class="o">.</span><span class="n">pos_y</span> <span class="o">-</span> <span class="n">led</span><span class="o">.</span><span class="n">pos_y</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="n">alpha</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arctan</span><span class="p">((</span><span class="n">led</span><span class="o">.</span><span class="n">pos_z</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">camera</span><span class="o">.</span><span class="n">pos_z</span><span class="p">)</span> <span class="o">/</span> <span class="n">horizontal_dist</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">alpha</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">distance_per_layer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calc_traversed_dist_in_plane</span><span class="p">(</span><span class="n">led</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">distance_per_layer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calc_traversed_dist_per_layer_with_nonzero_alpha</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">led</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">distance_calculation_is_consistent</span><span class="p">(</span><span class="n">distance_per_layer</span><span class="p">,</span> <span class="n">led</span><span class="p">):</span>
+            <span class="n">distance_per_layer</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="n">distance_per_layer</span></div>
+
+
+<div class="viewcode-block" id="Experiment.calc_traversed_dist_in_plane">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.Experiment.Experiment.calc_traversed_dist_in_plane">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">calc_traversed_dist_in_plane</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">led</span><span class="p">:</span> <span class="n">LED</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate the distance traversed by light from an LED in a plane to the camera.</span>
+
+<span class="sd">        :param led: The LED light source</span>
+<span class="sd">        :type led: LED</span>
+<span class="sd">        :return: Array of distances traversed in each layer within the plane</span>
+<span class="sd">        :rtype: np.ndarray</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">distance_per_layer</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">amount</span><span class="p">)</span>
+        <span class="n">horizontal_dist</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">camera</span><span class="o">.</span><span class="n">pos_x</span> <span class="o">-</span> <span class="n">led</span><span class="o">.</span><span class="n">pos_x</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">camera</span><span class="o">.</span><span class="n">pos_y</span> <span class="o">-</span> <span class="n">led</span><span class="o">.</span><span class="n">pos_y</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">amount</span><span class="p">):</span>
+            <span class="n">layer_bottom</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">borders</span><span class="p">[</span><span class="n">layer</span><span class="p">]</span>
+            <span class="n">layer_top</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">borders</span><span class="p">[</span><span class="n">layer</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">layer_bottom</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">camera</span><span class="o">.</span><span class="n">pos_z</span> <span class="o">&lt;</span> <span class="n">layer_top</span><span class="p">:</span>
+                <span class="n">distance_per_layer</span><span class="p">[</span><span class="n">layer</span><span class="p">]</span> <span class="o">=</span> <span class="n">horizontal_dist</span>
+        <span class="k">return</span> <span class="n">distance_per_layer</span></div>
+
+
+<div class="viewcode-block" id="Experiment.calc_traversed_dist_per_layer_with_nonzero_alpha">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.Experiment.Experiment.calc_traversed_dist_per_layer_with_nonzero_alpha">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">calc_traversed_dist_per_layer_with_nonzero_alpha</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">led</span><span class="p">:</span> <span class="n">LED</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate the distance traversed by light from an LED through each layer to the camera,</span>
+<span class="sd">        taking into account a non-zero angle of incidence.</span>
+
+<span class="sd">        :param alpha: The angle of incidence</span>
+<span class="sd">        :type alpha: float</span>
+<span class="sd">        :param led: The LED light source</span>
+<span class="sd">        :type led: LED</span>
+<span class="sd">        :return: Array of distances traversed in each layer considering the angle</span>
+<span class="sd">        :rtype: np.ndarray</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">distance_per_layer</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">amount</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">amount</span><span class="p">):</span>
+            <span class="n">layer_bottom</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">borders</span><span class="p">[</span><span class="n">layer</span><span class="p">]</span>
+            <span class="n">layer_top</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">borders</span><span class="p">[</span><span class="n">layer</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+            <span class="n">th</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calc_traversed_height_in_layer</span><span class="p">(</span><span class="n">led</span><span class="o">.</span><span class="n">pos_z</span><span class="p">,</span> <span class="n">layer_bottom</span><span class="p">,</span> <span class="n">layer_top</span><span class="p">)</span>
+            <span class="n">distance_per_layer</span><span class="p">[</span><span class="n">layer</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">th</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">alpha</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">distance_per_layer</span></div>
+
+
+<div class="viewcode-block" id="Experiment.calc_traversed_height_in_layer">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.Experiment.Experiment.calc_traversed_height_in_layer">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">calc_traversed_height_in_layer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">led_height</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">layer_bot</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">layer_top</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate the vertical distance (height) traversed by light from an LED within a layer.</span>
+
+<span class="sd">        :param led_height: The z-coordinate of the LED</span>
+<span class="sd">        :type led_height: float</span>
+<span class="sd">        :param layer_bot: The z-coordinate of the bottom of the layer</span>
+<span class="sd">        :type layer_bot: float</span>
+<span class="sd">        :param layer_top: The z-coordinate of the top of the layer</span>
+<span class="sd">        :type layer_top: float</span>
+<span class="sd">        :return: The vertical distance traversed within the layer</span>
+<span class="sd">        :rtype: float</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">top_end</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">camera</span><span class="o">.</span><span class="n">pos_z</span><span class="p">,</span> <span class="n">led_height</span><span class="p">)</span>
+        <span class="n">bot_end</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">camera</span><span class="o">.</span><span class="n">pos_z</span><span class="p">,</span> <span class="n">led_height</span><span class="p">)</span>
+        <span class="n">bot</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">bot_end</span><span class="p">,</span> <span class="n">layer_bot</span><span class="p">)</span>
+        <span class="n">top</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">top_end</span><span class="p">,</span> <span class="n">layer_top</span><span class="p">)</span>
+        <span class="n">h</span> <span class="o">=</span> <span class="n">top</span> <span class="o">-</span> <span class="n">bot</span>
+        <span class="k">if</span> <span class="n">h</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">h</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">return</span> <span class="n">h</span></div>
+
+
+<div class="viewcode-block" id="Experiment.distance_calculation_is_consistent">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.Experiment.Experiment.distance_calculation_is_consistent">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">distance_calculation_is_consistent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">distance_per_layer</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">led</span><span class="p">:</span> <span class="n">LED</span><span class="p">,</span> <span class="n">silent</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Check if the computed distance values for each layer are consistent with the Euclidean distance.</span>
+
+<span class="sd">        :param distance_per_layer: Array of distances traversed in each layer</span>
+<span class="sd">        :type distance_per_layer: np.ndarray</span>
+<span class="sd">        :param led: The LED light source</span>
+<span class="sd">        :type led: LED</span>
+<span class="sd">        :param silent: If set to False, prints out debugging information, defaults to True</span>
+<span class="sd">        :type silent: bool, optional</span>
+<span class="sd">        :return: True if computations are consistent, False otherwise</span>
+<span class="sd">        :rtype: bool</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">distance_per_layer</span><span class="p">)</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">camera</span><span class="o">.</span><span class="n">pos_x</span> <span class="o">-</span> <span class="n">led</span><span class="o">.</span><span class="n">pos_x</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span>
+                                                       <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">camera</span><span class="o">.</span><span class="n">pos_y</span> <span class="o">-</span> <span class="n">led</span><span class="o">.</span><span class="n">pos_y</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span>
+                                                       <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">camera</span><span class="o">.</span><span class="n">pos_z</span> <span class="o">-</span> <span class="n">led</span><span class="o">.</span><span class="n">pos_z</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mf">1e-6</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">silent</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;error in distance computation, camera_x: </span><span class="si">{}</span><span class="s2">, camera_y: </span><span class="si">{}</span><span class="s2"> camera_z: </span><span class="si">{}</span><span class="s2">, led_x: </span><span class="si">{}</span><span class="s2">, led_y: </span><span class="si">{}</span><span class="s2">, &quot;</span>
+                      <span class="s2">&quot;led_z: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">camera</span><span class="o">.</span><span class="n">pos_x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">camera</span><span class="o">.</span><span class="n">pos_y</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">camera</span><span class="o">.</span><span class="n">pos_z</span><span class="p">,</span> <span class="n">led</span><span class="o">.</span><span class="n">pos_x</span><span class="p">,</span> <span class="n">led</span><span class="o">.</span><span class="n">pos_y</span><span class="p">,</span> <span class="n">led</span><span class="o">.</span><span class="n">pos_z</span><span class="p">))</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+
+<div class="viewcode-block" id="Experiment.set_leds">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.Experiment.Experiment.set_leds">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">set_leds</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize the LED instances involved in the experiment based on loaded data.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">ids</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_led_ids</span><span class="p">()</span>
+        <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_led_positions</span><span class="p">(</span><span class="n">ids</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">ids</span><span class="p">)):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">leds</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">LED</span><span class="p">(</span><span class="n">ids</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">x</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">y</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">z</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_leds</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">ids</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Experiment.get_led_ids">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.Experiment.Experiment.get_led_ids">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_led_ids</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Retrieve the IDs for the LEDs involved in the experiment.</span>
+
+<span class="sd">        :return: Array of LED IDs</span>
+<span class="sd">        :rtype: np.ndarray</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">file_name_extension</span> <span class="o">=</span> <span class="s1">&#39;_merge&#39;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">merge_led_arrays</span> <span class="o">!=</span> <span class="s1">&#39;None&#39;</span> <span class="k">else</span> <span class="s1">&#39;&#39;</span>
+        <span class="n">file_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;led_array_indices_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">led_array</span><span class="si">:</span><span class="s1">03d</span><span class="si">}{</span><span class="n">file_name_extension</span><span class="si">}</span><span class="s1">.csv&#39;</span>
+        <span class="n">file_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="s1">&#39;analysis&#39;</span><span class="p">,</span> <span class="n">file_name</span><span class="p">)</span>
+
+        <span class="n">led_array_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">led_array_indices</span></div>
+
+
+<div class="viewcode-block" id="Experiment.get_led_positions">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.Experiment.Experiment.get_led_positions">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_led_positions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ids</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Retrieve the 3D positions for a set of LEDs.</span>
+
+<span class="sd">        :param ids: Array of LED identifiers</span>
+<span class="sd">        :type ids: np.ndarray</span>
+<span class="sd">        :return: List of arrays containing x, y, and z coordinates for each LED</span>
+<span class="sd">        :rtype: List[np.ndarray]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">file_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="s1">&#39;analysis&#39;</span><span class="p">,</span> <span class="s1">&#39;led_search_areas_with_coordinates.csv&#39;</span><span class="p">)</span>
+        <span class="n">search_areas_all</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">delimiter</span><span class="o">=</span><span class="s1">&#39;,&#39;</span><span class="p">)</span>
+        <span class="n">search_areas_led_array</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">led_id</span> <span class="ow">in</span> <span class="n">ids</span><span class="p">:</span>
+            <span class="n">search_areas_led_array</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">search_areas_all</span><span class="p">[</span><span class="n">led_id</span><span class="p">])</span>
+        <span class="n">search_areas_led_array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">search_areas_led_array</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">search_areas_led_array</span><span class="p">[:,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">search_areas_led_array</span><span class="p">[:,</span> <span class="mi">4</span><span class="p">],</span> <span class="n">search_areas_led_array</span><span class="p">[:,</span> <span class="mi">5</span><span class="p">]]</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, CCE.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
