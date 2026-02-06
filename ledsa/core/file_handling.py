@@ -224,29 +224,26 @@ def create_binary_data(channel: int) -> None:
     :param channel: Channel number for which binary data is to be created.
     :type channel: int
     """
-    config = ConfigData()
+    # TODO: Change general behaviour. The following approach crashes, if images don't start at 1 and image overflow is relevant
     columns = _get_column_names(channel)
 
     fit_params_list = []
 
     fit_params = pd.DataFrame(columns=columns)
 
-    # find time and fit parameter for every image
+    channel_dir = os.path.join('analysis', f'channel{channel}')
 
-    first_img_id = int(config['analyse_photo']['first_img_analysis_id'])
-    last_img_id = int(config['analyse_photo']['last_img_analysis_id'])
+    # Find all led_positions.csv files in channel directory
+    led_position_files = [f for f in os.listdir(channel_dir) if f.endswith('_led_positions.csv')]
+    led_position_files.sort(key=lambda x: int(x.split('_')[0]))  # Sort by image ID
+    number_of_images = len(led_position_files)
 
-    if config['DEFAULT']['num_img_overflow'] != 'None':
-        max_id = int(config['DEFAULT']['num_img_overflow'])
-    else:
-        max_id = 10 ** 7
-    number_of_images = (max_id + last_img_id - first_img_id) % max_id + 1
-    number_of_images //= int(config['analyse_photo']['num_skip_imgs']) + 1
     print('Loading fit parameters...')
     exception_counter = 0
-    for image_id in range(1, number_of_images + 1):
+    for file in led_position_files:
+        image_id = int(file.split('_')[0])
         try:
-            in_file_path = os.path.join('analysis', f'channel{channel}', f'{image_id}_led_positions.csv')
+            in_file_path = os.path.join(channel_dir, file)
             parameters = ledsa.core.file_handling.read_table(in_file_path, delim=',', silent=True)
         except (FileNotFoundError, IOError):
             fit_params_fragment = fit_params.append(

@@ -288,7 +288,7 @@ class Experiment:
         :return: Array of LED IDs
         :rtype: np.ndarray
         """
-        file_name_extension = '_merge' if self.merge_led_arrays != 'None' else ''
+        file_name_extension = '_merge' if self.merge_led_arrays != 'None' else '' # TODO: find better solution, None is string here
         file_name = f'led_array_indices_{self.led_array:03d}{file_name_extension}.csv'
         file_path = os.path.join(self.path, 'analysis', file_name)
 
