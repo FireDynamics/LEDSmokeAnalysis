@@ -26,6 +26,14 @@ class SimData:
         :type load_config_params: bool, optional
         :raises ValueError: If path_images is not provided when required for image analysis.
         """
+        self.led_params_timedelta = 0
+        self.ch0_ledparams_df = None
+        self.ch1_ledparams_df = None
+        self.ch2_ledparams_df = None
+        self.ch0_extcos = None
+        self.ch1_extcos = None
+        self.ch2_extcos = None
+        self.all_extco_df = None
         self.solver = None
         self.average_images = False
         self.camera_channels = [0]
@@ -68,18 +76,23 @@ class SimData:
             self.read_all()
         if remove_duplicates == True:
             self.remove_duplicate_heights()
-        else:
-            self.ch0_ledparams = None
-            self.ch1_ledparams = None
-            self.ch2_ledparams = None
-            self.ch0_extcos = None
-            self.ch1_extcos = None
-            self.ch2_extcos = None
 
     height_from_layer = lambda self, layer: -1 * (
             layer / self.n_layers * (self.top_layer_height - self.bottom_layer_height) - self.top_layer_height)
     layer_from_height = lambda self, height: int(
         (self.top_layer_height - height) / (self.top_layer_height - self.bottom_layer_height) * self.n_layers)
+
+    def get_closest_time(self, time):
+        """
+        Returns closest time index from self.all_extco_df
+
+        :param time: Target time to find closest match for
+        :type time: int or float
+        :return: Closest matching time index
+        :rtype: int
+        """
+        return self.all_extco_df.index[abs(self.all_extco_df.index - time).argmin()]
+        
 
     def set_timeshift(self, timedelta: int):
         """
@@ -88,7 +101,9 @@ class SimData:
         :param timedelta: Time shift in seconds.
         :type timedelta: int
         """
-        self.all_extco_df.index += timedelta
+        if self.all_extco_df is not None:
+            self.all_extco_df.index += timedelta
+        self.led_params_timedelta = timedelta
 
     def _get_ledparams_df_from_path(self, channel: int) -> pd.DataFrame:
         """
@@ -106,7 +121,7 @@ class SimData:
         table = pd.read_hdf(file, key='channel_values')
         time = self.image_info_df['Experiment_Time[s]'].astype(int)
         table = table.merge(time, left_on='img_id', right_index=True)
-        table.set_index(['Experiment_Time[s]', 'led_id'], inplace=True)
+        table.set_index(['Experiment_Time[s]'], inplace=True)
         self.led_heights = table['height']
         return table
 
@@ -294,6 +309,7 @@ class SimData:
             led_params = self.ch2_ledparams_df
         index = 'height' if yaxis == 'height' else 'led_id'
         led_params = led_params.reset_index().set_index(['Experiment_Time[s]', index])
+        led_params.index = led_params.index.set_levels(led_params.index.levels[0] + self.led_params_timedelta, level=0)
         ii = led_params[led_params['led_array_id'] == led_array_id][[param]]
         if n_ref == False:
             rel_i = ii
