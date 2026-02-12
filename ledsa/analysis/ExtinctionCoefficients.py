@@ -100,7 +100,8 @@ class ExtinctionCoefficients(ABC):
         """
         if len(self.distances_per_led_and_layer) == 0:
             self.distances_per_led_and_layer = self.calc_distance_array()
-            np.savetxt(f'distances_per_led_and_layer.txt', self.distances_per_led_and_layer)
+            file_name = f'led_array_{self.experiment.led_array}_distances_per_layer.txt'
+            np.savetxt(file_name, self.distances_per_led_and_layer)
         if self.calculated_img_data.empty:
             self.load_img_data()
         if self.ref_intensities.shape[0] == 0:
