@@ -137,12 +137,14 @@ class SimData:
             file_df = pd.read_csv(file, skiprows=4)
             channel = int(file.split('channel_')[1].split('_')[0])
             led_array = int(file.split('array_')[1].split('.')[0])
-            n_layers = len(file_df.columns)
             # For backwards compatibility, check if Experiment_Time[s] is already in the dataframe
-            if 'Experiment_Time[s]' not in file_df.columns:
+            if '# Experiment_Time[s]' not in file_df.columns:
                 time = self.image_info_df['Experiment_Time[s]'].astype(int)
                 file_df = file_df.merge(time, left_index=True, right_index=True)
+            else:
+                file_df.rename(columns={'# Experiment_Time[s]': 'Experiment_Time[s]'}, inplace=True) # TODO: this is just a workaround, do better...
             file_df.set_index('Experiment_Time[s]', inplace=True)
+            n_layers = len(file_df.columns)
             iterables = [[channel], [led_array], [i for i in range(0, n_layers)]]
             file_df.columns = pd.MultiIndex.from_product(iterables, names=["Channel", "LED Array", "Layer"])
             extco_list.append(file_df)
