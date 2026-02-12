@@ -68,10 +68,13 @@ class ExperimentData:
         num_layers = int(config_analysis['model_parameters']['num_layers'])
         self.channels = config_analysis.get_list_of_values('DEFAULT', 'camera_channels')
         self.num_ref_images = int(config_analysis['DEFAULT']['num_ref_images'])
-        self.weighting_preference = float(config_analysis['DEFAULT']['weighting_preference'])
-        self.weighting_curvature = float(config_analysis['DEFAULT']['weighting_curvature'])
-        self.lambda_reg = float(config_analysis['DEFAULT']['lambda_reg'])
-        self.num_iterations = int(config_analysis['DEFAULT']['num_iterations'])
+        self.solver = config_analysis['DEFAULT']['solver']
+        if self.solver == 'nonlinear':
+            self.weighting_preference = float(config_analysis['DEFAULT']['weighting_preference'])
+            self.weighting_curvature = float(config_analysis['DEFAULT']['weighting_curvature'])
+            self.num_iterations = int(config_analysis['DEFAULT']['num_iterations'])
+        elif self.solver == 'linear':
+            self.lambda_reg = float(config_analysis['DEFAULT']['lambda_reg'])
         self.reference_property = config_analysis['DEFAULT']['reference_property']
         self.solver = config_analysis['DEFAULT']['solver']
 
