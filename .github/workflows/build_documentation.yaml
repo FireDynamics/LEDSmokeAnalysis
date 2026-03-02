@@ -27,9 +27,8 @@ jobs:
       # 3. Install Sphinx and its themes/extensions
       - name: Install dependencies
         run: |
-          pip install numpy
-          pip install sphinx sphinx_rtd_theme
-          pip install sphinx-copybutton
+          pip install sphinx sphinx_rtd_theme sphinx-copybutton
+          pip install -e .
 
       # 4. Build the HTML documentation
       - name: Build Sphinx docs
