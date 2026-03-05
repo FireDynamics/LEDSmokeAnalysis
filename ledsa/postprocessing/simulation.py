@@ -77,10 +77,10 @@ class SimData:
         if remove_duplicates == True:
             self.remove_duplicate_heights()
 
-    height_from_layer = lambda self, layer: -1 * (
-            layer / self.n_layers * (self.top_layer_height - self.bottom_layer_height) - self.top_layer_height)
+    height_from_layer = lambda self, layer: (
+            layer / self.n_layers * (self.top_layer_height - self.bottom_layer_height) + self.bottom_layer_height)
     layer_from_height = lambda self, height: int(
-        (self.top_layer_height - height) / (self.top_layer_height - self.bottom_layer_height) * self.n_layers)
+        (height - self.bottom_layer_height) / (self.top_layer_height - self.bottom_layer_height) * self.n_layers)
 
     def get_closest_time(self, time):
         """
