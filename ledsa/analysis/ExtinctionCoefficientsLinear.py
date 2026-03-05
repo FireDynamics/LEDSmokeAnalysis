@@ -87,7 +87,7 @@ class ExtinctionCoefficientsLinear(ExtinctionCoefficients):
         sigmas, residuals = nnls(A_aug, b_aug)
         # sigmas, residuals, rank, s = np.linalg.lstsq(A_aug, b_aug, rcond=None)
 
-        return np.flip(sigmas)
+        return sigmas
 
     # For investigation
     # import os
