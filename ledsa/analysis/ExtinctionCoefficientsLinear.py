@@ -51,11 +51,11 @@ class ExtinctionCoefficientsLinear(ExtinctionCoefficients):
         """
         # Avoid log(0) by clipping intensities to a small positive value
         eps = 1e-10
-        target = np.clip(rel_intensities, eps, 1.0)
+        rel_intensities_clipped = np.clip(rel_intensities, eps, 1.0)
 
         # Compute the optical depth vector: b = -ln(I_e/I_0)
         # This linearizes the Beer-Lambert law: I_e/I_0 = exp(-sum(sigma_i * distance_i))
-        optical_depths = -np.log(target)
+        optical_depths = -np.log(rel_intensities_clipped)
 
         # Get dimensions of the problem
         n_leds, n_layers = self.distances_per_led_and_layer.shape
@@ -85,8 +85,9 @@ class ExtinctionCoefficientsLinear(ExtinctionCoefficients):
 
         # Solve the non-negative least squares problem: min ||A_aug*x - b_aug||^2 subject to x >= 0
         sigmas, residuals = nnls(A_aug, b_aug)
+        # sigmas, residuals, rank, s = np.linalg.lstsq(A_aug, b_aug, rcond=None)
 
-        return sigmas
+        return np.flip(sigmas)
 
     # For investigation
     # import os
