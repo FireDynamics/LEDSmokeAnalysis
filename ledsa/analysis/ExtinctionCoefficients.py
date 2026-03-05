@@ -152,7 +152,8 @@ class ExtinctionCoefficients(ABC):
         """
         distances = np.zeros((self.experiment.num_leds, self.experiment.layers.amount))
         count = 0
-        for led in self.experiment.leds:
+        # self.experiment.leds need to be reversed to build the distance array the right way
+        for led in reversed(self.experiment.leds):
             d = self.experiment.calc_traversed_dist_per_layer(led)
             distances[count] = d
             count += 1
