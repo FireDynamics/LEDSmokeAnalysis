@@ -73,13 +73,13 @@ class LedsaATestLibrary:
         for image_id in range(first, last + 1):
             extinction_coefficients_input = np.loadtxt(os.path.join('test_data', f'test_extinction_coefficients_input_{image_id}.csv'), delimiter=',')
             num_of_layers = extinction_coefficients_input.shape[0]
-            plt.plot(extinction_coefficients_input, range(num_of_layers, 0, -1), '.-', label='Input')
-            plt.plot(extinction_coefficients_computed[image_id - 1, :], range(num_of_layers, 0, -1), '.-', label='Computed')
+            plt.plot(extinction_coefficients_input, range(0, num_of_layers), '.-', label='Input')
+            plt.plot(extinction_coefficients_computed[image_id - 1, :], range(0, num_of_layers), '.-', label='Computed')
             plt.xlabel('Extinction coefficient / $\mathrm{m}^{-1}$')
             plt.ylabel('Layer / -')
             plt.title(f'Input vs Computed {solver} Extinction Coefficients - Image {image_id}, t = {time[image_id - 1]} s')
             plt.xlim(-0.1, 0.6)
-            plt.ylim(num_of_layers, 0)
+            plt.ylim(0, num_of_layers)
             plt.grid(linestyle='--', alpha=0.5)
             plt.legend()
             if not os.path.exists('results'):
@@ -172,7 +172,9 @@ def create_test_image(image_id, experiment):
 
     num_of_leds = len(experiment.leds)
     transmissions = experiment.calc_all_led_transmissions()
-    img_array = create_img_array(num_of_leds, transmissions)
+
+    # Reverse transmissions because images are created from top down
+    img_array = create_img_array(num_of_leds, list(reversed(transmissions)))
     img = Image.fromarray(img_array, 'RGB')
 
     # Save image without EXIF data
