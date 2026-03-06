@@ -111,23 +111,40 @@ class ConfigDataAnalysis(cp.ConfigParser):
             self.write(configfile)
         print('config_analysis.ini saved')
 
-    def get_list_of_values(self, section:str, option:str, dtype=int) -> None:
+    def get_list_of_values(self, section: str, option: str, dtype=int, fallback=None):
         """
-        Returns a list of values of a specified dtype from a given section and option.
+        Return a list[dtype] for 'section'/'option'.
+        - Missing section/option → warn and return fallback
+        - Value 'None' or empty → return None
+        - Values are split on whitespace
+        """
+        if not self.has_option(section, option):
+            print(
+                "Config option missing: [%s].%s — using fallback=%r",
+                section, option, fallback
+            )
+            return fallback
 
-        :param section: Section in the configuration file.
-        :type section: str
-        :param option: Option under the specified section.
-        :type option: str
-        :param dtype: Data type of the values to be returned. Defaults to int.
-        :type dtype: type
-        :return: List of values or None if the option's value is 'None'.
-        :rtype: list or None
-        """
-        if self[section][option] == 'None':
+        raw = self.get(section, option, fallback=None)
+        if raw is None:
+            print(
+                "Config option unreadable: [%s].%s — using fallback=%r",
+                section, option, fallback
+            )
+            return fallback
+
+        raw = raw.strip()
+        if raw.lower() == 'none' or raw == '':
             return None
-        values = [dtype(i) for i in self[section][option].split()]
-        return values
+
+        try:
+            return [dtype(item) for item in raw.split()]
+        except Exception as e:
+            print(
+                "Config parse error for [%s].%s=%r (%s) — using fallback=%r",
+                section, option, raw, e, fallback
+            )
+            return fallback
 
     def in_camera_channels(self) -> None:
         """
