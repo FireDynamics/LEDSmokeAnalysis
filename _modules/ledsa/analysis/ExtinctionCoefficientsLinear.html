@@ -1,0 +1,265 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ledsa.analysis.ExtinctionCoefficientsLinear &mdash; LEDSmokeAnalysis 0.9.7 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/tables.css?v=aab0db92" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=f2328ca0"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            LEDSmokeAnalysis
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">LEDSA:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../description.html">Description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_documentation.html">CLI Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ledsa.html">LEDSA Module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">Demo</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">LEDSmokeAnalysis</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ledsa.analysis.ExtinctionCoefficientsLinear</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ledsa.analysis.ExtinctionCoefficientsLinear</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.optimize</span><span class="w"> </span><span class="kn">import</span> <span class="n">nnls</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ledsa.analysis.Experiment</span><span class="w"> </span><span class="kn">import</span> <span class="n">Experiment</span><span class="p">,</span> <span class="n">Layers</span><span class="p">,</span> <span class="n">Camera</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ledsa.analysis.ExtinctionCoefficients</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExtinctionCoefficients</span>
+
+<div class="viewcode-block" id="ExtinctionCoefficientsLinear">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.ExtinctionCoefficientsLinear.ExtinctionCoefficientsLinear">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ExtinctionCoefficientsLinear</span><span class="p">(</span><span class="n">ExtinctionCoefficients</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    ExtinctionCoefficientsLinear computes the extinction coefficients by</span>
+<span class="sd">    linearizing the Beer–Lambert law. Specifically, using the transformation:</span>
+
+<span class="sd">        -ln(I_e / I_0) = sum_i (sigma_i * Delta s_{i})</span>
+
+<span class="sd">    the problem is recast as a linear least squares system that can be solved</span>
+<span class="sd">    efficiently. A Tikhonov regularization is added via a finite-difference operator</span>
+<span class="sd">    to enforce smoothness in the solution.</span>
+
+<span class="sd">    :ivar solver: Type of solver (linear or nonlinear).</span>
+<span class="sd">    :vartype solver: str</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">experiment</span><span class="p">,</span> <span class="n">reference_property</span><span class="o">=</span><span class="s1">&#39;sum_col_val&#39;</span><span class="p">,</span> <span class="n">num_ref_imgs</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">average_images</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">ref_img_indices</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">lambda_reg</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">,):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize the ExtinctionCoefficientsLinear object.</span>
+
+<span class="sd">        :param experiment: Object representing the experimental setup.</span>
+<span class="sd">        :type experiment: Experiment</span>
+<span class="sd">        :param reference_property: Reference property to be analyzed.</span>
+<span class="sd">        :type reference_property: str</span>
+<span class="sd">        :param num_ref_imgs: Number of reference images.</span>
+<span class="sd">        :type num_ref_imgs: int</span>
+<span class="sd">        :param ref_img_indices: Indices of reference images to use. If None, use num_ref_imgs.</span>
+<span class="sd">        :type ref_img_indices: list[int] or None</span>
+<span class="sd">        :param average_images: Flag to determine if intensities are computed as an average from consecutive images.</span>
+<span class="sd">        :type average_images: bool</span>
+<span class="sd">        :param lambda_reg: Regularization parameter for Tikhonov regularization.</span>
+<span class="sd">        :type lambda_reg: float</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">experiment</span><span class="p">,</span> <span class="n">reference_property</span><span class="p">,</span> <span class="n">num_ref_imgs</span><span class="p">,</span> <span class="n">ref_img_indices</span><span class="p">,</span> <span class="n">average_images</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lambda_reg</span> <span class="o">=</span> <span class="n">lambda_reg</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">solver</span> <span class="o">=</span> <span class="s1">&#39;linear&#39;</span>
+
+<div class="viewcode-block" id="ExtinctionCoefficientsLinear.calc_coefficients_of_img">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.ExtinctionCoefficientsLinear.ExtinctionCoefficientsLinear.calc_coefficients_of_img">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">calc_coefficients_of_img</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rel_intensities</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate the extinction coefficients for a single image using a linearized approach.</span>
+<span class="sd">        This method solves the linear system derived from the Beer-Lambert law using</span>
+<span class="sd">        non-negative least squares with Tikhonov regularization.</span>
+
+<span class="sd">        :param rel_intensities: Array of relative (normalized) LED intensities (I_e/I_0).</span>
+<span class="sd">        :type rel_intensities: np.ndarray</span>
+<span class="sd">        :return: Array of the computed extinction coefficients (sigmas).</span>
+<span class="sd">        :rtype: np.ndarray</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Avoid log(0) by clipping intensities to a small positive value</span>
+        <span class="n">eps</span> <span class="o">=</span> <span class="mf">1e-10</span>
+        <span class="n">rel_intensities_clipped</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">rel_intensities</span><span class="p">,</span> <span class="n">eps</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+
+        <span class="c1"># Compute the optical depth vector: b = -ln(I_e/I_0)</span>
+        <span class="c1"># This linearizes the Beer-Lambert law: I_e/I_0 = exp(-sum(sigma_i * distance_i))</span>
+        <span class="n">optical_depths</span> <span class="o">=</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">rel_intensities_clipped</span><span class="p">)</span>
+
+        <span class="c1"># Get dimensions of the problem</span>
+        <span class="n">n_leds</span><span class="p">,</span> <span class="n">n_layers</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">distances_per_led_and_layer</span><span class="o">.</span><span class="n">shape</span>
+
+        <span class="c1"># Build finite-difference matrix L for second derivative (curvature penalty)</span>
+        <span class="c1"># This matrix approximates the second derivative and is used for regularization</span>
+        <span class="c1"># to enforce smoothness in the solution</span>
+        <span class="k">if</span> <span class="n">n_layers</span> <span class="o">&gt;=</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="n">L</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n_layers</span> <span class="o">-</span> <span class="mi">2</span><span class="p">,</span> <span class="n">n_layers</span><span class="p">))</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_layers</span> <span class="o">-</span> <span class="mi">2</span><span class="p">):</span>
+                <span class="c1"># Coefficients for second-order finite difference approximation</span>
+                <span class="n">L</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+                <span class="n">L</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">2</span>
+                <span class="n">L</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Fallback: use an identity if there aren&#39;t enough layers</span>
+            <span class="n">L</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="n">n_layers</span><span class="p">)</span>
+
+        <span class="n">sqrt_lambda</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lambda_reg</span><span class="p">)</span>
+
+        <span class="c1"># Augment the system with regularization</span>
+        <span class="c1"># A_aug = [A; sqrt(lambda)*L], where A is the distance matrix</span>
+        <span class="n">A_aug</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">distances_per_led_and_layer</span><span class="p">,</span> <span class="n">sqrt_lambda</span> <span class="o">*</span> <span class="n">L</span><span class="p">))</span>
+
+        <span class="c1"># Augment the right-hand side: b_aug = [b; 0]</span>
+        <span class="n">b_aug</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">((</span><span class="n">optical_depths</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">L</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])))</span>
+
+        <span class="c1"># Solve the non-negative least squares problem: min ||A_aug*x - b_aug||^2 subject to x &gt;= 0</span>
+        <span class="n">sigmas</span><span class="p">,</span> <span class="n">residuals</span> <span class="o">=</span> <span class="n">nnls</span><span class="p">(</span><span class="n">A_aug</span><span class="p">,</span> <span class="n">b_aug</span><span class="p">)</span>
+        <span class="c1"># sigmas, residuals, rank, s = np.linalg.lstsq(A_aug, b_aug, rcond=None)</span>
+
+        <span class="k">return</span> <span class="n">sigmas</span></div>
+</div>
+
+
+    <span class="c1"># For investigation</span>
+    <span class="c1"># import os</span>
+
+    <span class="c1"># def calc_coefficients_of_img(self, rel_intensities: np.ndarray) -&gt; np.ndarray:</span>
+    <span class="c1">#     &quot;&quot;&quot;</span>
+    <span class="c1">#     Calculate the extinction coefficients for a single image using a linearized approach.</span>
+    <span class="c1">#     This method solves the linear system derived from the Beer-Lambert law using</span>
+    <span class="c1">#     non-negative least squares with Tikhonov regularization.</span>
+    <span class="c1">#</span>
+    <span class="c1">#     :param rel_intensities: Array of relative (normalized) LED intensities (I_e/I_0).</span>
+    <span class="c1">#     :type rel_intensities: np.ndarray</span>
+    <span class="c1">#     :return: Array of the computed extinction coefficients (sigmas).</span>
+    <span class="c1">#     :rtype: np.ndarray</span>
+    <span class="c1">#     &quot;&quot;&quot;</span>
+    <span class="c1">#     # Avoid log(0) by clipping intensities to a small positive value</span>
+    <span class="c1">#     eps = 1e-10</span>
+    <span class="c1">#     target = np.clip(rel_intensities, eps, 1.0)</span>
+    <span class="c1">#</span>
+    <span class="c1">#     # Compute the optical depth vector: b = -ln(I_e/I_0)</span>
+    <span class="c1">#     # This linearizes the Beer-Lambert law: I_e/I_0 = exp(-sum(sigma_i * distance_i))</span>
+    <span class="c1">#     optical_depths = -np.log(target)</span>
+    <span class="c1">#</span>
+    <span class="c1">#     # Get dimensions of the problem</span>
+    <span class="c1">#     n_leds, n_layers = self.distances_per_led_and_layer.shape</span>
+    <span class="c1">#</span>
+    <span class="c1">#     # Build finite-difference matrix L for second derivative (curvature penalty)</span>
+    <span class="c1">#     # This matrix approximates the second derivative and is used for regularization</span>
+    <span class="c1">#     # to enforce smoothness in the solution</span>
+    <span class="c1">#     if n_layers &gt;= 3:</span>
+    <span class="c1">#         L = np.zeros((n_layers - 2, n_layers))</span>
+    <span class="c1">#         for i in range(n_layers - 2):</span>
+    <span class="c1">#             # Coefficients for second-order finite difference approximation</span>
+    <span class="c1">#             L[i, i] = 1</span>
+    <span class="c1">#             L[i, i + 1] = -2</span>
+    <span class="c1">#             L[i, i + 2] = 1</span>
+    <span class="c1">#     else:</span>
+    <span class="c1">#         # Fallback: use an identity if there aren&#39;t enough layers</span>
+    <span class="c1">#         L = np.eye(n_layers)</span>
+    <span class="c1">#</span>
+    <span class="c1">#     # Interate lambda_reg from 1e-4 to 1</span>
+    <span class="c1">#     logspace = np.logspace(-4, 0, 50)</span>
+    <span class="c1">#</span>
+    <span class="c1">#     os.chdir(&#39;/Users/kristian/Documents/NextVis/25_ledsa/lambda_iteration&#39;)</span>
+    <span class="c1">#     for lambda_reg in logspace:</span>
+    <span class="c1">#         sqrt_lambda = np.sqrt(lambda_reg)</span>
+    <span class="c1">#</span>
+    <span class="c1">#         # Augment the system with regularization</span>
+    <span class="c1">#         # A_aug = [A; sqrt(lambda)*L], where A is the distance matrix</span>
+    <span class="c1">#         A_aug = np.vstack((self.distances_per_led_and_layer, sqrt_lambda * L))</span>
+    <span class="c1">#</span>
+    <span class="c1">#         # Augment the right-hand side: b_aug = [b; 0]</span>
+    <span class="c1">#         b_aug = np.hstack((optical_depths, np.zeros(L.shape[0])))</span>
+    <span class="c1">#</span>
+    <span class="c1">#         # Solve the non-negative least squares problem: min ||A_aug*x - b_aug||^2 subject to x &gt;= 0</span>
+    <span class="c1">#         sigmas, residuals = nnls(A_aug, b_aug)</span>
+    <span class="c1">#         np.savetxt(f&#39;lambda_{lambda_reg:.4f}.txt&#39;, sigmas)</span>
+    <span class="c1">#     return sigmas</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, CCE.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

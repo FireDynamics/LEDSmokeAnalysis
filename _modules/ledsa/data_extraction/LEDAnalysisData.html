@@ -1,0 +1,203 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ledsa.data_extraction.LEDAnalysisData &mdash; LEDSmokeAnalysis 0.9.7 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/tables.css?v=aab0db92" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=f2328ca0"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            LEDSmokeAnalysis
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">LEDSA:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../description.html">Description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_documentation.html">CLI Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ledsa.html">LEDSA Module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">Demo</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">LEDSmokeAnalysis</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ledsa.data_extraction.LEDAnalysisData</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ledsa.data_extraction.LEDAnalysisData</h1><div class="highlight"><pre>
+<div class="viewcode-block" id="LEDAnalysisData">
+<a class="viewcode-back" href="../../../data_extraction.html#ledsa.data_extraction.LEDAnalysisData.LEDAnalysisData">[docs]</a>
+<span></span><span class="k">class</span><span class="w"> </span><span class="nc">LEDAnalysisData</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Represents LED analysis data, including its physical properties and fit results.</span>
+
+<span class="sd">    :ivar led_id: The ID of the LED.</span>
+<span class="sd">    :vartype led_id: int</span>
+<span class="sd">    :ivar led_array: The array index the LED belongs to.</span>
+<span class="sd">    :vartype led_array: int</span>
+<span class="sd">    :ivar fit_leds: Indicates whether to fit LEDs or not.</span>
+<span class="sd">    :vartype fit_leds: bool</span>
+<span class="sd">    :ivar led_center_x: X-coordinate of LED&#39;s center.</span>
+<span class="sd">    :vartype led_center_x: float</span>
+<span class="sd">    :ivar led_center_y: Y-coordinate of LED&#39;s center.</span>
+<span class="sd">    :vartype led_center_y: float</span>
+<span class="sd">    :ivar mean_color_value: Mean color value of the LED over the search area.</span>
+<span class="sd">    :vartype mean_color_value: float</span>
+<span class="sd">    :ivar sum_color_value: Integrated color value of the LED over the search area.</span>
+<span class="sd">    :vartype sum_color_value: float</span>
+<span class="sd">    :ivar max_color_value: Maximum color value observed for the LED.</span>
+<span class="sd">    :vartype max_color_value: float</span>
+<span class="sd">    :ivar fit_results: Fit results after fitting.</span>
+<span class="sd">    :vartype fit_results: OptimizeResult</span>
+<span class="sd">    :ivar fit_time: Time taken for fitting.</span>
+<span class="sd">    :vartype fit_time: float</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">led_id</span><span class="p">,</span> <span class="n">led_array</span><span class="p">,</span> <span class="n">fit_leds</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initializes the LEDAnalysisData instance.</span>
+
+<span class="sd">        :param led_id: ID of the LED.</span>
+<span class="sd">        :type led_id: int</span>
+<span class="sd">        :param led_array: Array index the LED belongs to.</span>
+<span class="sd">        :type led_array: int</span>
+<span class="sd">        :param fit_leds: Indicates whether to fit LEDs or not.</span>
+<span class="sd">        :type fit_leds: bool</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">led_id</span> <span class="o">=</span> <span class="n">led_id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">led_array</span> <span class="o">=</span> <span class="n">led_array</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">led_center_x</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">led_center_y</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mean_color_value</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sum_color_value</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_color_value</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fit_leds</span> <span class="o">=</span> <span class="n">fit_leds</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fit_results</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fit_time</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Generates a string representation of the LED analysis data with optional added output parameters of fitting.</span>
+
+<span class="sd">        :return: String representation of all LED data.</span>
+<span class="sd">        :rtype: str</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">out_str</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_main_data_string</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fit_leds</span><span class="p">:</span>
+            <span class="n">out_str</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_fit_data_string</span><span class="p">()</span>
+        <span class="n">out_str</span> <span class="o">+=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="k">return</span> <span class="n">out_str</span>
+
+<div class="viewcode-block" id="LEDAnalysisData.get_main_data_string">
+<a class="viewcode-back" href="../../../data_extraction.html#ledsa.data_extraction.LEDAnalysisData.LEDAnalysisData.get_main_data_string">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_main_data_string</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Provides the main LED data as a formatted string.</span>
+
+<span class="sd">        :return: Formatted string containing led_id, led_array and pixel values.</span>
+<span class="sd">        :rtype: str</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">out_str</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">led_id</span><span class="si">:</span><span class="s1">4d</span><span class="si">}</span><span class="s1">,</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">led_array</span><span class="si">:</span><span class="s1">2d</span><span class="si">}</span><span class="s1">,&#39;</span>
+        <span class="n">out_str</span> <span class="o">+=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">sum_color_value</span><span class="si">:</span><span class="s1">10.4e</span><span class="si">}</span><span class="s1">,</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">mean_color_value</span><span class="si">:</span><span class="s1">10.4e</span><span class="si">}</span><span class="s1">,</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">max_color_value</span><span class="si">}</span><span class="s1">&#39;</span>
+        <span class="k">return</span> <span class="n">out_str</span></div>
+
+
+<div class="viewcode-block" id="LEDAnalysisData.get_fit_data_string">
+<a class="viewcode-back" href="../../../data_extraction.html#ledsa.data_extraction.LEDAnalysisData.LEDAnalysisData.get_fit_data_string">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_fit_data_string</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Provides the fitted LED data as a formatted string.</span>
+
+<span class="sd">        :return: Formatted string of fitted LED data.</span>
+<span class="sd">        :rtype: str</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">dx</span><span class="p">,</span> <span class="n">dy</span><span class="p">,</span> <span class="n">A</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">wx</span><span class="p">,</span> <span class="n">wy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fit_results</span><span class="o">.</span><span class="n">x</span>
+
+        <span class="n">out_str</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">led_center_x</span><span class="si">:</span><span class="s1">10.4e</span><span class="si">}</span><span class="s1">, </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">led_center_y</span><span class="si">:</span><span class="s1">10.4e</span><span class="si">}</span><span class="s1">,&#39;</span>
+        <span class="n">out_str</span> <span class="o">+=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">x</span><span class="si">:</span><span class="s1">10.4e</span><span class="si">}</span><span class="s1">,</span><span class="si">{</span><span class="n">y</span><span class="si">:</span><span class="s1">10.4e</span><span class="si">}</span><span class="s1">,</span><span class="si">{</span><span class="n">dx</span><span class="si">:</span><span class="s1">10.4e</span><span class="si">}</span><span class="s1">,</span><span class="si">{</span><span class="n">dy</span><span class="si">:</span><span class="s1">10.4e</span><span class="si">}</span><span class="s1">,</span><span class="si">{</span><span class="n">A</span><span class="si">:</span><span class="s1">10.4e</span><span class="si">}</span><span class="s1">,&#39;</span>
+        <span class="n">out_str</span> <span class="o">+=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">alpha</span><span class="si">:</span><span class="s1">10.4e</span><span class="si">}</span><span class="s1">,</span><span class="si">{</span><span class="n">wx</span><span class="si">:</span><span class="s1">10.4e</span><span class="si">}</span><span class="s1">,</span><span class="si">{</span><span class="n">wy</span><span class="si">:</span><span class="s1">10.4e</span><span class="si">}</span><span class="s1">,</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">fit_results</span><span class="o">.</span><span class="n">success</span><span class="si">:</span><span class="s1">12d</span><span class="si">}</span><span class="s1">,</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">fit_results</span><span class="o">.</span><span class="n">fun</span><span class="si">:</span><span class="s1">10.4e</span><span class="si">}</span><span class="s1">,&#39;</span>
+        <span class="n">out_str</span> <span class="o">+=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">fit_results</span><span class="o">.</span><span class="n">nfev</span><span class="si">:</span><span class="s1">9d</span><span class="si">}</span><span class="s1">,</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">fit_time</span><span class="si">:</span><span class="s1">10.4e</span><span class="si">}</span><span class="s1">&#39;</span>
+        <span class="k">return</span> <span class="n">out_str</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, CCE.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
