@@ -42,7 +42,6 @@ class SimData:
         self.search_area_radius = None
         self.path_images = None
 
-
         if load_config_params:
             os.chdir(path_simulation)
             # Read configuration from config.ini and config_analysis.ini
@@ -77,10 +76,38 @@ class SimData:
         if remove_duplicates == True:
             self.remove_duplicate_heights()
 
-    height_from_layer = lambda self, layer: -1 * (
-            layer / self.n_layers * (self.top_layer_height - self.bottom_layer_height) - self.top_layer_height)
+    height_from_layer = lambda self, layer: (
+            layer / self.n_layers * (self.top_layer_height - self.bottom_layer_height) + self.bottom_layer_height)
     layer_from_height = lambda self, height: int(
-        (self.top_layer_height - height) / (self.top_layer_height - self.bottom_layer_height) * self.n_layers)
+        (height - self.bottom_layer_height) / (self.top_layer_height - self.bottom_layer_height) * self.n_layers)
+
+    def _apply_moving_average(self, df: pd.DataFrame, window: int, smooth: str = 'ma') -> pd.DataFrame:
+        """
+        Applies a moving average or median smoothing to a DataFrame over time.
+
+        If window is 1, the raw data is returned without any smoothing. Otherwise, a centered
+        rolling window is applied using either mean or median. The window is centered by shifting
+        the result by half the window size, so that the smoothed value at time t is computed from
+        an equal number of past and future values.
+
+        :param df: The input DataFrame to smooth. The index is assumed to represent time steps.
+        :type df: pd.DataFrame
+        :param window: The number of time steps to include in the rolling window. A value of 1
+            returns the raw data unchanged.
+        :type window: int
+        :param smooth: The smoothing method to apply. Use 'ma' for moving average (mean) or
+            'median' for rolling median. Defaults to 'ma'.
+        :type smooth: str, optional
+        :return: A DataFrame with the same shape as the input, either smoothed or unchanged if
+            window is 1.
+        :rtype: pd.DataFrame
+        """
+        if window == 1:
+            return df
+        if smooth == 'median':
+            return df.rolling(window=window, closed='right').median().shift(-int(window / 2) + 1)
+        else:
+            return df.rolling(window=window, closed='right').mean().shift(-int(window / 2) + 1)
 
     def get_closest_time(self, time):
         """
@@ -92,7 +119,6 @@ class SimData:
         :rtype: int
         """
         return self.all_extco_df.index[abs(self.all_extco_df.index - time).argmin()]
-        
 
     def set_timeshift(self, timedelta: int):
         """
@@ -142,7 +168,8 @@ class SimData:
                 time = self.image_info_df['Experiment_Time[s]'].astype(int)
                 file_df = file_df.merge(time, left_index=True, right_index=True)
             else:
-                file_df.rename(columns={'# Experiment_Time[s]': 'Experiment_Time[s]'}, inplace=True) # TODO: this is just a workaround, do better...
+                file_df.rename(columns={'# Experiment_Time[s]': 'Experiment_Time[s]'},
+                               inplace=True)  # TODO: this is just a workaround, do better...
             file_df.set_index('Experiment_Time[s]', inplace=True)
             n_layers = len(file_df.columns)
             iterables = [[channel], [led_array], [i for i in range(0, n_layers)]]
@@ -187,7 +214,8 @@ class SimData:
         :type time: int
         :param yaxis: Determines whether the y-axis of the returned DataFrame should represent 'layer' or 'height'. Defaults to 'layer'.
         :type yaxis: str, optional
-        :param window: The window size for the moving average or median smoothing. Defaults to 1.
+        :param window: The window size for the smoothing. A value of 1 returns raw data without any smoothing applied.
+            Defaults to 1.
         :type window: int, optional
         :param smooth: The smoothing method to use, either 'ma' for moving average or 'median' for median. Defaults to 'ma'.
         :type smooth: str, optional
@@ -195,10 +223,7 @@ class SimData:
         :rtype: pd.DataFrame
         """
         ch_extco_df = self.all_extco_df.xs(channel, level=0, axis=1)
-        if smooth == 'median':
-            ma_ch_extco_df = ch_extco_df.iloc[::-1].rolling(window=window, closed='left').median().iloc[::-1]
-        else:
-            ma_ch_extco_df = ch_extco_df.iloc[::-1].rolling(window=window, closed='left').mean().iloc[::-1]
+        ma_ch_extco_df = self._apply_moving_average(ch_extco_df, window, smooth)
         ma_ch_extco_df = ma_ch_extco_df.loc[time, :]
         ma_ch_extco_df = ma_ch_extco_df.reset_index().pivot(columns='LED Array', index='Layer')
         ma_ch_extco_df.columns = ma_ch_extco_df.columns.droplevel()
@@ -206,32 +231,36 @@ class SimData:
         if yaxis == 'layer':
             ma_ch_extco_df.index.names = ["Layer"]
         elif yaxis == 'height':
-            ma_ch_extco_df.index = [round(self.height_from_layer(layer),2) for layer in ma_ch_extco_df.index]
+            ma_ch_extco_df.index = [round(self.height_from_layer(layer), 2) for layer in ma_ch_extco_df.index]
             ma_ch_extco_df.index.names = ["Height / m"]
         return ma_ch_extco_df
 
-    def get_extco_at_led_array(self, channel: int, led_array_id: int, yaxis='layer', window=1) -> pd.DataFrame:
+    def get_extco_at_led_array(self, channel: int, led_array_id: int, yaxis='layer', window=1,
+                               smooth='ma') -> pd.DataFrame:
         """
         Retrieves a DataFrame containing smoothed extinction coefficients for a specific LED array.
 
-        This method extracts the extinction coefficients for a specified channel and LED array, applies a moving average smoothing over time based on the specified window size, and restructures the DataFrame to have experimental time as the index and layers (or heights) as columns.
-        The method first selects the relevant extinction coefficients for the specified channel and LED array. It then applies a moving average smoothing operation across a defined window of time steps. The resulting data is organized such that the experimental time is the index, providing a structured view suitable for analysis or visualization. Depending on the 'yaxis' parameter, the columns of the resulting DataFrame are labeled as either layers or converted to heights.
-
+        This method extracts the extinction coefficients for a specified channel and LED array, applies smoothing
+        over time based on the specified window size, and restructures the DataFrame to have experimental time as
+        the index and layers (or heights) as columns.
 
         :param channel: The channel index from which to extract extinction coefficients.
         :type channel: int
         :param led_array_id: The ID for which to extract extinction coefficients.
         :type led_array_id: int
-        :param yaxis: Determines whether the DataFrame's columns should represent 'layer' or 'height'. The default is 'layer', which uses the layer numbers as column names. If set to 'height', the column names are converted to the corresponding heights based on layer numbers.
+        :param yaxis: Determines whether the DataFrame's columns should represent 'layer' or 'height'. Defaults to 'layer'.
         :type yaxis: str, optional
-        :param window: The window size for the moving average smoothing. The default is 1, which means no smoothing is applied. A window greater than 1 will smooth the data over the specified number of time steps.
+        :param window: The window size for the smoothing. A value of 1 returns raw data without any smoothing applied.
+            Defaults to 1.
         :type window: int, optional
-        :return: A pandas DataFrame with the smoothed extinction coefficients. The index represents the experimental time, and the columns represent either layers or heights, depending on the 'yaxis' parameter.
+        :param smooth: The smoothing method to use, either 'ma' for moving average or 'median' for median. Defaults to 'ma'.
+        :type smooth: str, optional
+        :return: A pandas DataFrame with the smoothed extinction coefficients. The index represents the experimental
+            time, and the columns represent either layers or heights, depending on the 'yaxis' parameter.
         :rtype: pd.DataFrame
         """
         ch_extco_df = self.all_extco_df.xs(channel, level=0, axis=1).xs(led_array_id, level=0, axis=1)
-        ma_ch_extco_df = ch_extco_df.rolling(window=window, closed='right').mean().shift(-int(window / 2) + 1)
-        # ma_ch_extco_df = ch_extco_df.iloc[::-1].rolling(window=window, closed='left').mean().iloc[::-1]
+        ma_ch_extco_df = self._apply_moving_average(ch_extco_df, window, smooth)
 
         if yaxis == 'layer':
             ma_ch_extco_df.columns.names = ["Layer"]
@@ -240,69 +269,85 @@ class SimData:
             ma_ch_extco_df.columns.names = ["Height / m"]
         return ma_ch_extco_df
 
-    def get_extco_at_layer(self, channel: int, layer: int, window=1) -> pd.DataFrame:
+    def get_extco_at_layer(self, channel: int, layer: int, window=1, smooth='ma') -> pd.DataFrame:
         """
         Retrieves a DataFrame containing smoothed extinction coefficients for a specified layer.
-        This method extracts the extinction coefficients for a given channel and layer, then applies a moving average smoothing over the specified window of time.
-        The result is a DataFrame with experimental time as the index and LED arrays as the columns, providing a time series of extinction coefficients at the specified layer.
 
-        :param channel: The channel index from which to extract extinction coefficients. Each channel represents a different set of measurements or sensor readings.
+        This method extracts the extinction coefficients for a given channel and layer, then applies smoothing
+        over the specified window of time. The result is a DataFrame with experimental time as the index and
+        LED arrays as the columns, providing a time series of extinction coefficients at the specified layer.
+
+        :param channel: The channel index from which to extract extinction coefficients.
         :type channel: int
-        :param layer: The layer number for which to extract extinction coefficients. Layers correspond to different vertical positions or depths in the experimental setup.
+        :param layer: The layer number for which to extract extinction coefficients. Layers correspond to
+            different vertical positions in the experimental setup.
         :type layer: int
-        :param window: The window size for the moving average smoothing. The default is 1, implying no smoothing. A larger window size will average the data over more time points, smoothing out short-term fluctuations.
+        :param window: The window size for the smoothing. A value of 1 returns raw data without any smoothing
+            applied. Defaults to 1.
         :type window: int, optional
-        :return: A pandas DataFrame with smoothed extinction coefficients. The DataFrame's index represents experimental time, and its columns represent different LED arrays within the specified layer.
+        :param smooth: The smoothing method to use, either 'ma' for moving average or 'median' for median.
+            Defaults to 'ma'.
+        :type smooth: str, optional
+        :return: A pandas DataFrame with smoothed extinction coefficients. The DataFrame's index represents
+            experimental time, and its columns represent different LED arrays within the specified layer.
         :rtype: pd.DataFrame
         """
         ch_extco_df = self.all_extco_df.xs(channel, level=0, axis=1).xs(layer, level=1, axis=1)
-        ma_ch_extco_df = ch_extco_df.rolling(window=window, closed='right').mean().shift(-int(window / 2) + 1)
-        # ma_ch_extco_df = ch_extco_df.iloc[::-1].rolling(window=window, closed='left').mean().iloc[::-1]
+        return self._apply_moving_average(ch_extco_df, window, smooth)
 
-        return ma_ch_extco_df
-
-    def get_extco_at_height(self, channel: int, height: float, window=1) -> pd.DataFrame:
+    def get_extco_at_height(self, channel: int, height: float, window=1, smooth='ma') -> pd.DataFrame:
         """
-        Retrieves a DataFrame containing smoothed extinction coefficients for a specified layer at given height.
-        This method extracts the extinction coefficients for a given channel and layer, then applies a moving average smoothing over the specified window of time.
-        The result is a DataFrame with experimental time as the index and LED arrays as the columns, providing a time series of extinction coefficients at the specified height.
+        Retrieves a DataFrame containing smoothed extinction coefficients for a specified height.
 
-        :param channel: The channel index from which to extract extinction coefficients. Each channel represents a different set of measurements or sensor readings.
+        Converts the given height to a layer index and delegates to :meth:`get_extco_at_layer`.
+        The result is a DataFrame with experimental time as the index and LED arrays as the columns,
+        providing a time series of extinction coefficients at the specified height.
+
+        :param channel: The channel index from which to extract extinction coefficients.
         :type channel: int
-        :param height: The height for which to extract extinction coefficients.
+        :param height: The height in meters for which to extract extinction coefficients.
         :type height: float
-        :param window: The window size for the moving average smoothing. The default is 1, implying no smoothing. A larger window size will average the data over more time points, smoothing out short-term fluctuations.
+        :param window: The window size for the smoothing. A value of 1 returns raw data without any smoothing
+            applied. Defaults to 1.
         :type window: int, optional
-        :return: A pandas DataFrame with smoothed extinction coefficients. The DataFrame's index represents experimental time, and its columns represent different LED arrays within the specified height.
+        :param smooth: The smoothing method to use, either 'ma' for moving average or 'median' for median.
+            Defaults to 'ma'.
+        :type smooth: str, optional
+        :return: A pandas DataFrame with smoothed extinction coefficients. The DataFrame's index represents
+            experimental time, and its columns represent different LED arrays within the specified height.
         :rtype: pd.DataFrame
         """
         layer = self.layer_from_height(height)
-        return self.get_extco_at_layer(channel, layer, window)
+        return self.get_extco_at_layer(channel, layer, window, smooth)
 
     def get_ledparams_at_led_array(self, channel: int, led_array_id: int, param='sum_col_val', yaxis='led_id', window=1,
                                    n_ref=None) -> pd.DataFrame:
         """
         Retrieves a DataFrame containing normalized LED parameters for a specific LED array, optionally smoothed over
         time. This method selects LED parameter data for a given channel and LED array. It normalizes the data based on
-        the average of the first `n_ref` entries (if `n_ref` is not False), and applies a moving average smoothing
-        over the specified window of time. The result is a DataFrame with experimental time as the index and LED
-        identifiers (or heights) as the columns, depending on the `yaxis` parameter.
+        the average of the first `n_ref` entries (if `n_ref` is not False), and applies smoothing over the specified
+        window of time. The result is a DataFrame with experimental time as the index and LED identifiers (or heights)
+        as the columns, depending on the `yaxis` parameter.
 
-         :param channel: The channel index from which to extract LED parameters. Channels typically represent different sensor readings or experimental conditions.
-         :type channel: int
-         :param led_array_id: The ID of the LED array for which to extract LED parameters. LED arrays may represent different spatial locations or orientations in the experimental setup.
-         :type led_array_id: int
-         :param param: The specific LED parameter to extract and analyze, such as 'sum_col_val'. Defaults to 'sum_col_val'.
-         :type param: str, optional
-         :param yaxis: Determines the labeling of the DataFrame's columns, either 'led_id' for LED identifiers or 'height' for physical heights. Defaults to 'led_id'.
-         :type yaxis: str, optional
-         :param window: The window size for the moving average smoothing. A value of 1 implies no smoothing. A larger window size averages the data over more time points, reducing short-term fluctuations.
-         :type window: int, optional
-         :param n_ref: The number of initial entries to average for normalization. If set to False, absolute values are returned without normalization. Defaults to 10.
-         :type n_ref: int or bool, optional
-         :return: A pandas DataFrame with normalized (and optionally smoothed) LED parameters. The index represents experimental time, and columns represent LED identifiers or heights.
-         :rtype: pd.DataFrame
-         """
+        :param channel: The channel index from which to extract LED parameters.
+        :type channel: int
+        :param led_array_id: The ID of the LED array for which to extract LED parameters.
+        :type led_array_id: int
+        :param param: The specific LED parameter to extract and analyze, such as 'sum_col_val'. Defaults to 'sum_col_val'.
+        :type param: str, optional
+        :param yaxis: Determines the labeling of the DataFrame's columns, either 'led_id' for LED identifiers or
+            'height' for physical heights. Defaults to 'led_id'.
+        :type yaxis: str, optional
+        :param window: The window size for the smoothing. A value of 1 returns raw data without any smoothing
+            applied. Defaults to 1.
+        :type window: int, optional
+        :param n_ref: The number of initial entries to average for normalization. If set to False, absolute values
+            are returned without normalization. Defaults to None, which uses self.num_ref_images.
+        :type n_ref: int or bool, optional
+        :return: A pandas DataFrame with normalized (and optionally smoothed) LED parameters. The index represents
+            experimental time, and columns represent LED identifiers or heights.
+        :rtype: pd.DataFrame
+        """
         if channel == 0:
             led_params = self.ch0_ledparams_df
         elif channel == 1:
@@ -316,39 +361,39 @@ class SimData:
         if n_ref == False:
             rel_i = ii
         else:
-            # Use self.num_ref_images if n_ref is None
             n_ref = self.num_ref_images if n_ref is None else n_ref
             i0 = ii.groupby([index]).agg(lambda g: g.iloc[0:n_ref].mean())
             rel_i = ii / i0
 
         rel_i = rel_i.reset_index().pivot(columns=index, index='Experiment_Time[s]')
         rel_i.columns = rel_i.columns.droplevel()
-        # rel_i_ma = rel_i.iloc[::-1].rolling(window=window, closed='left').mean().iloc[::-1]
-        rel_i_ma = rel_i.rolling(window=window, closed='right').mean().shift(-int(window / 2) + 1)
-
-        return rel_i_ma
+        return self._apply_moving_average(rel_i, window)
 
     def get_ledparams_at_led_id(self, channel: int, led_id: int, param='sum_col_val', window=1,
                                 n_ref=None) -> pd.DataFrame:
         """
         Retrieves a DataFrame containing normalized LED parameters for a specific LED ID, optionally smoothed over time.
 
-        This method selects LED parameter data for a given channel and LED ID, normalizes the data based on the average of the first `n_ref` entries (if `n_ref` is not False), and applies a moving average smoothing over the specified window of time. The result is a DataFrame with experimental time as the index, providing a time series of the specified LED parameter for the selected LED.
+        This method selects LED parameter data for a given channel and LED ID, normalizes the data based on the average
+        of the first `n_ref` entries (if `n_ref` is not False), and applies smoothing over the specified window of time.
+        The result is a DataFrame with experimental time as the index, providing a time series of the specified LED
+        parameter for the selected LED.
 
-        :param channel: The channel index from which to extract LED parameters. Channels typically represent different sets of measurements or sensor readings.
+        :param channel: The channel index from which to extract LED parameters.
         :type channel: int
-        :param led_id: The identifier of the LED for which to extract parameters. This ID is used to select the specific LED's data from the dataset.
+        :param led_id: The identifier of the LED for which to extract parameters.
         :type led_id: int
-        :param param: The specific LED parameter to extract and analyze, such as 'sum_col_val'. This parameter determines which aspect of the LED's data is analyzed. Defaults to 'sum_col_val'.
+        :param param: The specific LED parameter to extract and analyze, such as 'sum_col_val'. Defaults to 'sum_col_val'.
         :type param: str, optional
-        :param window: The window size for the moving average smoothing. A value of 1 implies no smoothing, while a larger window size averages the data over more time points, thereby smoothing out short-term fluctuations.
+        :param window: The window size for the smoothing. A value of 1 returns raw data without any smoothing
+            applied. Defaults to 1.
         :type window: int, optional
-        :param n_ref: The number of initial entries to average for normalization. If set to False, absolute values are returned without normalization. This parameter allows for the normalization of data to account for initial conditions or baseline measurements. Defaults to 10.
+        :param n_ref: The number of initial entries to average for normalization. If set to False, absolute values
+            are returned without normalization. Defaults to None, which uses self.num_ref_images.
         :type n_ref: int or bool, optional
-        :return: A pandas DataFrame with normalized (and optionally smoothed) LED parameters for the specified LED ID. The DataFrame's index represents experimental time.
+        :return: A pandas DataFrame with normalized (and optionally smoothed) LED parameters for the specified LED ID.
+            The DataFrame's index represents experimental time.
         :rtype: pd.DataFrame
-
-        This method enables the analysis of temporal variations in specific LED parameters for an individual LED, facilitating the examination of changes or trends in the LED's behavior over the course of an experiment. By normalizing and smoothing the data, the method helps reveal underlying patterns that may not be immediately apparent from the raw data.
         """
         if channel == 0:
             led_params = self.ch0_ledparams_df
@@ -361,13 +406,10 @@ class SimData:
         if n_ref == False:
             rel_i = ii
         else:
-            # Use self.num_ref_images if n_ref is None
             n_ref = self.num_ref_images if n_ref is None else n_ref
             i0 = ii.iloc[0:n_ref].mean()
             rel_i = ii / i0
-        rel_i_ma = rel_i.rolling(window=window, closed='right').mean().shift(-int(window / 2) + 1)
-
-        return rel_i_ma
+        return self._apply_moving_average(rel_i, window)
 
     def get_image_name_from_time(self, time: int):
         """
@@ -392,7 +434,7 @@ class SimData:
         """
         led_info_df = pd.read_csv(self.led_info_path)
         pixel_positions = \
-        led_info_df.loc[led_info_df.index == led_id][[' pixel position x', ' pixel position y']].values[0]
+            led_info_df.loc[led_info_df.index == led_id][[' pixel position x', ' pixel position y']].values[0]
         return pixel_positions
 
     def get_pixel_values_of_led(self, led_id: int, channel: int, time: int, radius=None):

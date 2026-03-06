@@ -7,6 +7,7 @@ import pandas as pd
 from ledsa.analysis.Experiment import Experiment, Layers, Camera
 from ledsa.core.file_handling import read_hdf, read_hdf_avg, extend_hdf, create_analysis_infos_avg
 
+from importlib.metadata import version
 
 class ExtinctionCoefficients(ABC):
     """
@@ -57,7 +58,7 @@ class ExtinctionCoefficients(ABC):
 
     def __str__(self):
         out = str(self.experiment) + \
-              f'reference_property: {self.reference_property}, num_ref_imgs: {self.num_ref_imgs}\n'
+              f'reference_property: {self.reference_property}, num_ref_imgs: {self.num_ref_imgs}, LEDSA {version("ledsa")}\n'
         return out
 
     def calc_and_set_coefficients(self) -> None:
@@ -151,7 +152,8 @@ class ExtinctionCoefficients(ABC):
         """
         distances = np.zeros((self.experiment.num_leds, self.experiment.layers.amount))
         count = 0
-        for led in self.experiment.leds:
+        # self.experiment.leds need to be reversed to build the distance array the right way
+        for led in reversed(self.experiment.leds):
             d = self.experiment.calc_traversed_dist_per_layer(led)
             distances[count] = d
             count += 1
