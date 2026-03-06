@@ -1,6 +1,11 @@
 Analysis
 ========
 
+.. automodule:: ledsa.analysis.ExtinctionCoefficients
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 .. automodule:: ledsa.analysis.ExtinctionCoefficientsLinear
    :members:
    :undoc-members:
@@ -12,6 +17,11 @@ Analysis
    :show-inheritance:
 
 .. automodule:: ledsa.analysis.Experiment
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: ledsa.analysis.ExperimentData
    :members:
    :undoc-members:
    :show-inheritance:
