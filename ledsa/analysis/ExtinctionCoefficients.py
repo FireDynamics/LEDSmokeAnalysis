@@ -176,6 +176,9 @@ class ExtinctionCoefficients(ABC):
             ref_img_data = self.calculated_img_data.query(f'img_id == {self.ref_img_indices}')
         else:
             ref_img_data = self.calculated_img_data.query(f'img_id <= {self.num_ref_imgs}')
+        print(
+            f"Images with indices {ref_img_data.index.get_level_values('img_id').unique().values} were used for calculating reference intensities.")
+
         ref_intensities = ref_img_data.groupby(level='led_id')[self.reference_property].mean()
         check_intensity_normalization(ref_img_data, ref_intensities, self.reference_property)
         self.ref_intensities = ref_intensities.to_numpy()
