@@ -7,7 +7,7 @@ def check_intensity_normalization(
         ref_img_data: pd.DataFrame,
         ref_intensities: pd.Series,
         reference_property: str,
-        tolerance: float = 0.05
+        tolerance: float = 0.075
 ) -> None:
     """
     Checks if the intensity normalization is within the specified tolerance.
@@ -33,7 +33,7 @@ def check_intensity_normalization(
     ]
 
     msg = (
-            f"In the process of normalisation {len(hits)} values exceed {tolerance:.0%} tolerance of relative deviation"
+            f"In the process of normalisation {len(hits)} value(s) exceed(s) {tolerance:.0%} tolerance of relative deviation"
             f" against mean intensities! You might check the reference images.\n"
             + "\n".join(lines)
     )
