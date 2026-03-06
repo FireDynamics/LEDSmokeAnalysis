@@ -6,6 +6,7 @@ import pandas as pd
 
 from ledsa.analysis.Experiment import Experiment, Layers, Camera
 from ledsa.core.file_handling import read_hdf, read_hdf_avg, extend_hdf, create_analysis_infos_avg
+from ledsa.data_extraction.data_integrity import check_intensity_normalization
 
 from importlib.metadata import version
 
@@ -19,8 +20,10 @@ class ExtinctionCoefficients(ABC):
     :vartype experiment: Experiment
     :ivar reference_property: Reference property to be analysed.
     :vartype reference_property: str
-    :ivar num_ref_imgs: Number of reference images.
+    :ivar num_ref_imgs: Number of reference images. # TODO: create test for this
     :vartype num_ref_imgs: int
+    :ivar ref_img_indices: Indices of reference images to use. If None, use num_ref_imgs.
+    :vartype ref_img_indices: list[int] or None
     :ivar calculated_img_data: DataFrame containing calculated image data.
     :vartype calculated_img_data: pd.DataFrame
     :ivar distances_per_led_and_layer: Array of distances traversed between camera and LEDs in each layer.
@@ -34,7 +37,9 @@ class ExtinctionCoefficients(ABC):
     :ivar solver: Indication whether the calculation is to be carried out numerically or analytically.
     :vartype type: str
     """
-    def __init__(self, experiment, reference_property='sum_col_val', num_ref_imgs=10, average_images=False):
+
+    def __init__(self, experiment, reference_property='sum_col_val', num_ref_imgs=10, ref_img_indices=None,
+                 average_images=False):
         """
         :param experiment: Object representing the experimental setup.
         :type experiment: Experiment
@@ -42,6 +47,8 @@ class ExtinctionCoefficients(ABC):
         :type reference_property: str
         :param num_ref_imgs: Number of reference images.
         :type num_ref_imgs: int
+        :param ref_img_indices: Indices of reference images to use. If None, use num_ref_imgs.
+        :type ref_img_indices: list[int] or None
         :param average_images: Flag to determine if intensities are computed as an average from two consecutive images.
         :type average_images: bool
         """
@@ -49,6 +56,7 @@ class ExtinctionCoefficients(ABC):
         self.experiment = experiment
         self.reference_property = reference_property
         self.num_ref_imgs = num_ref_imgs
+        self.ref_img_indices = ref_img_indices
         self.calculated_img_data = pd.DataFrame()
         self.distances_per_led_and_layer = np.array([])
         self.ref_intensities = np.array([])
@@ -164,10 +172,16 @@ class ExtinctionCoefficients(ABC):
          Calculate and set the reference intensities for all LEDs based on the reference images.
 
          """
-        ref_img_data = self.calculated_img_data.query(f'img_id <= {self.num_ref_imgs}')
-        ref_intensities = ref_img_data.groupby(level='led_id').mean()
+        if self.ref_img_indices is not None:
+            ref_img_data = self.calculated_img_data.query(f'img_id == {self.ref_img_indices}')
+        else:
+            ref_img_data = self.calculated_img_data.query(f'img_id <= {self.num_ref_imgs}')
+        print(
+            f"Images with indices {ref_img_data.index.get_level_values('img_id').unique().values} were used for calculating reference intensities.")
 
-        self.ref_intensities = ref_intensities[self.reference_property].to_numpy()
+        ref_intensities = ref_img_data.groupby(level='led_id')[self.reference_property].mean()
+        check_intensity_normalization(ref_img_data, ref_intensities, self.reference_property)
+        self.ref_intensities = ref_intensities.to_numpy()
 
     def apply_color_correction(self, cc_matrix, on='sum_col_val',
                                nchannels=3) -> None:  # TODO: remove hardcoding of nchannels

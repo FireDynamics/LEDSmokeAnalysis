@@ -7,7 +7,7 @@ class ConfigDataAnalysis(cp.ConfigParser):
 
     """
     def __init__(self, load_config_file=True, camera_position=None, num_layers=20, domain_bounds=None,
-                 led_array_indices=None, num_ref_images=10, camera_channels=0, num_cores=1,
+                 led_array_indices=None, num_ref_images=10, ref_img_indices=None, camera_channels=0, num_cores=1,
                  reference_property='sum_col_val',
                  average_images=False, solver='linear', weighting_preference=-6e-3, weighting_curvature=1e-6,
                  num_iterations=200, lambda_reg=1e-3):
@@ -24,6 +24,8 @@ class ConfigDataAnalysis(cp.ConfigParser):
         :type led_array_indices: list[int] or None
         :param num_ref_images: Number of images used to compute normalize LED intensities. Defaults to 10.
         :type num_ref_images: int
+        :param ref_img_indices: Indices of reference images to use. If None, use num_ref_imgs.
+        :type ref_img_indices: list[int] or None
         :param camera_channels: Camera channels to be considered in the analysis. Defaults to 0.
         :type camera_channels: List[int]
         :param num_cores: Number of CPU cores for (multicore) processing. If greater than 1, multicore processing is applied. Defaults to 1.
@@ -54,6 +56,9 @@ class ConfigDataAnalysis(cp.ConfigParser):
             self['DEFAULT']['   reference_property'] = str(reference_property)
             self.set('DEFAULT', '   # Number images used to compute normalize LED intensities')
             self['DEFAULT']['   num_ref_images'] = str(num_ref_images)
+            self.set('DEFAULT', '   # Indices of reference images to use')
+            self['DEFAULT']['   ref_img_indices'] = str(ref_img_indices)
+            self.set('DEFAULT', '   # Camera channels to be considered in the analysis')
             self['DEFAULT']['   camera_channels'] = str(camera_channels)
             self.set('DEFAULT', '   # Intensities are computed as average from two consecutive images if set to True ')
             self['DEFAULT']['   average_images'] = str(average_images)
@@ -106,23 +111,40 @@ class ConfigDataAnalysis(cp.ConfigParser):
             self.write(configfile)
         print('config_analysis.ini saved')
 
-    def get_list_of_values(self, section:str, option:str, dtype=int) -> None:
+    def get_list_of_values(self, section: str, option: str, dtype=int, fallback=None):
         """
-        Returns a list of values of a specified dtype from a given section and option.
+        Return a list[dtype] for 'section'/'option'.
+        - Missing section/option → warn and return fallback
+        - Value 'None' or empty → return None
+        - Values are split on whitespace
+        """
+        if not self.has_option(section, option):
+            print(
+                "Config option missing: [%s].%s — using fallback=%r",
+                section, option, fallback
+            )
+            return fallback
 
-        :param section: Section in the configuration file.
-        :type section: str
-        :param option: Option under the specified section.
-        :type option: str
-        :param dtype: Data type of the values to be returned. Defaults to int.
-        :type dtype: type
-        :return: List of values or None if the option's value is 'None'.
-        :rtype: list or None
-        """
-        if self[section][option] == 'None':
+        raw = self.get(section, option, fallback=None)
+        if raw is None:
+            print(
+                "Config option unreadable: [%s].%s — using fallback=%r",
+                section, option, fallback
+            )
+            return fallback
+
+        raw = raw.strip()
+        if raw.lower() == 'none' or raw == '':
             return None
-        values = [dtype(i) for i in self[section][option].split()]
-        return values
+
+        try:
+            return [dtype(item) for item in raw.split()]
+        except Exception as e:
+            print(
+                "Config parse error for [%s].%s=%r (%s) — using fallback=%r",
+                section, option, raw, e, fallback
+            )
+            return fallback
 
     def in_camera_channels(self) -> None:
         """

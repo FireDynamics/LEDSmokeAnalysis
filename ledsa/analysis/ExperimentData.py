@@ -34,6 +34,8 @@ class ExperimentData:
     :type num_iterations: int
     :ivar num_ref_images: Number of reference images.
     :type num_ref_images: int
+    :ivar ref_img_indices: Indices of reference images to use. If None, use num_ref_imgs.
+    :type ref_img_indices: list[int] or None
     :ivar reference_property: Reference property to be analysed.
     :type reference_property: str
     :ivar merge_led_arrays: Merge LED arrays option.
@@ -53,6 +55,7 @@ class ExperimentData:
         self.weighting_curvature = None
         self.num_iterations = None
         self.num_ref_images = None
+        self.ref_img_indices = None
         self.lambda_reg = None
         self.reference_property = None
         self.merge_led_arrays = None
@@ -67,7 +70,9 @@ class ExperimentData:
         config_analysis = self.config_analysis
         num_layers = int(config_analysis['model_parameters']['num_layers'])
         self.channels = config_analysis.get_list_of_values('DEFAULT', 'camera_channels')
-        self.num_ref_images = int(config_analysis['DEFAULT']['num_ref_images'])
+        self.ref_img_indices = config_analysis.get_list_of_values('DEFAULT', 'ref_img_indices')
+        if self.ref_img_indices is None:
+            self.num_ref_images = int(config_analysis['DEFAULT']['num_ref_images'])
         self.solver = config_analysis['DEFAULT']['solver']
         if self.solver == 'nonlinear':
             self.weighting_preference = float(config_analysis['DEFAULT']['weighting_preference'])
@@ -76,7 +81,6 @@ class ExperimentData:
         elif self.solver == 'linear':
             self.lambda_reg = float(config_analysis['DEFAULT']['lambda_reg'])
         self.reference_property = config_analysis['DEFAULT']['reference_property']
-        self.solver = config_analysis['DEFAULT']['solver']
 
         self.led_arrays = config_analysis.get_list_of_values('model_parameters', 'led_array_indices')
         if self.led_arrays is None:

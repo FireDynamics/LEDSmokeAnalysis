@@ -226,12 +226,14 @@ def extionction_coefficient_calculation(args) -> None:
                 if solver == 'nonlinear':
                     eca = ECN.ExtinctionCoefficientsNonLinear(ex, reference_property=ex_data.reference_property,
                                                               num_ref_imgs=ex_data.num_ref_images,
+                                                              ref_img_indices=ex_data.ref_img_indices,
                                                               weighting_curvature=ex_data.weighting_curvature,
                                                               weighting_preference=ex_data.weighting_preference,
                                                               num_iterations=ex_data.num_iterations)
                 elif solver == 'linear':
                     eca = ECA.ExtinctionCoefficientsLinear(ex, reference_property=ex_data.reference_property,
                                                            num_ref_imgs=ex_data.num_ref_images,
+                                                           ref_img_indices=ex_data.ref_img_indices,
                                                            lambda_reg=ex_data.lambda_reg)
                 else:
                     raise ValueError(f"Invalid solver type '{solver}'. Must be 'linear' or 'nonlinear'.")
