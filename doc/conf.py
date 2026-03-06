@@ -12,7 +12,7 @@
 #
 import os
 import sys
-from importlib.metadata import version
+from importlib.metadata import version as get_version
 sys.path.insert(0, os.path.abspath('..'))
 
 # -- Project information -----------------------------------------------------
@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.abspath('..'))
 project = 'LEDSmokeAnalysis'
 copyright = '2026, CCE'
 author = 'CCE'
-release = version('ledsa')
+release = get_version('ledsa')
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
