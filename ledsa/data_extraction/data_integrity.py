@@ -7,7 +7,7 @@ def check_intensity_normalization(
         ref_img_data: pd.DataFrame,
         ref_intensities: pd.Series,
         reference_property: str,
-        tolerance: float = 0.075
+        tolerance: float = 0.075 # TODO: this should be an user adjustable parameter
 ) -> None:
     """
     Checks if the intensity normalization is within the specified tolerance.
