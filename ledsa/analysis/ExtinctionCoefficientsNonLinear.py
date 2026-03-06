@@ -27,7 +27,7 @@ class ExtinctionCoefficientsNonLinear(ExtinctionCoefficients):
     :ivar solver: Type of solver (linear or nonlinear).
     :vartype type: str
     """
-    def __init__(self, experiment, reference_property='sum_col_val', num_ref_imgs=10, average_images=False, weighting_curvature=1e-6,
+    def __init__(self, experiment, reference_property='sum_col_val', num_ref_imgs=10, ref_img_indices=None, average_images=False, weighting_curvature=1e-6,
                  weighting_preference=-6e-3, num_iterations=200):
         """
         :param experiment: Object representing the experimental setup.
@@ -36,6 +36,8 @@ class ExtinctionCoefficientsNonLinear(ExtinctionCoefficients):
         :type reference_property: str
         :param num_ref_imgs: Number of reference images.
         :type num_ref_imgs: int
+        :param ref_img_indices: Indices of reference images to use. If None, use num_ref_imgs.
+        :type ref_img_indices: list[int] or None
         :param average_images: Flag to determine if intensities are computed as an average from two consecutive images.
         :type average_images: bool
         :param weighting_curvature: Weighting factor for the smoothness of the solution.
@@ -46,7 +48,7 @@ class ExtinctionCoefficientsNonLinear(ExtinctionCoefficients):
         :type num_iterations: int
         """
 
-        super().__init__(experiment, reference_property, num_ref_imgs, average_images)
+        super().__init__(experiment, reference_property, num_ref_imgs, ref_img_indices, average_images)
         self.bounds = [(0, 10) for _ in range(self.experiment.layers.amount)]
         self.weighting_preference = weighting_preference
         self.weighting_curvature = weighting_curvature

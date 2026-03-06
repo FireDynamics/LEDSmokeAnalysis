@@ -7,7 +7,7 @@ class ConfigDataAnalysis(cp.ConfigParser):
 
     """
     def __init__(self, load_config_file=True, camera_position=None, num_layers=20, domain_bounds=None,
-                 led_array_indices=None, num_ref_images=10, camera_channels=0, num_cores=1,
+                 led_array_indices=None, num_ref_images=10, ref_img_indices=None, camera_channels=0, num_cores=1,
                  reference_property='sum_col_val',
                  average_images=False, solver='linear', weighting_preference=-6e-3, weighting_curvature=1e-6,
                  num_iterations=200, lambda_reg=1e-3):
@@ -24,6 +24,8 @@ class ConfigDataAnalysis(cp.ConfigParser):
         :type led_array_indices: list[int] or None
         :param num_ref_images: Number of images used to compute normalize LED intensities. Defaults to 10.
         :type num_ref_images: int
+        :param ref_img_indices: Indices of reference images to use. If None, use num_ref_imgs.
+        :type ref_img_indices: list[int] or None
         :param camera_channels: Camera channels to be considered in the analysis. Defaults to 0.
         :type camera_channels: List[int]
         :param num_cores: Number of CPU cores for (multicore) processing. If greater than 1, multicore processing is applied. Defaults to 1.
@@ -54,6 +56,9 @@ class ConfigDataAnalysis(cp.ConfigParser):
             self['DEFAULT']['   reference_property'] = str(reference_property)
             self.set('DEFAULT', '   # Number images used to compute normalize LED intensities')
             self['DEFAULT']['   num_ref_images'] = str(num_ref_images)
+            self.set('DEFAULT', '   # Indices of reference images to use')
+            self['DEFAULT']['   ref_img_indices'] = str(ref_img_indices)
+            self.set('DEFAULT', '   # Camera channels to be considered in the analysis')
             self['DEFAULT']['   camera_channels'] = str(camera_channels)
             self.set('DEFAULT', '   # Intensities are computed as average from two consecutive images if set to True ')
             self['DEFAULT']['   average_images'] = str(average_images)
