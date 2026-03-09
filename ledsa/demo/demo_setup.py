@@ -51,7 +51,7 @@ def _create_config_files(path):
         num_cores=4,
         date="27.11.2018",
         start_time="15:36:07",
-        time_img_id=None,
+        time_ref_img_id=None,
         time_ref_img_time=None,
         time_diff_to_image_time=-1,
         ref_img_id=1,

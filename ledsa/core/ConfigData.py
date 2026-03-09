@@ -13,7 +13,7 @@ class ConfigData(cp.ConfigParser):
 
     """
     def __init__(self, load_config_file=True, img_directory=None, search_area_radius=10, pixel_value_percentile=99.875, channel=0,
-                 max_num_leds=None, num_arrays=None, num_cores=1, date=None, start_time=None, time_img_id=None, time_ref_img_time=None,
+                 max_num_leds=None, num_arrays=None, num_cores=1, date=None, start_time=None, time_ref_img_id=None, time_ref_img_file=None, time_ref_img_time=None,
                  time_diff_to_image_time=None, img_name_string=None, num_img_overflow=None,
                  first_img_experiment_id=None, last_img_experiment_id=None, ref_img_id=None, ignore_led_indices=None,
                  led_array_edge_indices=None, led_array_edge_coordinates=None, first_img_analysis_id=None,
@@ -39,9 +39,11 @@ class ConfigData(cp.ConfigParser):
         :type date: str or None
         :param start_time: Start time for the experiment. Will be calculated from first image if None. Defaults to None. #TODO: format
         :type start_time: str or None
-        :param time_img_id: ID of image with a visible clock used for synchronization. Defaults to None.
-        :type time_img_id: str or None
-        :param time_ref_img_time: Time shown on the image with time_img_id. Defaults to None. #TODO: format
+        :param time_ref_img_id: ID of time reference image with a visible clock used for synchronization. Defaults to None.
+        :type time_ref_img_id: str or None
+        :param time_ref_img_id: File path of time reference image with a visible clock used for synchronization. Defaults to None.
+        :type time_ref_img_id: str or None
+        :param time_ref_img_time: Time shown on the time reference image with. Defaults to None. #TODO: format
         :type time_ref_img_time: str or None
         :param time_diff_to_image_time: Time difference in seconds to the actual image time. Defaults to None.
         :type time_diff_to_image_time: int or None
@@ -95,10 +97,13 @@ class ConfigData(cp.ConfigParser):
             self['DEFAULT']['   date'] = str(date)
             self.set('DEFAULT', '   # Beginning of the experiment, will be calculated from image with first_img_experiment_id if None.')
             self['DEFAULT']['   start_time'] = str(start_time)
-            self.set('DEFAULT', '   # Image name with a clock to calculate the offset of the camera time. Can be None,')
-            self.set('DEFAULT', '   # if time_diff_to_img_time in seconds is given.')
-            self['DEFAULT']['   time_img_id'] = str(time_img_id)
-            self.set('DEFAULT', '   # Time shown on the image with time_img_id')
+            self.set('DEFAULT', '   # ID of time reference image name with a clock to calculate the offset of the camera time. Can be None,')
+            self.set('DEFAULT', '   # if time_diff_to_img_time in seconds is given. You might also use time_ref_img_file instead.')
+            self['DEFAULT']['   time_img_id'] = str(time_ref_img_id)
+            self.set('DEFAULT', '   # Path of time reference image with a clock to calculate the offset of the camera time. Can be None,')
+            self.set('DEFAULT', '   # if time_diff_to_img_time in seconds is given. ou might also use time_ref_img_id instead.')
+            self['DEFAULT']['   time_ref_img_file'] = str(time_ref_img_file)
+            self.set('DEFAULT', '   # Time shown on the time reference image')
             self['DEFAULT']['   time_ref_img_time'] = str(time_ref_img_time)
             self['DEFAULT']['   exif_time_infront_real_time'] = str(time_diff_to_image_time)
 
@@ -145,6 +150,20 @@ class ConfigData(cp.ConfigParser):
             with open('config.ini', 'w') as configfile:
                 self.write(configfile)
             print('config.ini created')
+
+    def get(self, section, option, *, raw=False, vars=None, fallback='None') -> str:
+        """
+        Retrieve a config value, returning 'None' by default if the key is missing.
+
+        :param section: Section name in the configuration.
+        :param option: Option name within the section.
+        :param raw: If True, interpolation is not performed.
+        :param vars: Additional variables for interpolation.
+        :param fallback: Value to return if the key is missing. Defaults to 'None'.
+        :return: The configuration value as a string.
+        :rtype: str
+        """
+        return super().get(section, option, raw=raw, vars=vars, fallback=fallback)
 
     def load(self) -> None:
         """
@@ -250,12 +269,20 @@ class ConfigData(cp.ConfigParser):
         self['find_search_areas']['max_num_leds'] = input('Please give the maximum number of LEDs to be detected on the reference '
                                             'image: ')
 
-    def in_time_img_id(self) -> None: #
+    def in_time_ref_img_id(self) -> None: #
         """
         Prompts the user for the time reference image name and updates the configuration.
         """
-        self['DEFAULT']['time_img_id'] = input('Please give the ID of the time reference image, the image where a clock '
-                                            'is visible, to synchronise multiple cameras in one experiment: ')
+        self['DEFAULT']['time_ref_img_id'] = input('Please give the ID of the time reference image, the image where a clock '
+                                            'is visible, to synchronise multiple cameras in one experiment. Type "None" if you want to set the file path of the time reference image in the next step: ')
+
+    def in_time_ref_img_file(self) -> None:  #
+        """
+        Prompts the user for the file path of the time reference image and updates the configuration.
+        """
+        self['DEFAULT']['time_ref_img_file'] = input(
+            'Please provide the file path of the time reference image, the image where a clock '
+            'is visible, to synchronise multiple cameras in one experiment: ')
 
     def in_num_arrays(self) -> None:
         """
@@ -268,14 +295,48 @@ class ConfigData(cp.ConfigParser):
         Update the configuration with the time difference between the reference image's timestamp and the real time.
         If the 'time_ref_img_time' is not set, prompts the user to provide the time shown on the clock in the time reference image.
         """
+        import warnings
+
+        has_id = self['DEFAULT']['time_ref_img_id'] != 'None'
+        has_file = self['DEFAULT']['time_ref_img_file'] != 'None'
+
+        if not has_id and not has_file:
+            raise ValueError(
+                "Neither 'time_img_id' nor 'time_ref_img_file' is set. "
+                "Please provide at least one to identify the time reference image."
+            )
+
+        if has_id:
+            generated_path = os.path.abspath(os.path.join(
+                self['DEFAULT']['img_directory'],
+                self['DEFAULT']['img_name_string'].format(self['DEFAULT']['time_ref_img_id'])
+            ))
+
+        if has_file:
+            direct_path = os.path.abspath(self['DEFAULT']['time_ref_img_file'])
+
+        if has_id and has_file:
+            if generated_path != direct_path:
+                warnings.warn(
+                    f"The path generated from 'time_img_id' ({generated_path}) differs from "
+                    f"'time_ref_img_file' ({direct_path}). Using 'time_ref_img_file'.",
+                    UserWarning
+                )
+            time_ref_img_file_path = direct_path
+        elif has_file:
+            time_ref_img_file_path = direct_path
+        else:
+            time_ref_img_file_path = generated_path
+
+        print("Time reference image file path: ", time_ref_img_file_path)
+
         if self['DEFAULT']['time_ref_img_time'] == 'None':
             time = input('Please give the time shown on the clock in the time reference image in hh:mm:ss: ')
             self['DEFAULT']['time_ref_img_time'] = str(time)
         time = self['DEFAULT']['time_ref_img_time']
-        print(os.path.join(self['DEFAULT']['img_directory'], self['DEFAULT']['time_img_id']))
+
         tag = 'DateTimeOriginal'
-        exif_entry = get_exif_entry(os.path.join(self['DEFAULT']['img_directory'], self['DEFAULT']['img_name_string']
-                                                 .format(self['DEFAULT']['time_img_id'])), tag)
+        exif_entry = get_exif_entry(time_ref_img_file_path, tag)
         date, time_meta = exif_entry.split(' ')
         self['DEFAULT']['date'] = date
         img_time = _get_datetime_from_str(date, time_meta)

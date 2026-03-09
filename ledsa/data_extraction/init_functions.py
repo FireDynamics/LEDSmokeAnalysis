@@ -39,9 +39,15 @@ def request_config_parameters(config: ConfigData) -> None:
     if config['DEFAULT']['img_name_string'] == 'None':
         config.in_img_name_string()
         config.save()
-    if config['DEFAULT']['time_img_id'] == 'None' and \
+    if config.get('DEFAULT', 'time_ref_img_id') == 'None' and \
+            config.get('DEFAULT', 'time_ref_img_file') == 'None' and \
             config['DEFAULT']['exif_time_infront_real_time'] == 'None':
-        config.in_time_img_id()
+        config.in_time_ref_img_id()
+        config.save()
+    if config.get('DEFAULT', 'time_ref_img_id')== 'None' and \
+            config.get('DEFAULT', 'time_ref_img_file') == 'None' and \
+            config['DEFAULT']['exif_time_infront_real_time'] == 'None':
+        config.in_time_ref_img_file()
         config.save()
     if config['DEFAULT']['exif_time_infront_real_time'] == 'None':
         config.in_time_diff_to_img_time()
