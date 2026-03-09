@@ -152,10 +152,7 @@ class LedsaATestLibrary:
 def load_extinction_coefficients_computed(solver, channel, led_array):
     filename = f'extinction_coefficients_{solver}_channel_{channel}_sum_col_val_led_array_{led_array}.csv'
     data = np.loadtxt(
-        os.path.join('analysis', 'extinction_coefficients', solver, filename),
-        skiprows=5,
-        delimiter=','
-    )
+        os.path.join('analysis', 'extinction_coefficients', solver, filename),delimiter=',')
     time = data[:, 0]
     extinction_coefficients_computed = data[:, 1:]
     return time, extinction_coefficients_computed
