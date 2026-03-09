@@ -63,10 +63,11 @@ class ExtinctionCoefficients(ABC):
         self.cc_matrix = None
         self.average_images = average_images
         self.solver = None
+        self.lambda_reg = None
 
     def __str__(self):
         out = str(self.experiment) + \
-              f'reference_property: {self.reference_property}, num_ref_imgs: {self.num_ref_imgs}, LEDSA {version("ledsa")}\n'
+              f'Reference_property: {self.reference_property}, Ref_img_indices: {self.ref_img_indices}, Solver: {self.solver}, Lambda_reg: {self.lambda_reg}, LEDSA {version("ledsa")}\n'
         return out
 
     def calc_and_set_coefficients(self) -> None:
