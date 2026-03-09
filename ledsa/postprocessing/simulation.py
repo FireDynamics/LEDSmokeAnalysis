@@ -153,7 +153,7 @@ class SimData:
         else:
             file = os.path.join(self.path_simulation, 'analysis', f'channel{channel}', 'all_parameters.h5')
         table = pd.read_hdf(file, key='channel_values')
-        time = self.image_info_df['Experiment_Time[s]'].astype(int)
+        time = pd.Series(self.image_info_df['Experiment_Time[s]'].astype(int).values, index=self.image_info_df['#ID'], name='Experiment_Time[s]')
         table = table.merge(time, left_on='img_id', right_index=True)
         table.set_index(['Experiment_Time[s]'], inplace=True)
         self.led_heights = table['height']
