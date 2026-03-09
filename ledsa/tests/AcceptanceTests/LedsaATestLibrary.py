@@ -103,7 +103,7 @@ class LedsaATestLibrary:
 
         conf = ConfigData(load_config_file=False, img_directory='test_data/', search_area_radius=10, pixel_value_percentile=99.875,
                           channel=0, max_num_leds=1000, num_arrays=1, num_cores=1, date=None,
-                          start_time=None, time_img_id=None, time_ref_img_time=None, time_diff_to_image_time=0,
+                          start_time=None, time_ref_img_id=None, time_ref_img_time=None, time_diff_to_image_time=0,
                           img_name_string='test_img_{}.jpg', num_img_overflow=None, first_img_experiment_id=first,
                           last_img_experiment_id=last, ref_img_id=1, ignore_led_indices=None,
                           led_array_edge_indices=None, led_array_edge_coordinates=None,
