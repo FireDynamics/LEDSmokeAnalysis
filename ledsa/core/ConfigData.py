@@ -41,6 +41,8 @@ class ConfigData(cp.ConfigParser):
         :type start_time: str or None
         :param time_ref_img_id: ID of time reference image with a visible clock used for synchronization. Defaults to None.
         :type time_ref_img_id: str or None
+        :param time_ref_img_file: File path of time reference image with a visible clock used for synchronization. Defaults to None.
+        :type time_ref_img_file: str or None
         :param time_ref_img_id: File path of time reference image with a visible clock used for synchronization. Defaults to None.
         :type time_ref_img_id: str or None
         :param time_ref_img_time: Time shown on the time reference image with. Defaults to None. #TODO: format
