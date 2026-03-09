@@ -63,10 +63,11 @@ class ExtinctionCoefficients(ABC):
         self.cc_matrix = None
         self.average_images = average_images
         self.solver = None
+        self.lambda_reg = None
 
     def __str__(self):
         out = str(self.experiment) + \
-              f'reference_property: {self.reference_property}, num_ref_imgs: {self.num_ref_imgs}, LEDSA {version("ledsa")}\n'
+              f'Reference_property: {self.reference_property}, Ref_img_indices: {self.ref_img_indices}, Solver: {self.solver}, Lambda_reg: {self.lambda_reg}, LEDSA {version("ledsa")}\n'
         return out
 
     def calc_and_set_coefficients(self) -> None:
@@ -141,10 +142,16 @@ class ExtinctionCoefficients(ABC):
             path.mkdir(parents=True)
         path = path / f'extinction_coefficients_{self.solver}_channel_{self.experiment.channel}_{self.reference_property}_led_array_{self.experiment.led_array}.csv'
         header = str(self)
+        header += 'Layer_bottom_height[m],'
+        header += ','.join(map(str, self.experiment.layers.borders[:-1])) + '\n'
+        header += 'Layer_top_height[m],'
+        header += ','.join(map(str, self.experiment.layers.borders[1:])) + '\n'
+        header += 'Layer_center_height[m],'
+        header += ','.join(map(lambda x: f"{x:.2f}", (np.array(self.experiment.layers.borders[:-1]) + np.array(
+            self.experiment.layers.borders[1:])) / 2)) + '\n'
         header += 'Experiment_Time[s],'
         header += 'layer0'
-        for i in range(self.experiment.layers.amount - 1):
-            header += f',layer{i + 1}'
+        header += ''.join(f',layer{i + 1}' for i in range(self.experiment.layers.amount - 1))
             
         experiment_times = _get_experiment_times_from_image_infos_file(self.average_images)
         coefficients_per_time_and_layer = np.column_stack(

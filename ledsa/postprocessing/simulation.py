@@ -41,6 +41,11 @@ class SimData:
         self.n_layers = None
         self.search_area_radius = None
         self.path_images = None
+        self.lower_domain_bound = None
+        self.upper_domain_bound = None
+        self.layer_bottom_heights = None
+        self.layer_top_heights = None
+        self.layer_center_heights = None
 
         if load_config_params:
             os.chdir(path_simulation)
@@ -59,8 +64,13 @@ class SimData:
             self.num_ref_images = int(self.config_analysis['DEFAULT']['num_ref_images'])
             self.n_layers = int(self.config_analysis['model_parameters']['num_layers'])
             domain_bounds = self.config_analysis.get_list_of_values('model_parameters', 'domain_bounds', dtype=float)
-            self.bottom_layer_height = domain_bounds[0]
-            self.top_layer_height = domain_bounds[1]
+            self.lower_domain_bound = domain_bounds[0]
+            self.upper_domain_bound = domain_bounds[1]
+            layer_heights = [(l / self.n_layers) * (self.upper_domain_bound - self.lower_domain_bound) + self.lower_domain_bound for l in
+                             range(self.n_layers + 1)]
+            self.layer_bottom_heights = np.round(np.array(layer_heights[:-1]), 2)
+            self.layer_top_heights = np.round(np.array(layer_heights[1:]), 2)
+            self.layer_center_heights = np.round((self.layer_bottom_heights + self.layer_top_heights) / 2, 2)
 
         self.path_simulation = path_simulation
         self.led_info_path = os.path.join(self.path_simulation, 'analysis', 'led_search_areas_with_coordinates.csv')
@@ -76,10 +86,8 @@ class SimData:
         if remove_duplicates == True:
             self.remove_duplicate_heights()
 
-    height_from_layer = lambda self, layer: (
-            layer / self.n_layers * (self.top_layer_height - self.bottom_layer_height) + self.bottom_layer_height)
     layer_from_height = lambda self, height: int(
-        (height - self.bottom_layer_height) / (self.top_layer_height - self.bottom_layer_height) * self.n_layers)
+        (height - self.lower_domain_bound) / (self.upper_domain_bound - self.lower_domain_bound) * self.n_layers)
 
     def _apply_moving_average(self, df: pd.DataFrame, window: int, smooth: str = 'ma') -> pd.DataFrame:
         """
@@ -160,7 +168,7 @@ class SimData:
             os.path.join(self.path_simulation, 'analysis', 'extinction_coefficients', self.solver,
                          f'extinction_coefficients*.csv'))
         for file in files_list:
-            file_df = pd.read_csv(file, skiprows=4)
+            file_df = pd.read_csv(file, skiprows=7)
             channel = int(file.split('channel_')[1].split('_')[0])
             led_array = int(file.split('array_')[1].split('.')[0])
             # For backwards compatibility, check if Experiment_Time[s] is already in the dataframe
@@ -197,7 +205,7 @@ class SimData:
         self.ch1_ledparams_df = self.ch1_ledparams_df.groupby(['Experiment_Time[s]', 'height']).last()
         self.ch2_ledparams_df = self.ch2_ledparams_df.groupby(['Experiment_Time[s]', 'height']).last()
 
-    def get_extco_at_time(self, channel: int, time: int, yaxis='layer', window=1, smooth='ma') -> pd.DataFrame:
+    def get_extco_at_time(self, channel: int, time: int, yaxis='layer', height_reference='center', window=1, smooth='ma') -> pd.DataFrame:
         """
         Retrieves a DataFrame containing smoothed extinction coefficients at a specific time.
 
@@ -214,6 +222,8 @@ class SimData:
         :type time: int
         :param yaxis: Determines whether the y-axis of the returned DataFrame should represent 'layer' or 'height'. Defaults to 'layer'.
         :type yaxis: str, optional
+        :param height_reference: Specifies the reference point for height calculation. Acceptable values are 'center', 'top', and 'bottom'.
+        :type height_reference: str
         :param window: The window size for the smoothing. A value of 1 returns raw data without any smoothing applied.
             Defaults to 1.
         :type window: int, optional
@@ -231,11 +241,18 @@ class SimData:
         if yaxis == 'layer':
             ma_ch_extco_df.index.names = ["Layer"]
         elif yaxis == 'height':
-            ma_ch_extco_df.index = [round(self.height_from_layer(layer), 2) for layer in ma_ch_extco_df.index]
+            if height_reference == 'center':
+                ma_ch_extco_df.index = self.layer_center_heights
+            elif height_reference == 'top':
+                ma_ch_extco_df.index = self.layer_top_heights
+            elif height_reference == 'bottom':
+                ma_ch_extco_df.index = self.layer_bottom_heights
+            else:
+                raise ValueError("height_reference must be 'center', 'top', or 'bottom'")
             ma_ch_extco_df.index.names = ["Height / m"]
         return ma_ch_extco_df
 
-    def get_extco_at_led_array(self, channel: int, led_array_id: int, yaxis='layer', window=1,
+    def get_extco_at_led_array(self, channel: int, led_array_id: int, yaxis='layer', height_reference='center', window=1,
                                smooth='ma') -> pd.DataFrame:
         """
         Retrieves a DataFrame containing smoothed extinction coefficients for a specific LED array.
@@ -250,6 +267,8 @@ class SimData:
         :type led_array_id: int
         :param yaxis: Determines whether the DataFrame's columns should represent 'layer' or 'height'. Defaults to 'layer'.
         :type yaxis: str, optional
+        :param height_reference: Specifies the reference point for height calculation. Acceptable values are 'center', 'top', and 'bottom'.
+        :type height_reference: str
         :param window: The window size for the smoothing. A value of 1 returns raw data without any smoothing applied.
             Defaults to 1.
         :type window: int, optional
@@ -265,8 +284,14 @@ class SimData:
         if yaxis == 'layer':
             ma_ch_extco_df.columns.names = ["Layer"]
         elif yaxis == 'height':
-            ma_ch_extco_df.columns = [self.height_from_layer(layer) for layer in ma_ch_extco_df.columns]
-            ma_ch_extco_df.columns.names = ["Height / m"]
+            if height_reference == 'center':
+                ma_ch_extco_df.index = self.layer_center_heights
+            elif height_reference == 'top':
+                ma_ch_extco_df.index = self.layer_top_heights
+            elif height_reference == 'bottom':
+                ma_ch_extco_df.index = self.layer_bottom_heights
+            else:
+                raise ValueError("height_reference must be 'center', 'top', or 'bottom'")
         return ma_ch_extco_df
 
     def get_extco_at_layer(self, channel: int, layer: int, window=1, smooth='ma') -> pd.DataFrame:
