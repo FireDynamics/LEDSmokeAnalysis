@@ -141,10 +141,16 @@ class ExtinctionCoefficients(ABC):
             path.mkdir(parents=True)
         path = path / f'extinction_coefficients_{self.solver}_channel_{self.experiment.channel}_{self.reference_property}_led_array_{self.experiment.led_array}.csv'
         header = str(self)
+        header += 'Layer_bottom_height[m],'
+        header += ','.join(map(str, self.experiment.layers.borders[:-1])) + '\n'
+        header += 'Layer_top_height[m],'
+        header += ','.join(map(str, self.experiment.layers.borders[1:])) + '\n'
+        header += 'Layer_center_height[m],'
+        header += ','.join(map(lambda x: f"{x:.2f}", (np.array(self.experiment.layers.borders[:-1]) + np.array(
+            self.experiment.layers.borders[1:])) / 2)) + '\n'
         header += 'Experiment_Time[s],'
         header += 'layer0'
-        for i in range(self.experiment.layers.amount - 1):
-            header += f',layer{i + 1}'
+        header += ''.join(f',layer{i + 1}' for i in range(self.experiment.layers.amount - 1))
             
         experiment_times = _get_experiment_times_from_image_infos_file(self.average_images)
         coefficients_per_time_and_layer = np.column_stack(
