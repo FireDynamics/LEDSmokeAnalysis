@@ -3,6 +3,7 @@
 import os
 
 import matplotlib.pyplot as plt
+from matplotlib.colors import LogNorm
 import numpy as np
 from tqdm import tqdm
 
@@ -26,7 +27,9 @@ class DataExtractor:
     :vartype channels: Tuple
     :ivar fit_leds: Whether to fit LEDs or not.
     :vartype fit_leds: bool
-    :ivar search_areas: 2D numpy array with dimension (# of LEDs) x (LED_id, x, y).
+     :ivar fit_leds: Whether to fit LEDs or not.
+    :vartype threshold: float, optional   
+    :ivar threshold: The threshold value used for LED detection.
     :vartype search_areas: numpy.ndarray, optional
     :ivar line_indices: 2D list with dimension (# of LED arrays) x (# of LEDs per array) or None.
     :vartype line_indices: list[list[int]], optional
@@ -46,6 +49,7 @@ class DataExtractor:
         self.config = ConfigData(load_config_file=load_config_file)
         self.channels = list(channels)
         self.fit_leds = fit_leds
+        self.threshold = None
 
         # 2D numpy array with dimension (# of LEDs) x (LED_id, x, y)
         self.search_areas = None
@@ -95,12 +99,13 @@ class DataExtractor:
         max_num_leds = int(config['max_num_leds'])
         pixel_value_percentile = float(config['pixel_value_percentile'])
         if channel == 'all':
-            data, _ = ledsa.core.image_reading.read_img_array_from_raw_file(in_file_path, channel=0) # TODO: Channel to be removed here!
+            # TODO this currently only works for RAW files but should work for JPG files as well
+            data = ledsa.core.image_reading.read_img_array_from_img(in_file_path, channel=0) # TODO: Channel to be removed here!
         else:
             channel = int(channel)
             data = ledsa.core.image_reading.read_channel_data_from_img(in_file_path, channel=channel)
 
-        self.search_areas = ledsa.data_extraction.step_1_functions.find_search_areas(data, search_area_radius=search_area_radius, max_n_leds=max_num_leds, pixel_value_percentile=pixel_value_percentile)
+        self.search_areas, self.threshold = ledsa.data_extraction.step_1_functions.find_search_areas(data, search_area_radius=search_area_radius, max_n_leds=max_num_leds, pixel_value_percentile=pixel_value_percentile)
         self.write_search_areas()
         self.plot_search_areas()
         ledsa.core.file_handling.remove_flag('reorder_leds')
@@ -122,12 +127,14 @@ class DataExtractor:
             self.load_search_areas()
 
         in_file_path = os.path.join(config['img_directory'], config['img_name_string'].format(int(config['ref_img_id'])))
-        data = ledsa.core.image_reading.read_channel_data_from_img(in_file_path, channel=0)
+        # TODO this currently only works for RAW files but should work for JPG files as well
+        data = ledsa.core.image_reading.read_img_array_from_img(in_file_path, channel=0)
         search_area_radius = int(config['search_area_radius'])
         plt.figure(dpi=1200)
         ax = plt.gca()
         ledsa.data_extraction.step_1_functions.add_search_areas_to_plot(self.search_areas, search_area_radius, ax)
-        plt.imshow(data, cmap='Greys')
+        plt.imshow(data, norm=LogNorm(vmin=self.threshold, vmax=data.max()), cmap='Grays')
+
         plt.xlim(self.search_areas[:, 2].min() - 5 * search_area_radius, self.search_areas[:, 2].max() + 5 * search_area_radius)
         plt.ylim(self.search_areas[:, 1].max() + 5 * search_area_radius, self.search_areas[:, 1].min() - 5 * search_area_radius)
         plt.colorbar()

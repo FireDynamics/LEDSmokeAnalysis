@@ -1,9 +1,13 @@
+from typing import Any
+
 import numpy as np
 from matplotlib import pyplot as plt
 import cv2
+from numpy import ndarray, dtype, floating
 
 
-def find_search_areas(image: np.ndarray, search_area_radius, pixel_value_percentile=99.875, max_n_leds=1300) -> np.ndarray:
+def find_search_areas(image: np.ndarray, search_area_radius, pixel_value_percentile=99.875, max_n_leds=1300) -> tuple[
+    ndarray[Any, dtype[Any]], floating[Any]]:
     """
     Identifies and extracts locations of LEDs in an image.
 
@@ -15,8 +19,10 @@ def find_search_areas(image: np.ndarray, search_area_radius, pixel_value_percent
     :type pixel_value_percentile: float
     :param max_n_leds: The maximum number of LED locations to identify in the image.
     :type max_n_leds: int
-    :return: A numpy array of identified LED locations, each represented as (LED ID, y-coordinate, x-coordinate).
-    :rtype: np.ndarray
+    :return: A tuple containing:
+             - A numpy array of identified LED locations, each represented as (LED ID, y-coordinate, x-coordinate).
+             - The threshold value used for LED detection.
+    :rtype: tuple[np.ndarray, float]
     """
     (_, max_pixel_value, _, max_pixel_loc) = cv2.minMaxLoc(image)
     threshold = np.percentile(image, pixel_value_percentile)
@@ -34,7 +40,7 @@ def find_search_areas(image: np.ndarray, search_area_radius, pixel_value_percent
             led_id += 1
     print('\n')
     print(f"Found {led_id} LEDS")
-    return np.array(search_areas_list)
+    return np.array(search_areas_list), threshold
 
 
 def add_search_areas_to_plot(search_areas: np.ndarray, search_area_radius: int, ax: plt.axes) -> None:
