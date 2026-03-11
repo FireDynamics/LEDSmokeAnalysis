@@ -1,0 +1,259 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ledsa.analysis.ExtinctionCoefficientsNonLinear &mdash; LEDSmokeAnalysis 0.9.8 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/tables.css?v=aab0db92" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=1a282f62"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            LEDSmokeAnalysis
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">LEDSA:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../description.html">Description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_documentation.html">CLI Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ledsa.html">LEDSA Module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">Demo</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">LEDSmokeAnalysis</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ledsa.analysis.ExtinctionCoefficientsNonLinear</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ledsa.analysis.ExtinctionCoefficientsNonLinear</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.optimize</span><span class="w"> </span><span class="kn">import</span> <span class="n">minimize</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ledsa.analysis.Experiment</span><span class="w"> </span><span class="kn">import</span> <span class="n">Experiment</span><span class="p">,</span> <span class="n">Layers</span><span class="p">,</span> <span class="n">Camera</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ledsa.analysis.ExtinctionCoefficients</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExtinctionCoefficients</span>
+
+
+<div class="viewcode-block" id="ExtinctionCoefficientsNonLinear">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.ExtinctionCoefficientsNonLinear.ExtinctionCoefficientsNonLinear">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ExtinctionCoefficientsNonLinear</span><span class="p">(</span><span class="n">ExtinctionCoefficients</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    ExtinctionCoefficientsNonLinear computes the extinction coefficients by</span>
+<span class="sd">    directly minimizing the difference between observed and predicted intensities</span>
+<span class="sd">    using the Beer-Lambert law:</span>
+
+<span class="sd">        I_e = I_0 * exp(-sum_i (sigma_i * Delta s_{i}))</span>
+
+<span class="sd">    A numerical optimization approach is used with regularization terms to enforce</span>
+<span class="sd">    smoothness in the solution.</span>
+
+<span class="sd">    :ivar bounds: Bounds for each layer.</span>
+<span class="sd">    :vartype bounds: list[tuple]</span>
+<span class="sd">    :ivar weighting_preference: Weighting factor for the preference to push the numerical solver to high or low values for the extinction coefficients.</span>
+<span class="sd">    :vartype weighting_preference: float</span>
+<span class="sd">    :ivar weighting_curvature: Weighting factor for the smoothness of the solution.</span>
+<span class="sd">    :vartype weighting_curvature: float</span>
+<span class="sd">    :ivar num_iterations: Maximum number of iterations of the numerical solver.</span>
+<span class="sd">    :vartype num_iterations: int</span>
+<span class="sd">    :ivar solver: Type of solver (linear or nonlinear).</span>
+<span class="sd">    :vartype type: str</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">experiment</span><span class="p">,</span> <span class="n">reference_property</span><span class="o">=</span><span class="s1">&#39;sum_col_val&#39;</span><span class="p">,</span> <span class="n">num_ref_imgs</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">ref_img_indices</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">average_images</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">weighting_curvature</span><span class="o">=</span><span class="mf">1e-6</span><span class="p">,</span>
+                 <span class="n">weighting_preference</span><span class="o">=-</span><span class="mf">6e-3</span><span class="p">,</span> <span class="n">num_iterations</span><span class="o">=</span><span class="mi">200</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param experiment: Object representing the experimental setup.</span>
+<span class="sd">        :type experiment: Experiment</span>
+<span class="sd">        :param reference_property: Reference property to be analysed</span>
+<span class="sd">        :type reference_property: str</span>
+<span class="sd">        :param num_ref_imgs: Number of reference images.</span>
+<span class="sd">        :type num_ref_imgs: int</span>
+<span class="sd">        :param ref_img_indices: Indices of reference images to use. If None, use num_ref_imgs.</span>
+<span class="sd">        :type ref_img_indices: list[int] or None</span>
+<span class="sd">        :param average_images: Flag to determine if intensities are computed as an average from two consecutive images.</span>
+<span class="sd">        :type average_images: bool</span>
+<span class="sd">        :param weighting_curvature: Weighting factor for the smoothness of the solution.</span>
+<span class="sd">        :type weighting_curvature: float</span>
+<span class="sd">        :param weighting_preference: Weighting factor for the preference to push the numerical solver to high or low values for the extinction coefficients.</span>
+<span class="sd">        :type weighting_preference: float</span>
+<span class="sd">        :param num_iterations: Maximum number of iterations of the numerical solver.</span>
+<span class="sd">        :type num_iterations: int</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">experiment</span><span class="p">,</span> <span class="n">reference_property</span><span class="p">,</span> <span class="n">num_ref_imgs</span><span class="p">,</span> <span class="n">ref_img_indices</span><span class="p">,</span> <span class="n">average_images</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bounds</span> <span class="o">=</span> <span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">experiment</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">amount</span><span class="p">)]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">weighting_preference</span> <span class="o">=</span> <span class="n">weighting_preference</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">weighting_curvature</span> <span class="o">=</span> <span class="n">weighting_curvature</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_iterations</span> <span class="o">=</span> <span class="n">num_iterations</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">solver</span> <span class="o">=</span> <span class="s1">&#39;nonlinear&#39;</span>
+
+<div class="viewcode-block" id="ExtinctionCoefficientsNonLinear.calc_coefficients_of_img">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.ExtinctionCoefficientsNonLinear.ExtinctionCoefficientsNonLinear.calc_coefficients_of_img">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">calc_coefficients_of_img</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rel_intensities</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate the extinction coefficients for a single image based on a minimization procedure.</span>
+
+<span class="sd">        :param rel_intensities: Array of relative (normalized) LED intensities (I_e/I_0).</span>
+<span class="sd">        :return: Array of the computed extinction coefficients (sigmas)</span>
+<span class="sd">        :rtype: np.ndarray</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Initialize starting point for optimization</span>
+        <span class="c1"># If this is the first image, start with zeros</span>
+        <span class="c1"># Otherwise, use coefficients from previous image as initial guess</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">coefficients_per_image_and_layer</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">sigma0</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">experiment</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">amount</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">sigma0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">coefficients_per_image_and_layer</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="c1"># Use TNC (Truncated Newton Conjugate) optimization method with bounds</span>
+        <span class="c1"># to find the extinction coefficients that minimize the cost function</span>
+        <span class="n">fit</span> <span class="o">=</span> <span class="n">minimize</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cost_function</span><span class="p">,</span> <span class="n">sigma0</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="n">rel_intensities</span><span class="p">,</span>
+                       <span class="n">method</span><span class="o">=</span><span class="s1">&#39;TNC&#39;</span><span class="p">,</span> <span class="n">bounds</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bounds</span><span class="p">),</span>
+                       <span class="n">options</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;maxfun&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_iterations</span><span class="p">,</span> <span class="s1">&#39;gtol&#39;</span><span class="p">:</span> <span class="mf">1e-5</span><span class="p">,</span> <span class="s1">&#39;disp&#39;</span><span class="p">:</span> <span class="kc">False</span><span class="p">})</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">message</span><span class="p">)</span>
+        <span class="n">sigmas</span> <span class="o">=</span> <span class="n">fit</span><span class="o">.</span><span class="n">x</span>
+        <span class="k">return</span> <span class="n">sigmas</span></div>
+
+
+<div class="viewcode-block" id="ExtinctionCoefficientsNonLinear.calc_intensities">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.ExtinctionCoefficientsNonLinear.ExtinctionCoefficientsNonLinear.calc_intensities">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">calc_intensities</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sigmas</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate the intensities from a given set of extinction coefficients.</span>
+<span class="sd">        This implements the Beer-Lambert law and is called during the minimization of the cost function.</span>
+
+<span class="sd">        :param sigmas: An array of extinction coefficients (sigma values).</span>
+<span class="sd">        :type sigmas: np.ndarray</span>
+<span class="sd">        :return: An array of the calculated relative intensities (I_e/I_0).</span>
+<span class="sd">        :rtype: np.ndarray</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Get the number of LEDs on the LED array</span>
+        <span class="n">n_leds</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">experiment</span><span class="o">.</span><span class="n">num_leds</span>
+        <span class="n">intensities</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n_leds</span><span class="p">)</span>
+
+        <span class="c1"># Calculate intensity for each LED</span>
+        <span class="k">for</span> <span class="n">led</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_leds</span><span class="p">):</span>
+            <span class="c1"># Start with full intensity (I_0)</span>
+            <span class="n">intensity</span> <span class="o">=</span> <span class="mf">1.0</span>
+
+            <span class="c1"># Apply Beer-Lambert law for each layer the light passes through</span>
+            <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">distances_per_led_and_layer</span><span class="p">[</span><span class="n">led</span><span class="p">,</span> <span class="p">:])):</span>
+                <span class="c1"># I = I_0 * exp(-sigma * distance)</span>
+                <span class="n">intensity</span> <span class="o">=</span> <span class="n">intensity</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">sigmas</span><span class="p">[</span><span class="n">layer</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">distances_per_led_and_layer</span><span class="p">[</span><span class="n">led</span><span class="p">,</span> <span class="n">layer</span><span class="p">])</span>
+
+            <span class="n">intensities</span><span class="p">[</span><span class="n">led</span><span class="p">]</span> <span class="o">=</span> <span class="n">intensity</span>
+        <span class="k">return</span> <span class="n">intensities</span></div>
+
+
+<div class="viewcode-block" id="ExtinctionCoefficientsNonLinear.cost_function">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.ExtinctionCoefficientsNonLinear.ExtinctionCoefficientsNonLinear.cost_function">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">cost_function</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sigmas</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate the cost based on the difference between the computed intensities and target intensities.</span>
+<span class="sd">        The cost function aims to minimize the root mean square error (rmse) between the computed and target intensities,</span>
+<span class="sd">        while also considering the smoothness of the solution (curvature) and boundaries of the coefficients (preference).</span>
+
+<span class="sd">        :param sigmas: Extinction coefficients (sigma values).</span>
+<span class="sd">        :type sigmas: np.ndarray</span>
+<span class="sd">        :param target: Target relative intensities (I_e/I_0).</span>
+<span class="sd">        :type target: np.ndarray</span>
+<span class="sd">        :return: Computed cost.</span>
+<span class="sd">        :rtype: float</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Calculate predicted intensities using current sigma values</span>
+        <span class="n">intensities</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calc_intensities</span><span class="p">(</span><span class="n">sigmas</span><span class="p">)</span>
+
+        <span class="c1"># Calculate root mean square error between predicted and target intensities</span>
+        <span class="n">rmse</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">((</span><span class="n">intensities</span> <span class="o">-</span> <span class="n">target</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">))</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">intensities</span><span class="p">)</span>
+
+        <span class="c1"># Calculate curvature penalty (second derivative) to enforce smoothness</span>
+        <span class="c1"># This is a finite difference approximation of the second derivative</span>
+        <span class="n">curvature</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">sigmas</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span> <span class="o">-</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">sigmas</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">sigmas</span><span class="p">[</span><span class="mi">2</span><span class="p">:]))</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span>
+            <span class="n">intensities</span><span class="p">)</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">weighting_curvature</span>
+
+        <span class="c1"># Add preference term to bias solution toward higher or lower values</span>
+        <span class="n">preference</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">sigmas</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">sigmas</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">weighting_preference</span>
+
+        <span class="c1"># Total cost is the sum of all terms</span>
+        <span class="k">return</span> <span class="n">rmse</span> <span class="o">+</span> <span class="n">curvature</span> <span class="o">+</span> <span class="n">preference</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, CCE.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

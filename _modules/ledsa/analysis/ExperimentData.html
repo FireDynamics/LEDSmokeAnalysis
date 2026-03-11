@@ -1,0 +1,243 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ledsa.analysis.ExperimentData &mdash; LEDSmokeAnalysis 0.9.8 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/tables.css?v=aab0db92" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=1a282f62"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            LEDSmokeAnalysis
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">LEDSA:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../description.html">Description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_documentation.html">CLI Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ledsa.html">LEDSA Module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">Demo</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">LEDSmokeAnalysis</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ledsa.analysis.ExperimentData</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ledsa.analysis.ExperimentData</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ledsa.analysis.ConfigDataAnalysis</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConfigDataAnalysis</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ledsa.analysis.Experiment</span><span class="w"> </span><span class="kn">import</span> <span class="n">Camera</span><span class="p">,</span> <span class="n">Layers</span>
+<span class="c1"># Todo: Import init_function for request of missing data</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ledsa.core.ConfigData</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConfigData</span>
+
+
+<div class="viewcode-block" id="ExperimentData">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.ExperimentData.ExperimentData">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ExperimentData</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Dataclass containing the data for the extinction coefficient calculation</span>
+<span class="sd">    from the experiment_data.txt input file.</span>
+
+<span class="sd">    :ivar config: Configuration data.</span>
+<span class="sd">    :type config: ConfigData</span>
+<span class="sd">    :ivar config_analysis: Analysis configuration data.</span>
+<span class="sd">    :type config_analysis: ConfigDataAnalysis</span>
+<span class="sd">    :ivar camera: Camera data.</span>
+<span class="sd">    :type camera: Camera</span>
+<span class="sd">    :ivar layers: Layer data.</span>
+<span class="sd">    :type layers: Layers</span>
+<span class="sd">    :ivar channels: List of channels.</span>
+<span class="sd">    :type channels: List[int]</span>
+<span class="sd">    :ivar led_arrays: List of LED arrays.</span>
+<span class="sd">    :type led_arrays: List[int]</span>
+<span class="sd">    :ivar n_cpus: Number of CPUs.</span>
+<span class="sd">    :type n_cpus: int</span>
+<span class="sd">    :ivar weighting_preference: Weighting preference for nonlinear solver.</span>
+<span class="sd">    :type weighting_preference: float</span>
+<span class="sd">    :ivar weighting_curvature: Weighting curvature for nonlinear solver.</span>
+<span class="sd">    :type weighting_curvature: float</span>
+<span class="sd">    :ivar num_iterations: Number of iterations.</span>
+<span class="sd">    :type num_iterations: int</span>
+<span class="sd">    :ivar num_ref_images: Number of reference images.</span>
+<span class="sd">    :type num_ref_images: int</span>
+<span class="sd">    :ivar ref_img_indices: Indices of reference images to use. If None, use num_ref_imgs.</span>
+<span class="sd">    :type ref_img_indices: list[int] or None</span>
+<span class="sd">    :ivar reference_property: Reference property to be analysed.</span>
+<span class="sd">    :type reference_property: str</span>
+<span class="sd">    :ivar merge_led_arrays: Merge LED arrays option.</span>
+<span class="sd">    :type merge_led_arrays: str</span>
+<span class="sd">    :ivar lambda_reg: Regularization parameter for linear solver.</span>
+<span class="sd">    :type lambda_reg: float</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">load_config_file</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">ConfigData</span><span class="p">(</span><span class="n">load_config_file</span><span class="o">=</span><span class="n">load_config_file</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config_analysis</span> <span class="o">=</span> <span class="n">ConfigDataAnalysis</span><span class="p">(</span><span class="n">load_config_file</span><span class="o">=</span><span class="n">load_config_file</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">camera</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layers</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">channels</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">led_arrays</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_cpus</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">weighting_preference</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">weighting_curvature</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_iterations</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_ref_images</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ref_img_indices</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lambda_reg</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reference_property</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">merge_led_arrays</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">solver</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">load_config_parameters</span><span class="p">()</span>  <span class="c1"># Todo: Does that belong here?</span>
+
+<div class="viewcode-block" id="ExperimentData.load_config_parameters">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.ExperimentData.ExperimentData.load_config_parameters">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">load_config_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Load experiment data from configuration file.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">config_analysis</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config_analysis</span>
+        <span class="n">num_layers</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">config_analysis</span><span class="p">[</span><span class="s1">&#39;model_parameters&#39;</span><span class="p">][</span><span class="s1">&#39;num_layers&#39;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">channels</span> <span class="o">=</span> <span class="n">config_analysis</span><span class="o">.</span><span class="n">get_list_of_values</span><span class="p">(</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">,</span> <span class="s1">&#39;camera_channels&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ref_img_indices</span> <span class="o">=</span> <span class="n">config_analysis</span><span class="o">.</span><span class="n">get_list_of_values</span><span class="p">(</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">,</span> <span class="s1">&#39;ref_img_indices&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ref_img_indices</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">num_ref_images</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">config_analysis</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;num_ref_images&#39;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">solver</span> <span class="o">=</span> <span class="n">config_analysis</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;solver&#39;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">solver</span> <span class="o">==</span> <span class="s1">&#39;nonlinear&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">weighting_preference</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">config_analysis</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;weighting_preference&#39;</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">weighting_curvature</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">config_analysis</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;weighting_curvature&#39;</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">num_iterations</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">config_analysis</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;num_iterations&#39;</span><span class="p">])</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">solver</span> <span class="o">==</span> <span class="s1">&#39;linear&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">lambda_reg</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">config_analysis</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;lambda_reg&#39;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reference_property</span> <span class="o">=</span> <span class="n">config_analysis</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;reference_property&#39;</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">led_arrays</span> <span class="o">=</span> <span class="n">config_analysis</span><span class="o">.</span><span class="n">get_list_of_values</span><span class="p">(</span><span class="s1">&#39;model_parameters&#39;</span><span class="p">,</span> <span class="s1">&#39;led_array_indices&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">led_arrays</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">config_analysis</span><span class="o">.</span><span class="n">in_led_array_indices</span><span class="p">()</span>
+            <span class="n">config_analysis</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">led_arrays</span> <span class="o">=</span> <span class="n">config_analysis</span><span class="o">.</span><span class="n">get_list_of_values</span><span class="p">(</span><span class="s1">&#39;model_parameters&#39;</span><span class="p">,</span> <span class="s1">&#39;led_array_indices&#39;</span><span class="p">)</span>
+
+        <span class="n">domain_bounds</span> <span class="o">=</span> <span class="n">config_analysis</span><span class="o">.</span><span class="n">get_list_of_values</span><span class="p">(</span><span class="s1">&#39;model_parameters&#39;</span><span class="p">,</span> <span class="s1">&#39;domain_bounds&#39;</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">domain_bounds</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">config_analysis</span><span class="o">.</span><span class="n">in_domain_bounds</span><span class="p">()</span>
+            <span class="n">config_analysis</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+        <span class="n">domain_bounds</span> <span class="o">=</span> <span class="n">config_analysis</span><span class="o">.</span><span class="n">get_list_of_values</span><span class="p">(</span><span class="s1">&#39;model_parameters&#39;</span><span class="p">,</span> <span class="s1">&#39;domain_bounds&#39;</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+
+        <span class="n">camera_position</span> <span class="o">=</span> <span class="n">config_analysis</span><span class="o">.</span><span class="n">get_list_of_values</span><span class="p">(</span><span class="s1">&#39;experiment_geometry&#39;</span><span class="p">,</span> <span class="s1">&#39;camera_position&#39;</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">camera_position</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">config_analysis</span><span class="o">.</span><span class="n">in_camera_position</span><span class="p">()</span>
+            <span class="n">config_analysis</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+        <span class="n">camera_position</span> <span class="o">=</span> <span class="n">config_analysis</span><span class="o">.</span><span class="n">get_list_of_values</span><span class="p">(</span><span class="s1">&#39;experiment_geometry&#39;</span><span class="p">,</span> <span class="s1">&#39;camera_position&#39;</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">layers</span> <span class="o">=</span> <span class="n">Layers</span><span class="p">(</span><span class="n">num_layers</span><span class="p">,</span> <span class="o">*</span><span class="n">domain_bounds</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">camera</span> <span class="o">=</span> <span class="n">Camera</span><span class="p">(</span><span class="o">*</span><span class="n">camera_position</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_cpus</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">config_analysis</span><span class="p">[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">][</span><span class="s1">&#39;num_cores&#39;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">merge_led_arrays</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;analyse_positions&#39;</span><span class="p">][</span><span class="s1">&#39;merge_led_array_indices&#39;</span><span class="p">])</span></div>
+
+
+<div class="viewcode-block" id="ExperimentData.request_config_parameters">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.ExperimentData.ExperimentData.request_config_parameters">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">request_config_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Prompts the user to input missing parameters of analysis configuration and updates the configuration.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config_analysis</span>
+        <span class="k">if</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;experiment_geometry&#39;</span><span class="p">][</span><span class="s1">&#39;camera_position&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;None&#39;</span><span class="p">:</span>
+            <span class="n">config</span><span class="o">.</span><span class="n">in_camera_position</span><span class="p">()</span>
+            <span class="n">config</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;model_parameters&#39;</span><span class="p">][</span><span class="s1">&#39;num_layers&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;None&#39;</span><span class="p">:</span>
+            <span class="n">config</span><span class="o">.</span><span class="n">in_num_layers</span><span class="p">()</span>
+            <span class="n">config</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;model_parameters&#39;</span><span class="p">][</span><span class="s1">&#39;domain_bounds&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;None&#39;</span><span class="p">:</span>
+            <span class="n">config</span><span class="o">.</span><span class="n">in_domain_bounds</span><span class="p">()</span>
+            <span class="n">config</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;model_parameters&#39;</span><span class="p">][</span><span class="s1">&#39;led_array_indices&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;None&#39;</span><span class="p">:</span>
+            <span class="n">config</span><span class="o">.</span><span class="n">in_led_array_indices</span><span class="p">()</span>
+            <span class="n">config</span><span class="o">.</span><span class="n">save</span><span class="p">()</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, CCE.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,418 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ledsa.data_extraction.DataExtractor &mdash; LEDSmokeAnalysis 0.9.8 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/tables.css?v=aab0db92" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=1a282f62"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            LEDSmokeAnalysis
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">LEDSA:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../description.html">Description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_documentation.html">CLI Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ledsa.html">LEDSA Module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">Demo</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">LEDSmokeAnalysis</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ledsa.data_extraction.DataExtractor</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ledsa.data_extraction.DataExtractor</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib.colors</span><span class="w"> </span><span class="kn">import</span> <span class="n">LogNorm</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">tqdm</span><span class="w"> </span><span class="kn">import</span> <span class="n">tqdm</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">ledsa.core.file_handling</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">ledsa.core.image_handling</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">ledsa.core.image_reading</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">ledsa.data_extraction.step_1_functions</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">ledsa.data_extraction.step_2_functions</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">ledsa.data_extraction.step_3_functions</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ledsa.core.ConfigData</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConfigData</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ledsa.data_extraction</span><span class="w"> </span><span class="kn">import</span> <span class="n">init_functions</span> <span class="k">as</span> <span class="n">led</span>
+
+
+<div class="viewcode-block" id="DataExtractor">
+<a class="viewcode-back" href="../../../data_extraction.html#ledsa.data_extraction.DataExtractor.DataExtractor">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">DataExtractor</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A class responsible for extracting data from experiment images.</span>
+
+<span class="sd">    :ivar config: Configuration data object.</span>
+<span class="sd">    :vartype config: ConfigData</span>
+<span class="sd">    :ivar channels: Channels to be processed.</span>
+<span class="sd">    :vartype channels: Tuple</span>
+<span class="sd">    :ivar fit_leds: Whether to fit LEDs or not.</span>
+<span class="sd">    :vartype fit_leds: bool</span>
+<span class="sd">     :ivar fit_leds: Whether to fit LEDs or not.</span>
+<span class="sd">    :vartype threshold: float, optional   </span>
+<span class="sd">    :ivar threshold: The threshold value used for LED detection.</span>
+<span class="sd">    :vartype search_areas: numpy.ndarray, optional</span>
+<span class="sd">    :ivar line_indices: 2D list with dimension (# of LED arrays) x (# of LEDs per array) or None.</span>
+<span class="sd">    :vartype line_indices: list[list[int]], optional</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">channels</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="n">load_config_file</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">build_experiment_infos</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">fit_leds</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param channels: Channels to be processed. Defaults to (0).</span>
+<span class="sd">        :type channels: tuple, optional</span>
+<span class="sd">        :param load_config_file: Whether to load existing configuration file. Defaults to True.</span>
+<span class="sd">        :type load_config_file: bool, optional</span>
+<span class="sd">        :param build_experiment_infos: Whether to create &#39;image_infos.csv&#39;. Defaults to True.</span>
+<span class="sd">        :type build_experiment_infos: bool, optional</span>
+<span class="sd">        :param fit_leds: Whether to fit LEDs or not. Defaults to True.</span>
+<span class="sd">        :type fit_leds: bool, optional</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">ConfigData</span><span class="p">(</span><span class="n">load_config_file</span><span class="o">=</span><span class="n">load_config_file</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">channels</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">channels</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fit_leds</span> <span class="o">=</span> <span class="n">fit_leds</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">threshold</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># 2D numpy array with dimension (# of LEDs) x (LED_id, x, y)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">search_areas</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="c1"># 2D list with dimension (# of LED arrays) x (# of LEDs per array)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">line_indices</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="n">led</span><span class="o">.</span><span class="n">create_needed_directories</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">channels</span><span class="p">)</span>
+        <span class="n">led</span><span class="o">.</span><span class="n">request_config_parameters</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">)</span>
+
+        <span class="n">led</span><span class="o">.</span><span class="n">generate_image_infos_csv</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">,</span> <span class="n">build_experiment_infos</span><span class="o">=</span><span class="n">build_experiment_infos</span><span class="p">)</span>
+
+    <span class="c1"># &quot;&quot;&quot;</span>
+    <span class="c1"># ------------------------------------</span>
+    <span class="c1"># Step 1 - find LED search areas</span>
+    <span class="c1"># ------------------------------------</span>
+    <span class="c1"># &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="DataExtractor.load_search_areas">
+<a class="viewcode-back" href="../../../data_extraction.html#ledsa.data_extraction.DataExtractor.DataExtractor.load_search_areas">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">load_search_areas</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Load LED search areas from the &#39;led_search_areas.csv&#39; file. #TODO be consistent with search areas and ROIS</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">file_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s1">&#39;analysis&#39;</span><span class="p">,</span> <span class="s1">&#39;led_search_areas.csv&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">search_areas</span> <span class="o">=</span> <span class="n">ledsa</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">file_handling</span><span class="o">.</span><span class="n">read_table</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">delim</span><span class="o">=</span><span class="s1">&#39;,&#39;</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;int&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="DataExtractor.write_search_areas">
+<a class="viewcode-back" href="../../../data_extraction.html#ledsa.data_extraction.DataExtractor.DataExtractor.write_search_areas">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">write_search_areas</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">reorder_leds</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Writes LED search areas to a CSV file.</span>
+
+<span class="sd">        :param reorder_leds: A flag indicating whether the LED IDs have been reordered. Affects the header of the output file.</span>
+<span class="sd">        :type reorder_leds: bool</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">out_file_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s1">&#39;analysis&#39;</span><span class="p">,</span> <span class="s1">&#39;led_search_areas.csv&#39;</span><span class="p">)</span>
+        <span class="n">header</span> <span class="o">=</span> <span class="s1">&#39;LED id (reordered), pixel position x, pixel position y&#39;</span> <span class="k">if</span> <span class="n">reorder_leds</span> <span class="k">else</span> <span class="p">(</span><span class="s1">&#39;LED id, pixel &#39;</span>
+                                                                                                <span class="s1">&#39;position x, &#39;</span>
+                                                                                                <span class="s1">&#39;pixel position y&#39;</span><span class="p">)</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span><span class="n">out_file_path</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">search_areas</span><span class="p">,</span> <span class="n">delimiter</span><span class="o">=</span><span class="s1">&#39;,&#39;</span><span class="p">,</span>
+                   <span class="n">header</span><span class="o">=</span><span class="n">header</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="s1">&#39;</span><span class="si">%d</span><span class="s1">&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="DataExtractor.find_search_areas">
+<a class="viewcode-back" href="../../../data_extraction.html#ledsa.data_extraction.DataExtractor.DataExtractor.find_search_areas">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">find_search_areas</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Identify all LEDs in the reference image and define the areas where LEDs will be searched in the experiment images.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;find_search_areas&#39;</span><span class="p">]</span>
+        <span class="n">in_file_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;img_directory&#39;</span><span class="p">],</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;img_name_string&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;ref_img_id&#39;</span><span class="p">])))</span>
+        <span class="n">channel</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;channel&#39;</span><span class="p">]</span>
+        <span class="n">search_area_radius</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;search_area_radius&#39;</span><span class="p">])</span>
+        <span class="n">max_num_leds</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;max_num_leds&#39;</span><span class="p">])</span>
+        <span class="n">pixel_value_percentile</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;pixel_value_percentile&#39;</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">channel</span> <span class="o">==</span> <span class="s1">&#39;all&#39;</span><span class="p">:</span>
+            <span class="c1"># TODO this currently only works for RAW files but should work for JPG files as well</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">ledsa</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">image_reading</span><span class="o">.</span><span class="n">read_img_array_from_img</span><span class="p">(</span><span class="n">in_file_path</span><span class="p">,</span> <span class="n">channel</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="c1"># TODO: Channel to be removed here!</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">channel</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">channel</span><span class="p">)</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">ledsa</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">image_reading</span><span class="o">.</span><span class="n">read_channel_data_from_img</span><span class="p">(</span><span class="n">in_file_path</span><span class="p">,</span> <span class="n">channel</span><span class="o">=</span><span class="n">channel</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">search_areas</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">threshold</span> <span class="o">=</span> <span class="n">ledsa</span><span class="o">.</span><span class="n">data_extraction</span><span class="o">.</span><span class="n">step_1_functions</span><span class="o">.</span><span class="n">find_search_areas</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">search_area_radius</span><span class="o">=</span><span class="n">search_area_radius</span><span class="p">,</span> <span class="n">max_n_leds</span><span class="o">=</span><span class="n">max_num_leds</span><span class="p">,</span> <span class="n">pixel_value_percentile</span><span class="o">=</span><span class="n">pixel_value_percentile</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write_search_areas</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">plot_search_areas</span><span class="p">()</span>
+        <span class="n">ledsa</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">file_handling</span><span class="o">.</span><span class="n">remove_flag</span><span class="p">(</span><span class="s1">&#39;reorder_leds&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="DataExtractor.plot_search_areas">
+<a class="viewcode-back" href="../../../data_extraction.html#ledsa.data_extraction.DataExtractor.DataExtractor.plot_search_areas">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">plot_search_areas</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">reorder_leds</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Plot the identified LED search areas with their ID labels.</span>
+
+<span class="sd">        :param reorder_leds: A flag indicating whether the LED IDs have been reordered. Affects the name of the output file.</span>
+<span class="sd">        :type reorder_leds: bool</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s1">&#39;plots&#39;</span><span class="p">,</span> <span class="s1">&#39;led_search_areas.plot_reordered.pdf&#39;</span><span class="p">))</span>
+        <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+            <span class="k">pass</span>
+
+        <span class="n">config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;find_search_areas&#39;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">search_areas</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">load_search_areas</span><span class="p">()</span>
+
+        <span class="n">in_file_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;img_directory&#39;</span><span class="p">],</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;img_name_string&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;ref_img_id&#39;</span><span class="p">])))</span>
+        <span class="c1"># TODO this currently only works for RAW files but should work for JPG files as well</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">ledsa</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">image_reading</span><span class="o">.</span><span class="n">read_img_array_from_img</span><span class="p">(</span><span class="n">in_file_path</span><span class="p">,</span> <span class="n">channel</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">search_area_radius</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;search_area_radius&#39;</span><span class="p">])</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">dpi</span><span class="o">=</span><span class="mi">1200</span><span class="p">)</span>
+        <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span>
+        <span class="n">ledsa</span><span class="o">.</span><span class="n">data_extraction</span><span class="o">.</span><span class="n">step_1_functions</span><span class="o">.</span><span class="n">add_search_areas_to_plot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">search_areas</span><span class="p">,</span> <span class="n">search_area_radius</span><span class="p">,</span> <span class="n">ax</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">LogNorm</span><span class="p">(</span><span class="n">vmin</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">threshold</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">max</span><span class="p">()),</span> <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;Grays&#39;</span><span class="p">)</span>
+
+        <span class="n">plt</span><span class="o">.</span><span class="n">xlim</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">search_areas</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span> <span class="o">-</span> <span class="mi">5</span> <span class="o">*</span> <span class="n">search_area_radius</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">search_areas</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">+</span> <span class="mi">5</span> <span class="o">*</span> <span class="n">search_area_radius</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">ylim</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">search_areas</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">+</span> <span class="mi">5</span> <span class="o">*</span> <span class="n">search_area_radius</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">search_areas</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span> <span class="o">-</span> <span class="mi">5</span> <span class="o">*</span> <span class="n">search_area_radius</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">colorbar</span><span class="p">()</span>
+        <span class="n">plot_filename</span> <span class="o">=</span> <span class="s1">&#39;led_search_areas.plot_reordered.pdf&#39;</span> <span class="k">if</span> <span class="n">reorder_leds</span> <span class="k">else</span> <span class="s1">&#39;led_search_areas.plot.pdf&#39;</span>
+        <span class="n">out_file_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s1">&#39;plots&#39;</span><span class="p">,</span> <span class="n">plot_filename</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">out_file_path</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+
+
+    <span class="c1"># &quot;&quot;&quot;</span>
+    <span class="c1"># ------------------------------------</span>
+    <span class="c1"># Step 2 - match LEDs to arrays</span>
+    <span class="c1"># ------------------------------------</span>
+    <span class="c1"># &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="DataExtractor.match_leds_to_led_arrays">
+<a class="viewcode-back" href="../../../data_extraction.html#ledsa.data_extraction.DataExtractor.DataExtractor.match_leds_to_led_arrays">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">match_leds_to_led_arrays</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Analyze which LEDs belong to which LED array and save this mapping.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">ledsa</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">file_handling</span><span class="o">.</span><span class="n">check_flag</span><span class="p">(</span><span class="s1">&#39;reorder_leds&#39;</span><span class="p">):</span>
+            <span class="n">exit</span><span class="p">(</span><span class="s2">&quot;LED IDs have been reordered. Please run step S1 again before trying to match LEDs to LED lines!&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">search_areas</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">load_search_areas</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">line_indices</span> <span class="o">=</span> <span class="n">ledsa</span><span class="o">.</span><span class="n">data_extraction</span><span class="o">.</span><span class="n">step_2_functions</span><span class="o">.</span><span class="n">match_leds_to_led_arrays</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">search_areas</span><span class="p">,</span>
+                                                                                            <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">search_areas</span> <span class="o">=</span> <span class="n">ledsa</span><span class="o">.</span><span class="n">data_extraction</span><span class="o">.</span><span class="n">step_2_functions</span><span class="o">.</span><span class="n">reorder_search_areas</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">search_areas</span><span class="p">,</span>
+                                                                                            <span class="bp">self</span><span class="o">.</span><span class="n">line_indices</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write_search_areas</span><span class="p">(</span><span class="n">reorder_leds</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">line_indices</span> <span class="o">=</span> <span class="n">ledsa</span><span class="o">.</span><span class="n">data_extraction</span><span class="o">.</span><span class="n">step_2_functions</span><span class="o">.</span><span class="n">reorder_led_indices</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">line_indices</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">plot_search_areas</span><span class="p">(</span><span class="n">reorder_leds</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;LED IDs reordered successfully!&quot;</span><span class="p">)</span>
+            <span class="n">ledsa</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">file_handling</span><span class="o">.</span><span class="n">set_flag</span><span class="p">(</span><span class="s1">&#39;reorder_leds&#39;</span><span class="p">)</span>
+
+            <span class="n">ledsa</span><span class="o">.</span><span class="n">data_extraction</span><span class="o">.</span><span class="n">step_2_functions</span><span class="o">.</span><span class="n">generate_led_array_indices_files</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">line_indices</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">plot_led_arrays</span><span class="p">()</span>
+
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;analyse_positions&#39;</span><span class="p">][</span><span class="s1">&#39;merge_led_array_indices&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;None&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">line_indices</span> <span class="o">=</span> <span class="n">ledsa</span><span class="o">.</span><span class="n">data_extraction</span><span class="o">.</span><span class="n">step_2_functions</span><span class="o">.</span><span class="n">merge_indices_of_led_arrays</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">line_indices</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">plot_led_arrays</span><span class="p">(</span><span class="n">merge_led_arrays</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="DataExtractor.load_led_array_indices">
+<a class="viewcode-back" href="../../../data_extraction.html#ledsa.data_extraction.DataExtractor.DataExtractor.load_led_array_indices">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">load_led_array_indices</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Load LED array indices from the &#39;led_array_indices_{...}.csv&#39; files.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;analyse_positions&#39;</span><span class="p">][</span><span class="s1">&#39;merge_led_array_indices&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;None&#39;</span><span class="p">:</span>
+            <span class="n">num_arrays</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get2dnparray</span><span class="p">(</span><span class="s1">&#39;analyse_positions&#39;</span><span class="p">,</span> <span class="s1">&#39;merge_led_array_indices&#39;</span><span class="p">,</span> <span class="s1">&#39;var&#39;</span><span class="p">))</span>
+            <span class="n">file_extension</span> <span class="o">=</span> <span class="s1">&#39;_merge&#39;</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;ARRAY MERGE IS ACTIVE!&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">num_arrays</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;analyse_positions&#39;</span><span class="p">][</span><span class="s1">&#39;num_arrays&#39;</span><span class="p">])</span>
+            <span class="n">file_extension</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">line_indices</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_arrays</span><span class="p">):</span>
+            <span class="n">file_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s1">&#39;analysis&#39;</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;led_array_indices_</span><span class="si">{</span><span class="n">i</span><span class="si">:</span><span class="s1">03</span><span class="si">}{</span><span class="n">file_extension</span><span class="si">}</span><span class="s1">.csv&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">line_indices</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ledsa</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">file_handling</span><span class="o">.</span><span class="n">read_table</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;int&#39;</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="DataExtractor.plot_led_arrays">
+<a class="viewcode-back" href="../../../data_extraction.html#ledsa.data_extraction.DataExtractor.DataExtractor.plot_led_arrays">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">plot_led_arrays</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">merge_led_arrays</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Plots the arrangement of LEDs as identified in the LED arrays and saves the plot as a PDF file.</span>
+
+<span class="sd">        :param merge_led_arrays: A flag indicating whether LED arrays have been merged. Affects the naming of the output file.</span>
+<span class="sd">        :type merge_led_arrays: bool</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">line_indices</span><span class="p">)):</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">search_areas</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">line_indices</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="mi">2</span><span class="p">],</span>
+                        <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">search_areas</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">line_indices</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="mi">1</span><span class="p">],</span>
+                        <span class="n">s</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;LED Array </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">))</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">xticks</span><span class="p">([])</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">yticks</span><span class="p">([])</span>
+        <span class="n">plot_filename</span> <span class="o">=</span> <span class="s1">&#39;led_arrays_merged.pdf&#39;</span> <span class="k">if</span> <span class="n">merge_led_arrays</span> <span class="k">else</span> <span class="s1">&#39;led_arrays.pdf&#39;</span>
+        <span class="n">out_file_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s1">&#39;plots&#39;</span><span class="p">,</span> <span class="n">plot_filename</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">out_file_path</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+
+
+    <span class="c1"># &quot;&quot;&quot;</span>
+    <span class="c1"># ------------------------------------</span>
+    <span class="c1"># Step 3 - LED smoke analysis</span>
+    <span class="c1"># ------------------------------------</span>
+    <span class="c1"># &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="DataExtractor.process_image_data">
+<a class="viewcode-back" href="../../../data_extraction.html#ledsa.data_extraction.DataExtractor.DataExtractor.process_image_data">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">process_image_data</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Process all the image data to detect changes in light intensity in the search areas across the images.</span>
+<span class="sd">        Removes &#39;images_to_process.csv&#39; file afterward.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;analyse_photo&#39;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">search_areas</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">load_search_areas</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">line_indices</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">load_led_array_indices</span><span class="p">()</span>
+
+        <span class="n">img_filenames</span> <span class="o">=</span> <span class="n">ledsa</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">file_handling</span><span class="o">.</span><span class="n">read_table</span><span class="p">(</span><span class="s1">&#39;images_to_process.csv&#39;</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>
+        <span class="n">num_cores</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;num_cores&#39;</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">num_cores</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">multiprocessing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Pool</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;images are getting processed, this may take a while&#39;</span><span class="p">)</span>
+            <span class="k">with</span> <span class="n">Pool</span><span class="p">(</span><span class="n">num_cores</span><span class="p">)</span> <span class="k">as</span> <span class="n">p</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">imap</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">process_img_file</span><span class="p">,</span> <span class="n">img_filenames</span><span class="p">),</span> <span class="n">total</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">img_filenames</span><span class="p">),</span> <span class="n">desc</span><span class="o">=</span><span class="s2">&quot;Processing images&quot;</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">&quot;image&quot;</span><span class="p">):</span>
+                    <span class="k">pass</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">img_filename</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">img_filenames</span><span class="p">,</span> <span class="n">desc</span><span class="o">=</span><span class="s2">&quot;Processing images&quot;</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">&quot;image&quot;</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">process_img_file</span><span class="p">(</span><span class="n">img_filename</span><span class="p">)</span>
+
+        <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="s1">&#39;images_to_process.csv&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="DataExtractor.process_img_file">
+<a class="viewcode-back" href="../../../data_extraction.html#ledsa.data_extraction.DataExtractor.DataExtractor.process_img_file">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">process_img_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">img_filename</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Process a single image file to extract relevant data. This is a workaround for pool.map.</span>
+
+<span class="sd">        :param img_filename: The name of the image file to be processed.</span>
+<span class="sd">        :type img_filename: str</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">img_id</span> <span class="o">=</span> <span class="n">ledsa</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">image_handling</span><span class="o">.</span><span class="n">get_img_id</span><span class="p">(</span><span class="n">img_filename</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">channel</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">channels</span><span class="p">:</span>
+            <span class="n">img_data</span> <span class="o">=</span> <span class="n">ledsa</span><span class="o">.</span><span class="n">data_extraction</span><span class="o">.</span><span class="n">step_3_functions</span><span class="o">.</span><span class="n">generate_analysis_data</span><span class="p">(</span><span class="n">img_filename</span><span class="p">,</span> <span class="n">channel</span><span class="p">,</span>
+                                                                                     <span class="bp">self</span><span class="o">.</span><span class="n">search_areas</span><span class="p">,</span>
+                                                                                     <span class="bp">self</span><span class="o">.</span><span class="n">line_indices</span><span class="p">,</span>
+                                                                                     <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">fit_leds</span><span class="p">)</span>
+            <span class="n">ledsa</span><span class="o">.</span><span class="n">data_extraction</span><span class="o">.</span><span class="n">step_3_functions</span><span class="o">.</span><span class="n">create_fit_result_file</span><span class="p">(</span><span class="n">img_data</span><span class="p">,</span> <span class="n">img_id</span><span class="p">,</span> <span class="n">channel</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="DataExtractor.setup_step3">
+<a class="viewcode-back" href="../../../data_extraction.html#ledsa.data_extraction.DataExtractor.DataExtractor.setup_step3">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">setup_step3</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Setup the third step of the data extraction process by creating &#39;image_infos_analysis.csv&#39; and &#39;images_to_process.csv&#39; files.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">led</span><span class="o">.</span><span class="n">generate_image_infos_csv</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">,</span> <span class="n">build_analysis_infos</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">ledsa</span><span class="o">.</span><span class="n">data_extraction</span><span class="o">.</span><span class="n">step_3_functions</span><span class="o">.</span><span class="n">create_imgs_to_process_file</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="DataExtractor.setup_restart">
+<a class="viewcode-back" href="../../../data_extraction.html#ledsa.data_extraction.DataExtractor.DataExtractor.setup_restart">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">setup_restart</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Setup a restart in case the data extraction process was interrupted earlier.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># if len(self.channels) &gt; 1: #TODO: deactivated for testing</span>
+        <span class="c1">#     print(&#39;Restart of a run currently only supports one channel. \nExiting...&#39;)</span>
+        <span class="c1">#     exit(1)</span>
+        <span class="n">ledsa</span><span class="o">.</span><span class="n">data_extraction</span><span class="o">.</span><span class="n">step_3_functions</span><span class="o">.</span><span class="n">find_and_save_not_analysed_imgs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">channels</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, CCE.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
