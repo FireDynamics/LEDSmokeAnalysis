@@ -100,7 +100,7 @@ class DataExtractor:
         pixel_value_percentile = float(config['pixel_value_percentile'])
         if channel == 'all':
             # TODO this currently only works for RAW files but should work for JPG files as well
-            data, _ = ledsa.core.image_reading.read_img_array_from_raw_file(in_file_path, channel=0) # TODO: Channel to be removed here!
+            data = ledsa.core.image_reading.read_img_array_from_img(in_file_path, channel=0) # TODO: Channel to be removed here!
         else:
             channel = int(channel)
             data = ledsa.core.image_reading.read_channel_data_from_img(in_file_path, channel=channel)
@@ -128,7 +128,7 @@ class DataExtractor:
 
         in_file_path = os.path.join(config['img_directory'], config['img_name_string'].format(int(config['ref_img_id'])))
         # TODO this currently only works for RAW files but should work for JPG files as well
-        data, _ = ledsa.core.image_reading.read_img_array_from_raw_file(in_file_path, channel=0)
+        data = ledsa.core.image_reading.read_img_array_from_img(in_file_path, channel=0)
         search_area_radius = int(config['search_area_radius'])
         plt.figure(dpi=1200)
         ax = plt.gca()

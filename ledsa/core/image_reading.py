@@ -26,6 +26,25 @@ def read_channel_data_from_img(filename: str, channel: int) -> np.ndarray:
         channel_array = _read_channel_data_from_raw_file(filename, channel)
     return channel_array
 
+def read_img_array_from_img(filename: str, channel: int) -> np.ndarray:
+    """
+    Returns a 2D array of the image for all color channels.
+
+
+    :param filename: The path of the image file to read.
+    :type filename: str
+    :param channel: The color channel used for calculating black level values.
+    :type channel: int
+    :return: A 2D array containing the processed image data for all color channels.
+    :rtype: np.ndarray
+    """
+    extension = os.path.splitext(filename)[-1]
+    if extension in ['.JPG', '.JPEG', '.jpg', '.jpeg', '.PNG', '.png']:
+        img_array = _read_grayscale_img_array_from_img_file(filename)
+    elif extension in ['.CR2', '.CR3']:
+        img_array, _ = _read_img_array_from_raw_file(filename, channel)
+    return img_array
+
 
 def _read_channel_data_from_img_file(filename: str, channel: int) -> np.ndarray:
     """
@@ -38,7 +57,7 @@ def _read_channel_data_from_img_file(filename: str, channel: int) -> np.ndarray:
     :return: A 2D numpy array containing the data of the specified color channel from the image.
     :rtype: np.ndarray
     """
-    img_array = read_img_array_from_img_file(filename)
+    img_array = _read_img_array_from_img_file(filename)
     return img_array[:, :, channel]
 
 
@@ -54,7 +73,7 @@ def _read_channel_data_from_raw_file(filename: str, channel: int) -> np.ndarray:
     :return: A 2D numpy array representing the extracted channel, with all other channel values masked or set to zero.
     :rtype: np.ndarray
     """
-    img_array, filter_array = read_img_array_from_raw_file(filename, channel)
+    img_array, filter_array = _read_img_array_from_raw_file(filename, channel)
     if channel == 0 or channel == 2:
         channel_array = np.where(filter_array == channel, img_array, 0)
     elif channel == 1:
@@ -62,7 +81,7 @@ def _read_channel_data_from_raw_file(filename: str, channel: int) -> np.ndarray:
     return channel_array
 
 
-def read_img_array_from_raw_file(filename: str, channel: int) -> np.ndarray:
+def _read_img_array_from_raw_file(filename: str, channel: int) -> np.ndarray:
     # TODO: channel is only relevant for black level, consider individually!
     with rawpy.imread(filename) as raw:
         data = raw.raw_image_visible.copy()
@@ -74,9 +93,15 @@ def read_img_array_from_raw_file(filename: str, channel: int) -> np.ndarray:
     img_array = np.clip(img_array, 0, white_level)
     return img_array, filter_array
 
-def read_img_array_from_img_file(filename: str) -> np.ndarray:
+def _read_img_array_from_img_file(filename: str) -> np.ndarray:
     img_array = plt.imread(filename)
     return img_array
+
+def _read_grayscale_img_array_from_img_file(filename: str) -> np.ndarray:
+    img_array = plt.imread(filename)
+    weights = np.array([0.2989, 0.5870, 0.1140])
+    gray = np.dot(img_array[..., :3], weights).astype(np.uint8)
+    return gray
 
 
 def get_exif_entry(filename: str, tag: str) -> str:
