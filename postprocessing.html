@@ -1,0 +1,303 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Postprocessing &mdash; LEDSmokeAnalysis 0.10.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="_static/tables.css?v=aab0db92" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=82662543"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="_static/copybutton.js?v=f281be69"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Demo" href="demo.html" />
+    <link rel="prev" title="LED Positions" href="led_positions.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            LEDSmokeAnalysis
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">LEDSA:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="description.html">Description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cli_documentation.html">CLI Documentation</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="ledsa.html">LEDSA Module</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="config.html">Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="data_extraction.html">Data Extraction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="analysis.html">Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="led_positions.html">LED Positions</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Postprocessing</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#ledsa.postprocessing.simulation.SimData"><code class="docutils literal notranslate"><span class="pre">SimData</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#ledsa.postprocessing.simulation.SimData.get_image_name_from_time"><code class="docutils literal notranslate"><span class="pre">SimData.get_image_name_from_time()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ledsa.postprocessing.simulation.SimData.get_ledparams_at_led_array"><code class="docutils literal notranslate"><span class="pre">SimData.get_ledparams_at_led_array()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ledsa.postprocessing.simulation.SimData.get_ledparams_at_led_id"><code class="docutils literal notranslate"><span class="pre">SimData.get_ledparams_at_led_id()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ledsa.postprocessing.simulation.SimData.get_pixel_cordinates_of_LED"><code class="docutils literal notranslate"><span class="pre">SimData.get_pixel_cordinates_of_LED()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ledsa.postprocessing.simulation.SimData.get_pixel_values_of_led"><code class="docutils literal notranslate"><span class="pre">SimData.get_pixel_values_of_led()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ledsa.postprocessing.simulation.SimData.read_all"><code class="docutils literal notranslate"><span class="pre">SimData.read_all()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ledsa.postprocessing.simulation.SimData.read_led_params"><code class="docutils literal notranslate"><span class="pre">SimData.read_led_params()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ledsa.postprocessing.simulation.SimData.remove_duplicate_heights"><code class="docutils literal notranslate"><span class="pre">SimData.remove_duplicate_heights()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ledsa.postprocessing.simulation.SimData.set_timeshift"><code class="docutils literal notranslate"><span class="pre">SimData.set_timeshift()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#ledsa.postprocessing.simulation.StackedSimData"><code class="docutils literal notranslate"><span class="pre">StackedSimData</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="demo.html">Demo</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">LEDSmokeAnalysis</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="ledsa.html">LEDSA Module</a></li>
+      <li class="breadcrumb-item active">Postprocessing</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/postprocessing.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-ledsa.postprocessing.simulation">
+<span id="postprocessing"></span><h1>Postprocessing<a class="headerlink" href="#module-ledsa.postprocessing.simulation" title="Link to this heading"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="ledsa.postprocessing.simulation.SimData">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">ledsa.postprocessing.simulation.</span></span><span class="sig-name descname"><span class="pre">SimData</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path_simulation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">read_all</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">remove_duplicates</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">load_config_params</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ledsa/postprocessing/simulation.html#SimData"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ledsa.postprocessing.simulation.SimData" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">_BaseSimData</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="ledsa.postprocessing.simulation.SimData.get_image_name_from_time">
+<span class="sig-name descname"><span class="pre">get_image_name_from_time</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">time</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ledsa/postprocessing/simulation.html#SimData.get_image_name_from_time"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ledsa.postprocessing.simulation.SimData.get_image_name_from_time" title="Link to this definition"></a></dt>
+<dd><p>Retrieves the image name corresponding to a specific time.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>time</strong> (<em>int</em>) – The time index.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The name of the image.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ledsa.postprocessing.simulation.SimData.get_ledparams_at_led_array">
+<span class="sig-name descname"><span class="pre">get_ledparams_at_led_array</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">channel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">led_array_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">param</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'sum_col_val'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">yaxis</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'led_id'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">window</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_ref</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ledsa/postprocessing/simulation.html#SimData.get_ledparams_at_led_array"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ledsa.postprocessing.simulation.SimData.get_ledparams_at_led_array" title="Link to this definition"></a></dt>
+<dd><p>Retrieves a DataFrame containing normalized LED parameters for a specific LED array.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>channel</strong> (<em>int</em>) – The channel index from which to extract LED parameters.</p></li>
+<li><p><strong>led_array_id</strong> (<em>int</em>) – The ID for which to extract LED parameters.</p></li>
+<li><p><strong>param</strong> (<em>str</em><em>, </em><em>optional</em>) – The specific LED parameter to extract and analyze. Defaults to ‘sum_col_val’.</p></li>
+<li><p><strong>yaxis</strong> (<em>str</em><em>, </em><em>optional</em>) – Column labeling: <code class="docutils literal notranslate"><span class="pre">'led_id'</span></code> or <code class="docutils literal notranslate"><span class="pre">'height'</span></code>. Defaults to <code class="docutils literal notranslate"><span class="pre">'led_id'</span></code>.</p></li>
+<li><p><strong>window</strong> (<em>int</em><em>, </em><em>optional</em>) – Smoothing window size.  1 = no smoothing.</p></li>
+<li><p><strong>n_ref</strong> (<em>int</em><em> or </em><em>bool</em><em>, </em><em>optional</em>) – Number of initial entries for normalisation.  <code class="docutils literal notranslate"><span class="pre">False</span></code> disables
+normalisation.  Defaults to <code class="docutils literal notranslate"><span class="pre">None</span></code> (uses <code class="xref py py-attr docutils literal notranslate"><span class="pre">num_ref_images</span></code>).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>DataFrame; index = time, columns = LED IDs or heights.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ledsa.postprocessing.simulation.SimData.get_ledparams_at_led_id">
+<span class="sig-name descname"><span class="pre">get_ledparams_at_led_id</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">channel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">led_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">param</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'sum_col_val'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">window</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_ref</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ledsa/postprocessing/simulation.html#SimData.get_ledparams_at_led_id"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ledsa.postprocessing.simulation.SimData.get_ledparams_at_led_id" title="Link to this definition"></a></dt>
+<dd><p>Retrieves a DataFrame containing normalized LED parameters for a specific LED ID.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>channel</strong> (<em>int</em>) – The channel index from which to extract LED parameters.</p></li>
+<li><p><strong>led_id</strong> (<em>int</em>) – The identifier of the LED for which to extract parameters.</p></li>
+<li><p><strong>param</strong> (<em>str</em><em>, </em><em>optional</em>) – The specific LED parameter to extract and analyze. Defaults to ‘sum_col_val’.</p></li>
+<li><p><strong>window</strong> (<em>int</em><em>, </em><em>optional</em>) – Smoothing window size.  1 = no smoothing.</p></li>
+<li><p><strong>n_ref</strong> (<em>int</em><em> or </em><em>bool</em><em>, </em><em>optional</em>) – Number of initial entries for normalisation.  <code class="docutils literal notranslate"><span class="pre">False</span></code> disables
+normalisation.  Defaults to <code class="docutils literal notranslate"><span class="pre">None</span></code> (uses <code class="xref py py-attr docutils literal notranslate"><span class="pre">num_ref_images</span></code>).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>DataFrame indexed by time with the specified LED parameter.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ledsa.postprocessing.simulation.SimData.get_pixel_cordinates_of_LED">
+<span class="sig-name descname"><span class="pre">get_pixel_cordinates_of_LED</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">led_id</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ledsa/postprocessing/simulation.html#SimData.get_pixel_cordinates_of_LED"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ledsa.postprocessing.simulation.SimData.get_pixel_cordinates_of_LED" title="Link to this definition"></a></dt>
+<dd><p>Returns the pixel coordinates of a specified LED.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>led_id</strong> (<em>int</em>) – The identifier for the LED.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A list containing the x and y pixel coordinates of the LED.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ledsa.postprocessing.simulation.SimData.get_pixel_values_of_led">
+<span class="sig-name descname"><span class="pre">get_pixel_values_of_led</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">led_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">channel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">time</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ledsa/postprocessing/simulation.html#SimData.get_pixel_values_of_led"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ledsa.postprocessing.simulation.SimData.get_pixel_values_of_led" title="Link to this definition"></a></dt>
+<dd><p>Retrieves a cropped numpy array of pixel values around a specified LED.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>led_id</strong> (<em>int</em>) – The identifier for the LED of interest.</p></li>
+<li><p><strong>channel</strong> (<em>int</em>) – The image channel from which to extract pixel values.</p></li>
+<li><p><strong>time</strong> (<em>int</em>) – The time at which the image was taken.</p></li>
+<li><p><strong>radius</strong> (<em>int</em><em>, </em><em>optional</em>) – Pixel radius around the LED. If not specified, uses
+<code class="docutils literal notranslate"><span class="pre">search_area_radius</span></code> from the config file.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A numpy array of pixel values around the LED.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>numpy.ndarray</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If <code class="docutils literal notranslate"><span class="pre">path_images</span></code> is not available.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ledsa.postprocessing.simulation.SimData.read_all">
+<span class="sig-name descname"><span class="pre">read_all</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ledsa/postprocessing/simulation.html#SimData.read_all"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ledsa.postprocessing.simulation.SimData.read_all" title="Link to this definition"></a></dt>
+<dd><p>Read led parameters and extinction coefficients for all channels.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ledsa.postprocessing.simulation.SimData.read_led_params">
+<span class="sig-name descname"><span class="pre">read_led_params</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ledsa/postprocessing/simulation.html#SimData.read_led_params"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ledsa.postprocessing.simulation.SimData.read_led_params" title="Link to this definition"></a></dt>
+<dd><p>Read led parameters for all color channels from the simulation path.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ledsa.postprocessing.simulation.SimData.remove_duplicate_heights">
+<span class="sig-name descname"><span class="pre">remove_duplicate_heights</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ledsa/postprocessing/simulation.html#SimData.remove_duplicate_heights"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ledsa.postprocessing.simulation.SimData.remove_duplicate_heights" title="Link to this definition"></a></dt>
+<dd><p>Remove duplicate height entries for each LED parameter DataFrame.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ledsa.postprocessing.simulation.SimData.set_timeshift">
+<span class="sig-name descname"><span class="pre">set_timeshift</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">timedelta</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ledsa/postprocessing/simulation.html#SimData.set_timeshift"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ledsa.postprocessing.simulation.SimData.set_timeshift" title="Link to this definition"></a></dt>
+<dd><p>Sets the time shift for the experiment’s start time.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>timedelta</strong> (<em>int</em>) – Time shift in seconds.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ledsa.postprocessing.simulation.StackedSimData">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">ledsa.postprocessing.simulation.</span></span><span class="sig-name descname"><span class="pre">StackedSimData</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'.'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">read_all</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ledsa/postprocessing/simulation.html#StackedSimData"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ledsa.postprocessing.simulation.StackedSimData" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">_BaseSimData</span></code></p>
+<p>Postprocessing interface for stacked multi-camera extinction coefficient results.</p>
+<p>Reads <code class="docutils literal notranslate"><span class="pre">config_stacked.ini</span></code> from <em>config_path</em>, discovers the stacked CSV
+output files produced by
+<a class="reference internal" href="analysis.html#module-ledsa.analysis.StackedExtinctionCoefficients" title="ledsa.analysis.StackedExtinctionCoefficients"><code class="xref py py-class docutils literal notranslate"><span class="pre">StackedExtinctionCoefficients</span></code></a>, and exposes the same
+<code class="xref py py-class docutils literal notranslate"><span class="pre">_BaseSimData</span></code> query API for those results.</p>
+<p>LED parameter data is not available through this class because stacked results
+aggregate rays from multiple cameras.  Use individual per-camera
+<a class="reference internal" href="#ledsa.postprocessing.simulation.SimData" title="ledsa.postprocessing.simulation.SimData"><code class="xref py py-class docutils literal notranslate"><span class="pre">SimData</span></code></a> objects for raw LED intensities.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Variables<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>config_stacked</strong> (<a class="reference internal" href="config.html#ledsa.analysis.ConfigDataStacked.ConfigDataStacked" title="ledsa.analysis.ConfigDataStacked.ConfigDataStacked"><em>ConfigDataStacked</em></a>) – Parsed stacked-analysis configuration.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="led_positions.html" class="btn btn-neutral float-left" title="LED Positions" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="demo.html" class="btn btn-neutral float-right" title="Demo" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, CCE.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

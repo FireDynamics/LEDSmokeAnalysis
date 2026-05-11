@@ -1,0 +1,658 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ledsa.analysis.StackedExtinctionCoefficients &mdash; LEDSmokeAnalysis 0.10.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/tables.css?v=aab0db92" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=82662543"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            LEDSmokeAnalysis
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">LEDSA:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../description.html">Description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_documentation.html">CLI Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ledsa.html">LEDSA Module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">Demo</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">LEDSmokeAnalysis</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ledsa.analysis.StackedExtinctionCoefficients</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ledsa.analysis.StackedExtinctionCoefficients</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Stacked extinction coefficient computation across multiple cameras/LEDSA runs.</span>
+
+<span class="sd">Usage example::</span>
+
+<span class="sd">    from ledsa.analysis.ConfigDataStacked import ConfigDataStacked</span>
+<span class="sd">    from ledsa.analysis.StackedExtinctionCoefficients import StackedExtinctionCoefficients</span>
+
+<span class="sd">    cfg = ConfigDataStacked()                    # reads config_stacked.ini</span>
+
+<span class="sd">    for arr_id in cfg.get_led_array_ids():</span>
+<span class="sd">        for channel in cfg.camera_channels:</span>
+<span class="sd">            sec = StackedExtinctionCoefficients(cfg, arr_id, channel)</span>
+<span class="sd">            sec.calc_and_set_coefficients()</span>
+<span class="sd">            sec.save()</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">datetime</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ledsa.analysis.ConfigDataStacked</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConfigDataStacked</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ledsa.analysis.Experiment</span><span class="w"> </span><span class="kn">import</span> <span class="n">Camera</span><span class="p">,</span> <span class="n">Experiment</span><span class="p">,</span> <span class="n">Layers</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ledsa.analysis.ExtinctionCoefficientsLinear</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExtinctionCoefficientsLinear</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ledsa.analysis.ExtinctionCoefficientsNonLinear</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExtinctionCoefficientsNonLinear</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">importlib.metadata</span><span class="w"> </span><span class="kn">import</span> <span class="n">version</span>
+
+
+<div class="viewcode-block" id="StackedExtinctionCoefficients">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.StackedExtinctionCoefficients.StackedExtinctionCoefficients">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">StackedExtinctionCoefficients</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Joint inversion of extinction coefficients using ray data stacked across</span>
+<span class="sd">    multiple cameras (LEDSA simulation directories).</span>
+
+<span class="sd">    For a given virtual LED-array ID and colour channel the class:</span>
+
+<span class="sd">    1. Builds one :class:`~ledsa.analysis.Experiment.Experiment` per</span>
+<span class="sd">       (simulation, ``led_array_id``) pair.</span>
+<span class="sd">    2. Constructs a stacked system matrix by vertically concatenating the</span>
+<span class="sd">       per-experiment distance-per-layer matrices and writes it once per</span>
+<span class="sd">       virtual array (channel-independent) to ``&lt;output_path&gt;/``.</span>
+<span class="sd">    3. Computes the common time axis across all simulations, writes a</span>
+<span class="sd">       time-alignment report to ``&lt;output_path&gt;/``, and stores it for reuse.</span>
+<span class="sd">    4. Solves the augmented Beer–Lambert system with the configured solver.</span>
+<span class="sd">    5. Writes extinction coefficient CSVs to</span>
+<span class="sd">       ``&lt;output_path&gt;/analysis/extinction_coefficients/&lt;solver&gt;/``.</span>
+
+<span class="sd">    :ivar config: Stacked-analysis configuration.</span>
+<span class="sd">    :vartype config: ConfigDataStacked</span>
+<span class="sd">    :ivar led_array_id: Virtual LED-array ID (integer key in ``[led_arrays]``).</span>
+<span class="sd">    :vartype led_array_id: int</span>
+<span class="sd">    :ivar channel: Colour channel index.</span>
+<span class="sd">    :vartype channel: int</span>
+<span class="sd">    :ivar layers: Shared layer discretisation.</span>
+<span class="sd">    :vartype layers: Layers</span>
+<span class="sd">    :ivar led_array_mapping: ``{sim_idx: led_array_id}`` for this virtual array.</span>
+<span class="sd">    :vartype led_array_mapping: dict[int, int]</span>
+<span class="sd">    :ivar sub_experiments: Per-simulation :class:`Experiment` objects.</span>
+<span class="sd">    :vartype sub_experiments: list[Experiment]</span>
+<span class="sd">    :ivar distances_per_led_and_layer: Stacked distance matrix (n_leds_total × n_layers).</span>
+<span class="sd">    :vartype distances_per_led_and_layer: np.ndarray</span>
+<span class="sd">    :ivar ref_intensities: Stacked reference intensities (n_leds_total,).</span>
+<span class="sd">    :vartype ref_intensities: np.ndarray</span>
+<span class="sd">    :ivar coefficients_per_image_and_layer: Computed extinction coefficients.</span>
+<span class="sd">    :vartype coefficients_per_image_and_layer: list[np.ndarray]</span>
+<span class="sd">    :ivar common_times: Experiment times [s] shared by all simulations.</span>
+<span class="sd">    :vartype common_times: np.ndarray or None</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">ConfigDataStacked</span><span class="p">,</span> <span class="n">led_array_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param config: Parsed ``config_stacked.ini``.</span>
+<span class="sd">        :type config: ConfigDataStacked</span>
+<span class="sd">        :param led_array_id: Integer key defined in the ``[led_arrays]`` section.</span>
+<span class="sd">        :type led_array_id: int</span>
+<span class="sd">        :param channel: Colour channel (0 = R, 1 = G, 2 = B).</span>
+<span class="sd">        :type channel: int</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">led_array_id</span> <span class="o">=</span> <span class="n">led_array_id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">channel</span> <span class="o">=</span> <span class="n">channel</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">layers</span> <span class="o">=</span> <span class="n">Layers</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">num_layers</span><span class="p">,</span> <span class="o">*</span><span class="n">config</span><span class="o">.</span><span class="n">domain_bounds</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">led_array_mapping</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get_led_array_mapping</span><span class="p">(</span><span class="n">led_array_id</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">sub_experiments</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Experiment</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">sim_idx</span><span class="p">,</span> <span class="n">arr_id</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">led_array_mapping</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
+            <span class="n">cam_pos</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get_camera_position</span><span class="p">(</span><span class="n">sim_idx</span><span class="p">)</span>
+            <span class="n">exp</span> <span class="o">=</span> <span class="n">Experiment</span><span class="p">(</span>
+                <span class="n">layers</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">layers</span><span class="p">,</span>
+                <span class="n">led_array</span><span class="o">=</span><span class="n">arr_id</span><span class="p">,</span>
+                <span class="n">camera</span><span class="o">=</span><span class="n">Camera</span><span class="p">(</span><span class="o">*</span><span class="n">cam_pos</span><span class="p">),</span>
+                <span class="n">path</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">get_simulation_path</span><span class="p">(</span><span class="n">sim_idx</span><span class="p">),</span>
+                <span class="n">channel</span><span class="o">=</span><span class="n">channel</span><span class="p">,</span>
+                <span class="n">merge_led_arrays</span><span class="o">=</span><span class="s1">&#39;None&#39;</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sub_experiments</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">exp</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sub_solvers</span><span class="p">:</span> <span class="n">List</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_build_sub_solver</span><span class="p">(</span><span class="n">exp</span><span class="p">)</span> <span class="k">for</span> <span class="n">exp</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">sub_experiments</span>
+        <span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">distances_per_led_and_layer</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ref_intensities</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">coefficients_per_image_and_layer</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">common_times</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_time_maps</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]]</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># set by _compute_time_alignment</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">solver</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">solver</span>
+
+    <span class="c1"># ------------------------------------------------------------------</span>
+    <span class="c1"># Sub-solver factory</span>
+    <span class="c1"># ------------------------------------------------------------------</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_build_sub_solver</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">experiment</span><span class="p">:</span> <span class="n">Experiment</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create a single-experiment solver instance for *experiment*.&quot;&quot;&quot;</span>
+        <span class="n">cfg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span>
+        <span class="k">if</span> <span class="n">cfg</span><span class="o">.</span><span class="n">solver</span> <span class="o">==</span> <span class="s1">&#39;linear&#39;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">ExtinctionCoefficientsLinear</span><span class="p">(</span>
+                <span class="n">experiment</span><span class="o">=</span><span class="n">experiment</span><span class="p">,</span>
+                <span class="n">reference_property</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">reference_property</span><span class="p">,</span>
+                <span class="n">num_ref_imgs</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">num_ref_images</span><span class="p">,</span>
+                <span class="n">ref_img_indices</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">ref_img_indices</span><span class="p">,</span>
+                <span class="n">average_images</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">average_images</span><span class="p">,</span>
+                <span class="n">lambda_reg</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">lambda_reg</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">elif</span> <span class="n">cfg</span><span class="o">.</span><span class="n">solver</span> <span class="o">==</span> <span class="s1">&#39;nonlinear&#39;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">ExtinctionCoefficientsNonLinear</span><span class="p">(</span>
+                <span class="n">experiment</span><span class="o">=</span><span class="n">experiment</span><span class="p">,</span>
+                <span class="n">reference_property</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">reference_property</span><span class="p">,</span>
+                <span class="n">num_ref_imgs</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">num_ref_images</span><span class="p">,</span>
+                <span class="n">ref_img_indices</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">ref_img_indices</span><span class="p">,</span>
+                <span class="n">average_images</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">average_images</span><span class="p">,</span>
+                <span class="n">weighting_preference</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">weighting_preference</span><span class="p">,</span>
+                <span class="n">weighting_curvature</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">weighting_curvature</span><span class="p">,</span>
+                <span class="n">num_iterations</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">num_iterations</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s1">&#39;Unknown solver </span><span class="si">{</span><span class="n">cfg</span><span class="o">.</span><span class="n">solver</span><span class="si">!r}</span><span class="s1">. Choose &quot;linear&quot; or &quot;nonlinear&quot;.&#39;</span>
+            <span class="p">)</span>
+
+    <span class="c1"># ------------------------------------------------------------------</span>
+    <span class="c1"># Main entry points</span>
+    <span class="c1"># ------------------------------------------------------------------</span>
+
+<div class="viewcode-block" id="StackedExtinctionCoefficients.calc_and_set_coefficients">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.StackedExtinctionCoefficients.StackedExtinctionCoefficients.calc_and_set_coefficients">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">calc_and_set_coefficients</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute extinction coefficients for all time-aligned images.</span>
+
+<span class="sd">        Populates :attr:`coefficients_per_image_and_layer` and</span>
+<span class="sd">        :attr:`common_times`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ensure_stacked_variables</span><span class="p">()</span>
+
+        <span class="n">ref_prop</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">reference_property</span>
+        <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">aligned_intensities</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_iter_aligned_images</span><span class="p">(</span><span class="n">ref_prop</span><span class="p">):</span>
+            <span class="n">rel_intensities</span> <span class="o">=</span> <span class="n">aligned_intensities</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">ref_intensities</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">solver</span> <span class="o">==</span> <span class="s1">&#39;nonlinear&#39;</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">coefficients_per_image_and_layer</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_sub_solvers</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">coefficients_per_image_and_layer</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">coefficients_per_image_and_layer</span>
+                <span class="p">)</span>
+            <span class="n">sigmas</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sub_solvers</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">calc_coefficients_of_img</span><span class="p">(</span><span class="n">rel_intensities</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">coefficients_per_image_and_layer</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sigmas</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="StackedExtinctionCoefficients.calc_and_set_coefficients_mp">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.StackedExtinctionCoefficients.StackedExtinctionCoefficients.calc_and_set_coefficients_mp">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">calc_and_set_coefficients_mp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cores</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Parallel computation using multiprocessing.</span>
+
+<span class="sd">        :param cores: Number of worker processes. Defaults to ``config.num_cores``.</span>
+<span class="sd">        :type cores: int or None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">multiprocessing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Pool</span>
+
+        <span class="k">if</span> <span class="n">cores</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">cores</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">num_cores</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ensure_stacked_variables</span><span class="p">()</span>
+        <span class="n">ref_prop</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">reference_property</span>
+        <span class="n">all_rel_intensities</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">aligned</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">ref_intensities</span>
+            <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">aligned</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_iter_aligned_images</span><span class="p">(</span><span class="n">ref_prop</span><span class="p">)</span>
+        <span class="p">]</span>
+
+        <span class="k">with</span> <span class="n">Pool</span><span class="p">(</span><span class="n">processes</span><span class="o">=</span><span class="n">cores</span><span class="p">)</span> <span class="k">as</span> <span class="n">pool</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">coefficients_per_image_and_layer</span> <span class="o">=</span> <span class="n">pool</span><span class="o">.</span><span class="n">map</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_sub_solvers</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">calc_coefficients_of_img</span><span class="p">,</span> <span class="n">all_rel_intensities</span>
+            <span class="p">)</span></div>
+
+
+    <span class="c1"># ------------------------------------------------------------------</span>
+    <span class="c1"># Lazy initialisation</span>
+    <span class="c1"># ------------------------------------------------------------------</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_ensure_stacked_variables</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Load/compute distance matrix, time alignment, and reference intensities.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">distances_per_led_and_layer</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_build_stacked_distance_matrix</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_time_maps</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_compute_time_alignment</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ref_intensities</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_build_stacked_ref_intensities</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_build_stacked_distance_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Populate each sub-solver&#39;s distance matrix, then stack them.</span>
+
+<span class="sd">        The stacked distance matrix is written once per virtual array</span>
+<span class="sd">        (channel-independent) to::</span>
+
+<span class="sd">            &lt;output_path&gt;/led_array_&lt;id&gt;_distances_per_layer.txt</span>
+
+<span class="sd">        A guard prevents redundant writes when multiple channels are processed.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">sim_idx</span><span class="p">,</span> <span class="p">(</span><span class="n">sub</span><span class="p">,</span> <span class="n">arr_id</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span>
+            <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_sub_solvers</span><span class="p">,</span>
+                <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">led_array_mapping</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">led_array_mapping</span><span class="p">)])</span>
+        <span class="p">):</span>
+            <span class="n">exp</span> <span class="o">=</span> <span class="n">sub</span><span class="o">.</span><span class="n">experiment</span>
+            <span class="k">if</span> <span class="n">exp</span><span class="o">.</span><span class="n">num_leds</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Could not load LED data for simulation </span><span class="si">{</span><span class="n">sim_idx</span><span class="si">}</span><span class="s2"> &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;(led_array_id=</span><span class="si">{</span><span class="n">arr_id</span><span class="si">}</span><span class="s2">, path=</span><span class="si">{</span><span class="n">exp</span><span class="o">.</span><span class="n">path</span><span class="si">}</span><span class="s2">).</span><span class="se">\n</span><span class="s2">&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;Expected files:</span><span class="se">\n</span><span class="s2">&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">exp</span><span class="o">.</span><span class="n">path</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="s1">&#39;analysis&#39;</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="sa">f</span><span class="s1">&#39;led_array_indices_</span><span class="si">{</span><span class="n">arr_id</span><span class="si">:</span><span class="s1">03d</span><span class="si">}</span><span class="s1">.csv&#39;</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">exp</span><span class="o">.</span><span class="n">path</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="s1">&#39;analysis&#39;</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="s1">&#39;led_search_areas_with_coordinates.csv&#39;</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+                    <span class="s2">&quot;Make sure LEDSA steps 1-3 have been completed in that directory &quot;</span>
+                    <span class="s2">&quot;and that the led_array_id in [led_arrays] is correct.&quot;</span>
+                <span class="p">)</span>
+            <span class="n">sub</span><span class="o">.</span><span class="n">set_all_member_variables</span><span class="p">(</span><span class="n">save_distances</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">distances_per_led_and_layer</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">sub</span><span class="o">.</span><span class="n">distances_per_led_and_layer</span> <span class="k">for</span> <span class="n">sub</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sub_solvers</span><span class="p">]</span>
+        <span class="p">)</span>
+
+        <span class="n">dist_file</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">output_path</span> <span class="o">/</span> <span class="sa">f</span><span class="s1">&#39;led_array_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">led_array_id</span><span class="si">}</span><span class="s1">_distances_per_layer.txt&#39;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">dist_file</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">output_path</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span><span class="n">dist_file</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">distances_per_led_and_layer</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sub_solvers</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">distances_per_led_and_layer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">distances_per_led_and_layer</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_build_stacked_ref_intensities</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Concatenate per-sub-solver reference intensities.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ref_intensities</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">sub</span><span class="o">.</span><span class="n">ref_intensities</span> <span class="k">for</span> <span class="n">sub</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sub_solvers</span><span class="p">]</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_compute_time_alignment</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute the common time axis across all simulations and write a</span>
+<span class="sd">        time-alignment report to::</span>
+
+<span class="sd">            &lt;output_path&gt;/time_alignment_led_array_&lt;id&gt;.txt</span>
+
+<span class="sd">        The report is written once per virtual array (channel-independent).</span>
+<span class="sd">        Sets :attr:`_time_maps` and :attr:`common_times`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tol</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">time_sync_tolerance</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_time_maps</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_load_time_map</span><span class="p">(</span><span class="n">sub</span><span class="o">.</span><span class="n">experiment</span><span class="p">,</span> <span class="n">sub</span><span class="o">.</span><span class="n">average_images</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">sub</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sub_solvers</span>
+        <span class="p">]</span>
+
+        <span class="n">all_time_arrays</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">tm</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span> <span class="k">for</span> <span class="n">tm</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_time_maps</span><span class="p">]</span>
+        <span class="n">common_times</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_intersect_time_axes</span><span class="p">(</span><span class="n">all_time_arrays</span><span class="p">,</span> <span class="n">tol</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">common_times</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                <span class="s1">&#39;No overlapping experiment times found across simulations for &#39;</span>
+                <span class="sa">f</span><span class="s1">&#39;led_array_id=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">led_array_id</span><span class="si">}</span><span class="s1">. &#39;</span>
+                <span class="s1">&#39;Check time_sync_tolerance in config_stacked.ini.&#39;</span>
+            <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">common_times</span> <span class="o">=</span> <span class="n">common_times</span>
+
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s1">&#39;  [array </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">led_array_id</span><span class="si">}</span><span class="s1">] &#39;</span>
+            <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">common_times</span><span class="p">)</span><span class="si">}</span><span class="s1"> time-aligned images from &#39;</span>
+            <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get_num_simulations</span><span class="p">()</span><span class="si">}</span><span class="s1"> simulations.&#39;</span>
+        <span class="p">)</span>
+
+        <span class="n">report_file</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">output_path</span> <span class="o">/</span> <span class="sa">f</span><span class="s1">&#39;time_alignment_led_array_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">led_array_id</span><span class="si">}</span><span class="s1">.txt&#39;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">report_file</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_write_time_alignment_report</span><span class="p">(</span><span class="n">report_file</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_time_maps</span><span class="p">,</span> <span class="n">all_time_arrays</span><span class="p">,</span> <span class="n">common_times</span><span class="p">,</span> <span class="n">tol</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_write_time_alignment_report</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+        <span class="n">time_maps</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">]],</span>
+        <span class="n">all_time_arrays</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
+        <span class="n">common_times</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">tol</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Write a plain-text time-alignment report.</span>
+
+<span class="sd">        Includes a per-image table showing, for every common time step, which</span>
+<span class="sd">        image ID was selected from each simulation and the corresponding time</span>
+<span class="sd">        difference.</span>
+
+<span class="sd">        :param path: Destination file path.</span>
+<span class="sd">        :param time_maps: ``{img_id: time}`` per simulation.</span>
+<span class="sd">        :param all_time_arrays: Flat time arrays per simulation.</span>
+<span class="sd">        :param common_times: Intersected common time axis.</span>
+<span class="sd">        :param tol: Matching tolerance used [s].</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">output_path</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">sim_indices</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">led_array_mapping</span><span class="p">)</span>
+
+        <span class="n">lines</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="sa">f</span><span class="s1">&#39;Time-alignment report — led_array_id </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">led_array_id</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s1">&#39;Generated : </span><span class="si">{</span><span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">&quot;%Y-%m-</span><span class="si">%d</span><span class="s2"> %H:%M:%S&quot;</span><span class="p">)</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s1">&#39;Tolerance : </span><span class="si">{</span><span class="n">tol</span><span class="si">}</span><span class="s1"> s&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;Simulations&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;-----------&#39;</span><span class="p">,</span>
+        <span class="p">]</span>
+
+        <span class="k">for</span> <span class="n">sim_idx</span><span class="p">,</span> <span class="n">arr_id</span><span class="p">,</span> <span class="n">times</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
+            <span class="n">sim_indices</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">led_array_mapping</span><span class="o">.</span><span class="n">values</span><span class="p">(),</span> <span class="n">all_time_arrays</span>
+        <span class="p">):</span>
+            <span class="n">sim_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get_simulation_path</span><span class="p">(</span><span class="n">sim_idx</span><span class="p">)</span>
+            <span class="n">t_min</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">times</span><span class="o">.</span><span class="n">min</span><span class="p">())</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">times</span><span class="p">)</span> <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;nan&#39;</span><span class="p">)</span>
+            <span class="n">t_max</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">times</span><span class="o">.</span><span class="n">max</span><span class="p">())</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">times</span><span class="p">)</span> <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;nan&#39;</span><span class="p">)</span>
+            <span class="n">lines</span> <span class="o">+=</span> <span class="p">[</span>
+                <span class="sa">f</span><span class="s1">&#39;  sim </span><span class="si">{</span><span class="n">sim_idx</span><span class="si">}</span><span class="s1">  (led_array_id=</span><span class="si">{</span><span class="n">arr_id</span><span class="si">}</span><span class="s1">)&#39;</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s1">&#39;    path   : </span><span class="si">{</span><span class="n">sim_path</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s1">&#39;    images : </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">times</span><span class="p">)</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s1">&#39;    range  : </span><span class="si">{</span><span class="n">t_min</span><span class="si">:</span><span class="s1">.1f</span><span class="si">}</span><span class="s1"> s – </span><span class="si">{</span><span class="n">t_max</span><span class="si">:</span><span class="s1">.1f</span><span class="si">}</span><span class="s1"> s&#39;</span><span class="p">,</span>
+            <span class="p">]</span>
+
+        <span class="n">lines</span> <span class="o">+=</span> <span class="p">[</span>
+            <span class="s1">&#39;&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;Alignment result&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;----------------&#39;</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s1">&#39;  Common images : </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">common_times</span><span class="p">)</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span>
+        <span class="p">]</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">common_times</span><span class="p">):</span>
+            <span class="n">lines</span> <span class="o">+=</span> <span class="p">[</span>
+                <span class="sa">f</span><span class="s1">&#39;  Time range    : </span><span class="si">{</span><span class="nb">float</span><span class="p">(</span><span class="n">common_times</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="si">:</span><span class="s1">.1f</span><span class="si">}</span><span class="s1"> s – </span><span class="si">{</span><span class="nb">float</span><span class="p">(</span><span class="n">common_times</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span><span class="si">:</span><span class="s1">.1f</span><span class="si">}</span><span class="s1"> s&#39;</span><span class="p">,</span>
+            <span class="p">]</span>
+
+        <span class="n">lines</span> <span class="o">+=</span> <span class="p">[</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="s1">&#39;Per-simulation match rate&#39;</span><span class="p">,</span> <span class="s1">&#39;-------------------------&#39;</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">sim_idx</span><span class="p">,</span> <span class="n">times</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">sim_indices</span><span class="p">,</span> <span class="n">all_time_arrays</span><span class="p">):</span>
+            <span class="n">matched</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="mi">1</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">times</span> <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">common_times</span> <span class="o">-</span> <span class="n">t</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">tol</span><span class="p">))</span>
+            <span class="n">pct</span> <span class="o">=</span> <span class="mf">100.0</span> <span class="o">*</span> <span class="n">matched</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">times</span><span class="p">)</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">times</span><span class="p">)</span> <span class="k">else</span> <span class="mf">0.0</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;  sim </span><span class="si">{</span><span class="n">sim_idx</span><span class="si">}</span><span class="s1"> : </span><span class="si">{</span><span class="n">matched</span><span class="si">}</span><span class="s1">/</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">times</span><span class="p">)</span><span class="si">}</span><span class="s1"> images matched (</span><span class="si">{</span><span class="n">pct</span><span class="si">:</span><span class="s1">.1f</span><span class="si">}</span><span class="s1"> %)&#39;</span><span class="p">)</span>
+
+        <span class="c1"># ------------------------------------------------------------------</span>
+        <span class="c1"># Per-image matching table</span>
+        <span class="c1"># ------------------------------------------------------------------</span>
+        <span class="c1"># Build reverse map: time → img_id for each simulation</span>
+        <span class="n">rev_maps</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="p">{</span><span class="n">t</span><span class="p">:</span> <span class="n">img_id</span> <span class="k">for</span> <span class="n">img_id</span><span class="p">,</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">tm</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span> <span class="k">for</span> <span class="n">tm</span> <span class="ow">in</span> <span class="n">time_maps</span>
+        <span class="p">]</span>
+
+        <span class="c1"># Column widths</span>
+        <span class="n">col_t_common</span> <span class="o">=</span> <span class="mi">14</span>          <span class="c1"># &quot;common t / s&quot;</span>
+        <span class="n">col_per_sim</span>  <span class="o">=</span> <span class="mi">26</span>          <span class="c1"># &quot;img_id  t_sim / s   Δt / s&quot; per simulation</span>
+
+        <span class="c1"># Header</span>
+        <span class="n">sim_headers</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s1">&#39;  </span><span class="si">{</span><span class="s2">&quot;sim &quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nb">str</span><span class="p">(</span><span class="n">si</span><span class="p">)</span><span class="si">:</span><span class="s1">^</span><span class="si">{</span><span class="n">col_per_sim</span><span class="si">}}</span><span class="s1">&#39;</span>
+            <span class="k">for</span> <span class="n">si</span> <span class="ow">in</span> <span class="n">sim_indices</span>
+        <span class="p">)</span>
+        <span class="n">sub_headers</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s1">&#39;  </span><span class="si">{</span><span class="s2">&quot;img_id&quot;</span><span class="si">:</span><span class="s1">&gt;8</span><span class="si">}</span><span class="s1">  </span><span class="si">{</span><span class="s2">&quot;t_sim / s&quot;</span><span class="si">:</span><span class="s1">&gt;10</span><span class="si">}</span><span class="s1">  </span><span class="si">{</span><span class="s2">&quot;Δt / s&quot;</span><span class="si">:</span><span class="s1">&gt;6</span><span class="si">}</span><span class="s1">&#39;</span>
+            <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">sim_indices</span>
+        <span class="p">)</span>
+        <span class="n">separator</span> <span class="o">=</span> <span class="s1">&#39;-&#39;</span> <span class="o">*</span> <span class="p">(</span><span class="n">col_t_common</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">sim_indices</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">col_per_sim</span> <span class="o">+</span> <span class="mi">2</span><span class="p">))</span>
+
+        <span class="n">lines</span> <span class="o">+=</span> <span class="p">[</span>
+            <span class="s1">&#39;&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;Per-image match table&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;---------------------&#39;</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s1">&#39;  </span><span class="si">{</span><span class="s2">&quot;common t / s&quot;</span><span class="si">:</span><span class="s1">&gt;</span><span class="si">{</span><span class="n">col_t_common</span><span class="si">}}</span><span class="s1">&#39;</span> <span class="o">+</span> <span class="n">sim_headers</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s1">&#39;  </span><span class="si">{</span><span class="s2">&quot; &quot;</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">col_t_common</span><span class="si">}</span><span class="s1">&#39;</span> <span class="o">+</span> <span class="n">sub_headers</span><span class="p">,</span>
+            <span class="s1">&#39;  &#39;</span> <span class="o">+</span> <span class="n">separator</span><span class="p">,</span>
+        <span class="p">]</span>
+
+        <span class="k">for</span> <span class="n">t_common</span> <span class="ow">in</span> <span class="n">common_times</span><span class="p">:</span>
+            <span class="n">row</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;  </span><span class="si">{</span><span class="n">t_common</span><span class="si">:</span><span class="s1">&gt;</span><span class="si">{</span><span class="n">col_t_common</span><span class="si">}</span><span class="s1">.2f</span><span class="si">}</span><span class="s1">&#39;</span>
+            <span class="k">for</span> <span class="n">tm</span> <span class="ow">in</span> <span class="n">time_maps</span><span class="p">:</span>
+                <span class="n">best_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_nearest_img_id</span><span class="p">(</span><span class="n">tm</span><span class="p">,</span> <span class="n">t_common</span><span class="p">,</span> <span class="n">tol</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">best_id</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">t_sim</span> <span class="o">=</span> <span class="n">tm</span><span class="p">[</span><span class="n">best_id</span><span class="p">]</span>
+                    <span class="n">dt</span>    <span class="o">=</span> <span class="n">t_sim</span> <span class="o">-</span> <span class="n">t_common</span>
+                    <span class="n">row</span> <span class="o">+=</span> <span class="sa">f</span><span class="s1">&#39;  </span><span class="si">{</span><span class="n">best_id</span><span class="si">:</span><span class="s1">&gt;8d</span><span class="si">}</span><span class="s1">  </span><span class="si">{</span><span class="n">t_sim</span><span class="si">:</span><span class="s1">&gt;10.2f</span><span class="si">}</span><span class="s1">  </span><span class="si">{</span><span class="n">dt</span><span class="si">:</span><span class="s1">&gt;+6.2f</span><span class="si">}</span><span class="s1">&#39;</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">row</span> <span class="o">+=</span> <span class="sa">f</span><span class="s1">&#39;  </span><span class="si">{</span><span class="s2">&quot;—&quot;</span><span class="si">:</span><span class="s1">&gt;8</span><span class="si">}</span><span class="s1">  </span><span class="si">{</span><span class="s2">&quot;—&quot;</span><span class="si">:</span><span class="s1">&gt;10</span><span class="si">}</span><span class="s1">  </span><span class="si">{</span><span class="s2">&quot;—&quot;</span><span class="si">:</span><span class="s1">&gt;6</span><span class="si">}</span><span class="s1">&#39;</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
+
+        <span class="n">path</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;  Time-alignment report: </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+
+    <span class="c1"># ------------------------------------------------------------------</span>
+    <span class="c1"># Time-aligned image iteration</span>
+    <span class="c1"># ------------------------------------------------------------------</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_iter_aligned_images</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">reference_property</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Yield ``(virtual_img_id, stacked_intensity_vector)`` for every</span>
+<span class="sd">        time-aligned image set, using the pre-computed :attr:`common_times`</span>
+<span class="sd">        and :attr:`_time_maps`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tol</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">time_sync_tolerance</span>
+
+        <span class="k">for</span> <span class="n">v_img_id</span><span class="p">,</span> <span class="n">t_common</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">common_times</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+            <span class="n">blocks</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">skip</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="k">for</span> <span class="n">sub</span><span class="p">,</span> <span class="n">time_map</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_sub_solvers</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_time_maps</span><span class="p">):</span>
+                <span class="n">orig_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_nearest_img_id</span><span class="p">(</span><span class="n">time_map</span><span class="p">,</span> <span class="n">t_common</span><span class="p">,</span> <span class="n">tol</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">orig_id</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s1">&#39;  Warning: no image within </span><span class="si">{</span><span class="n">tol</span><span class="si">}</span><span class="s1"> s of t=</span><span class="si">{</span><span class="n">t_common</span><span class="si">:</span><span class="s1">.2f</span><span class="si">}</span><span class="s1"> s &#39;</span>
+                        <span class="sa">f</span><span class="s1">&#39;in simulation at </span><span class="si">{</span><span class="n">sub</span><span class="o">.</span><span class="n">experiment</span><span class="o">.</span><span class="n">path</span><span class="si">}</span><span class="s1"> — skipping time step.&#39;</span>
+                    <span class="p">)</span>
+                    <span class="n">skip</span> <span class="o">=</span> <span class="kc">True</span>
+                    <span class="k">break</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">img_slice</span> <span class="o">=</span> <span class="n">sub</span><span class="o">.</span><span class="n">calculated_img_data</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">orig_id</span><span class="p">]</span>
+                <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s1">&#39;  Warning: img_id=</span><span class="si">{</span><span class="n">orig_id</span><span class="si">}</span><span class="s1"> missing in calculated_img_data &#39;</span>
+                        <span class="sa">f</span><span class="s1">&#39;for </span><span class="si">{</span><span class="n">sub</span><span class="o">.</span><span class="n">experiment</span><span class="o">.</span><span class="n">path</span><span class="si">}</span><span class="s1"> — skipping time step.&#39;</span>
+                    <span class="p">)</span>
+                    <span class="n">skip</span> <span class="o">=</span> <span class="kc">True</span>
+                    <span class="k">break</span>
+                <span class="n">blocks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">img_slice</span><span class="p">[</span><span class="n">reference_property</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">())</span>
+
+            <span class="k">if</span> <span class="n">skip</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">yield</span> <span class="n">v_img_id</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">blocks</span><span class="p">)</span>
+
+    <span class="c1"># ------------------------------------------------------------------</span>
+    <span class="c1"># Save</span>
+    <span class="c1"># ------------------------------------------------------------------</span>
+
+<div class="viewcode-block" id="StackedExtinctionCoefficients.save">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.StackedExtinctionCoefficients.StackedExtinctionCoefficients.save">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Write computed extinction coefficients to CSV.</span>
+
+<span class="sd">        Output path::</span>
+
+<span class="sd">            &lt;output_path&gt;/analysis/extinction_coefficients/&lt;solver&gt;/</span>
+<span class="sd">            extinction_coefficients_&lt;solver&gt;_channel_&lt;ch&gt;_&lt;ref_prop&gt;_led_array_&lt;id&gt;.csv</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">coefficients_per_image_and_layer</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s1">&#39;No coefficients computed yet. Call calc_and_set_coefficients first.&#39;</span><span class="p">)</span>
+
+        <span class="n">out_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_output_dir</span><span class="p">()</span>
+        <span class="n">out_path</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">out_file</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">out_path</span>
+            <span class="o">/</span> <span class="sa">f</span><span class="s1">&#39;extinction_coefficients_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">solver</span><span class="si">}</span><span class="s1">_channel_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">channel</span><span class="si">}</span><span class="s1">&#39;</span>
+              <span class="sa">f</span><span class="s1">&#39;_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">reference_property</span><span class="si">}</span><span class="s1">_led_array_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">led_array_id</span><span class="si">}</span><span class="s1">.csv&#39;</span>
+        <span class="p">)</span>
+
+        <span class="n">layers</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">layers</span>
+        <span class="n">sim_info</span> <span class="o">=</span> <span class="s1">&#39; | &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s1">&#39;sim</span><span class="si">{</span><span class="n">idx</span><span class="si">}</span><span class="s1">:arr</span><span class="si">{</span><span class="n">arr</span><span class="si">}</span><span class="s1">&#39;</span> <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">arr</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">led_array_mapping</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+        <span class="p">)</span>
+        <span class="n">header</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s1">&#39;Stacked inversion | </span><span class="si">{</span><span class="n">sim_info</span><span class="si">}</span><span class="s1"> | solver: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">solver</span><span class="si">}</span><span class="s1"> | &#39;</span>
+            <span class="sa">f</span><span class="s1">&#39;ref_prop: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">reference_property</span><span class="si">}</span><span class="s1"> | &#39;</span>
+            <span class="sa">f</span><span class="s1">&#39;LEDSA </span><span class="si">{</span><span class="n">version</span><span class="p">(</span><span class="s2">&quot;ledsa&quot;</span><span class="p">)</span><span class="si">}</span><span class="se">\n</span><span class="s1">&#39;</span>
+        <span class="p">)</span>
+        <span class="n">header</span> <span class="o">+=</span> <span class="s1">&#39;Layer_bottom_height[m],&#39;</span> <span class="o">+</span> <span class="s1">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">layers</span><span class="o">.</span><span class="n">borders</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span>
+        <span class="n">header</span> <span class="o">+=</span> <span class="s1">&#39;Layer_top_height[m],&#39;</span>    <span class="o">+</span> <span class="s1">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">layers</span><span class="o">.</span><span class="n">borders</span><span class="p">[</span><span class="mi">1</span><span class="p">:]))</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span>
+        <span class="n">header</span> <span class="o">+=</span> <span class="s1">&#39;Layer_center_height[m],&#39;</span> <span class="o">+</span> <span class="s1">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">c</span><span class="si">:</span><span class="s1">.4f</span><span class="si">}</span><span class="s1">&#39;</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="p">(</span><span class="n">layers</span><span class="o">.</span><span class="n">borders</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">layers</span><span class="o">.</span><span class="n">borders</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span> <span class="o">/</span> <span class="mi">2</span>
+        <span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span>
+        <span class="n">header</span> <span class="o">+=</span> <span class="s1">&#39;Experiment_Time[s],layer0&#39;</span>
+        <span class="n">header</span> <span class="o">+=</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;,layer</span><span class="si">{</span><span class="n">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s1">&#39;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">layers</span><span class="o">.</span><span class="n">amount</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span>
+
+        <span class="n">times</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">common_times</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">common_times</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">coefficients_per_image_and_layer</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">column_stack</span><span class="p">((</span><span class="n">times</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">coefficients_per_image_and_layer</span><span class="p">))</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span><span class="n">out_file</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">delimiter</span><span class="o">=</span><span class="s1">&#39;,&#39;</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="n">header</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Saved: </span><span class="si">{</span><span class="n">out_file</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="n">sim_info</span> <span class="o">=</span> <span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s1">&#39;sim</span><span class="si">{</span><span class="n">idx</span><span class="si">}</span><span class="s1">(arr</span><span class="si">{</span><span class="n">arr</span><span class="si">}</span><span class="s1">)&#39;</span> <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">arr</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">led_array_mapping</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s1">&#39;StackedExtinctionCoefficients | led_array_id=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">led_array_id</span><span class="si">}</span><span class="s1"> | &#39;</span>
+            <span class="sa">f</span><span class="s1">&#39;channel=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">channel</span><span class="si">}</span><span class="s1"> | solver=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">solver</span><span class="si">}</span><span class="s1"> | &#39;</span>
+            <span class="sa">f</span><span class="s1">&#39;simulations=[</span><span class="si">{</span><span class="n">sim_info</span><span class="si">}</span><span class="s1">] | &#39;</span>
+            <span class="sa">f</span><span class="s1">&#39;n_leds=</span><span class="si">{</span><span class="nb">sum</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">num_leds</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">e</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="bp">self</span><span class="o">.</span><span class="n">sub_experiments</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">e</span><span class="o">.</span><span class="n">num_leds</span><span class="w"> </span><span class="ow">is</span><span class="w"> </span><span class="ow">not</span><span class="w"> </span><span class="kc">None</span><span class="p">)</span><span class="si">}</span><span class="s1"> | &#39;</span>
+            <span class="sa">f</span><span class="s1">&#39;n_layers=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">amount</span><span class="si">}</span><span class="se">\n</span><span class="s1">&#39;</span>
+        <span class="p">)</span>
+
+    <span class="c1"># ------------------------------------------------------------------</span>
+    <span class="c1"># Internal helpers</span>
+    <span class="c1"># ------------------------------------------------------------------</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_output_dir</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">output_path</span>
+            <span class="o">/</span> <span class="s1">&#39;analysis&#39;</span>
+            <span class="o">/</span> <span class="s1">&#39;extinction_coefficients&#39;</span>
+            <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">solver</span>
+        <span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_load_time_map</span><span class="p">(</span><span class="n">experiment</span><span class="p">:</span> <span class="n">Experiment</span><span class="p">,</span> <span class="n">average_images</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+        <span class="n">info_file</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="s1">&#39;image_infos_analysis_avg.csv&#39;</span> <span class="k">if</span> <span class="n">average_images</span> <span class="k">else</span> <span class="s1">&#39;image_infos_analysis.csv&#39;</span>
+        <span class="p">)</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">experiment</span><span class="o">.</span><span class="n">path</span> <span class="o">/</span> <span class="s1">&#39;analysis&#39;</span> <span class="o">/</span> <span class="n">info_file</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">{</span><span class="nb">int</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span> <span class="nb">float</span><span class="p">(</span><span class="n">t</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;Experiment_Time[s]&#39;</span><span class="p">])}</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_intersect_time_axes</span><span class="p">(</span><span class="n">time_arrays</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="n">tol</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">time_arrays</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([])</span>
+        <span class="n">common</span> <span class="o">=</span> <span class="n">time_arrays</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">times</span> <span class="ow">in</span> <span class="n">time_arrays</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
+            <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">times</span> <span class="o">-</span> <span class="n">t</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">tol</span><span class="p">)</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">common</span><span class="p">])</span>
+            <span class="n">common</span> <span class="o">=</span> <span class="n">common</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">common</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_nearest_img_id</span><span class="p">(</span><span class="n">time_map</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span> <span class="n">target</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">tol</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+        <span class="n">best_id</span><span class="p">,</span> <span class="n">best_diff</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">img_id</span><span class="p">,</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">time_map</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">diff</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">t</span> <span class="o">-</span> <span class="n">target</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">diff</span> <span class="o">&lt;</span> <span class="n">best_diff</span><span class="p">:</span>
+                <span class="n">best_diff</span> <span class="o">=</span> <span class="n">diff</span>
+                <span class="n">best_id</span> <span class="o">=</span> <span class="n">img_id</span>
+        <span class="k">return</span> <span class="n">best_id</span> <span class="k">if</span> <span class="n">best_diff</span> <span class="o">&lt;=</span> <span class="n">tol</span> <span class="k">else</span> <span class="kc">None</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, CCE.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
