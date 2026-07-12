@@ -415,7 +415,7 @@ class ConfigData(cp.ConfigParser):
         Updates the 'DEFAULT' key with the 'start_time' computed.
 
         """
-        exif_entry = get_exif_entry(os.path.join(self['DEFAULT']['img_directory'] + self['DEFAULT']['img_name_string'].format(
+        exif_entry = get_exif_entry(os.path.join(self['DEFAULT']['img_directory'], self['DEFAULT']['img_name_string'].format(
             self['DEFAULT']['first_img_experiment_id'])), 'DateTimeOriginal')
         date, time_meta = exif_entry.split(' ')
         time_img = _get_datetime_from_str(date, time_meta)

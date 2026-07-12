@@ -3,6 +3,7 @@ from datetime import timedelta, datetime
 from typing import List
 
 from ledsa.core.ConfigData import ConfigData
+from ledsa.core.image_handling import format_img_name
 from ledsa.core.image_reading import get_exif_entry
 
 
@@ -114,7 +115,7 @@ def _calc_experiment_and_real_time(build_type: str, config: ConfigData, tag: str
     :rtype: tuple
     """
     exif_entry = get_exif_entry(os.path.join(config['DEFAULT']['img_directory'],
-                                config['DEFAULT']['img_name_string'].format(int(img_number))), tag)
+                                format_img_name(config['DEFAULT']['img_name_string'], img_number)), tag)
     date, time_meta = exif_entry.split(' ')
     date_time_img = _get_datetime_from_str(date, time_meta)
 
@@ -201,7 +202,7 @@ def _build_img_data_string(build_type: str, config: ConfigData) -> str:
     for img_id in img_id_list:
         tag = 'DateTimeOriginal'
         experiment_time, time = _calc_experiment_and_real_time(build_type, config, tag, img_id)
-        img_data += (str(img_idx) + ',' + config[build_type]['img_name_string'].format(int(img_id)) +
+        img_data += (str(img_idx) + ',' + format_img_name(config[build_type]['img_name_string'], img_id) +
                      ',' + time.strftime('%H:%M:%S') + ',' + str(experiment_time) + '\n')
         img_idx += 1
     return img_data
