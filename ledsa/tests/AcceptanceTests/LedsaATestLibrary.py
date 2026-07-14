@@ -1,3 +1,4 @@
+import glob
 import os
 from subprocess import Popen, PIPE
 
@@ -24,7 +25,7 @@ class LedsaATestLibrary:
         os.chdir(new_dir)
 
     @keyword
-    def create_test_data(self, num_of_leds=100, num_of_layers=20, bottom_border=0, top_border=3):
+    def create_test_data(self, num_of_leds=100, num_of_layers=20, bottom_border=0, top_border=3, background=0):
         # Create test_data directory if it doesn't exist
         if not os.path.exists('test_data'):
             os.makedirs('test_data')
@@ -65,7 +66,7 @@ class LedsaATestLibrary:
             for z in np.linspace(bottom_border + 0.05, top_border - 0.05, num_of_leds):
                 ex.add_led(0, 4, z)
             ex.set_extinction_coefficients(extinction_coefficients)
-            create_test_image(image_id, ex)
+            create_test_image(image_id, ex, background=int(background))
 
     # ------------------------------------------------------------------
     # Stacked / multi-camera keywords
@@ -270,8 +271,10 @@ class LedsaATestLibrary:
             plt.close()
 
     @keyword
-    def check_input_vs_computed_extinction_coefficients(self, image_id, solver, led_array=0, channel=0):
-        _, extinction_coefficients_computed = load_extinction_coefficients_computed(solver, channel, led_array)
+    def check_input_vs_computed_extinction_coefficients(self, image_id, solver, led_array=0, channel=0,
+                                                        reference_property='sum_col_val'):
+        _, extinction_coefficients_computed = load_extinction_coefficients_computed(solver, channel, led_array,
+                                                                                    reference_property)
         extinction_coefficients_input = np.loadtxt(os.path.join('test_data', f'test_extinction_coefficients_input_{image_id}.csv'), delimiter=',')
         rmse = np.sqrt(
             np.mean((extinction_coefficients_input - extinction_coefficients_computed[int(image_id) - 1, :]) ** 2))
@@ -297,10 +300,10 @@ class LedsaATestLibrary:
         conf.save()
 
     @keyword
-    def create_and_fill_config_analysis(self, solver):
+    def create_and_fill_config_analysis(self, solver, reference_property='sum_col_val'):
         conf = ConfigDataAnalysis(load_config_file=False, camera_position=None, num_layers=20, domain_bounds=None,
                                   led_array_indices=0, num_ref_images=1, camera_channels=0, num_cores=1,
-                                  reference_property='sum_col_val',
+                                  reference_property=reference_property,
                                   average_images=False, solver=solver, weighting_preference=-6e-4,
                                   weighting_curvature=1e-7,
                                   num_iterations=2000, lambda_reg=1e-3)
@@ -331,15 +334,36 @@ class LedsaATestLibrary:
         file.write("2,3,4\n1,2,7\n3,4,5")
         file.close()
 
-def load_extinction_coefficients_computed(solver, channel, led_array):
-    filename = f'extinction_coefficients_{solver}_channel_{channel}_sum_col_val_led_array_{led_array}.csv'
+    @keyword
+    def strip_bgsub_column_from_led_position_files(self, channel=0):
+        """Remove the bgsub_sum_col_value column from the step 3 output files to simulate
+        data extracted with a ledsa version prior to the local background subtraction."""
+        pattern = os.path.join('analysis', f'channel{channel}', '*_led_positions.csv')
+        for path in glob.glob(pattern):
+            with open(path) as file:
+                lines = file.readlines()
+            with open(path, 'w') as file:
+                for line in lines:
+                    if not line.strip() or line.lstrip().startswith('#'):
+                        file.write(line)
+                    else:
+                        file.write(','.join(line.strip().split(',')[:5]) + '\n')
+
+    @keyword
+    def check_extinction_coefficient_files_are_identical(self, file_a, file_b):
+        data_a = np.loadtxt(file_a, delimiter=',')
+        data_b = np.loadtxt(file_b, delimiter=',')
+        return bool(np.array_equal(data_a, data_b))
+
+def load_extinction_coefficients_computed(solver, channel, led_array, reference_property='sum_col_val'):
+    filename = f'extinction_coefficients_{solver}_channel_{channel}_{reference_property}_led_array_{led_array}.csv'
     data = np.loadtxt(
         os.path.join('analysis', 'extinction_coefficients', solver, filename),delimiter=',')
     time = data[:, 0]
     extinction_coefficients_computed = data[:, 1:]
     return time, extinction_coefficients_computed
 
-def create_test_image(image_id, experiment, img_dir='test_data'):
+def create_test_image(image_id, experiment, img_dir='test_data', background=0):
     """ Creates three test images with black and gray pixels representing 3 leds and sets the exif data needed
     The first image has 100% transmission on all LEDs, the second image has 50% transmission on all LEDs,
     the third has 50%, 70% and 80% transmission on the top, middle and bottom LEDs.
@@ -353,7 +377,7 @@ def create_test_image(image_id, experiment, img_dir='test_data'):
     transmissions = experiment.calc_all_led_transmissions()
 
     # Reverse transmissions because images are created from top down
-    img_array = create_img_array(num_of_leds, list(reversed(transmissions)))
+    img_array = create_img_array(num_of_leds, list(reversed(transmissions)), background=background)
     img = Image.fromarray(img_array, 'RGB')
 
     # Save image without EXIF data
@@ -369,10 +393,12 @@ def create_test_image(image_id, experiment, img_dir='test_data'):
     img2.writeMetadata()
 
 
-def create_img_array(num_of_leds, transmissions):
+def create_img_array(num_of_leds, transmissions, background=0):
     img = np.zeros((num_of_leds * 50 + 50, 50, 3), np.uint8)
     for led_id in range(num_of_leds):
         add_led(img, (1 + led_id) * 50, 25, transmissions[led_id])
+    if background:
+        img = np.clip(img.astype(np.int16) + int(background), 0, 255).astype(np.uint8)
     return img
 
 

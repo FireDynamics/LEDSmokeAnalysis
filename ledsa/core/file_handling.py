@@ -293,6 +293,8 @@ def _get_column_names(channel: int) -> List[str]:
     parameters = ledsa.core.file_handling.read_table(file_path, delim=',', silent=True)
     columns = ["img_id", "led_id", "led_array_id",
                "sum_col_val", "mean_col_val", "max_col_val"]
+    if parameters.shape[1] in (6, 20):  # files written since the local background subtraction was added
+        columns.append("bgsub_sum_col_val")
     if parameters.shape[1] > len(columns):
         columns.extend(["led_center_x", "led_center_y"])
         columns.extend(["x", "y", "dx", "dy", "A", "alpha", "wx", "wy", "fit_success", "fit_fun", "fit_nfev"])

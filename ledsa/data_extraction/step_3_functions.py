@@ -158,8 +158,38 @@ def _generate_led_analysis_data(conf: ConfigData, channel: int, data: np.ndarray
     led_data.mean_color_value = np.mean(data[search_area])
     led_data.sum_color_value = np.sum(data[search_area])
     led_data.max_color_value = np.amax(data[search_area])
+    background = _estimate_local_background(data[search_area])
+    led_data.bgsub_sum_color_value = float(np.sum(np.clip(data[search_area].astype(np.float64) - background,
+                                                          0.0, None)))
 
     return led_data
+
+
+def _estimate_local_background(search_area_data: np.ndarray, border_width: int = 2) -> float:
+    """
+    Estimate the local background of a search area from the median of its border pixels.
+
+    The LED sits at the center of the search area, so the outer border ring samples the
+    scene background (stray light, smoke path radiance). Pixels with value 0 are excluded
+    because raw Bayer arrays mask all pixels of foreign color channels with 0 and the
+    black level subtraction clips at 0.
+
+    :param search_area_data: Part of the image where the LED is located.
+    :type search_area_data: np.ndarray
+    :param border_width: Width of the border ring in pixels.
+    :type border_width: int
+    :return: Estimated background value per pixel. 0 if no valid border pixels exist.
+    :rtype: float
+    """
+    if search_area_data.shape[0] <= 2 * border_width or search_area_data.shape[1] <= 2 * border_width:
+        return 0.0
+    border_mask = np.ones(search_area_data.shape, dtype=bool)
+    border_mask[border_width:-border_width, border_width:-border_width] = False
+    border_pixels = search_area_data[border_mask]
+    border_pixels = border_pixels[border_pixels > 0]
+    if border_pixels.size == 0:
+        return 0.0
+    return float(np.median(border_pixels))
 
 
 def _save_results_in_file(channel: int, img_data: LEDAnalysisData, img_filename: str, img_id: str, img_infos: np.ndarray, basename: str) -> None:
@@ -302,7 +332,7 @@ def _create_header(channel: int, img_id: str, img_filename: str, img_infos: np.n
     out_str = f'# image root = {basename}, photo file name = {img_filename}, '
     out_str += f"channel = {channel}, "
     out_str += f"time[s] = {img_infos[int(img_id) - 1][3]}\n"
-    out_str += "# id,line,sum_col_value,average_col_value,max_col_value"
+    out_str += "# id,line,sum_col_value,average_col_value,max_col_value,bgsub_sum_col_value"
     if fit_leds:
         out_str += ",led_center_x, led_center_y"
         out_str += ",x,y,dx,dy,A,alpha,wx,wy,fit_success,fit_fun,fit_nfev,fit_time"
