@@ -298,6 +298,7 @@ class ConfigData(cp.ConfigParser):
         If the 'time_ref_img_time' is not set, prompts the user to provide the time shown on the clock in the time reference image.
         """
         import warnings
+        from ledsa.core.image_handling import format_img_name  # local import, image_handling imports ConfigData indirectly
 
         has_id = self['DEFAULT']['time_ref_img_id'] != 'None'
         has_file = self['DEFAULT']['time_ref_img_file'] != 'None'
@@ -311,7 +312,7 @@ class ConfigData(cp.ConfigParser):
         if has_id:
             generated_path = os.path.abspath(os.path.join(
                 self['DEFAULT']['img_directory'],
-                self['DEFAULT']['img_name_string'].format(self['DEFAULT']['time_ref_img_id'])
+                format_img_name(self['DEFAULT']['img_name_string'], self['DEFAULT']['time_ref_img_id'])
             ))
 
         if has_file:
@@ -415,8 +416,9 @@ class ConfigData(cp.ConfigParser):
         Updates the 'DEFAULT' key with the 'start_time' computed.
 
         """
-        exif_entry = get_exif_entry(os.path.join(self['DEFAULT']['img_directory'], self['DEFAULT']['img_name_string'].format(
-            self['DEFAULT']['first_img_experiment_id'])), 'DateTimeOriginal')
+        from ledsa.core.image_handling import format_img_name  # local import, image_handling imports ConfigData indirectly
+        exif_entry = get_exif_entry(os.path.join(self['DEFAULT']['img_directory'], format_img_name(
+            self['DEFAULT']['img_name_string'], self['DEFAULT']['first_img_experiment_id'])), 'DateTimeOriginal')
         date, time_meta = exif_entry.split(' ')
         time_img = _get_datetime_from_str(date, time_meta)
         start_time = time_img - timedelta(seconds=self['DEFAULT'].getint('exif_time_infront_real_time'))

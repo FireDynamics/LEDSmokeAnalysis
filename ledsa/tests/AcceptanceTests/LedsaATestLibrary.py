@@ -144,7 +144,7 @@ class LedsaATestLibrary:
             time_ref_img_id=None,
             time_ref_img_time=None,
             time_diff_to_image_time=0,
-            img_name_string='test_img_{}.jpg',
+            img_name_string='test_img_{:d}.jpg',
             num_img_overflow=None,
             first_img_experiment_id=first,
             last_img_experiment_id=last,
@@ -286,7 +286,7 @@ class LedsaATestLibrary:
         conf = ConfigData(load_config_file=False, img_directory='test_data/', search_area_radius=10, pixel_value_percentile=99.875,
                           channel=0, max_num_leds=1000, num_arrays=1, num_cores=1, date=None,
                           start_time=None, time_ref_img_id=None, time_ref_img_time=None, time_diff_to_image_time=0,
-                          img_name_string='test_img_{}.jpg', num_img_overflow=None, first_img_experiment_id=first,
+                          img_name_string='test_img_{:d}.jpg', num_img_overflow=None, first_img_experiment_id=first,
                           last_img_experiment_id=last, ref_img_id=1, ignore_led_indices=None,
                           led_array_edge_indices=None, led_array_edge_coordinates=None,
                           first_img_analysis_id=first, last_img_analysis_id=last, num_skip_imgs=0, num_skip_leds=0,
@@ -314,7 +314,7 @@ class LedsaATestLibrary:
             out = self.execute_ledsa('-s1')
         else:
             self.execute_ledsa('--config')
-            inp = b'test_data/\ntest_img_{}.jpg\n1\n12:00:00\n1\n1000\n1\n1\n1'
+            inp = b'test_data/\ntest_img_{:d}.jpg\n1\n12:00:00\n1\n1000\n1\n1\n1'
             out = self.execute_ledsa('-s1', inp)
             check_error_msg(out)
         return out[0].decode('utf-8')[-9:-6]
