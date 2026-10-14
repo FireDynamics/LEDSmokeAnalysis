@@ -335,19 +335,23 @@ class LedsaATestLibrary:
         file.close()
 
     @keyword
-    def strip_bgsub_column_from_led_position_files(self, channel=0):
-        """Remove the bgsub_sum_col_value column from the step 3 output files to simulate
-        data extracted with a ledsa version prior to the local background subtraction."""
+    def strip_bgsub_column_from_led_position_files(self, channel=0, num_columns=5):
+        """Keep only the first num_columns columns of the step 3 output files to simulate data extracted with
+        an older ledsa version (5: prior to the local background subtraction). The column header is shortened
+        accordingly."""
+        num_columns = int(num_columns)
         pattern = os.path.join('analysis', f'channel{channel}', '*_led_positions.csv')
         for path in glob.glob(pattern):
             with open(path) as file:
                 lines = file.readlines()
             with open(path, 'w') as file:
                 for line in lines:
-                    if not line.strip() or line.lstrip().startswith('#'):
+                    if line.startswith('# id,line,'):
+                        file.write(','.join(line.strip().split(',')[:num_columns]) + '\n')
+                    elif not line.strip() or line.lstrip().startswith('#'):
                         file.write(line)
                     else:
-                        file.write(','.join(line.strip().split(',')[:5]) + '\n')
+                        file.write(','.join(line.strip().split(',')[:num_columns]) + '\n')
 
     @keyword
     def check_extinction_coefficient_files_are_identical(self, file_a, file_b):

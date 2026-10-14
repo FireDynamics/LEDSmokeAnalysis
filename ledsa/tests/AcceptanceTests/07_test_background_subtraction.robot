@@ -4,6 +4,7 @@ Resource  global_keywords.resource
 Force Tags  analysis  background_subtraction
 
 *** Variables ***
+${BINARY}            analysis${/}channel0${/}all_parameters.h5
 ${EXTINCTION_DIR}    analysis${/}extinction_coefficients${/}linear
 ${SUM_RESULT}        ${EXTINCTION_DIR}${/}extinction_coefficients_linear_channel_0_sum_col_val_led_array_0.csv
 ${SUM_REFERENCE}     ${EXTINCTION_DIR}${/}extinction_coefficients_linear_channel_0_sum_col_val_led_array_0_before_strip.csv
@@ -25,9 +26,12 @@ Default Analysis Is Not Changed By The Bgsub Column
     ...                the step 3 files contain the new bgsub column or not (old data format).
     Change Directory    ${WORKDIR}
     Create And Fill Config Analysis    linear
+    # the binary is only created from the step 3 files if it does not exist
+    Remove File    ${BINARY}
     Execute Ledsa    --analysis
     Copy File    ${SUM_RESULT}    ${SUM_REFERENCE}
     Strip Bgsub Column From Led Position Files
+    Remove File    ${BINARY}
     Execute Ledsa    --analysis
     ${identical} =    Check Extinction Coefficient Files Are Identical    ${SUM_RESULT}    ${SUM_REFERENCE}
     Should Be True    ${identical}
