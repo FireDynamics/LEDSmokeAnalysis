@@ -56,7 +56,34 @@ Background Light Biases Sum But Not Bgsub
     Check Background Results    3
     Check Background Results    4
 
+Fitted Step 3 Output Can Be Analysed
+    [Documentation]    Step 3 with fits writes the main and the fit columns into one row; the analysis must
+    ...                read these files (both reference properties) and reproduce the ground truth.
+    Create Directory    ${WORKDIR}${/}fitted
+    Change Directory    ${WORKDIR}${/}fitted
+    Create Test Data
+    Create Config
+    Execute Ledsa    -s1
+    Execute Ledsa    -s2
+    Execute Ledsa    --coordinates
+    Execute Ledsa    -s3
+    Create And Fill Config Analysis    linear
+    Execute Ledsa    --analysis
+    Create And Fill Config Analysis    linear    bgsub_sum_col_val
+    Execute Ledsa    --analysis
+    Check Fitted Results    2
+    Check Fitted Results    3
+    Check Fitted Results    4
+
 *** Keywords ***
+Check Fitted Results
+    [Arguments]    ${image_id}
+    ${rmse_sum} =    Check Input Vs Computed Extinction Coefficients    ${image_id}    linear
+    ${rmse_bgsub} =    Check Input Vs Computed Extinction Coefficients    ${image_id}    linear
+    ...    reference_property=bgsub_sum_col_val
+    Should Be True    ${rmse_sum} < 0.05
+    Should Be True    ${rmse_bgsub} < 0.06
+
 Check Bgsub Results
     [Arguments]    ${image_id}
     ${rmse} =    Check Input Vs Computed Extinction Coefficients    ${image_id}    linear
