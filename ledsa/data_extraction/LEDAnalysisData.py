@@ -58,7 +58,8 @@ class LEDAnalysisData:
         """
         out_str = self.get_main_data_string()
         if self.fit_leds:
-            out_str += self.get_fit_data_string()
+            # neither part has a leading or trailing delimiter
+            out_str += ',' + self.get_fit_data_string()
         out_str += "\n"
         return out_str
 
