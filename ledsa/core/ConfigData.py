@@ -17,7 +17,8 @@ class ConfigData(cp.ConfigParser):
                  time_diff_to_image_time=None, img_name_string=None, num_img_overflow=None,
                  first_img_experiment_id=None, last_img_experiment_id=None, ref_img_id=None, ignore_led_indices=None,
                  led_array_edge_indices=None, led_array_edge_coordinates=None, first_img_analysis_id=None,
-                 last_img_analysis_id=None, num_skip_imgs=0, num_skip_leds=0, merge_led_array_indices=None):  # TODO: merge LED arrays
+                 last_img_analysis_id=None, num_skip_imgs=0, num_skip_leds=0, merge_led_array_indices=None,
+                 track_led_movement=False):  # TODO: merge LED arrays
         """
         :param load_config_file: Determines whether to load the config file on initialization. Defaults to True.
         :type load_config_file: bool
@@ -75,6 +76,10 @@ class ConfigData(cp.ConfigParser):
         :type num_skip_leds: int
         :param merge_led_array_indices: Flag to merge LED arrays for analysis. Defaults to None. TODO: not a flag but list of arrays to merge?
         :type merge_led_array_indices: bool or None
+        :param track_led_movement: If True, the search area of every LED is re-centred on the LED position found in the
+                                   previous image, so that LEDs moving over the course of the experiment stay centred.
+                                   Only available for the analysis without fitting. Defaults to False.
+        :type track_led_movement: bool
         """
         cp.ConfigParser.__init__(self, allow_no_value=True)
         if load_config_file:
@@ -148,6 +153,12 @@ class ConfigData(cp.ConfigParser):
             self['analyse_photo']['   num_skip_imgs'] = str(num_skip_imgs)
             self.set('analyse_photo', '   # In the analysis, only LEDs are considered with id dividable by skip_leds + 1.')
             self['analyse_photo']['   num_skip_leds'] = str(num_skip_leds)
+            self.set('analyse_photo', '   # Track the movement of the LEDs (True=enabled, False=disabled). If enabled, the search area of')
+            self.set('analyse_photo', '   # every LED is re-centred on the brightest pixels found in the previous image. Only available for')
+            self.set('analyse_photo', '   # the analysis without fitting (-s3_fast), because the fit locates the LED within the search area')
+            self.set('analyse_photo', '   # on its own. Because every image depends on its predecessor, the images are processed')
+            self.set('analyse_photo', '   # sequentially on a single core.')
+            self['analyse_photo']['   track_led_movement'] = str(track_led_movement)
 
             with open('config.ini', 'w') as configfile:
                 self.write(configfile)
@@ -166,6 +177,26 @@ class ConfigData(cp.ConfigParser):
         :rtype: str
         """
         return super().get(section, option, raw=raw, vars=vars, fallback=fallback)
+
+    def getboolean(self, section, option, *, raw=False, vars=None, fallback=False) -> bool:
+        """
+        Retrieve a config value as boolean, returning the fallback if the key is missing or set to 'None'.
+
+        Overriding is needed because :meth:`get` never raises for missing keys but returns the string 'None',
+        which the standard implementation would try - and fail - to convert to a boolean.
+
+        :param section: Section name in the configuration.
+        :param option: Option name within the section.
+        :param raw: If True, interpolation is not performed.
+        :param vars: Additional variables for interpolation.
+        :param fallback: Value to return if the key is missing or 'None'. Defaults to False.
+        :return: The configuration value as a boolean.
+        :rtype: bool
+        """
+        value = self.get(section, option, raw=raw, vars=vars, fallback='None')
+        if value is None or value.strip().lower() in ('', 'none'):
+            return fallback
+        return self._convert_to_boolean(value.strip())
 
     def load(self) -> None:
         """

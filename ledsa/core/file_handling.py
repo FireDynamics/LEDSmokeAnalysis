@@ -291,13 +291,22 @@ def _get_column_names(channel: int) -> List[str]:
     """
     file_path = os.path.join('analysis', f'channel{channel}', '1_led_positions.csv')
     parameters = ledsa.core.file_handling.read_table(file_path, delim=',', silent=True)
-    columns = ["img_id", "led_id", "led_array_id",
-               "sum_col_val", "mean_col_val", "max_col_val"]
-    if parameters.shape[1] > len(columns):
-        columns.extend(["led_center_x", "led_center_y"])
-        columns.extend(["x", "y", "dx", "dy", "A", "alpha", "wx", "wy", "fit_success", "fit_fun", "fit_nfev"])
-    if parameters.shape[1] != len(columns) - 1:
+    # 'img_id' is not part of the CSV file but prepended when the parameters are loaded
+    base_columns = ["img_id", "led_id", "led_array_id", "sum_col_val", "mean_col_val", "max_col_val"]
+    led_center_columns = ["led_center_x", "led_center_y"]
+    fit_columns = ["x", "y", "dx", "dy", "A", "alpha", "wx", "wy", "fit_success", "fit_fun", "fit_nfev", "fit_time"]
+
+    num_columns = parameters.shape[1] + 1
+    if num_columns == len(base_columns):
+        columns = list(base_columns)
+    elif num_columns == len(base_columns) + len(led_center_columns):
+        columns = base_columns + led_center_columns
+    elif num_columns == len(base_columns) + len(led_center_columns) + len(fit_columns):
+        columns = base_columns + led_center_columns + fit_columns
+    else:
         columns = _get_old_columns(parameters)
+    if not columns:
+        raise ValueError(f'Could not determine the column names of {file_path}, which has {parameters.shape[1]} columns.')
     columns.extend(["width", "height"])
     return columns
 

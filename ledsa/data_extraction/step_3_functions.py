@@ -1,7 +1,7 @@
 import os
 import re
 import time
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 import numpy as np
 import scipy.optimize
@@ -13,9 +13,14 @@ from ledsa.core.image_reading import read_channel_data_from_img
 from ledsa.data_extraction.LEDAnalysisData import LEDAnalysisData
 from ledsa.data_extraction.model import target_function
 
+# Column indices of the LED id and of the LED center coordinates in the '{img_id}_led_positions.csv' files
+LED_ID_COLUMN = 0
+LED_CENTER_COLUMNS = [5, 6]
+
 
 def generate_analysis_data(img_filename: str, channel: int, search_areas: np.ndarray, line_indices: List[List[int]],
-                           conf: ConfigData, fit_leds=True, debug=False, debug_led=None) -> List[LEDAnalysisData]:
+                           conf: ConfigData, fit_leds=True, track_led_movement=False, debug=False,
+                           debug_led=None) -> List[LEDAnalysisData]:
     """
     Generate LED analysis data for the given image.
 
@@ -31,6 +36,10 @@ def generate_analysis_data(img_filename: str, channel: int, search_areas: np.nda
     :type conf: ConfigData
     :param fit_leds: Whether to fit the LED model to the data. Default is True.
     :type fit_leds: bool
+    :param track_led_movement: If True, the LED center is determined from the brightest pixels of the search area
+                               instead of being fixed to the search area center. Ignored if the LEDs are fitted,
+                               because the fit locates the LED itself. Default is False.
+    :type track_led_movement: bool
     :param debug: If True, the function will run in debug mode. Default is False.
     :type debug: bool
     :param debug_led: The specific LED to debug. Default is None.
@@ -45,7 +54,7 @@ def generate_analysis_data(img_filename: str, channel: int, search_areas: np.nda
 
     if debug:
         analysis_res = _generate_led_analysis_data(conf, channel, data, debug, debug_led, img_filename, 0, search_areas,
-                                                   search_area_radius, fit_leds)
+                                                   search_area_radius, fit_leds, track_led_movement)
         return analysis_res
 
     num_of_arrays = len(line_indices)
@@ -53,7 +62,8 @@ def generate_analysis_data(img_filename: str, channel: int, search_areas: np.nda
         for iled in line_indices[led_array_idx]:
             if iled % (int(conf['analyse_photo']['num_skip_leds']) + 1) == 0:
                 led_analysis_data = _generate_led_analysis_data(conf, channel, data, debug, iled, img_filename,
-                                                                led_array_idx, search_areas, search_area_radius, fit_leds)
+                                                                led_array_idx, search_areas, search_area_radius,
+                                                                fit_leds, track_led_movement)
                 img_analysis_data.append(led_analysis_data)
     return img_analysis_data
 
@@ -101,19 +111,98 @@ def find_and_save_not_analysed_imgs(channel: int) -> None:
     image_infos = read_table(file_path, dtype='str', delim=',', atleast_2d=True)
     all_imgs = image_infos[:, 1]
     processed_img_ids = _find_analysed_img_ids(channel)
-    processed_imgs = np.frompyfunc(get_img_name, 1, 1)(processed_img_ids)
-    remaining_imgs = set(all_imgs)-set(processed_imgs)
+    processed_imgs = set(np.frompyfunc(get_img_name, 1, 1)(processed_img_ids))
+    # Filtering instead of a set difference keeps the images in chronological order, which LED movement tracking needs
+    remaining_imgs = [img for img in all_imgs if img not in processed_imgs]
 
     _save_list_of_remaining_imgs_needed_to_be_processed(remaining_imgs)
 
 
-def _generate_led_analysis_data(conf: ConfigData, channel: int, data: np.ndarray, debug: bool, iled: int, img_filename: str, led_array_idx: int, search_areas: np.ndarray, search_area_radius: int, fit_leds: bool = True) -> LEDAnalysisData:
+def sort_img_filenames_by_id(img_filenames: List[str]) -> List[str]:
+    """
+    Sort image filenames by their analysis image ID, which orders them chronologically.
+
+    :param img_filenames: Names of the image files to sort.
+    :type img_filenames: List[str]
+    :return: The image filenames ordered by increasing analysis image ID.
+    :rtype: List[str]
+    :raises KeyError: If an image filename is not listed in 'image_infos_analysis.csv'.
+    """
+    file_path = os.path.join('analysis', 'image_infos_analysis.csv')
+    img_infos = read_table(file_path, dtype='str', delim=',', silent=True, atleast_2d=True)
+    img_id_of_filename = {img_filename: int(img_id) for img_id, img_filename in zip(img_infos[:, 0], img_infos[:, 1])}
+    return sorted(img_filenames, key=lambda img_filename: img_id_of_filename[img_filename])
+
+
+def init_tracked_search_areas(search_areas: np.ndarray, channel: int, seed_from_analysed_imgs=False) -> np.ndarray:
+    """
+    Create the search areas used for LED movement tracking of a single channel.
+
+    The tracked search areas are a floating point copy of the static search areas, so that LED positions can be
+    stored with sub pixel accuracy. On a restart they are seeded with the LED positions of the most recently
+    analysed image, so that the tracking continues where the interrupted run stopped.
+
+    :param search_areas: Array containing the LED IDs and the pixel positions of all search areas.
+    :type search_areas: np.ndarray
+    :param channel: Color channel for which the search areas are tracked.
+    :type channel: int
+    :param seed_from_analysed_imgs: If True, the LED positions of the most recently analysed image are used as start values.
+    :type seed_from_analysed_imgs: bool
+    :return: Array containing the LED IDs and the pixel positions of all tracked search areas.
+    :rtype: np.ndarray
+    """
+    tracked_search_areas = search_areas.astype(float)
+    if not seed_from_analysed_imgs:
+        return tracked_search_areas
+
+    analysed_img_ids = _find_analysed_img_ids(channel)
+    if not analysed_img_ids:
+        return tracked_search_areas
+
+    file_path = os.path.join('analysis', f'channel{channel}', f'{max(analysed_img_ids)}_led_positions.csv')
+    led_positions = read_table(file_path, delim=',', silent=True, atleast_2d=True)
+    if led_positions.shape[1] <= max(LED_CENTER_COLUMNS):
+        print(f'{file_path} does not contain LED centers. LED movement tracking of channel {channel} restarts from '
+              f'the search areas of the reference image.')
+        return tracked_search_areas
+
+    row_of_led_id = _get_row_of_led_id(tracked_search_areas)
+    for led_position in led_positions:
+        row = row_of_led_id.get(int(led_position[LED_ID_COLUMN]))
+        if row is not None:
+            tracked_search_areas[row, 1:3] = led_position[LED_CENTER_COLUMNS]
+    print(f'LED movement tracking of channel {channel} continues with the LED positions of {file_path}.')
+    return tracked_search_areas
+
+
+def update_tracked_search_areas(tracked_search_areas: np.ndarray, img_data: List[LEDAnalysisData]) -> None:
+    """
+    Move the tracked search areas to the LED positions found in the current image.
+
+    LEDs that were not analysed, for example because they are skipped by num_skip_leds, keep their search area.
+    Since the LED position is the brightest pixel within the search area, a search area can move at most by the
+    search area radius from one image to the next.
+
+    :param tracked_search_areas: Array containing the LED IDs and the pixel positions of all tracked search areas.
+                                 Updated in place.
+    :type tracked_search_areas: np.ndarray
+    :param img_data: A list, containing LEDAnalysisData objects with the LED centers found in the current image.
+    :type img_data: List[LEDAnalysisData]
+    """
+    row_of_led_id = _get_row_of_led_id(tracked_search_areas)
+    for led_data in img_data:
+        row = row_of_led_id.get(int(led_data.led_id))
+        if row is not None:
+            tracked_search_areas[row, 1:3] = (led_data.led_center_x, led_data.led_center_y)
+
+
+def _generate_led_analysis_data(conf: ConfigData, channel: int, data: np.ndarray, debug: bool, iled: int, img_filename: str, led_array_idx: int, search_areas: np.ndarray, search_area_radius: int, fit_leds: bool = True, track_led_movement: bool = False) -> LEDAnalysisData:
     """
     Generate analysis data for a specific LED.
 
     :param conf: Configuration data.
     :type conf: ConfigData
-    :param channel: Color Channel for which analysis should be generated.
+    :param channel: Color channel for which analysis should be generated.
     :type channel: int
     :param data: Array representing the image data.
     :type data: np.ndarray
@@ -131,35 +220,81 @@ def _generate_led_analysis_data(conf: ConfigData, channel: int, data: np.ndarray
     :type search_area_radius: int
     :param fit_leds: If True, the LED is fitted to a model function.
     :type fit_leds: bool
+    :param track_led_movement: If True, the LED center is set to the position of the brightest pixels within the
+                               search area instead of the search area center. Ignored if the LED is fitted.
+    :type track_led_movement: bool
     :return: Analysis data for the LED.
     :rtype: LEDAnalysisData
     """
     led_data = LEDAnalysisData(iled, led_array_idx, fit_leds)
-    center_search_area_x = int(search_areas[iled, 1])
-    center_search_area_y = int(search_areas[iled, 2])
-    search_area = np.index_exp[center_search_area_x - search_area_radius:
-                               center_search_area_x + search_area_radius,
-                               center_search_area_y - search_area_radius:
-                               center_search_area_y + search_area_radius]
+    center_search_area_x = int(round(search_areas[iled, 1]))
+    center_search_area_y = int(round(search_areas[iled, 2]))
+
+    # Clip the search area to the image, so that LEDs close to the image border do not wrap around
+    x_min = max(0, center_search_area_x - search_area_radius)
+    x_max = min(data.shape[0], center_search_area_x + search_area_radius)
+    y_min = max(0, center_search_area_y - search_area_radius)
+    y_max = min(data.shape[1], center_search_area_y + search_area_radius)
+    search_area = np.index_exp[x_min:x_max, y_min:y_max]
 
     if fit_leds:
         start_time = time.process_time()
         led_data.fit_results, mesh = _fit_model_to_led(data[search_area])
         end_time = time.process_time()
         led_data.fit_time = end_time - start_time
-        led_data.led_center_x = led_data.fit_results.x[0] + center_search_area_x - search_area_radius
-        led_data.led_center_y = led_data.fit_results.x[1] + center_search_area_y - search_area_radius
+        led_data.led_center_x = led_data.fit_results.x[0] + x_min
+        led_data.led_center_y = led_data.fit_results.x[1] + y_min
         if debug:
             return led_data.fit_results.x
         if not led_data.fit_results.success:  # A > 255 or A < 0:
             _log_warnings(img_filename, channel, led_data, center_search_area_x, center_search_area_y,
                           data[search_area].shape, search_area_radius, conf)
+    elif track_led_movement:
+        led_data.led_center_x, led_data.led_center_y = _find_max_pixel_position(data[search_area], x_min, y_min)
+    else:
+        led_data.led_center_x = center_search_area_x
+        led_data.led_center_y = center_search_area_y
 
     led_data.mean_color_value = np.mean(data[search_area])
     led_data.sum_color_value = np.sum(data[search_area])
     led_data.max_color_value = np.amax(data[search_area])
 
     return led_data
+
+
+def _find_max_pixel_position(search_area_data: np.ndarray, x_offset: int, y_offset: int) -> Tuple[float, float]:
+    """
+    Find the pixel position of the LED within a search area.
+
+    The center of all pixels holding the maximum value is used instead of the first maximum found, because the core
+    of a bright LED is usually saturated over several pixels. Picking the first maximum would bias the position
+    towards the upper left corner of that plateau and, since the position is fed back into the next image, would
+    make the search area drift.
+
+    :param search_area_data: Part of the image data belonging to the search area.
+    :type search_area_data: np.ndarray
+    :param x_offset: X pixel coordinate of the first pixel of the search area on the image.
+    :type x_offset: int
+    :param y_offset: Y pixel coordinate of the first pixel of the search area on the image.
+    :type y_offset: int
+    :return: X and Y pixel coordinate of the LED on the image.
+    :rtype: tuple[float, float]
+    """
+    max_positions = np.argwhere(search_area_data == np.amax(search_area_data))
+    max_position_x, max_position_y = max_positions.mean(axis=0)
+    return max_position_x + x_offset, max_position_y + y_offset
+
+
+def _get_row_of_led_id(search_areas: np.ndarray) -> Dict[int, int]:
+    """
+    Map every LED ID to its row in the search area array.
+
+    :param search_areas: Array containing the LED IDs and the pixel positions of all search areas.
+    :type search_areas: np.ndarray
+    :return: Row index of every LED ID.
+    :rtype: Dict[int, int]
+    """
+    return {int(led_id): row for row, led_id in enumerate(search_areas[:, LED_ID_COLUMN])}
 
 
 def _save_results_in_file(channel: int, img_data: LEDAnalysisData, img_filename: str, img_id: str, img_infos: np.ndarray, basename: str) -> None:
@@ -223,6 +358,10 @@ def _fit_model_to_led(search_area: np.ndarray) -> Tuple[scipy.optimize.OptimizeR
     """
     Fit a model to the LED in a specific search area.
 
+    The mesh uses matrix indexing, so that the fitted x and y coordinates refer to the first and the second axis of
+    the search area, as everywhere else in LEDSA, and so that search areas clipped at the image border, which are
+    not square, can be fitted as well.
+
     :param search_area: Part of the image where the LED is located.
     :type search_area: np.ndarray
     :return: Result of the fit and mesh of the search area.
@@ -236,7 +375,7 @@ def _fit_model_to_led(search_area: np.ndarray) -> Tuple[scipy.optimize.OptimizeR
     x0 = np.array([center_x, center_y, 2., 2., 200., 1.0, 1.0, 1.0])
     x = np.linspace(0.5, nx - 0.5, nx)
     y = np.linspace(0.5, ny - 0.5, ny)
-    mesh = np.meshgrid(x, y)
+    mesh = np.meshgrid(x, y, indexing='ij')
     res = scipy.optimize.minimize(target_function, x0,
                                   args=(search_area, mesh), method='nelder-mead',
                                   options={'xatol': 1e-8, 'disp': False,
@@ -280,7 +419,7 @@ def _log_warnings(img_filename, channel, led_data, cx, cy, size_of_search_area, 
     logfile.close()
 
 
-def _create_header(channel: int, img_id: str, img_filename: str, img_infos: np.ndarray, basename: str, fit_leds: str):
+def _create_header(channel: int, img_id: str, img_filename: str, img_infos: np.ndarray, basename: str, fit_leds: bool) -> str:
     """
     Create a header for the analysis result file.
 
@@ -303,10 +442,8 @@ def _create_header(channel: int, img_id: str, img_filename: str, img_infos: np.n
     out_str += f"channel = {channel}, "
     out_str += f"time[s] = {img_infos[int(img_id) - 1][3]}\n"
     out_str += "# id,line,sum_col_value,average_col_value,max_col_value"
+    out_str += ",led_center_x,led_center_y"
     if fit_leds:
-        out_str += ",led_center_x, led_center_y"
         out_str += ",x,y,dx,dy,A,alpha,wx,wy,fit_success,fit_fun,fit_nfev,fit_time"
-        out_str += "// all spatial quantities in pixel coordinates\n"
-    else:
-        out_str += "\n"
+    out_str += " // all spatial quantities in pixel coordinates\n"
     return out_str

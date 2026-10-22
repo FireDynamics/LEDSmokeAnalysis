@@ -33,6 +33,11 @@ class DataExtractor:
     :vartype search_areas: numpy.ndarray, optional
     :ivar line_indices: 2D list with dimension (# of LED arrays) x (# of LEDs per array) or None.
     :vartype line_indices: list[list[int]], optional
+    :ivar track_led_movement: Whether the search areas follow the LEDs from image to image. Only possible if the LEDs
+                              are not fitted.
+    :vartype track_led_movement: bool
+    :ivar search_areas_tracked: Search areas following the LEDs, one array per channel.
+    :vartype search_areas_tracked: dict[int, numpy.ndarray]
     """
 
     def __init__(self, channels=(0), load_config_file=True, build_experiment_infos=True, fit_leds=True):
@@ -50,9 +55,18 @@ class DataExtractor:
         self.channels = list(channels)
         self.fit_leds = fit_leds
         self.threshold = None
+        self.track_led_movement = self.config.getboolean('analyse_photo', 'track_led_movement', fallback=False)
+        if self.track_led_movement and self.fit_leds:
+            # The fit determines the LED position within the search area on its own, so moving the search area on top
+            # of that would only change the frame the fit parameters refer to.
+            print('LED movement tracking is only available if the LEDs are not fitted. Ignoring track_led_movement.')
+            self.track_led_movement = False
+        self.is_restart = False
 
         # 2D numpy array with dimension (# of LEDs) x (LED_id, x, y)
         self.search_areas = None
+        # 2D numpy array per channel with dimension (# of LEDs) x (LED_id, x, y), only used if LEDs are tracked
+        self.search_areas_tracked = {}
         # 2D list with dimension (# of LED arrays) x (# of LEDs per array)
         self.line_indices = None
 
@@ -230,6 +244,16 @@ class DataExtractor:
 
         img_filenames = ledsa.core.file_handling.read_table('images_to_process.csv', dtype=str)
         num_cores = int(config['num_cores'])
+        if self.track_led_movement:
+            # Every image is analysed with the LED positions of its predecessor, so the images have to be processed
+            # in chronological order and cannot be distributed over multiple processes.
+            img_filenames = ledsa.data_extraction.step_3_functions.sort_img_filenames_by_id(img_filenames)
+            if num_cores > 1:
+                print(f'LED movement tracking is not available for multicore processing. '
+                      f'Ignoring num_cores = {num_cores} and processing the images on a single core.')
+                num_cores = 1
+            self.init_tracked_search_areas()
+
         if num_cores > 1:
             from multiprocessing import Pool
             print('images are getting processed, this may take a while')
@@ -242,6 +266,17 @@ class DataExtractor:
 
         os.remove('images_to_process.csv')
 
+    def init_tracked_search_areas(self) -> None:
+        """
+        Initialize the search areas that follow the LEDs, separately for every channel.
+
+        On a restart the LED positions of the most recently analysed image are used as start values, so that the
+        tracking continues where the interrupted run stopped.
+        """
+        for channel in self.channels:
+            self.search_areas_tracked[channel] = ledsa.data_extraction.step_3_functions.init_tracked_search_areas(
+                self.search_areas, channel, seed_from_analysed_imgs=self.is_restart)
+
     def process_img_file(self, img_filename: str) -> None:
         """
         Process a single image file to extract relevant data. This is a workaround for pool.map.
@@ -251,11 +286,16 @@ class DataExtractor:
         """
         img_id = ledsa.core.image_handling.get_img_id(img_filename)
         for channel in self.channels:
+            search_areas = self.search_areas_tracked[channel] if self.track_led_movement else self.search_areas
             img_data = ledsa.data_extraction.step_3_functions.generate_analysis_data(img_filename, channel,
-                                                                                     self.search_areas,
+                                                                                     search_areas,
                                                                                      self.line_indices,
-                                                                                     self.config, self.fit_leds)
+                                                                                     self.config, self.fit_leds,
+                                                                                     self.track_led_movement)
             ledsa.data_extraction.step_3_functions.create_fit_result_file(img_data, img_id, channel)
+            if self.track_led_movement:
+                ledsa.data_extraction.step_3_functions.update_tracked_search_areas(search_areas, img_data)
+
     def setup_step3(self) -> None:
         """
         Setup the third step of the data extraction process by creating 'image_infos_analysis.csv' and 'images_to_process.csv' files.
@@ -270,4 +310,5 @@ class DataExtractor:
         # if len(self.channels) > 1: #TODO: deactivated for testing
         #     print('Restart of a run currently only supports one channel. \nExiting...')
         #     exit(1)
+        self.is_restart = True
         ledsa.data_extraction.step_3_functions.find_and_save_not_analysed_imgs(self.channels[0])
