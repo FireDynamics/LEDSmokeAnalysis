@@ -36,6 +36,9 @@ Analysis Skips Images Without Extraction Results
     Create And Fill Config Analysis     linear
     Execute Ledsa   --analysis
     Analysis Should Exclude Image   test_img_3.jpg
+    # The left out image makes the coefficients cover fewer times than the image infos, which is no
+    # mismatch of the time axes and must not be reported as one
+    Extco Time Axis Should Be Accepted
 
 *** Keywords ***
 Restore Test Images
