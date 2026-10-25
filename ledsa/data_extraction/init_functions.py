@@ -215,7 +215,7 @@ def _save_analysis_infos(img_data: str) -> None:
     :type img_data: str
     """
     file_path = os.path.join('analysis', 'image_infos_analysis.csv')
-    out_file = open(file_path, 'w')
+    out_file = open(file_path, 'w', encoding='utf-8')
     out_file.write("#ID,Name,Time[s],Experiment_Time[s]\n")
     out_file.write(img_data)
     out_file.close()
@@ -228,7 +228,7 @@ def _save_experiment_infos(img_data: str) -> None:
     :param img_data: Formatted string containing image data.
     :type img_data: str
     """
-    out_file = open('image_infos.csv', 'w')
+    out_file = open('image_infos.csv', 'w', encoding='utf-8')
     out_file.write("#Count,Name,Time[s],Experiment_Time[s]\n")
     out_file.write(img_data)
     out_file.close()

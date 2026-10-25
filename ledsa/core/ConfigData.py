@@ -49,7 +49,8 @@ class ConfigData(cp.ConfigParser):
         :type time_ref_img_time: str or None
         :param time_diff_to_image_time: Time difference in seconds to the actual image time. Defaults to None.
         :type time_diff_to_image_time: int or None
-        :param img_name_string: Naming convention of the image files. Defaults to None.
+        :param img_name_string: Naming convention of the image files, for example 'img{}.jpg', or
+            'img{:04d}.jpg' for the zero padded ids most cameras write. Defaults to None.
         :type img_name_string: str or None
         :param num_img_overflow: Maximal number an image file ID can have. Defaults to None.
         :type num_img_overflow: int or None
@@ -150,7 +151,7 @@ class ConfigData(cp.ConfigParser):
             self.set('analyse_photo', '   # In the analysis, only LEDs are considered with id dividable by skip_leds + 1.')
             self['analyse_photo']['   num_skip_leds'] = str(num_skip_leds)
 
-            with open('config.ini', 'w') as configfile:
+            with open('config.ini', 'w', encoding='utf-8') as configfile:
                 self.write(configfile)
             print('config.ini created')
 
@@ -176,7 +177,8 @@ class ConfigData(cp.ConfigParser):
             FileNotFoundError: If 'config.ini' is not found in the working directory.
         """
         try:
-            self.read_file(open('config.ini'))
+            with open('config.ini', encoding='utf-8-sig') as config_file:
+                self.read_file(config_file)
         except FileNotFoundError:
             print('config.ini not found in working directory! Please create it with argument "--config".')
         print('config.ini loaded')
@@ -185,7 +187,7 @@ class ConfigData(cp.ConfigParser):
         """
         Saves the current configuration to 'config.ini' file.
         """
-        with open('config.ini', 'w') as configfile:
+        with open('config.ini', 'w', encoding='utf-8') as configfile:
             self.write(configfile)
         print('config.ini saved')
 
@@ -354,7 +356,8 @@ class ConfigData(cp.ConfigParser):
         """
         self['DEFAULT']['img_name_string'] = input(
             'Please give the name structure of the images in the form img{}.extension where '
-            '{} denotes the increasing ID of the image files: ')
+            '{} denotes the increasing ID of the image files. Use a format spec to pad the ID '
+            'with zeros, so img{:04d}.extension matches img0001.extension: ')
 
     def in_num_img_overflow(self) -> None:
         """
@@ -417,8 +420,10 @@ class ConfigData(cp.ConfigParser):
         Updates the 'DEFAULT' key with the 'start_time' computed.
 
         """
-        time_img = get_exif_datetime(os.path.join(self['DEFAULT']['img_directory'] + self['DEFAULT']['img_name_string'].format(
-            self['DEFAULT']['first_img_experiment_id'])), 'DateTimeOriginal')
+        time_img = get_exif_datetime(os.path.join(self['DEFAULT']['img_directory'],
+                                                  self['DEFAULT']['img_name_string'].format(
+                                                      self['DEFAULT']['first_img_experiment_id'])),
+                                     'DateTimeOriginal')
         start_time = time_img - timedelta(seconds=self['DEFAULT'].getfloat('exif_time_infront_real_time'))
         time_format = '%H:%M:%S' if start_time.microsecond == 0 else '%H:%M:%S.%f'
         self['DEFAULT']['start_time'] = start_time.strftime(time_format)

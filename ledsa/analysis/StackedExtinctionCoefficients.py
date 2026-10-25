@@ -392,7 +392,7 @@ class StackedExtinctionCoefficients:
                     row += f'  {"—":>8}  {"—":>10}  {"—":>6}'
             lines.append(row)
 
-        path.write_text('\n'.join(lines) + '\n')
+        path.write_text('\n'.join(lines) + '\n', encoding='utf-8')
         print(f'  Time-alignment report: {path}')
 
     # ------------------------------------------------------------------

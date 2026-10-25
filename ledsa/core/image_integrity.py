@@ -140,7 +140,7 @@ def load_corrupted_images() -> List[Dict[str, str]]:
     """
     if not os.path.isfile(CORRUPTED_IMAGES_FILE_PATH):
         return []
-    with open(CORRUPTED_IMAGES_FILE_PATH, 'r', newline='') as corrupted_images_file:
+    with open(CORRUPTED_IMAGES_FILE_PATH, 'r', newline='', encoding='utf-8') as corrupted_images_file:
         return [row for row in csv.DictReader(corrupted_images_file) if row.get('image_path')]
 
 
@@ -165,7 +165,7 @@ def _append_to_corrupted_images_file(rows: List[Dict[str, str]]) -> None:
     if report_dir:
         os.makedirs(report_dir, exist_ok=True)
     file_exists = os.path.isfile(CORRUPTED_IMAGES_FILE_PATH)
-    with open(CORRUPTED_IMAGES_FILE_PATH, 'a', newline='') as corrupted_images_file:
+    with open(CORRUPTED_IMAGES_FILE_PATH, 'a', newline='', encoding='utf-8') as corrupted_images_file:
         writer = csv.DictWriter(corrupted_images_file, fieldnames=CORRUPTED_IMAGES_COLUMNS)
         if not file_exists:
             writer.writeheader()

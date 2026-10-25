@@ -9,8 +9,10 @@ from matplotlib import pyplot as plt
 
 from ledsa.core.image_integrity import CorruptedImageError
 
-IMG_FILE_EXTENSIONS = ['.JPG', '.JPEG', '.jpg', '.jpeg', '.PNG', '.png']
-RAW_FILE_EXTENSIONS = ['.CR2', '.CR3']
+# The extension of a file is matched lowercased, because cameras and operating systems differ in
+# the case they write it in and Windows treats the two as the same file name anyway.
+IMG_FILE_EXTENSIONS = ['.jpg', '.jpeg', '.png']
+RAW_FILE_EXTENSIONS = ['.cr2', '.cr3', '.nef', '.arw', '.dng']
 
 # The EXIF timestamps themselves only have second resolution. Cameras store the fraction of the second in a
 # tag of its own, most of them as two digits, i.e. hundredths of a second.
@@ -73,13 +75,13 @@ def _get_reader(filename: str, img_file_reader: Callable, raw_file_reader: Calla
     :raises CorruptedImageError: If the file extension is not supported by LEDSA.
     """
     extension = os.path.splitext(filename)[-1]
-    if extension in IMG_FILE_EXTENSIONS:
+    if extension.lower() in IMG_FILE_EXTENSIONS:
         return img_file_reader
-    if extension in RAW_FILE_EXTENSIONS:
+    if extension.lower() in RAW_FILE_EXTENSIONS:
         return raw_file_reader
     supported = ', '.join(IMG_FILE_EXTENSIONS + RAW_FILE_EXTENSIONS)
     raise CorruptedImageError(filename, message=f"unsupported file extension '{extension}', "
-                                                f"LEDSA can read {supported}")
+                                                f"LEDSA can read {supported} in any case")
 
 
 def _read_or_raise(filename: str, reader: Callable, channel: int) -> np.ndarray:

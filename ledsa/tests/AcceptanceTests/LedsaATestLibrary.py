@@ -1,11 +1,11 @@
 import glob
 import os
+import re
 import shutil
 from subprocess import Popen, PIPE
 
 import matplotlib.pyplot as plt
 import numpy as np
-from numpy.random import normal
 import exiv2
 from PIL import Image
 from robot.api.deco import keyword, library
@@ -17,6 +17,11 @@ from ledsa.analysis.ConfigDataAnalysis import ConfigDataAnalysis
 from ledsa.analysis.ConfigDataStacked import ConfigDataStacked
 from ledsa.core.ConfigData import ConfigData
 from ledsa.core.image_integrity import CORRUPTED_IMAGES_FILE_PATH, load_corrupted_images
+
+# The noise put on the synthetic extinction coefficients is as large as the RMSE the tests
+# accept, so drawing it afresh every run made them pass or fail by chance. A fixed seed keeps
+# the test data, and with it the reconstruction error, the same on every run and platform.
+NOISE_SEED = 20181127
 
 
 @library
@@ -40,9 +45,10 @@ class LedsaATestLibrary:
 
         EPS = 1e-10  # guarantees strictly positive output
         SIGMA_NOISE = 0.05
+        rng = np.random.default_rng(NOISE_SEED)
 
         def _add_noise(x, *, sigma=SIGMA_NOISE):
-            return np.clip(x + normal(0, sigma, x.shape), a_min=0.0, a_max=None) + EPS
+            return np.clip(x + rng.normal(0, sigma, x.shape), a_min=0.0, a_max=None) + EPS
 
         def extco_const_initial(z):
             # start from a tiny positive floor instead of 0 to avoid log(0)
@@ -89,9 +95,10 @@ class LedsaATestLibrary:
 
         EPS = 1e-10
         SIGMA_NOISE = 0.05
+        rng = np.random.default_rng(NOISE_SEED)
 
         def _add_noise(x, *, sigma=SIGMA_NOISE):
-            return np.clip(x + normal(0, sigma, x.shape), a_min=0.0, a_max=None) + EPS
+            return np.clip(x + rng.normal(0, sigma, x.shape), a_min=0.0, a_max=None) + EPS
 
         profiles = [
             np.full_like(z_range, EPS),              # image 1 – reference (near-zero)
@@ -320,7 +327,11 @@ class LedsaATestLibrary:
             inp = b'test_data/\ntest_img_{}.jpg\n1\n12:00:00\n1\n1000\n1\n1\n1'
             out = self.execute_ledsa('-s1', inp)
             check_error_msg(out)
-        return out[0].decode('utf-8')[-9:-6]
+        stdout = out[0].decode('utf-8')
+        leds_found = re.search(r'Found (\d+) LEDS', stdout)
+        if leds_found is None:
+            raise AssertionError(f'step 1 did not report a number of LEDs: {stdout[-200:]!r}')
+        return leds_found.group(1)
 
     @keyword
     def execute_ledsa(self, arg, inp=None):
@@ -330,7 +341,7 @@ class LedsaATestLibrary:
 
     @keyword
     def create_cc_matrix_file(self):
-        file = open("mean_all_cc_matrix_integral.csv", "w")
+        file = open("mean_all_cc_matrix_integral.csv", "w", encoding="utf-8")
         file.write("2,3,4\n1,2,7\n3,4,5")
         file.close()
 
@@ -379,7 +390,8 @@ class LedsaATestLibrary:
         rows = load_corrupted_images()
         img_path = os.path.join('test_data', img_name)
         for row in rows:
-            if row['image_path'] == img_path and row['analysis_step'] == analysis_step:
+            if (os.path.normpath(row['image_path']) == os.path.normpath(img_path)
+                    and row['analysis_step'] == analysis_step):
                 if not row['error_type'] or not row['error_message']:
                     raise AssertionError(f'{img_path} is listed without a reason: {row}')
                 return
@@ -395,7 +407,7 @@ class LedsaATestLibrary:
         """
         infos_path = os.path.join('analysis', 'image_infos_analysis.csv')
         times_of_img = {}
-        with open(infos_path) as infos_file:
+        with open(infos_path, encoding='utf-8') as infos_file:
             for line in infos_file:
                 if line.startswith('#') or not line.strip():
                     continue
@@ -420,7 +432,7 @@ class LedsaATestLibrary:
     def get_analysis_image_id(self, img_name):
         """Get the analysis ID that 'image_infos_analysis.csv' assigns to an image."""
         file_path = os.path.join('analysis', 'image_infos_analysis.csv')
-        with open(file_path) as infos_file:
+        with open(file_path, encoding='utf-8') as infos_file:
             for line in infos_file:
                 if line.startswith('#') or not line.strip():
                     continue
@@ -434,7 +446,7 @@ class LedsaATestLibrary:
         """Fail unless exactly the given images are listed in 'image_infos_analysis.csv'."""
         file_path = os.path.join('analysis', 'image_infos_analysis.csv')
         img_names = []
-        with open(file_path) as infos_file:
+        with open(file_path, encoding='utf-8') as infos_file:
             for line in infos_file:
                 if not line.startswith('#') and line.strip():
                     img_names.append(line.split(',')[1])

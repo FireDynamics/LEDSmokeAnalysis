@@ -214,7 +214,7 @@ def _get_indices_of_outer_leds(config: ConfigData) -> np.ndarray:
         # Check if LED array edge indices are defined in config
         if config['analyse_positions']['led_array_edge_indices'] == 'None':
             config.in_led_array_edge_indices()
-            with open('config.ini', 'w') as configfile:
+            with open('config.ini', 'w', encoding='utf-8') as configfile:
                 config.write(configfile)
 
         # Get the LED array edge indices from config
@@ -302,7 +302,7 @@ def generate_led_array_indices_files(led_array_indices: List[List[int]],
         for i, led_array in enumerate(led_array_indices):
             file_path = os.path.join('analysis', f'led_array_indices_{i:03}{filename_extension}.csv')
 
-            with open(file_path, 'w') as out_file:
+            with open(file_path, 'w', encoding='utf-8') as out_file:
                 for led_id in reversed(led_array):
                     out_file.write(f'{led_id}\n')
 

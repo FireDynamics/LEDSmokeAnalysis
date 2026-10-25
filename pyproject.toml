@@ -11,7 +11,10 @@ authors = [
 ]
 readme = "README.md"
 license = {text = "MIT"}
-requires-python = ">=3.8"
+# The upper bound follows the numpy pin below: numpy 1.26.4 ships wheels for CPython 3.9 to
+# 3.12 only, so a newer interpreter would try to build it from source, which fails on a
+# machine without a compiler toolchain - the usual case on Windows.
+requires-python = ">=3.9,<3.13"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",

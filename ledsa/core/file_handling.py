@@ -16,7 +16,7 @@ def set_flag(flag: str) -> None:
     :param flag: The name of the flag to set.
     :type flag: str
     """
-    with open(f'.{flag}.flag', 'w') as flag_file:
+    with open(f'.{flag}.flag', 'w', encoding='utf-8') as flag_file:
         pass
 
 
