@@ -386,6 +386,37 @@ class LedsaATestLibrary:
         raise AssertionError(f'{img_path} is not listed for "{analysis_step}". Report contains: {rows}')
 
     @keyword
+    def analysis_should_exclude_image(self, img_name, solver='linear', channel=0, led_array=0,
+                                      reference_property='sum_col_val'):
+        """Fail unless the extinction coefficients cover every analysed image except the given one.
+
+        Checks that the skipped image contributes no row and, more importantly, that the remaining rows are
+        still paired with the experiment time of their own image instead of being shifted by one.
+        """
+        infos_path = os.path.join('analysis', 'image_infos_analysis.csv')
+        times_of_img = {}
+        with open(infos_path) as infos_file:
+            for line in infos_file:
+                if line.startswith('#') or not line.strip():
+                    continue
+                _, name, _, experiment_time = line.strip().split(',')
+                times_of_img[name] = float(experiment_time)
+        if img_name not in times_of_img:
+            raise AssertionError(f'{img_name} is not listed in {infos_path}')
+
+        filename = (f'extinction_coefficients_{solver}_channel_{channel}_{reference_property}'
+                    f'_led_array_{led_array}.csv')
+        file_path = os.path.join('analysis', 'extinction_coefficients', solver, filename)
+        data = np.atleast_2d(np.genfromtxt(file_path, delimiter=',', comments='#'))
+        times = [round(t, 6) for t in data[:, 0]]
+
+        expected = sorted(round(t, 6) for name, t in times_of_img.items() if name != img_name)
+        if times != expected:
+            raise AssertionError(f'Experiment times in {filename} are {times}, expected {expected}')
+        if np.isnan(data[:, 1:]).any():
+            raise AssertionError(f'{filename} contains NaN extinction coefficients')
+
+    @keyword
     def get_analysis_image_id(self, img_name):
         """Get the analysis ID that 'image_infos_analysis.csv' assigns to an image."""
         file_path = os.path.join('analysis', 'image_infos_analysis.csv')

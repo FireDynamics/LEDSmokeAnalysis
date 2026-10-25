@@ -26,10 +26,22 @@ Readable Images Are Analysed Despite Corrupted Ones
     Result File Should Exist For Image      test_img_2.jpg
     Result File Should Exist For Image      test_img_4.jpg
 
+Analysis Skips Images Without Extraction Results
+    [Documentation]     An image whose pixel data could not be read keeps its ID in the image infos but
+    ...                 produces no result file, so the extinction coefficients must leave it out and still
+    ...                 pair every remaining image with its own experiment time.
+    Corrupt Image   test_img_3.jpg  truncate
+    Execute Ledsa   -s3_fast
+    Corrupted Images Report Should List     test_img_3.jpg  extraction of the LED intensities
+    Create And Fill Config Analysis     linear
+    Execute Ledsa   --analysis
+    Analysis Should Exclude Image   test_img_3.jpg
+
 *** Keywords ***
 Restore Test Images
     Restore Corrupted Images
     Empty Directory     ${WORKDIR}${/}analysis${/}channel0${/}
+    Remove Directory    ${WORKDIR}${/}analysis${/}extinction_coefficients${/}     recursive=True
 
 Corrupted Images Should Be Reported
     File Should Exist   ${WORKDIR}${/}analysis${/}corrupted_images.csv

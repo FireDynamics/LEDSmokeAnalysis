@@ -103,10 +103,14 @@ imgs/IMG_0042.JPG,reading of the image metadata,Exiv2Error,Failed to read input 
 imgs/IMG_0137.JPG,extraction of the LED intensities,OSError,image file is truncated
 ```
 
-Skipped images get no entry in `image_infos.csv` and `image_infos_analysis.csv`, so the
-analysis IDs of the readable images stay a gapless sequence, just as when images are
-left out with `num_skip_imgs`. A restart with `-re` retries the skipped images, which
-picks them up if they have been replaced in the meantime.
+An image skipped while the metadata is read gets no entry in `image_infos.csv` and
+`image_infos_analysis.csv`, so the analysis IDs of the readable images stay a gapless
+sequence, just as when images are left out with `num_skip_imgs`. An image skipped later,
+while the LED intensities are extracted, keeps its entry but produces no result file. It
+is then left out of the extinction coefficients, and every remaining image stays paired
+with its own experiment time, so the time axis of the result has a gap rather than a
+shift. A restart with `-re` retries the skipped images, which picks them up if they have
+been replaced in the meantime.
 
 Three images are indispensable and therefore stop the run with a message naming the
 file instead of being skipped: the reference image of step 1 (`ref_img_id`), which

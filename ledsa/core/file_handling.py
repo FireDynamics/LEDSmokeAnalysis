@@ -6,6 +6,7 @@ import pandas as pd
 
 import ledsa.core
 from ledsa.core.ConfigData import ConfigData
+from ledsa.core.image_integrity import CORRUPTED_IMAGES_FILE_PATH
 
 
 def set_flag(flag: str) -> None:
@@ -225,6 +226,7 @@ def create_binary_data(channel: int, path: str = '.') -> None:
     :type channel: int
     :param path: Root directory of the LEDSA simulation. Defaults to the current directory.
     :type path: str
+    :raises ValueError: If not a single image of the channel has analysis results.
     """
     prev_dir = os.getcwd()
     try:
@@ -233,8 +235,6 @@ def create_binary_data(channel: int, path: str = '.') -> None:
         columns = _get_column_names(channel)
 
         fit_params_list = []
-
-        fit_params = pd.DataFrame(columns=columns)
 
         # find time and fit parameter for every image
 
@@ -248,18 +248,16 @@ def create_binary_data(channel: int, path: str = '.') -> None:
         number_of_images = (max_id + last_img_id - first_img_id) % max_id + 1
         number_of_images //= int(config['analyse_photo']['num_skip_imgs']) + 1
         print('Loading fit parameters...')
-        exception_counter = 0
+        skipped_img_ids = []
         for image_id in range(1, number_of_images + 1):
             try:
                 in_file_path = os.path.join('analysis', f'channel{channel}', f'{image_id}_led_positions.csv')
                 parameters = ledsa.core.file_handling.read_table(in_file_path, delim=',', silent=True)
             except (FileNotFoundError, IOError):
-                fit_params_fragment = fit_params.append(
-                    _param_array_to_dataframe([[np.nan] * (fit_params.shape[1] - 1)], image_id,
-                                              columns),
-                    ignore_index=True, sort=False)
-                fit_params_list.append(fit_params_fragment)
-                exception_counter += 1
+                # A missing result file means the image was not analysed, for example because it could not be
+                # read. The image is left out entirely instead of being filled with NaNs, so that the
+                # extinction coefficients are never computed from them.
+                skipped_img_ids.append(image_id)
                 continue
 
             parameters = parameters[parameters[:, 0].argsort()]  # sort for led_id
@@ -267,9 +265,16 @@ def create_binary_data(channel: int, path: str = '.') -> None:
             fit_params_fragment = _param_array_to_dataframe(parameters, image_id, columns)
             fit_params_list.append(fit_params_fragment)
 
+        if not fit_params_list:
+            raise ValueError(f'None of the {number_of_images} images of channel {channel} has analysis '
+                             f'results. Run the data extraction (-s3 or -s3_fast) before the analysis.')
         fit_params = pd.concat(fit_params_list, ignore_index=True, sort=False)
 
-        print(f'{number_of_images - exception_counter} of {number_of_images} loaded.')
+        print(f'{number_of_images - len(skipped_img_ids)} of {number_of_images} loaded.')
+        if skipped_img_ids:
+            print(f'No analysis results for the image IDs {skipped_img_ids}, so they are left out of the '
+                  f'extinction coefficients. Images that could not be read are listed in '
+                  f'{CORRUPTED_IMAGES_FILE_PATH}.')
         fit_params['img_id'] = fit_params['img_id'].astype(int)
         fit_params['led_id'] = fit_params['led_id'].astype(int)
         fit_params['led_array_id'] = fit_params['led_array_id'].astype(int)
