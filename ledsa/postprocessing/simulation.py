@@ -332,8 +332,10 @@ class SimData(_BaseSimData):
         else:
             file = os.path.join(self.path_simulation, 'analysis', f'channel{channel}', 'all_parameters.h5')
         table = pd.read_hdf(file, key='channel_values')
+        # Not rounded to whole seconds: images taken less than a second apart would otherwise share
+        # a time and be merged into one entry.
         time = pd.Series(
-            self.image_info_df['Experiment_Time[s]'].astype(int).values,
+            self.image_info_df['Experiment_Time[s]'].values,
             index=self.image_info_df['#ID'],
             name='Experiment_Time[s]',
         )
@@ -358,7 +360,7 @@ class SimData(_BaseSimData):
             channel = int(file.split('channel_')[1].split('_')[0])
             led_array = int(file.split('array_')[1].split('.')[0])
             if '# Experiment_Time[s]' not in file_df.columns:
-                time = self.image_info_df['Experiment_Time[s]'].astype(int)
+                time = self.image_info_df['Experiment_Time[s]']
                 file_df = file_df.merge(time, left_index=True, right_index=True)
             else:
                 file_df.rename(columns={'# Experiment_Time[s]': 'Experiment_Time[s]'}, inplace=True)
@@ -469,7 +471,7 @@ class SimData(_BaseSimData):
         Retrieves the image name corresponding to a specific time.
 
         :param time: The time index.
-        :type time: int
+        :type time: float
         :return: The name of the image.
         :rtype: str
         """
