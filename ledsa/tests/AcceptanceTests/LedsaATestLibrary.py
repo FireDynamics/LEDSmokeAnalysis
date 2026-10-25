@@ -475,6 +475,9 @@ def create_test_image(image_id, experiment, img_dir='test_data'):
     img2.readMetadata()
     ex = img2.exifData()
     ex["Exif.Photo.DateTimeOriginal"] = f"2021:01:01 12:00:{image_id:02d}"
+    # Cameras store the fraction of the second in a tag of its own. A different fraction per image makes
+    # sure that it reaches the image times instead of being rounded away.
+    ex["Exif.Photo.SubSecTimeOriginal"] = f"{image_id * 25 % 100:02d}"
     img2.setExifData(ex)
     img2.writeMetadata()
 

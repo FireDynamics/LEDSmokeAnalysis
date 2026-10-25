@@ -1,10 +1,10 @@
 import os
-from datetime import timedelta, datetime
+from datetime import timedelta
 from typing import List
 
 from ledsa.core.ConfigData import ConfigData
 from ledsa.core.image_integrity import CorruptedImageError, report_corrupted_images
-from ledsa.core.image_reading import get_exif_entry
+from ledsa.core.image_reading import get_exif_datetime
 
 
 def create_needed_directories(channels: List[int]) -> None:
@@ -123,36 +123,15 @@ def _calc_experiment_and_real_time(build_type: str, config: ConfigData, tag: str
     :return: Tuple containing experiment time and real time.
     :rtype: tuple
     """
-    exif_entry = get_exif_entry(os.path.join(config['DEFAULT']['img_directory'],
-                                config['DEFAULT']['img_name_string'].format(int(img_number))), tag)
-    date, time_meta = exif_entry.split(' ')
-    date_time_img = _get_datetime_from_str(date, time_meta)
+    img_path = os.path.join(config['DEFAULT']['img_directory'],
+                            config['DEFAULT']['img_name_string'].format(int(img_number)))
+    date_time_img = get_exif_datetime(img_path, tag)
 
     experiment_time = date_time_img - config.get_datetime()
     experiment_time = experiment_time.total_seconds()
-    time_diff = config[build_type]['exif_time_infront_real_time'].split('.')
-    if len(time_diff) == 1:
-        time_diff.append('0')
-    time = date_time_img - timedelta(seconds=int(time_diff[0]), milliseconds=int(time_diff[1]))
+    time_diff = config.getfloat(build_type, 'exif_time_infront_real_time')
+    time = date_time_img - timedelta(seconds=time_diff)
     return experiment_time, time
-
-
-def _get_datetime_from_str(date: str, time: str) -> datetime:
-    """
-    Convert date and time strings to a datetime object.
-
-    :param date: Date string in the format '%Y:%m:%d' or '%d.%m.%Y'.
-    :type date: str
-    :param time: Time string in the format '%H:%M:%S'.
-    :type time: str
-    :return: Corresponding datetime object.
-    :rtype: datetime.datetime
-    """
-    if date.find(":") != -1:
-        date_time = datetime.strptime(date + ' ' + time, '%Y:%m:%d %H:%M:%S')
-    else:
-        date_time = datetime.strptime(date + ' ' + time, '%d.%m.%Y %H:%M:%S')
-    return date_time
 
 
 def _find_img_number_list(first: int, last: int, increment: int, number_string_length=4) -> List[str]:
@@ -219,7 +198,7 @@ def _build_img_data_string(build_type: str, config: ConfigData) -> str:
             corrupted_images.append(error)
             continue
         img_data += (str(img_idx) + ',' + config[build_type]['img_name_string'].format(int(img_id)) +
-                     ',' + time.strftime('%H:%M:%S') + ',' + str(experiment_time) + '\n')
+                     ',' + time.strftime('%H:%M:%S.%f')[:-3] + ',' + str(experiment_time) + '\n')
         img_idx += 1
     report_corrupted_images(corrupted_images, 'reading of the image metadata')
     if img_idx == 1:

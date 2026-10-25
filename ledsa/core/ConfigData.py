@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 
 import numpy as np
 
-from ledsa.core.image_reading import get_exif_entry
+from ledsa.core.image_reading import get_exif_datetime
 
 
 class ConfigData(cp.ConfigParser):
@@ -107,6 +107,7 @@ class ConfigData(cp.ConfigParser):
             self['DEFAULT']['   time_ref_img_file'] = str(time_ref_img_file)
             self.set('DEFAULT', '   # Time shown on the time reference image')
             self['DEFAULT']['   time_ref_img_time'] = str(time_ref_img_time)
+            self.set('DEFAULT', '   # Seconds the camera clock is ahead of the real time. Decimals are allowed.')
             self['DEFAULT']['   exif_time_infront_real_time'] = str(time_diff_to_image_time)
 
             self['find_search_areas'] = {}
@@ -338,13 +339,14 @@ class ConfigData(cp.ConfigParser):
         time = self['DEFAULT']['time_ref_img_time']
 
         tag = 'DateTimeOriginal'
-        exif_entry = get_exif_entry(time_ref_img_file_path, tag)
-        date, time_meta = exif_entry.split(' ')
+        img_time = get_exif_datetime(time_ref_img_file_path, tag)
+        date = img_time.strftime('%Y:%m:%d')
         self['DEFAULT']['date'] = date
-        img_time = _get_datetime_from_str(date, time_meta)
         real_time = _get_datetime_from_str(date, time)
         time_diff = img_time - real_time
-        self['DEFAULT']['exif_time_infront_real_time'] = str(int(time_diff.total_seconds()))
+        # Keeping the sub-second part of the image time preserves the resolution of every image time
+        # that is later measured against this offset.
+        self['DEFAULT']['exif_time_infront_real_time'] = str(time_diff.total_seconds())
 
     def in_img_name_string(self) -> None:
         """
@@ -415,21 +417,23 @@ class ConfigData(cp.ConfigParser):
         Updates the 'DEFAULT' key with the 'start_time' computed.
 
         """
-        exif_entry = get_exif_entry(os.path.join(self['DEFAULT']['img_directory'] + self['DEFAULT']['img_name_string'].format(
+        time_img = get_exif_datetime(os.path.join(self['DEFAULT']['img_directory'] + self['DEFAULT']['img_name_string'].format(
             self['DEFAULT']['first_img_experiment_id'])), 'DateTimeOriginal')
-        date, time_meta = exif_entry.split(' ')
-        time_img = _get_datetime_from_str(date, time_meta)
-        start_time = time_img - timedelta(seconds=self['DEFAULT'].getint('exif_time_infront_real_time'))
-        self['DEFAULT']['start_time'] = start_time.strftime('%H:%M:%S')
+        start_time = time_img - timedelta(seconds=self['DEFAULT'].getfloat('exif_time_infront_real_time'))
+        time_format = '%H:%M:%S' if start_time.microsecond == 0 else '%H:%M:%S.%f'
+        self['DEFAULT']['start_time'] = start_time.strftime(time_format)
 
 
 def _get_datetime_from_str(date: str, time: str) -> datetime:
     """
     Convert a date and time string into a datetime object.
 
-    The function can handle two formats:
-    1. '%Y:%m:%d %H:%M:%S' - standard format with colons in the date.
-    2. '%d.%m.%Y %H:%M:%S' - format with periods in the date.
+    The function can handle two date formats:
+    1. '%Y:%m:%d' - standard format with colons in the date.
+    2. '%d.%m.%Y' - format with periods in the date.
+
+    The time is given as '%H:%M:%S' and may carry a fraction of a second, which the times read from the
+    image metadata have whenever the camera recorded one.
 
     :param date: The date string.
     :type date: str
@@ -437,12 +441,15 @@ def _get_datetime_from_str(date: str, time: str) -> datetime:
     :type time: str
     :return: The corresponding datetime object.
     :rtype: datetime.datetime
+    :raises ValueError: If date and time are not in one of the known formats.
     """
-    if date.find(":") != -1:
-        date_time = datetime.strptime(date + ' ' + time, '%Y:%m:%d %H:%M:%S')
-    else:
-        date_time = datetime.strptime(date + ' ' + time, '%d.%m.%Y %H:%M:%S')
-    return date_time
+    date_format = '%Y:%m:%d' if date.find(":") != -1 else '%d.%m.%Y'
+    for time_format in ('%H:%M:%S.%f', '%H:%M:%S'):
+        try:
+            return datetime.strptime(date + ' ' + time, date_format + ' ' + time_format)
+        except ValueError:
+            continue
+    raise ValueError(f"time data '{date} {time}' does not match the format '{date_format} %H:%M:%S'")
 
 
 if __name__ == '__main__':
