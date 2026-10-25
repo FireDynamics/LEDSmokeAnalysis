@@ -330,7 +330,7 @@ class LedsaATestLibrary:
 
     @keyword
     def create_cc_matrix_file(self):
-        file = open("mean_all_cc_matrix_integral.csv", "w")
+        file = open("mean_all_cc_matrix_integral.csv", "w", encoding="utf-8")
         file.write("2,3,4\n1,2,7\n3,4,5")
         file.close()
 
@@ -395,7 +395,7 @@ class LedsaATestLibrary:
         """
         infos_path = os.path.join('analysis', 'image_infos_analysis.csv')
         times_of_img = {}
-        with open(infos_path) as infos_file:
+        with open(infos_path, encoding='utf-8') as infos_file:
             for line in infos_file:
                 if line.startswith('#') or not line.strip():
                     continue
@@ -420,7 +420,7 @@ class LedsaATestLibrary:
     def get_analysis_image_id(self, img_name):
         """Get the analysis ID that 'image_infos_analysis.csv' assigns to an image."""
         file_path = os.path.join('analysis', 'image_infos_analysis.csv')
-        with open(file_path) as infos_file:
+        with open(file_path, encoding='utf-8') as infos_file:
             for line in infos_file:
                 if line.startswith('#') or not line.strip():
                     continue
@@ -434,7 +434,7 @@ class LedsaATestLibrary:
         """Fail unless exactly the given images are listed in 'image_infos_analysis.csv'."""
         file_path = os.path.join('analysis', 'image_infos_analysis.csv')
         img_names = []
-        with open(file_path) as infos_file:
+        with open(file_path, encoding='utf-8') as infos_file:
             for line in infos_file:
                 if not line.startswith('#') and line.strip():
                     img_names.append(line.split(',')[1])

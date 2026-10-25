@@ -38,7 +38,7 @@ def run_data_extraction_arguments(args: argparse.Namespace) -> None:
           args.red or args.green or args.blue or args.rgb or args.coordinates):
         # If any data extraction argument is given but not config, check if config file exists
         try:
-            with open('config.ini', 'r') as f:
+            with open('config.ini', 'r', encoding='utf-8-sig') as f:
                 pass
         except FileNotFoundError:
             raise FileNotFoundError('config.ini not found in working directory! Please create it with argument "--config".')
@@ -157,7 +157,7 @@ def run_analysis_arguments(args) -> None:
     elif args.analysis or args.cc:
         # If any analysis argument is given but not config_analysis, check if config_analysis.ini file exists
         try:
-            with open('config_analysis.ini', 'r') as f:
+            with open('config_analysis.ini', 'r', encoding='utf-8-sig') as f:
                 pass
         except FileNotFoundError:
             raise FileNotFoundError('config_analysis.ini not found in working directory! Please create it with argument "--config_analysis".')
@@ -188,7 +188,7 @@ def run_stacked_analysis(args) -> None:
         return
 
     try:
-        open('config_stacked.ini')
+        open('config_stacked.ini', encoding='utf-8-sig').close()
     except FileNotFoundError:
         raise FileNotFoundError(
             'config_stacked.ini not found in working directory! '
@@ -200,13 +200,13 @@ def run_stacked_analysis(args) -> None:
     labels = cfg.get_led_array_ids()
     channels = cfg.camera_channels
     print(
-        f'Stacked analysis: {len(labels)} LED array(s) × '
+        f'Stacked analysis: {len(labels)} LED array(s) x '
         f'{len(channels)} channel(s), solver={cfg.solver!r}'
     )
 
     for led_array_id in labels:
         for channel in channels:
-            print(f'\n── array={led_array_id}  channel={channel} ──')
+            print(f'\n-- array={led_array_id}  channel={channel} --')
             sec = StackedExtinctionCoefficients(cfg, led_array_id, channel)
             print(sec)
             if cfg.num_cores > 1:

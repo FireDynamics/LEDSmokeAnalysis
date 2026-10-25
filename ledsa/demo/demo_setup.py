@@ -195,13 +195,13 @@ def _download_and_extract_images(image_data_url: str, image_data_dest_path: str,
         for member in tqdm(members, desc="Extracting", unit="files"):
             if member != members[0]:  # Assuming the first member is the root directory
                 zip_ref.extract(member, image_data_dest_path)
-                os.rename(os.path.join(image_data_dest_path, member),
-                          os.path.join(image_data_dest_path, os.path.basename(member)))
+                os.replace(os.path.join(image_data_dest_path, member),
+                           os.path.join(image_data_dest_path, os.path.basename(member)))
 
     # Cleanup the extracted ZIP file and any unwanted directory
     os.remove(local_zip_path)
     shutil.rmtree(os.path.join(image_data_dest_path, members[0]), ignore_errors=True)
-    with open(os.path.join(simulation_path, '.simulation_setup_successful'), 'w'):
+    with open(os.path.join(simulation_path, '.simulation_setup_successful'), 'w', encoding='utf-8'):
         pass
     print("All Image files have been downloaded successfully!")
 
@@ -234,7 +234,7 @@ def _replace_params_in_file(file_path: str, target_word: str, target_value: str)
     :type target_value: str
     """
     # Read the file lines into memory
-    with open(file_path, 'r') as file:
+    with open(file_path, 'r', encoding='utf-8') as file:
         lines = file.readlines()
 
     # Process the lines
@@ -248,5 +248,5 @@ def _replace_params_in_file(file_path: str, target_word: str, target_value: str)
             new_lines.append(line)
 
     # Write the modified lines back to the file
-    with open(file_path, 'w') as file:
+    with open(file_path, 'w', encoding='utf-8') as file:
         file.writelines(new_lines)
