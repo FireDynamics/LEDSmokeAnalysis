@@ -6,7 +6,6 @@ from subprocess import Popen, PIPE
 
 import matplotlib.pyplot as plt
 import numpy as np
-from numpy.random import normal
 import exiv2
 from PIL import Image
 from robot.api.deco import keyword, library
@@ -18,6 +17,11 @@ from ledsa.analysis.ConfigDataAnalysis import ConfigDataAnalysis
 from ledsa.analysis.ConfigDataStacked import ConfigDataStacked
 from ledsa.core.ConfigData import ConfigData
 from ledsa.core.image_integrity import CORRUPTED_IMAGES_FILE_PATH, load_corrupted_images
+
+# The noise put on the synthetic extinction coefficients is as large as the RMSE the tests
+# accept, so drawing it afresh every run made them pass or fail by chance. A fixed seed keeps
+# the test data, and with it the reconstruction error, the same on every run and platform.
+NOISE_SEED = 20181127
 
 
 @library
@@ -41,9 +45,10 @@ class LedsaATestLibrary:
 
         EPS = 1e-10  # guarantees strictly positive output
         SIGMA_NOISE = 0.05
+        rng = np.random.default_rng(NOISE_SEED)
 
         def _add_noise(x, *, sigma=SIGMA_NOISE):
-            return np.clip(x + normal(0, sigma, x.shape), a_min=0.0, a_max=None) + EPS
+            return np.clip(x + rng.normal(0, sigma, x.shape), a_min=0.0, a_max=None) + EPS
 
         def extco_const_initial(z):
             # start from a tiny positive floor instead of 0 to avoid log(0)
@@ -90,9 +95,10 @@ class LedsaATestLibrary:
 
         EPS = 1e-10
         SIGMA_NOISE = 0.05
+        rng = np.random.default_rng(NOISE_SEED)
 
         def _add_noise(x, *, sigma=SIGMA_NOISE):
-            return np.clip(x + normal(0, sigma, x.shape), a_min=0.0, a_max=None) + EPS
+            return np.clip(x + rng.normal(0, sigma, x.shape), a_min=0.0, a_max=None) + EPS
 
         profiles = [
             np.full_like(z_range, EPS),              # image 1 – reference (near-zero)
