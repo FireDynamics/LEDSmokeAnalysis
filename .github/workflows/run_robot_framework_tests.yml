@@ -19,8 +19,6 @@ jobs:
       fail-fast: false  # A failure on one platform should not hide the result of the other
       matrix:
         os: [ubuntu-latest, windows-latest]
-    # Windows is new to the test matrix; drop this once its first green run confirms the port.
-    continue-on-error: ${{ matrix.os == 'windows-latest' }}
     defaults:
       run:
         shell: bash  # One script for both platforms; Windows runners ship Git Bash
