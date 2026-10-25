@@ -1,5 +1,6 @@
 import glob
 import os
+import re
 import shutil
 from subprocess import Popen, PIPE
 
@@ -320,7 +321,11 @@ class LedsaATestLibrary:
             inp = b'test_data/\ntest_img_{}.jpg\n1\n12:00:00\n1\n1000\n1\n1\n1'
             out = self.execute_ledsa('-s1', inp)
             check_error_msg(out)
-        return out[0].decode('utf-8')[-9:-6]
+        stdout = out[0].decode('utf-8')
+        leds_found = re.search(r'Found (\d+) LEDS', stdout)
+        if leds_found is None:
+            raise AssertionError(f'step 1 did not report a number of LEDs: {stdout[-200:]!r}')
+        return leds_found.group(1)
 
     @keyword
     def execute_ledsa(self, arg, inp=None):
@@ -379,7 +384,8 @@ class LedsaATestLibrary:
         rows = load_corrupted_images()
         img_path = os.path.join('test_data', img_name)
         for row in rows:
-            if row['image_path'] == img_path and row['analysis_step'] == analysis_step:
+            if (os.path.normpath(row['image_path']) == os.path.normpath(img_path)
+                    and row['analysis_step'] == analysis_step):
                 if not row['error_type'] or not row['error_message']:
                     raise AssertionError(f'{img_path} is listed without a reason: {row}')
                 return
