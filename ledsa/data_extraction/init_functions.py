@@ -3,6 +3,7 @@ from datetime import timedelta, datetime
 from typing import List
 
 from ledsa.core.ConfigData import ConfigData
+from ledsa.core.image_integrity import CorruptedImageError, report_corrupted_images
 from ledsa.core.image_reading import get_exif_entry
 
 
@@ -80,6 +81,8 @@ def generate_image_infos_csv(config: ConfigData, build_experiment_infos=False, b
     :type build_experiment_infos: bool
     :param build_analysis_infos: Whether to build CSV for analysis info.
     :type build_analysis_infos: bool
+    :raises RuntimeError: If the first image of the experiment or none of the images of the configured ID
+                          range could be read.
     """
     config_switch = []
     if build_experiment_infos:
@@ -88,7 +91,14 @@ def generate_image_infos_csv(config: ConfigData, build_experiment_infos=False, b
         config_switch.append('analyse_photo')
     for build_type in config_switch:
         if config['DEFAULT']['start_time'] == 'None':
-            config.get_start_time()
+            try:
+                config.get_start_time()
+            except CorruptedImageError as error:
+                # Every experiment time is measured from the first image, so it cannot be skipped
+                report_corrupted_images([error], 'reading of the experiment start time')
+                raise RuntimeError(f'The start time of the experiment cannot be read, because '
+                                   f'{error.img_filename} could not be read. Set start_time in config.ini '
+                                   f'manually or point first_img_experiment_id at a readable image.') from error
             config.save()
         img_data = _build_img_data_string(build_type, config)
 
@@ -186,6 +196,7 @@ def _build_img_data_string(build_type: str, config: ConfigData) -> str:
     """
     img_data = ''
     img_idx = 1
+    corrupted_images = []
     if config['analyse_photo']['first_img_analysis_id'] == 'None':
         config.in_first_img_analysis_id()
         config.save()
@@ -200,10 +211,20 @@ def _build_img_data_string(build_type: str, config: ConfigData) -> str:
     img_id_list = _find_img_number_list(first_img_id, last_img_id, img_increment)
     for img_id in img_id_list:
         tag = 'DateTimeOriginal'
-        experiment_time, time = _calc_experiment_and_real_time(build_type, config, tag, img_id)
+        try:
+            experiment_time, time = _calc_experiment_and_real_time(build_type, config, tag, img_id)
+        except CorruptedImageError as error:
+            # Leaving the image out here already excludes it from every following step, while the IDs of the
+            # readable images stay a gapless sequence, which the result file headers rely on.
+            corrupted_images.append(error)
+            continue
         img_data += (str(img_idx) + ',' + config[build_type]['img_name_string'].format(int(img_id)) +
                      ',' + time.strftime('%H:%M:%S') + ',' + str(experiment_time) + '\n')
         img_idx += 1
+    report_corrupted_images(corrupted_images, 'reading of the image metadata')
+    if img_idx == 1:
+        raise RuntimeError(f'None of the {len(img_id_list)} images between the IDs {first_img_id} and '
+                           f'{last_img_id} could be read. Check img_directory and img_name_string in config.ini.')
     return img_data
 
 

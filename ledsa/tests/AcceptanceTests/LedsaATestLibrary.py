@@ -1,4 +1,6 @@
+import glob
 import os
+import shutil
 from subprocess import Popen, PIPE
 
 import matplotlib.pyplot as plt
@@ -14,6 +16,7 @@ from TestExperiment import TestExperiment, Layers, Camera
 from ledsa.analysis.ConfigDataAnalysis import ConfigDataAnalysis
 from ledsa.analysis.ConfigDataStacked import ConfigDataStacked
 from ledsa.core.ConfigData import ConfigData
+from ledsa.core.image_integrity import CORRUPTED_IMAGES_FILE_PATH, load_corrupted_images
 
 
 @library
@@ -330,6 +333,113 @@ class LedsaATestLibrary:
         file = open("mean_all_cc_matrix_integral.csv", "w")
         file.write("2,3,4\n1,2,7\n3,4,5")
         file.close()
+
+    @keyword
+    def corrupt_image(self, img_name, mode='truncate'):
+        """Damage a test image and keep a backup, so that it can be restored afterwards.
+
+        :param img_name: Name of the image inside the test_data directory.
+        :param mode: 'truncate' cuts the file in half, which leaves the EXIF metadata readable but breaks
+                     the pixel data. 'garbage' replaces the content, which breaks both.
+        """
+        img_path = os.path.join('test_data', img_name)
+        backup_path = img_path + '.backup'
+        if not os.path.exists(backup_path):
+            shutil.copyfile(img_path, backup_path)
+        if mode == 'truncate':
+            content = open(backup_path, 'rb').read()
+            with open(img_path, 'wb') as img_file:
+                img_file.write(content[:len(content) // 2])
+        elif mode == 'garbage':
+            with open(img_path, 'wb') as img_file:
+                img_file.write(b'this is not an image' * 20)
+        else:
+            raise ValueError(f'Unknown corruption mode {mode}')
+
+    @keyword
+    def restore_corrupted_images(self):
+        """Restore all images damaged by 'Corrupt Image' and remove the report of the corrupted images."""
+        for backup_path in glob.glob(os.path.join('test_data', '*.backup')):
+            shutil.move(backup_path, backup_path[:-len('.backup')])
+        if os.path.exists(CORRUPTED_IMAGES_FILE_PATH):
+            os.remove(CORRUPTED_IMAGES_FILE_PATH)
+
+    @keyword
+    def get_corrupted_images_report(self):
+        """Read the report of the corrupted images as a list of dictionaries."""
+        return load_corrupted_images()
+
+    @keyword
+    def corrupted_images_report_should_list(self, img_name, analysis_step):
+        """Fail unless the report lists the image for the given analysis step.
+
+        :param img_name: Name of the image inside the test_data directory.
+        :param analysis_step: Analysis step that is expected to have skipped the image.
+        """
+        rows = load_corrupted_images()
+        img_path = os.path.join('test_data', img_name)
+        for row in rows:
+            if row['image_path'] == img_path and row['analysis_step'] == analysis_step:
+                if not row['error_type'] or not row['error_message']:
+                    raise AssertionError(f'{img_path} is listed without a reason: {row}')
+                return
+        raise AssertionError(f'{img_path} is not listed for "{analysis_step}". Report contains: {rows}')
+
+    @keyword
+    def analysis_should_exclude_image(self, img_name, solver='linear', channel=0, led_array=0,
+                                      reference_property='sum_col_val'):
+        """Fail unless the extinction coefficients cover every analysed image except the given one.
+
+        Checks that the skipped image contributes no row and, more importantly, that the remaining rows are
+        still paired with the experiment time of their own image instead of being shifted by one.
+        """
+        infos_path = os.path.join('analysis', 'image_infos_analysis.csv')
+        times_of_img = {}
+        with open(infos_path) as infos_file:
+            for line in infos_file:
+                if line.startswith('#') or not line.strip():
+                    continue
+                _, name, _, experiment_time = line.strip().split(',')
+                times_of_img[name] = float(experiment_time)
+        if img_name not in times_of_img:
+            raise AssertionError(f'{img_name} is not listed in {infos_path}')
+
+        filename = (f'extinction_coefficients_{solver}_channel_{channel}_{reference_property}'
+                    f'_led_array_{led_array}.csv')
+        file_path = os.path.join('analysis', 'extinction_coefficients', solver, filename)
+        data = np.atleast_2d(np.genfromtxt(file_path, delimiter=',', comments='#'))
+        times = [round(t, 6) for t in data[:, 0]]
+
+        expected = sorted(round(t, 6) for name, t in times_of_img.items() if name != img_name)
+        if times != expected:
+            raise AssertionError(f'Experiment times in {filename} are {times}, expected {expected}')
+        if np.isnan(data[:, 1:]).any():
+            raise AssertionError(f'{filename} contains NaN extinction coefficients')
+
+    @keyword
+    def get_analysis_image_id(self, img_name):
+        """Get the analysis ID that 'image_infos_analysis.csv' assigns to an image."""
+        file_path = os.path.join('analysis', 'image_infos_analysis.csv')
+        with open(file_path) as infos_file:
+            for line in infos_file:
+                if line.startswith('#') or not line.strip():
+                    continue
+                img_id, name = line.split(',')[:2]
+                if name == img_name:
+                    return img_id
+        raise AssertionError(f'{img_name} is not listed in {file_path}')
+
+    @keyword
+    def analysed_image_names_should_be(self, *expected_img_names):
+        """Fail unless exactly the given images are listed in 'image_infos_analysis.csv'."""
+        file_path = os.path.join('analysis', 'image_infos_analysis.csv')
+        img_names = []
+        with open(file_path) as infos_file:
+            for line in infos_file:
+                if not line.startswith('#') and line.strip():
+                    img_names.append(line.split(',')[1])
+        if img_names != list(expected_img_names):
+            raise AssertionError(f'Analysed images are {img_names}, expected {list(expected_img_names)}')
 
 def load_extinction_coefficients_computed(solver, channel, led_array):
     filename = f'extinction_coefficients_{solver}_channel_{channel}_sum_col_val_led_array_{led_array}.csv'

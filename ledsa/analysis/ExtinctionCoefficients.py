@@ -59,6 +59,7 @@ class ExtinctionCoefficients(ABC):
         self.num_ref_imgs = num_ref_imgs
         self.ref_img_indices = ref_img_indices
         self.calculated_img_data = pd.DataFrame()
+        self.analysed_img_ids = []
         self.distances_per_led_and_layer = np.array([])
         self.ref_intensities = np.array([])
         self.cc_matrix = None
@@ -137,6 +138,10 @@ class ExtinctionCoefficients(ABC):
         self.calculated_img_data = img_data_cropped[img_data_cropped['led_array_id'] == self.experiment.led_array]
         if self.calculated_img_data.empty:
             exit(f"Apparently there are no intensity values for led array {self.experiment.led_array}!")
+        # Images without analysis results are missing from the binary data, so the IDs are not necessarily a
+        # gapless range. They are kept to pair every computed coefficient with the time of its own image.
+        self.analysed_img_ids = sorted(
+            self.calculated_img_data.index.get_level_values('img_id').unique().tolist())
 
     def save(self) -> None:
         """
@@ -159,7 +164,12 @@ class ExtinctionCoefficients(ABC):
         header += 'layer0'
         header += ''.join(f',layer{i + 1}' for i in range(self.experiment.layers.amount - 1))
 
-        experiment_times = _get_experiment_times_from_image_infos_file(self.average_images)
+        experiment_times = _get_experiment_times_from_image_infos_file(self.average_images,
+                                                                       self.analysed_img_ids)
+        if len(experiment_times) != len(self.coefficients_per_image_and_layer):
+            raise ValueError(f'Got {len(experiment_times)} experiment times for '
+                             f'{len(self.coefficients_per_image_and_layer)} computed images. The image infos '
+                             f'file and the analysis results of the channel are out of sync.')
         coefficients_per_time_and_layer = np.column_stack(
             (experiment_times, self.coefficients_per_image_and_layer))
         np.savetxt(path, coefficients_per_time_and_layer, delimiter=',', header=header)
@@ -244,17 +254,30 @@ def multiindex_series_to_nparray(multi_series: pd.Series) -> np.ndarray:
     :rtype: np.ndarray
     """
     num_leds = pd.Series(multi_series.groupby(level=0).size()).iloc[0]
-    num_imgs = pd.Series(multi_series.groupby(level=1).size()).iloc[0]
-    array = np.zeros((num_imgs, num_leds))
-    for i in range(num_imgs):
-        array[i] = multi_series.loc[i + 1]
+    # Images without analysis results are missing, so the IDs are not necessarily a gapless range
+    img_ids = sorted(multi_series.index.get_level_values(0).unique().tolist())
+    array = np.zeros((len(img_ids), num_leds))
+    for i, img_id in enumerate(img_ids):
+        array[i] = multi_series.loc[img_id]
     return array
 
 
-def _get_experiment_times_from_image_infos_file(average_images):
+def _get_experiment_times_from_image_infos_file(average_images, img_ids=None):
+    """
+    Read the experiment times of the analysed images.
+
+    :param average_images: Whether the averaged image infos file is used.
+    :type average_images: bool
+    :param img_ids: IDs of the images to return the times of. All times are returned if None.
+    :type img_ids: list[int] or None
+    :return: Experiment time of every requested image, ordered by image ID.
+    :rtype: np.ndarray
+    """
     if average_images == True:
         image_infos_file = 'analysis/image_infos_analysis_avg.csv'
     else:
         image_infos_file = 'analysis/image_infos_analysis.csv'
     image_info_df = pd.read_csv(image_infos_file)
+    if img_ids is not None:
+        image_info_df = image_info_df[image_info_df['#ID'].isin(img_ids)]
     return image_info_df['Experiment_Time[s]'].to_numpy()
