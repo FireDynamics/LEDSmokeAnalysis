@@ -16,6 +16,15 @@ Step Analysis Nonlinear Solver
     Plot Extinction Coefficients    nonlinear
     Check Extinction Coefficient Results    nonlinear
 
+Extinction Coefficients Of An Earlier Run Are Reported
+    [Documentation]     The extinction coefficient files carry their own time axis, while the LED
+    ...                 parameters are put on the times read from the image infos. A file left over
+    ...                 from a run with other image times must not pass as part of the current one.
+    Create Config Analysis    linear
+    Start Step Analysis
+    Extco Time Axis Should Be Accepted
+    Extco Time Axis Mismatch Should Be Reported
+
 
 *** Keywords ***
 Start Step Analysis

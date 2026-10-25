@@ -2,6 +2,7 @@ import glob
 import os
 import re
 import shutil
+import warnings
 from subprocess import Popen, PIPE
 
 import matplotlib.pyplot as plt
@@ -17,6 +18,7 @@ from ledsa.analysis.ConfigDataAnalysis import ConfigDataAnalysis
 from ledsa.analysis.ConfigDataStacked import ConfigDataStacked
 from ledsa.core.ConfigData import ConfigData
 from ledsa.core.image_integrity import CORRUPTED_IMAGES_FILE_PATH, load_corrupted_images
+from ledsa.postprocessing.simulation import SimData
 
 # The noise put on the synthetic extinction coefficients is as large as the RMSE the tests
 # accept, so drawing it afresh every run made them pass or fail by chance. A fixed seed keeps
@@ -429,6 +431,43 @@ class LedsaATestLibrary:
             raise AssertionError(f'{filename} contains NaN extinction coefficients')
 
     @keyword
+    def extco_time_axis_should_be_accepted(self):
+        """Fail if reading the extinction coefficients warns about the experiment times of their files."""
+        messages = _read_extco_with_warnings()
+        if messages:
+            raise AssertionError(f'Reading the extinction coefficients warned: {messages}')
+
+    @keyword
+    def extco_time_axis_mismatch_should_be_reported(self, shift=0.5):
+        """Fail unless reading the extinction coefficients warns once the image times have moved.
+
+        Shifts every experiment time in the image infos, which is what re-running step 1 or step 3 with
+        other image metadata does to them, and puts the file back afterwards.
+
+        :param shift: Seconds added to every experiment time.
+        """
+        infos_path = os.path.join('analysis', 'image_infos_analysis.csv')
+        with open(infos_path, encoding='utf-8') as infos_file:
+            original = infos_file.read()
+        shifted_lines = []
+        for line in original.splitlines():
+            if line.startswith('#') or not line.strip():
+                shifted_lines.append(line)
+                continue
+            img_id, name, clock, experiment_time = line.split(',')
+            shifted_lines.append(f'{img_id},{name},{clock},{float(experiment_time) + float(shift)}')
+        try:
+            with open(infos_path, 'w', encoding='utf-8') as infos_file:
+                infos_file.write('\n'.join(shifted_lines) + '\n')
+            messages = _read_extco_with_warnings()
+        finally:
+            with open(infos_path, 'w', encoding='utf-8') as infos_file:
+                infos_file.write(original)
+        if not any('Run the analysis again' in message for message in messages):
+            raise AssertionError('Reading the extinction coefficients did not report that they were '
+                                 f'computed for other experiment times. Warnings: {messages}')
+
+    @keyword
     def get_analysis_image_id(self, img_name):
         """Get the analysis ID that 'image_infos_analysis.csv' assigns to an image."""
         file_path = os.path.join('analysis', 'image_infos_analysis.csv')
@@ -517,6 +556,20 @@ def calc_color_val(x, y, size, rv):
     dist = ((size / 2 - x) ** 2 + (size / 2 - y) ** 2) ** 0.5
     scale = 1.7
     return rv.pdf(dist / scale) * 350 * scale
+
+
+def _read_extco_with_warnings():
+    """Read the extinction coefficient files through the postprocessing and return its warnings."""
+    experiment_dir = os.getcwd()
+    try:
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter('always')
+            sim_data = SimData(experiment_dir, read_all=False, load_config_params=True)
+            sim_data._get_extco_df_from_path()
+    finally:
+        # SimData changes into the experiment directory and does not change back
+        os.chdir(experiment_dir)
+    return [str(entry.message) for entry in caught if entry.category is UserWarning]
 
 
 def wait_for_process_to_finish(p, inp=None):
