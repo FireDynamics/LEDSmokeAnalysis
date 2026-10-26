@@ -176,11 +176,13 @@ class LedsaATestLibrary:
         conf.save()
 
     @keyword
-    def create_and_fill_config_stacked(self, cam0_dir, cam1_dir):
+    def create_and_fill_config_stacked(self, cam0_dir, cam1_dir, time_sync_tolerance=2):
         """Create config_stacked.ini in the current directory.
 
         *cam0_dir* and *cam1_dir* are paths (absolute or relative to the
         current working directory) to the two camera simulation directories.
+        *time_sync_tolerance* is the time [s] within which images of different
+        cameras are treated as simultaneous.
         """
         cfg = ConfigDataStacked(load_config_file=False)
         cfg['DEFAULT']['solver']             = 'linear'
@@ -194,7 +196,7 @@ class LedsaATestLibrary:
         cfg['DEFAULT']['num_layers']         = '20'
         cfg['DEFAULT']['domain_bounds']      = '0 3'
         cfg['DEFAULT']['output_path']        = '.'
-        cfg['DEFAULT']['time_sync_tolerance'] = '2'
+        cfg['DEFAULT']['time_sync_tolerance'] = str(time_sync_tolerance)
 
         cfg['simulation_0'] = {}
         cfg['simulation_0']['path']            = str(os.path.abspath(cam0_dir))
@@ -259,6 +261,61 @@ class LedsaATestLibrary:
         row = int(image_id) - 1
         rmse = np.sqrt(np.mean((extco_input - extco_computed[row, :]) ** 2))
         return rmse
+
+    @keyword
+    def stacked_analysis_should_exclude_image(self, sim_dir, img_name, solver='linear', channel=0,
+                                              led_array_id=0, reference_property='sum_col_val'):
+        """Fail unless the stacked result covers every image of a simulation except the given one.
+
+        Both camera simulations see the same images at the same experiment times, so the common time
+        axis is expected to hold all of them but the time of the image that was skipped.
+
+        :param sim_dir: Directory of the simulation the image was skipped in.
+        :param img_name: Name of the image inside the test_data directory of that simulation.
+        """
+        infos_path = os.path.join(sim_dir, 'analysis', 'image_infos_analysis.csv')
+        times_of_img = read_experiment_times_of_images(infos_path)
+        if img_name not in times_of_img:
+            raise AssertionError(f'{img_name} is not listed in {infos_path}')
+        expected = sorted(round(t, 6) for name, t in times_of_img.items() if name != img_name)
+
+        times, extinction_coefficients = load_stacked_extinction_coefficients_computed(
+            solver, channel, led_array_id, reference_property)
+        computed = [round(float(t), 6) for t in times]
+        if computed != expected:
+            raise AssertionError(f'Common experiment times of the stacked result are {computed}, '
+                                 f'expected {expected}')
+        if np.isnan(extinction_coefficients).any():
+            raise AssertionError('The stacked result contains NaN extinction coefficients')
+
+    @keyword
+    def check_stacked_input_vs_computed_at_image_time(self, sim_dir, image_id, solver='linear',
+                                                      led_array_id=0, channel=0):
+        """Return the RMSE between the ground truth of an image and the result at its experiment time.
+
+        The row is looked up by experiment time, because an image left out of the common time axis
+        shifts every row behind it.
+
+        :param sim_dir: Directory of the simulation the image times are read from.
+        :param image_id: ID of the test image, which is also the ID of its ground truth file.
+        """
+        infos_path = os.path.join(sim_dir, 'analysis', 'image_infos_analysis.csv')
+        img_name = f'test_img_{int(image_id)}.jpg'
+        times_of_img = read_experiment_times_of_images(infos_path)
+        if img_name not in times_of_img:
+            raise AssertionError(f'{img_name} is not listed in {infos_path}')
+
+        times, extco_computed = load_stacked_extinction_coefficients_computed(
+            solver, channel, led_array_id)
+        # The experiment times are seconds since an epoch, so they have to be compared absolutely
+        rows = np.flatnonzero(np.isclose(times, times_of_img[img_name], rtol=0, atol=1e-6))
+        if len(rows) != 1:
+            raise AssertionError(f'{img_name} has the experiment time {times_of_img[img_name]} s, which '
+                                 f'matches {len(rows)} of the computed times {list(times)}')
+
+        gt_path = os.path.join('test_data', f'test_extinction_coefficients_input_{int(image_id)}.csv')
+        extco_input = np.loadtxt(gt_path)
+        return float(np.sqrt(np.mean((extco_input - extco_computed[rows[0], :]) ** 2)))
 
     @keyword
     def plot_input_vs_computed_extinction_coefficients(self, solver, first=1, last=4, led_array=0, channel=0):
@@ -435,13 +492,7 @@ class LedsaATestLibrary:
         still paired with the experiment time of their own image instead of being shifted by one.
         """
         infos_path = os.path.join('analysis', 'image_infos_analysis.csv')
-        times_of_img = {}
-        with open(infos_path, encoding='utf-8') as infos_file:
-            for line in infos_file:
-                if line.startswith('#') or not line.strip():
-                    continue
-                _, name, _, experiment_time = line.strip().split(',')
-                times_of_img[name] = float(experiment_time)
+        times_of_img = read_experiment_times_of_images(infos_path)
         if img_name not in times_of_img:
             raise AssertionError(f'{img_name} is not listed in {infos_path}')
 
@@ -532,6 +583,25 @@ class LedsaATestLibrary:
                     img_names.append(line.split(',')[1])
         if img_names != list(expected_img_names):
             raise AssertionError(f'Analysed images are {img_names}, expected {list(expected_img_names)}')
+
+def read_experiment_times_of_images(infos_path):
+    """Read the experiment times of an 'image_infos_analysis.csv' file as {image name: time}."""
+    times_of_img = {}
+    with open(infos_path, encoding='utf-8') as infos_file:
+        for line in infos_file:
+            if line.startswith('#') or not line.strip():
+                continue
+            _, name, _, experiment_time = line.strip().split(',')
+            times_of_img[name] = float(experiment_time)
+    return times_of_img
+
+def load_stacked_extinction_coefficients_computed(solver, channel, led_array_id,
+                                                  reference_property='sum_col_val'):
+    filename = (f'extinction_coefficients_{solver}_channel_{channel}'
+                f'_{reference_property}_led_array_{led_array_id}.csv')
+    data = np.atleast_2d(np.loadtxt(
+        os.path.join('analysis', 'extinction_coefficients', solver, filename), delimiter=','))
+    return data[:, 0], data[:, 1:]
 
 def load_extinction_coefficients_computed(solver, channel, led_array, reference_property='sum_col_val'):
     filename = f'extinction_coefficients_{solver}_channel_{channel}_{reference_property}_led_array_{led_array}.csv'
