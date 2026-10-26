@@ -285,24 +285,56 @@ def create_binary_data(channel: int, path: str = '.') -> None:
     finally:
         os.chdir(prev_dir)
 
+# Column names of the step 3 result files (<img_id>_led_positions.csv). The files do not contain img_id, it is
+# prepended when they are loaded, so a file with n columns has n + 1 names.
+BASE_COLUMNS = ["img_id", "led_id", "led_array_id", "sum_col_val", "mean_col_val", "max_col_val"]
+BGSUB_COLUMNS = ["bgsub_sum_col_val"]
+LED_CENTER_COLUMNS = ["led_center_x", "led_center_y"]
+FIT_COLUMNS = ["x", "y", "dx", "dy", "A", "alpha", "wx", "wy", "fit_success", "fit_fun", "fit_nfev", "fit_time"]
+
+# known layouts by the number of names (including img_id)
+COLUMN_LAYOUTS = {
+    len(BASE_COLUMNS): BASE_COLUMNS,  # -s3_fast, before the local background subtraction
+    len(BASE_COLUMNS + BGSUB_COLUMNS): BASE_COLUMNS + BGSUB_COLUMNS,  # -s3_fast
+    len(BASE_COLUMNS + BGSUB_COLUMNS + LED_CENTER_COLUMNS + FIT_COLUMNS):
+        BASE_COLUMNS + BGSUB_COLUMNS + LED_CENTER_COLUMNS + FIT_COLUMNS,  # -s3 with fit
+}
+# Fitted files written before the delimiter between the main and the fit part was added: max_col_value and
+# led_center_x are glued into one field, so the file has one column less and the names are shifted from there on.
+LEGACY_FIT_COLUMNS = BASE_COLUMNS + LED_CENTER_COLUMNS + FIT_COLUMNS[:-1]
+
+
 def _get_column_names(channel: int) -> List[str]:
     """
-    Get the column names for the specified channel based on the structure of the CSV files.
+    Get the column names for the specified channel from the number of columns of the CSV files.
 
     :param channel: Channel number for which column names are to be determined.
     :type channel: int
     :return: List of column names.
     :rtype: List[str]
+    :raises ValueError: If the file cannot be parsed or the number of columns matches no known layout.
     """
     file_path = os.path.join('analysis', f'channel{channel}', '1_led_positions.csv')
-    parameters = ledsa.core.file_handling.read_table(file_path, delim=',', silent=True)
-    columns = ["img_id", "led_id", "led_array_id",
-               "sum_col_val", "mean_col_val", "max_col_val"]
-    if parameters.shape[1] > len(columns):
-        columns.extend(["led_center_x", "led_center_y"])
-        columns.extend(["x", "y", "dx", "dy", "A", "alpha", "wx", "wy", "fit_success", "fit_fun", "fit_nfev"])
-    if parameters.shape[1] != len(columns) - 1:
+    try:
+        parameters = ledsa.core.file_handling.read_table(file_path, delim=',', silent=True, atleast_2d=True)
+    except ValueError as error:
+        # fitted files written with bgsub_sum_col_value but before the delimiter fix glue two floats into one field
+        raise ValueError(f"{file_path} cannot be read ({error}). If it was written with fits by a LEDSA version "
+                         f"that had bgsub_sum_col_value but no delimiter between the main and the fit columns, "
+                         f"bgsub_sum_col_value and led_center_x are glued into one field. Run step 3 again.") from error
+    num_names = parameters.shape[1] + 1  # + 1 for img_id, which is prepended on load
+    if num_names in COLUMN_LAYOUTS:
+        columns = list(COLUMN_LAYOUTS[num_names])
+    elif num_names == len(LEGACY_FIT_COLUMNS):
+        print(f"Warning: {file_path} was written with fits by an older LEDSA version, in which max_col_value and "
+              f"led_center_x are glued into one field. sum_col_val and mean_col_val are valid, max_col_val and all "
+              f"fit columns are not. Run step 3 again to obtain valid fit results.")
+        columns = list(LEGACY_FIT_COLUMNS)
+    else:
         columns = _get_old_columns(parameters)
+        if not columns:
+            raise ValueError(f"{file_path} has {parameters.shape[1]} columns, which matches no known layout of the "
+                             f"step 3 result files.")
     columns.extend(["width", "height"])
     return columns
 
