@@ -312,10 +312,16 @@ def _get_column_names(channel: int) -> List[str]:
     :type channel: int
     :return: List of column names.
     :rtype: List[str]
-    :raises ValueError: If the number of columns matches no known layout.
+    :raises ValueError: If the file cannot be parsed or the number of columns matches no known layout.
     """
     file_path = os.path.join('analysis', f'channel{channel}', '1_led_positions.csv')
-    parameters = ledsa.core.file_handling.read_table(file_path, delim=',', silent=True, atleast_2d=True)
+    try:
+        parameters = ledsa.core.file_handling.read_table(file_path, delim=',', silent=True, atleast_2d=True)
+    except ValueError as error:
+        # fitted files written with bgsub_sum_col_value but before the delimiter fix glue two floats into one field
+        raise ValueError(f"{file_path} cannot be read ({error}). If it was written with fits by a LEDSA version "
+                         f"that had bgsub_sum_col_value but no delimiter between the main and the fit columns, "
+                         f"bgsub_sum_col_value and led_center_x are glued into one field. Run step 3 again.") from error
     num_names = parameters.shape[1] + 1  # + 1 for img_id, which is prepended on load
     if num_names in COLUMN_LAYOUTS:
         columns = list(COLUMN_LAYOUTS[num_names])

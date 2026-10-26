@@ -143,6 +143,18 @@ class TestColumnNames:
         assert named['fit_nfev'] == 120
         assert named['fit_time'] == pytest.approx(0.25)
 
+    def test_fitted_csv_without_delimiter_raises_with_hint(self, tmp_path, monkeypatch):
+        # fitted files of this branch written before the delimiter fix: bgsub_sum_col_value and led_center_x glued
+        from ledsa.core.file_handling import _get_column_names
+        fields = ['3', '0', '4.1210e+04', '1.0300e+02', '232', '4.1210e+04', '5.0521e+01'] + ['1.0'] * 13
+        row = ','.join(fields[:5]) + ',' + fields[5] + ','.join(fields[6:])
+        channel_dir = tmp_path / 'analysis' / 'channel0'
+        channel_dir.mkdir(parents=True)
+        (channel_dir / '1_led_positions.csv').write_text(f'# header\n{row}\n{row}\n', encoding='utf-8')
+        monkeypatch.chdir(tmp_path)
+        with pytest.raises(ValueError, match='glued into one field. Run step 3 again'):
+            _get_column_names(0)
+
     def test_legacy_fitted_csv(self, tmp_path, monkeypatch, capsys):
         # fitted files written before the delimiter fix have 18 columns; read as before, with a warning
         from ledsa.core.file_handling import _get_column_names
