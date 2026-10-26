@@ -99,7 +99,7 @@ class TestColumnNames:
         channel_dir = tmp_path / 'analysis' / 'channel0'
         channel_dir.mkdir(parents=True)
         row = ','.join(str(float(i)) for i in range(num_columns))
-        (channel_dir / '1_led_positions.csv').write_text(f'# header\n{row}\n{row}\n')
+        (channel_dir / '1_led_positions.csv').write_text(f'# header\n{row}\n{row}\n', encoding='utf-8')
 
     def test_new_csv_with_bgsub_column(self, tmp_path, monkeypatch):
         from ledsa.core.file_handling import _get_column_names
@@ -130,7 +130,7 @@ class TestColumnNames:
         led_data.fit_time = 0.25
         channel_dir = tmp_path / 'analysis' / 'channel0'
         channel_dir.mkdir(parents=True)
-        (channel_dir / '1_led_positions.csv').write_text(f'# header\n{led_data}{led_data}')
+        (channel_dir / '1_led_positions.csv').write_text(f'# header\n{led_data}{led_data}', encoding='utf-8')
         monkeypatch.chdir(tmp_path)
         columns = _get_column_names(0)
         values = np.loadtxt(channel_dir / '1_led_positions.csv', delimiter=',')[0]
