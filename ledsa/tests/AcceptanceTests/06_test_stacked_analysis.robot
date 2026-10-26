@@ -7,6 +7,7 @@ Force Tags  analysis  stacked
 # The test with the skipped image needs its own data, because the data extraction steps cannot be
 # repeated in a directory they already ran in.
 ${SKIPPEDDIR}   ${WORKDIR}${/}stacked_skipped_image
+${REFIMGDIR}    ${WORKDIR}${/}stacked_ref_images
 
 *** Test Cases ***
 Step Stacked Analysis Linear Solver
@@ -36,20 +37,38 @@ Stacked Analysis Skips Images Without Extraction Results
     Check Stacked Results At Image Time     cam1    2    linear
     Check Stacked Results At Image Time     cam1    4    linear
 
+Stacked Analysis Uses The Reference Images Of Every Camera
+    [Documentation]     Image IDs are counted per camera and the cameras record at their own
+    ...                 cadence, so the images taken before the fire are not the same in each of
+    ...                 them. A [simulation_N] section therefore names the reference images of its
+    ...                 own camera. The test data holds a second undisturbed image, so the two
+    ...                 cameras can use reference images of their own without changing their I0.
+    Create Stacked Test Data    ${REFIMGDIR}    num_extra_ref_images=1
+    Setup Camera Simulation    cam0    0.5    root=${REFIMGDIR}    last=5
+    Setup Camera Simulation    cam1    2.5    root=${REFIMGDIR}    last=5
+    Change Directory    ${REFIMGDIR}${/}stacked
+    Create And Fill Config Stacked    cam0    cam1    cam0_ref_img_indices=1
+    ...    cam1_ref_img_indices=5
+    ${output} =    Execute Ledsa    -as
+    Stacked Analysis Should Report Reference Images    ${output}    [1]    [5]
+    Stacked Result Header Should Name Reference Images    sim0 [1], sim1 [5]
+    Check Stacked Extinction Coefficient Results    linear
+
 
 *** Keywords ***
 Create Stacked Test Data
-    [Arguments]    ${root}=${WORKDIR}
+    [Arguments]    ${root}=${WORKDIR}    ${num_extra_ref_images}=0
     Log    Creating stacked test data for two cameras at different heights
     Create Directory    ${root}
     Change Directory    ${root}
-    Create Test Data Stacked
+    Create Test Data Stacked    num_extra_ref_images=${num_extra_ref_images}
 
 Setup Camera Simulation
     [Arguments]    ${cam_dir}    ${cam_z}    ${root}=${WORKDIR}    ${corrupted_img}=${EMPTY}
+    ...    ${last}=4
     Log    Setting up camera simulation in ${cam_dir} with camera height z=${cam_z}
     Change Directory    ${root}${/}stacked${/}${cam_dir}
-    Create And Fill Config For Stacked Cam    ${cam_z}
+    Create And Fill Config For Stacked Cam    ${cam_z}    last=${last}
     Execute Ledsa    -s1
     Execute Ledsa    -s2
     Execute Ledsa    --coordinates

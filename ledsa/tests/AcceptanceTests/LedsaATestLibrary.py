@@ -83,7 +83,8 @@ class LedsaATestLibrary:
     # ------------------------------------------------------------------
 
     @keyword
-    def create_test_data_stacked(self, num_of_leds=100, num_of_layers=20, bottom_border=0, top_border=3):
+    def create_test_data_stacked(self, num_of_leds=100, num_of_layers=20, bottom_border=0, top_border=3,
+                                 num_extra_ref_images=0):
         """Create test images for two cameras at different heights.
 
         Directory layout created under the current working directory::
@@ -92,6 +93,10 @@ class LedsaATestLibrary:
               test_data/          ← ground-truth extinction coefficient CSVs
               cam0/test_data/     ← images as seen from the lower camera
               cam1/test_data/     ← images as seen from the upper camera
+
+        :param num_extra_ref_images: Number of near-zero images appended behind the four
+            profiles. They are copies of the reference image, so each of them can serve as the
+            reference image of a single camera.
         """
         z_range = np.linspace(bottom_border, top_border, num_of_layers)
 
@@ -108,6 +113,9 @@ class LedsaATestLibrary:
             _add_noise(0.15 * z_range),              # image 3 – linear
             _add_noise(0.0435 * z_range ** 2),       # image 4 – quadratic
         ]
+        # The noise of the four profiles is drawn before this, so the test data of a run without
+        # extra reference images stays the same
+        profiles += [np.full_like(z_range, EPS)] * int(num_extra_ref_images)
 
         # Save ground-truth extinction coefficients once (shared by both cameras)
         gt_dir = os.path.join('stacked', 'test_data')
@@ -176,13 +184,18 @@ class LedsaATestLibrary:
         conf.save()
 
     @keyword
-    def create_and_fill_config_stacked(self, cam0_dir, cam1_dir, time_sync_tolerance=2):
+    def create_and_fill_config_stacked(self, cam0_dir, cam1_dir, time_sync_tolerance=2,
+                                       cam0_ref_img_indices=None, cam1_ref_img_indices=None):
         """Create config_stacked.ini in the current directory.
 
         *cam0_dir* and *cam1_dir* are paths (absolute or relative to the
         current working directory) to the two camera simulation directories.
         *time_sync_tolerance* is the time [s] within which images of different
         cameras are treated as simultaneous.
+
+        :param cam0_ref_img_indices: Reference image IDs written into ``[simulation_0]``,
+            e.g. ``'1'``. The camera inherits the setting of ``[DEFAULT]`` if None.
+        :param cam1_ref_img_indices: Reference image IDs written into ``[simulation_1]``.
         """
         cfg = ConfigDataStacked(load_config_file=False)
         cfg['DEFAULT']['solver']             = 'linear'
@@ -201,10 +214,14 @@ class LedsaATestLibrary:
         cfg['simulation_0'] = {}
         cfg['simulation_0']['path']            = str(os.path.abspath(cam0_dir))
         cfg['simulation_0']['camera_position'] = '0 0 0.5'
+        if cam0_ref_img_indices is not None:
+            cfg['simulation_0']['ref_img_indices'] = str(cam0_ref_img_indices)
 
         cfg['simulation_1'] = {}
         cfg['simulation_1']['path']            = str(os.path.abspath(cam1_dir))
         cfg['simulation_1']['camera_position'] = '0 0 2.5'
+        if cam1_ref_img_indices is not None:
+            cfg['simulation_1']['ref_img_indices'] = str(cam1_ref_img_indices)
 
         cfg['led_arrays'] = {}
         cfg['led_arrays']['0'] = '0:0 1:0'
@@ -287,6 +304,42 @@ class LedsaATestLibrary:
                                  f'expected {expected}')
         if np.isnan(extinction_coefficients).any():
             raise AssertionError('The stacked result contains NaN extinction coefficients')
+
+    @keyword
+    def stacked_analysis_should_report_reference_images(self, output, *reported_indices):
+        """Fail unless the stacked analysis reported every given list of reference images.
+
+        Every camera computes its reference intensities on its own, so every one of them
+        reports the images it used.
+
+        :param output: Return value of ``Execute Ledsa``, i.e. the output of the run.
+        :param reported_indices: Reference image lists as they are printed, e.g. ``[1]``.
+        """
+        stdout = output[0].decode('utf-8')
+        for indices in reported_indices:
+            line = (f'Images with indices {indices} were used for calculating '
+                    f'reference intensities.')
+            if line not in stdout:
+                raise AssertionError(f'The stacked analysis did not report "{line}". '
+                                     f'Its output was:\n{stdout}')
+
+    @keyword
+    def stacked_result_header_should_name_reference_images(self, expected, solver='linear',
+                                                          channel=0, led_array_id=0,
+                                                          reference_property='sum_col_val'):
+        """Fail unless the header of the stacked result names the given reference images.
+
+        :param expected: Expected description of the reference images of all simulations,
+            e.g. ``sim0 [1], sim1 [5]``.
+        """
+        filename = (f'extinction_coefficients_{solver}_channel_{channel}'
+                    f'_{reference_property}_led_array_{led_array_id}.csv')
+        path = os.path.join('analysis', 'extinction_coefficients', solver, filename)
+        with open(path, encoding='utf-8') as result_file:
+            header = result_file.readline().strip()
+        if f'ref_imgs: {expected}' not in header:
+            raise AssertionError(f'The header of {path} does not name the reference images '
+                                 f'"{expected}": {header}')
 
     @keyword
     def check_stacked_input_vs_computed_at_image_time(self, sim_dir, image_id, solver='linear',

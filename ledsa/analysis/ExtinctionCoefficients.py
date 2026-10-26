@@ -1,3 +1,4 @@
+import warnings
 from abc import ABC, abstractmethod
 from multiprocessing import Pool
 
@@ -197,6 +198,7 @@ class ExtinctionCoefficients(ABC):
          """
         if self.ref_img_indices is not None:
             ref_img_data = self.calculated_img_data.query(f'img_id == {self.ref_img_indices}')
+            self._check_requested_ref_imgs_available(ref_img_data)
         else:
             ref_img_data = self.calculated_img_data.query(f'img_id <= {self.num_ref_imgs}')
         print(
@@ -205,6 +207,30 @@ class ExtinctionCoefficients(ABC):
         ref_intensities = ref_img_data.groupby(level='led_id')[self.reference_property].mean()
         check_intensity_normalization(ref_img_data, ref_intensities, self.reference_property)
         self.ref_intensities = ref_intensities.to_numpy()
+
+    def _check_requested_ref_imgs_available(self, ref_img_data: pd.DataFrame) -> None:
+        """
+        Report the reference images of :attr:`ref_img_indices` that hold no LED data.
+
+        Images skipped during the intensity extraction keep their ID in the image infos but
+        produce no intensities, so a reference image ID naming one of them would silently
+        drop out of the average instead of being noticed.
+
+        :param ref_img_data: Intensity data of the requested reference images.
+        :type ref_img_data: pd.DataFrame
+        :raises ValueError: if none of the requested reference images holds LED data.
+        """
+        available = set(ref_img_data.index.get_level_values('img_id').unique())
+        missing = [img_id for img_id in self.ref_img_indices if img_id not in available]
+        if not missing:
+            return
+        msg = (f'The reference images {missing} of LED array {self.experiment.led_array} in '
+               f'{self.experiment.path} hold no intensity values. They were either skipped during '
+               f'the extraction of the LED intensities or they lie outside the analysed images.')
+        if not available:
+            raise ValueError(f'{msg} No reference intensities can be calculated.')
+        warnings.warn(f'{msg} The reference intensities are averaged over the remaining images '
+                      f'{sorted(available)}.', category=UserWarning, stacklevel=2)
 
     def apply_color_correction(self, cc_matrix, on='sum_col_val',
                                nchannels=3) -> None:  # TODO: remove hardcoding of nchannels
