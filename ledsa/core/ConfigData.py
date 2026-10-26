@@ -314,7 +314,8 @@ class ConfigData(cp.ConfigParser):
         if has_id:
             generated_path = os.path.abspath(os.path.join(
                 self['DEFAULT']['img_directory'],
-                self['DEFAULT']['img_name_string'].format(self['DEFAULT']['time_ref_img_id'])
+                # the ID is read as a string, a format spec like {:04d} needs it as a number
+                self['DEFAULT']['img_name_string'].format(int(self['DEFAULT']['time_ref_img_id']))
             ))
 
         if has_file:
@@ -422,7 +423,7 @@ class ConfigData(cp.ConfigParser):
         """
         time_img = get_exif_datetime(os.path.join(self['DEFAULT']['img_directory'],
                                                   self['DEFAULT']['img_name_string'].format(
-                                                      self['DEFAULT']['first_img_experiment_id'])),
+                                                      int(self['DEFAULT']['first_img_experiment_id']))),
                                      'DateTimeOriginal')
         start_time = time_img - timedelta(seconds=self['DEFAULT'].getfloat('exif_time_infront_real_time'))
         time_format = '%H:%M:%S' if start_time.microsecond == 0 else '%H:%M:%S.%f'

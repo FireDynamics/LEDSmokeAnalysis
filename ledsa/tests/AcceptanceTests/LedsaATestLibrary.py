@@ -481,6 +481,20 @@ class LedsaATestLibrary:
         raise AssertionError(f'{img_name} is not listed in {file_path}')
 
     @keyword
+    def rename_test_images_to_padded_ids(self, num_digits=4):
+        """Rename test_data/test_img_<id>.jpg to zero padded IDs (test_img_0001.jpg), as most cameras write them."""
+        for path in glob.glob(os.path.join('test_data', 'test_img_*.jpg')):
+            img_id = int(os.path.basename(path)[len('test_img_'):-len('.jpg')])
+            os.rename(path, os.path.join('test_data', f'test_img_{img_id:0{int(num_digits)}d}.jpg'))
+
+    @keyword
+    def set_config_option(self, section, option, value):
+        """Set an option in the config.ini of the current directory."""
+        conf = ConfigData()
+        conf[section][option] = str(value)
+        conf.save()
+
+    @keyword
     def analysed_image_names_should_be(self, *expected_img_names):
         """Fail unless exactly the given images are listed in 'image_infos_analysis.csv'."""
         file_path = os.path.join('analysis', 'image_infos_analysis.csv')
