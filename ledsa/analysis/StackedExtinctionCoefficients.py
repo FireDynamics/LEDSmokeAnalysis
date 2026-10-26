@@ -256,11 +256,14 @@ class StackedExtinctionCoefficients:
 
         The report is written once per virtual array (channel-independent).
         Sets :attr:`_time_maps` and :attr:`common_times`.
+
+        Images that were skipped during the LED intensity extraction have no data to invert, so
+        they take no part in the alignment and are left out of the report as well.
         """
         tol = self.config.time_sync_tolerance
 
         self._time_maps = [
-            self._load_time_map(sub.experiment, sub.average_images)
+            self._load_time_map(sub.experiment, sub.average_images, sub.calculated_img_data)
             for sub in self._sub_solvers
         ]
 
@@ -480,6 +483,12 @@ class StackedExtinctionCoefficients:
             if self.common_times is not None
             else np.arange(len(self.coefficients_per_image_and_layer), dtype=float)
         )
+        if len(times) != len(self.coefficients_per_image_and_layer):
+            raise ValueError(
+                f'Got {len(times)} common experiment times for '
+                f'{len(self.coefficients_per_image_and_layer)} computed images. The time axis and '
+                f'the analysis results of the simulations are out of sync.'
+            )
         data = np.column_stack((times, self.coefficients_per_image_and_layer))
         np.savetxt(out_file, data, delimiter=',', header=header)
         print(f'Saved: {out_file}')
@@ -509,12 +518,31 @@ class StackedExtinctionCoefficients:
         )
 
     @staticmethod
-    def _load_time_map(experiment: Experiment, average_images: bool) -> Dict[int, float]:
+    def _load_time_map(experiment: Experiment, average_images: bool,
+                       img_data: Optional[pd.DataFrame] = None) -> Dict[int, float]:
+        """
+        Read the experiment times of the images of one simulation.
+
+        :param experiment: Experiment whose image infos file is read.
+        :type experiment: Experiment
+        :param average_images: Whether the averaged image infos file is used.
+        :type average_images: bool
+        :param img_data: Intensity data of the simulation. If given, only the images it contains
+            are kept.
+        :type img_data: pd.DataFrame or None
+        :return: ``{img_id: experiment_time}`` of the images available for matching.
+        :rtype: dict[int, float]
+        """
         info_file = (
             'image_infos_analysis_avg.csv' if average_images else 'image_infos_analysis.csv'
         )
         df = pd.read_csv(experiment.path / 'analysis' / info_file)
-        return {int(i + 1): float(t) for i, t in enumerate(df['Experiment_Time[s]'])}
+        time_map = {int(i): float(t) for i, t in zip(df['#ID'], df['Experiment_Time[s]'])}
+        if img_data is not None and not img_data.empty:
+            # Images without extraction results have no LED intensities and must not be matched
+            available_img_ids = set(img_data.index.get_level_values('img_id'))
+            time_map = {i: t for i, t in time_map.items() if i in available_img_ids}
+        return time_map
 
     @staticmethod
     def _intersect_time_axes(time_arrays: List[np.ndarray], tol: float) -> np.ndarray:
