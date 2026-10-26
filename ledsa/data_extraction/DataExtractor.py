@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import os
+from typing import Optional
 
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
@@ -14,6 +15,7 @@ import ledsa.data_extraction.step_1_functions
 import ledsa.data_extraction.step_2_functions
 import ledsa.data_extraction.step_3_functions
 from ledsa.core.ConfigData import ConfigData
+from ledsa.core.image_integrity import CorruptedImageError, report_corrupted_images
 from ledsa.data_extraction import init_functions as led
 
 
@@ -98,12 +100,18 @@ class DataExtractor:
         search_area_radius = int(config['search_area_radius'])
         max_num_leds = int(config['max_num_leds'])
         pixel_value_percentile = float(config['pixel_value_percentile'])
-        if channel == 'all':
-            # TODO this currently only works for RAW files but should work for JPG files as well
-            data = ledsa.core.image_reading.read_img_array_from_img(in_file_path, channel=0) # TODO: Channel to be removed here!
-        else:
-            channel = int(channel)
-            data = ledsa.core.image_reading.read_channel_data_from_img(in_file_path, channel=channel)
+        try:
+            if channel == 'all':
+                # TODO this currently only works for RAW files but should work for JPG files as well
+                data = ledsa.core.image_reading.read_img_array_from_img(in_file_path, channel=0) # TODO: Channel to be removed here!
+            else:
+                channel = int(channel)
+                data = ledsa.core.image_reading.read_channel_data_from_img(in_file_path, channel=channel)
+        except CorruptedImageError as error:
+            # The reference image defines the search areas of all other images, so it cannot be skipped
+            report_corrupted_images([error], 'search for the LED positions in the reference image')
+            raise RuntimeError(f'The reference image {in_file_path} could not be read, so no LED search areas '
+                               f'can be found. Set ref_img_id in config.ini to a readable image.') from error
 
         self.search_areas, self.threshold = ledsa.data_extraction.step_1_functions.find_search_areas(data, search_area_radius=search_area_radius, max_n_leds=max_num_leds, pixel_value_percentile=pixel_value_percentile)
         self.write_search_areas()
@@ -128,7 +136,13 @@ class DataExtractor:
 
         in_file_path = os.path.join(config['img_directory'], config['img_name_string'].format(int(config['ref_img_id'])))
         # TODO this currently only works for RAW files but should work for JPG files as well
-        data = ledsa.core.image_reading.read_img_array_from_img(in_file_path, channel=0)
+        try:
+            data = ledsa.core.image_reading.read_img_array_from_img(in_file_path, channel=0)
+        except CorruptedImageError as error:
+            # The plot only illustrates the search areas, so a missing one must not stop the analysis
+            report_corrupted_images([error], 'plot of the LED search areas')
+            print(f'The plot of the LED search areas is skipped, because {in_file_path} could not be read.')
+            return
         search_area_radius = int(config['search_area_radius'])
         plt.figure(dpi=1200)
         ax = plt.gca()
@@ -230,32 +244,48 @@ class DataExtractor:
 
         img_filenames = ledsa.core.file_handling.read_table('images_to_process.csv', dtype=str)
         num_cores = int(config['num_cores'])
+        corrupted_images = []
         if num_cores > 1:
             from multiprocessing import Pool
             print('images are getting processed, this may take a while')
             with Pool(num_cores) as p:
-                for _ in tqdm(p.imap(self.process_img_file, img_filenames), total=len(img_filenames), desc="Processing images", unit="image"):
-                    pass
+                for error in tqdm(p.imap(self.process_img_file, img_filenames), total=len(img_filenames), desc="Processing images", unit="image"):
+                    if error is not None:
+                        corrupted_images.append(error)
         else:
             for img_filename in tqdm(img_filenames, desc="Processing images", unit="image"):
-                self.process_img_file(img_filename)
+                error = self.process_img_file(img_filename)
+                if error is not None:
+                    corrupted_images.append(error)
 
+        report_corrupted_images(corrupted_images, 'extraction of the LED intensities')
         os.remove('images_to_process.csv')
 
-    def process_img_file(self, img_filename: str) -> None:
+    def process_img_file(self, img_filename: str) -> Optional[CorruptedImageError]:
         """
         Process a single image file to extract relevant data. This is a workaround for pool.map.
 
+        An image that cannot be read is skipped instead of aborting the analysis of the remaining images. The
+        error is returned rather than reported here, because the multicore analysis processes the images in
+        worker processes, which would write to the report file concurrently.
+
         :param img_filename: The name of the image file to be processed.
         :type img_filename: str
+        :return: The error raised for a skipped image, or None if the image was processed.
+        :rtype: Optional[CorruptedImageError]
         """
         img_id = ledsa.core.image_handling.get_img_id(img_filename)
         for channel in self.channels:
-            img_data = ledsa.data_extraction.step_3_functions.generate_analysis_data(img_filename, channel,
-                                                                                     self.search_areas,
-                                                                                     self.line_indices,
-                                                                                     self.config, self.fit_leds)
+            try:
+                img_data = ledsa.data_extraction.step_3_functions.generate_analysis_data(img_filename, channel,
+                                                                                         self.search_areas,
+                                                                                         self.line_indices,
+                                                                                         self.config, self.fit_leds)
+            except CorruptedImageError as error:
+                return error
             ledsa.data_extraction.step_3_functions.create_fit_result_file(img_data, img_id, channel)
+        return None
+
     def setup_step3(self) -> None:
         """
         Setup the third step of the data extraction process by creating 'image_infos_analysis.csv' and 'images_to_process.csv' files.

@@ -72,7 +72,8 @@ class ConfigDataStacked(cp.ConfigParser):
         :raises SystemExit: if the file is not found.
         """
         try:
-            self.read_file(open(self._filename))
+            with open(self._filename, encoding='utf-8-sig') as config_file:
+                self.read_file(config_file)
         except FileNotFoundError:
             print(
                 f'{self._filename} not found in the working directory! '
@@ -83,7 +84,7 @@ class ConfigDataStacked(cp.ConfigParser):
 
     def save(self) -> None:
         """Write the current configuration back to disk."""
-        with open(self._filename, 'w') as f:
+        with open(self._filename, 'w', encoding='utf-8') as f:
             self.write(f)
         print(f'{self._filename} saved.')
 
@@ -306,6 +307,6 @@ class ConfigDataStacked(cp.ConfigParser):
         cfg['led_arrays']['0'] = '0:0 1:0'
         cfg['led_arrays']['1'] = '0:1 1:1'
 
-        with open(filename, 'w') as f:
+        with open(filename, 'w', encoding='utf-8') as f:
             cfg.write(f)
         print(f'Template written to {filename}')

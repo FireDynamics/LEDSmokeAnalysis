@@ -14,7 +14,14 @@ on:
 
 jobs:
   run_tests:
-    runs-on: ubuntu-latest  # Use the latest Ubuntu runner
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false  # A failure on one platform should not hide the result of the other
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    defaults:
+      run:
+        shell: bash  # One script for both platforms; Windows runners ship Git Bash
     steps:
       # 1. Check out the repository code
       - name: Checkout repository
@@ -31,22 +38,36 @@ jobs:
       - name: Install LEDSA package and dependencies
         run: pip install .
 
-      # 4. Create a directory where Robot Framework will place its reports (HTML, XML, etc.)
+      # 4. Reading or writing a text file without naming an encoding uses the one of the locale,
+      #    which is cp1252 on a German Windows and cannot represent the characters LEDSA writes
+      #    into its configs and reports. Every call has to say utf-8 (or utf-8-sig when reading a
+      #    file users edit, so an editor's byte order mark does not end up in the first option).
+      - name: Check that text I/O names an encoding
+        run: |
+          if grep -rnE "(^|[^.[:alnum:]_])open\(|\.read_text\(|\.write_text\(" --include='*.py' ledsa/ \
+             | grep -v "encoding" \
+             | grep -vE "'[rwax]b'|\"[rwax]b\"" \
+             | grep -vE "Image\.open|ImageFactory\.open"; then
+            echo "::error::the calls above do not name an encoding and would use cp1252 on Windows"
+            exit 1
+          fi
+
+      # 5. Create a directory where Robot Framework will place its reports (HTML, XML, etc.)
       - name: Create folder for reports
         run: mkdir reports
 
-      # 5. Execute Robot Framework acceptance tests located in ledsa/tests/AcceptanceTests
+      # 6. Execute Robot Framework acceptance tests located in ledsa/tests/AcceptanceTests
       #    The --outputdir option tells Robot where to store its output files.
       - name: Run Robot Framework Tests
         run: |
-          robot \
+          python -m robot \
           --outputdir reports \
           ledsa/tests/AcceptanceTests
 
-      # 6. Always upload the test logs & reports as a GitHub Actions artifact so they can be inspected
+      # 7. Always upload the test logs & reports as a GitHub Actions artifact so they can be inspected
       - name: Upload Robot Framework logs
         if: always()  # Run this step regardless of test success/failure
         uses: actions/upload-artifact@v4
         with:
-          name: robot-framework-logs  # Artifact name in the Actions UI
-          path: results/  # Directory (or file) to upload
+          name: robot-framework-logs-${{ matrix.os }}  # One artifact per platform
+          path: reports/  # Directory (or file) to upload

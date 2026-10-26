@@ -86,7 +86,7 @@ class ConfigDataAnalysis(cp.ConfigParser):
             self.set('model_parameters', '   # Lower and upper bounds of the computational domain  ')
             self['model_parameters']['   domain_bounds'] = str(domain_bounds)
 
-            with open('config_analysis.ini', 'w') as configfile:
+            with open('config_analysis.ini', 'w', encoding='utf-8') as configfile:
                 self.write(configfile)
             print('config_analysis.ini created')
 
@@ -98,7 +98,8 @@ class ConfigDataAnalysis(cp.ConfigParser):
             FileNotFoundError: If 'config_analysis.ini' is not found in the working directory.
         """
         try:
-            self.read_file(open('config_analysis.ini'))
+            with open('config_analysis.ini', encoding='utf-8-sig') as config_file:
+                self.read_file(config_file)
         except FileNotFoundError:
             print(
                 'config_analysis.ini not found in working directory! Please create it with argument "--config_analysis".')
@@ -109,7 +110,7 @@ class ConfigDataAnalysis(cp.ConfigParser):
         """
         Saves the current configuration to 'config_analysis.ini' file.
         """
-        with open('config_analysis.ini', 'w') as configfile:
+        with open('config_analysis.ini', 'w', encoding='utf-8') as configfile:
             self.write(configfile)
         print('config_analysis.ini saved')
 

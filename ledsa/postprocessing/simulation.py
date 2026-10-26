@@ -1,5 +1,6 @@
 import glob
 import os
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -332,8 +333,10 @@ class SimData(_BaseSimData):
         else:
             file = os.path.join(self.path_simulation, 'analysis', f'channel{channel}', 'all_parameters.h5')
         table = pd.read_hdf(file, key='channel_values')
+        # Not rounded to whole seconds: images taken less than a second apart would otherwise share
+        # a time and be merged into one entry.
         time = pd.Series(
-            self.image_info_df['Experiment_Time[s]'].astype(int).values,
+            self.image_info_df['Experiment_Time[s]'].values,
             index=self.image_info_df['#ID'],
             name='Experiment_Time[s]',
         )
@@ -358,10 +361,11 @@ class SimData(_BaseSimData):
             channel = int(file.split('channel_')[1].split('_')[0])
             led_array = int(file.split('array_')[1].split('.')[0])
             if '# Experiment_Time[s]' not in file_df.columns:
-                time = self.image_info_df['Experiment_Time[s]'].astype(int)
+                time = self.image_info_df['Experiment_Time[s]']
                 file_df = file_df.merge(time, left_index=True, right_index=True)
             else:
                 file_df.rename(columns={'# Experiment_Time[s]': 'Experiment_Time[s]'}, inplace=True)
+                self._warn_on_foreign_experiment_times(file_df['Experiment_Time[s]'], file)
             file_df.set_index('Experiment_Time[s]', inplace=True)
             n_layers = len(file_df.columns)
             file_df.columns = pd.MultiIndex.from_product(
@@ -372,6 +376,35 @@ class SimData(_BaseSimData):
         self.all_extco_df = pd.concat(extco_list, axis=1)
         self.all_extco_df.sort_index(ascending=True, axis=1, inplace=True)
         self.all_extco_df = self.all_extco_df[~self.all_extco_df.index.duplicated(keep='first')]
+
+    def _warn_on_foreign_experiment_times(self, experiment_times, file, tolerance=1e-6):
+        """
+        Warn if an extinction coefficient file was computed from other image times than the current ones.
+
+        The files carry their own time axis, while the LED parameters are put on the times read from the
+        image infos. Re-running step 1 or step 3 therefore moves the LED parameters but leaves the
+        coefficients on the times of the earlier run, which nothing else would notice: both data frames
+        are simply indexed by times that no longer belong to the same images. Images the analysis left
+        out are no mismatch, so only times without a counterpart in the image infos are reported.
+
+        :param experiment_times: Experiment times the file was computed for.
+        :type experiment_times: pandas.Series
+        :param file: Path of the extinction coefficient file, used for the message.
+        :type file: str
+        :param tolerance: Largest difference in seconds still counted as the same time.
+        :type tolerance: float
+        """
+        image_times = self.image_info_df['Experiment_Time[s]'].to_numpy(dtype=float)
+        file_times = experiment_times.to_numpy(dtype=float)
+        foreign = file_times[[not np.any(np.abs(image_times - time) <= tolerance) for time in file_times]]
+        if foreign.size == 0:
+            return
+        warnings.warn(
+            f'{os.path.basename(file)} was computed for {foreign.size} of {file_times.size} experiment '
+            f'times that the image infos do not contain, the first one being {foreign[0]} s. The file is '
+            f'left over from an earlier run and does not line up with the LED parameters. Run the '
+            f'analysis again to recompute it.',
+            UserWarning, stacklevel=3)
 
     def read_led_params(self):
         """Read led parameters for all color channels from the simulation path."""
@@ -469,7 +502,7 @@ class SimData(_BaseSimData):
         Retrieves the image name corresponding to a specific time.
 
         :param time: The time index.
-        :type time: int
+        :type time: float
         :return: The name of the image.
         :rtype: str
         """

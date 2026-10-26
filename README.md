@@ -90,6 +90,34 @@ For a complete list of options, run:
 python -m ledsa --help
 ```
 
+### Corrupted images
+
+Images that cannot be read - missing, empty, truncated or stored in an unsupported
+format - are skipped instead of aborting the analysis of the remaining images. Every
+skipped image is reported on the console and listed in `analysis/corrupted_images.csv`,
+together with the analysis step that skipped it and the reason why it could not be read:
+
+```
+image_path,analysis_step,error_type,error_message
+imgs/IMG_0042.JPG,reading of the image metadata,Exiv2Error,Failed to read input data
+imgs/IMG_0137.JPG,extraction of the LED intensities,OSError,image file is truncated
+```
+
+An image skipped while the metadata is read gets no entry in `image_infos.csv` and
+`image_infos_analysis.csv`, so the analysis IDs of the readable images stay a gapless
+sequence, just as when images are left out with `num_skip_imgs`. An image skipped later,
+while the LED intensities are extracted, keeps its entry but produces no result file. It
+is then left out of the extinction coefficients, and every remaining image stays paired
+with its own experiment time, so the time axis of the result has a gap rather than a
+shift. A restart with `-re` retries the skipped images, which picks them up if they have
+been replaced in the meantime.
+
+Three images are indispensable and therefore stop the run with a message naming the
+file instead of being skipped: the reference image of step 1 (`ref_img_id`), which
+defines the LED search areas, the first image of the experiment
+(`first_img_experiment_id`), which defines the experiment start time, and the time
+reference image.
+
 ## Demo
 
 LEDSA includes a demo that demonstrates its functionality using sample data.

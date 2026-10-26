@@ -84,7 +84,7 @@ def create_imgs_to_process_file() -> None:
     file_path = os.path.join('analysis', 'image_infos_analysis.csv')
     image_infos = read_table(file_path, dtype='str', delim=',', atleast_2d=True)
     img_filenames = image_infos[:, 1]
-    out_file = open('images_to_process.csv', 'w')
+    out_file = open('images_to_process.csv', 'w', encoding='utf-8')
     for img in img_filenames:
         out_file.write('{}\n'.format(img))
     out_file.close()
@@ -210,7 +210,7 @@ def _save_results_in_file(channel: int, img_data: LEDAnalysisData, img_filename:
     :type basename: str
     """
     file_path = os.path.join('analysis', f'channel{channel}', f'{img_id}_led_positions.csv')
-    out_file = open(file_path, 'w')
+    out_file = open(file_path, 'w', encoding='utf-8')
     header = _create_header(channel, img_id, img_filename, img_infos, basename, img_data[0].fit_leds)
     out_file.write(header)
     for led_data in img_data:
@@ -243,7 +243,7 @@ def _save_list_of_remaining_imgs_needed_to_be_processed(remaining_imgs): # TODO:
     :param remaining_imgs: List of remaining image filenames.
     :type remaining_imgs: list[str]
     """
-    out_file = open('images_to_process.csv', 'w')
+    out_file = open('images_to_process.csv', 'w', encoding='utf-8')
     for i in list(remaining_imgs):
         out_file.write('{}\n'.format(i))
     out_file.close()
@@ -304,7 +304,7 @@ def _log_warnings(img_filename, channel, led_data, cx, cy, size_of_search_area, 
     if not os.path.exists(dir_path):
         os.makedirs(dir_path)
     file_path = os.path.join(dir_path, 'warnings.log')
-    logfile = open(file_path, 'a')
+    logfile = open(file_path, 'a', encoding='utf-8')
     logfile.write(log)
     logfile.write('\n')
     logfile.close()
