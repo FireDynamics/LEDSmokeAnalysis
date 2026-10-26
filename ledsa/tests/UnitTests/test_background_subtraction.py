@@ -90,7 +90,7 @@ class TestBackgroundSubtractedSum:
     def test_csv_serialization_contains_bgsub_value(self):
         led_data = extract_led_data(make_synthetic_image(background=10.0))
         main_data_fields = led_data.get_main_data_string().split(',')
-        assert len(main_data_fields) == 6
+        assert len(main_data_fields) == 8
         assert float(main_data_fields[5]) == pytest.approx(led_data.bgsub_sum_color_value, rel=1e-4)
 
 

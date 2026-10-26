@@ -21,6 +21,12 @@ class LEDAnalysisData:
     :ivar bgsub_sum_color_value: Integrated color value of the LED over the search area after subtraction of the
         local background estimated from the border of the search area.
     :vartype bgsub_sum_color_value: float
+    :ivar ob_sum_color_value: Integrated color value of the LED over the search area with the black level taken from
+        the optical black of the sensor and without clipping at zero (RAW images only, NaN otherwise).
+    :vartype ob_sum_color_value: float
+    :ivar ob_noise_sum_color_value: Standard deviation of ob_sum_color_value from the read noise of the sensor, estimated
+        from the optical black (RAW images only, NaN otherwise).
+    :vartype ob_noise_sum_color_value: float
     :ivar fit_results: Fit results after fitting.
     :vartype fit_results: OptimizeResult
     :ivar fit_time: Time taken for fitting.
@@ -45,6 +51,8 @@ class LEDAnalysisData:
         self.sum_color_value = None
         self.max_color_value = None
         self.bgsub_sum_color_value = None
+        self.ob_sum_color_value = float('nan')
+        self.ob_noise_sum_color_value = float('nan')
         self.fit_leds = fit_leds
         self.fit_results = None
         self.fit_time = None
@@ -73,6 +81,7 @@ class LEDAnalysisData:
         out_str = f'{self.led_id:4d},{self.led_array:2d},'
         out_str += f'{self.sum_color_value:10.4e},{self.mean_color_value:10.4e},{self.max_color_value}'
         out_str += f',{self.bgsub_sum_color_value:10.4e}'
+        out_str += f',{self.ob_sum_color_value:10.4e},{self.ob_noise_sum_color_value:10.4e}'
         return out_str
 
     def get_fit_data_string(self) -> str:

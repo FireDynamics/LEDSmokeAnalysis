@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 
 from ledsa.analysis.Experiment import Experiment, Layers, Camera
-from ledsa.core.file_handling import read_hdf, read_hdf_avg, extend_hdf, create_analysis_infos_avg
+from ledsa.core.file_handling import read_hdf, read_hdf_avg, extend_hdf, create_analysis_infos_avg, NOISE_COLUMNS
 from ledsa.data_extraction.data_integrity import check_intensity_normalization
 
 from importlib.metadata import version
@@ -25,6 +25,17 @@ class ExtinctionCoefficients(ABC):
     :vartype num_ref_imgs: int
     :ivar ref_img_indices: Indices of reference images to use. If None, use num_ref_imgs.
     :vartype ref_img_indices: list[int] or None
+    :ivar dark_img_indices: Indices of images taken with the LEDs and the ambient light switched off. If not None, the
+        median of the reference property over these images is subtracted from every LED before the normalisation.
+    :vartype dark_img_indices: list[int] or None
+    :ivar dark_intensities: Array of dark intensities for all LEDs (empty if no dark images are given).
+    :vartype dark_intensities: np.ndarray
+    :ivar snr_full_weight: If not None, the LEDs are weighted in the solver with min(1, SNR / snr_full_weight), SNR
+        being the reference property divided by its noise. Requires a reference property with a noise column.
+    :vartype snr_full_weight: float or None
+    :ivar num_avg_images: Number of consecutive images over which the reference property (and its noise) is averaged
+        before the normalisation, as a centred moving average. 1 means no averaging.
+    :vartype num_avg_images: int
     :ivar calculated_img_data: DataFrame containing calculated image data.
     :vartype calculated_img_data: pd.DataFrame
     :ivar distances_per_led_and_layer: Array of distances traversed between camera and LEDs in each layer.
@@ -40,7 +51,7 @@ class ExtinctionCoefficients(ABC):
     """
 
     def __init__(self, experiment, reference_property='sum_col_val', num_ref_imgs=10, ref_img_indices=None,
-                 average_images=False):
+                 average_images=False, dark_img_indices=None, snr_full_weight=None, num_avg_images=1):
         """
         :param experiment: Object representing the experimental setup.
         :type experiment: Experiment
@@ -52,12 +63,32 @@ class ExtinctionCoefficients(ABC):
         :type ref_img_indices: list[int] or None
         :param average_images: Flag to determine if intensities are computed as an average from two consecutive images.
         :type average_images: bool
+        :param dark_img_indices: Indices of images taken with the LEDs and the ambient light switched off. If None, no
+            dark level is subtracted.
+        :type dark_img_indices: list[int] or None
+        :param snr_full_weight: Signal-to-noise ratio from which on an LED gets the full weight in the solver. If None,
+            all LEDs are weighted equally.
+        :type snr_full_weight: float or None
+        :param num_avg_images: Number of consecutive images for a centred moving average of the reference property before
+            the normalisation. The averaging is linear and therefore only free of bias for a reference property without
+            clipping (ob_sum_col_val). 1 means no averaging.
+        :type num_avg_images: int
         """
         self.coefficients_per_image_and_layer = []
         self.experiment = experiment
         self.reference_property = reference_property
         self.num_ref_imgs = num_ref_imgs
         self.ref_img_indices = ref_img_indices
+        self.dark_img_indices = dark_img_indices
+        self.dark_intensities = np.array([])
+        self.snr_full_weight = snr_full_weight
+        self.num_avg_images = int(num_avg_images)
+        self.noise_property = None
+        if snr_full_weight is not None:
+            if reference_property not in NOISE_COLUMNS:
+                raise ValueError(f'Weighting by the signal-to-noise ratio needs a noise estimate of the reference '
+                                 f'property, available for {list(NOISE_COLUMNS)}, not for {reference_property}.')
+            self.noise_property = NOISE_COLUMNS[reference_property]
         self.calculated_img_data = pd.DataFrame()
         self.analysed_img_ids = []
         self.distances_per_led_and_layer = np.array([])
@@ -69,7 +100,7 @@ class ExtinctionCoefficients(ABC):
 
     def __str__(self):
         out = str(self.experiment) + \
-              f'Reference_property: {self.reference_property}, Ref_img_indices: {self.ref_img_indices}, Solver: {self.solver}, Lambda_reg: {self.lambda_reg}, LEDSA {version("ledsa")}\n'
+              f'Reference_property: {self.reference_property}, Ref_img_indices: {self.ref_img_indices}, Dark_img_indices: {self.dark_img_indices}, Snr_full_weight: {self.snr_full_weight}, Min_layer_weight: {getattr(self, "min_layer_weight", None) if self.snr_full_weight is not None else None}, Num_avg_images: {self.num_avg_images}, Solver: {self.solver}, Lambda_reg: {self.lambda_reg}, LEDSA {version("ledsa")}\n'
         return out
 
     def calc_and_set_coefficients(self) -> None:
@@ -84,7 +115,11 @@ class ExtinctionCoefficients(ABC):
             rel_intensities = single_img_array / self.ref_intensities
 
             # Calculate the extinction coefficients depending on child class used
-            sigmas = self.calc_coefficients_of_img(rel_intensities)
+            if self.noise_property is None:
+                sigmas = self.calc_coefficients_of_img(rel_intensities)
+            else:
+                snr = single_img_array / single_img_data[self.noise_property].to_numpy()
+                sigmas = self.calc_coefficients_of_img(rel_intensities, snr)
             self.coefficients_per_image_and_layer.append(sigmas)
 
     def calc_and_set_coefficients_mp(self, cores=4) -> None:
@@ -101,7 +136,11 @@ class ExtinctionCoefficients(ABC):
 
         # Calculate the extinction coefficients depending on child class used
         pool = Pool(processes=cores)
-        sigmas = pool.map(self.calc_coefficients_of_img, rel_intensities)
+        if self.noise_property is None:
+            sigmas = pool.map(self.calc_coefficients_of_img, rel_intensities)
+        else:
+            snr = img_property_array / multiindex_series_to_nparray(self.calculated_img_data[self.noise_property])
+            sigmas = pool.starmap(self.calc_coefficients_of_img, zip(rel_intensities, snr))
         pool.close()
         self.coefficients_per_image_and_layer = sigmas
 
@@ -134,7 +173,10 @@ class ExtinctionCoefficients(ABC):
             create_analysis_infos_avg()
         else:
             img_data = read_hdf(self.experiment.channel, path=self.experiment.path)
-        img_data_cropped = img_data[['led_array_id', self.reference_property]]
+        columns = ['led_array_id', self.reference_property]
+        if self.noise_property is not None:
+            columns.append(self.noise_property)
+        img_data_cropped = img_data[columns]
         self.calculated_img_data = img_data_cropped[img_data_cropped['led_array_id'] == self.experiment.led_array]
         if self.calculated_img_data.empty:
             exit(f"Apparently there are no intensity values for led array {self.experiment.led_array}!")
@@ -142,6 +184,63 @@ class ExtinctionCoefficients(ABC):
         # gapless range. They are kept to pair every computed coefficient with the time of its own image.
         self.analysed_img_ids = sorted(
             self.calculated_img_data.index.get_level_values('img_id').unique().tolist())
+        if self.dark_img_indices is not None:
+            self.subtract_dark_intensities()
+        if self.num_avg_images > 1:
+            # reference intensities from the single images, so that images next to the reference images (e.g. with
+            # occlusions) do not enter them through the moving average
+            if self.ref_intensities.shape[0] == 0:
+                self.calc_and_set_ref_intensities()
+            self.average_over_images()
+
+    def average_over_images(self) -> None:
+        """
+        Replace the reference property of every LED by its centred moving average over num_avg_images consecutive
+        analysed images (fewer at the start and end of the series). The noise, if used, becomes the standard deviation
+        of that mean, sqrt(sum of the variances) / number of images. Every image keeps its own time, so the time
+        resolution becomes num_avg_images times the image interval.
+
+        """
+        n = self.num_avg_images
+        columns = [self.reference_property] + ([self.noise_property] if self.noise_property is not None else [])
+        averaged = {}
+        for column in columns:
+            wide = self.calculated_img_data[column].unstack('led_id')
+            if column == self.noise_property:
+                count = wide.notna().astype(float).rolling(n, center=True, min_periods=1).sum()
+                wide = np.sqrt((wide ** 2).rolling(n, center=True, min_periods=1).sum()) / count
+            else:
+                wide = wide.rolling(n, center=True, min_periods=1).mean()
+            averaged[column] = wide.stack()
+        data = self.calculated_img_data.copy()
+        for column, values in averaged.items():
+            data[column] = values.reindex(data.index).to_numpy()
+        self.calculated_img_data = data
+        print(f'Reference property averaged over {n} consecutive images (centred moving average).')
+
+    def subtract_dark_intensities(self) -> None:
+        """
+        Subtract a constant dark level from the reference property of every LED.
+
+        The dark level of an LED is the median of the reference property over the images in dark_img_indices, taken
+        with the LEDs and the ambient light switched off. It holds the part of the reference property that does not
+        come from the LED, e.g. a residual black level of the camera or constant stray light, and is assumed to be
+        independent of the smoke density. It is subtracted from all images, the reference images included, before
+        the intensities are normalised.
+
+        """
+        dark_img_data = self.calculated_img_data.query(f'img_id == {self.dark_img_indices}')
+        if dark_img_data.empty:
+            raise ValueError(f'None of the dark images {self.dark_img_indices} has intensity values for led array '
+                             f'{self.experiment.led_array}!')
+        print(f"Images with indices {dark_img_data.index.get_level_values('img_id').unique().values} were used for "
+              f"calculating dark intensities.")
+        dark_intensities = dark_img_data.groupby(level='led_id')[self.reference_property].median()
+        led_ids = self.calculated_img_data.index.get_level_values('led_id')
+        corrected = self.calculated_img_data[self.reference_property].to_numpy(dtype=float) - \
+                    dark_intensities.reindex(led_ids).to_numpy()
+        self.calculated_img_data = self.calculated_img_data.assign(**{self.reference_property: corrected})
+        self.dark_intensities = dark_intensities.to_numpy()
 
     def save(self) -> None:
         """

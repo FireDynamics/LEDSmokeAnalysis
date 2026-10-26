@@ -10,7 +10,8 @@ class ConfigDataAnalysis(cp.ConfigParser):
                  led_array_indices=None, num_ref_images=10, ref_img_indices=None, camera_channels=0, num_cores=1,
                  reference_property='sum_col_val',
                  average_images=False, solver='linear', weighting_preference=-6e-3, weighting_curvature=1e-6,
-                 num_iterations=200, lambda_reg=1e-3):
+                 num_iterations=200, lambda_reg=1e-3, dark_img_indices=None,
+                 snr_full_weight=None, min_layer_weight=0.5, num_avg_images=1):
         """
         :param load_config_file: Determines whether to load the config file on initialization. Defaults to True.
         :type load_config_file: bool
@@ -32,7 +33,8 @@ class ConfigDataAnalysis(cp.ConfigParser):
         :type num_cores: int
         :param reference_property: Property used for reference in LEDSA. Defaults to 'sum_col_val'.
             Use 'bgsub_sum_col_val' to base the analysis on intensities with the local background
-            subtracted, estimated from the border of each LED search area.
+            subtracted, estimated from the border of each LED search area. Use 'ob_sum_col_val' for intensities with
+            the black level taken from the optical black of the sensor and without clipping at zero (RAW images).
         :type reference_property: str
         :param average_images: Determines if intensities are computed as an average from two consecutive images. Defaults to False.
         :type average_images: bool
@@ -46,6 +48,20 @@ class ConfigDataAnalysis(cp.ConfigParser):
         :type num_iterations: int
         :param lambda_reg: Regularization parameter for the linear solver. Defaults to 1e-3.
         :type lambda_reg: float
+        :param dark_img_indices: Indices of images taken with the LEDs and the ambient light switched off. The median
+            of the reference property over these images is subtracted from every LED before the normalisation. If
+            None, no dark level is subtracted. Defaults to None.
+        :type dark_img_indices: list[int] or None
+        :param snr_full_weight: Linear solver only: signal-to-noise ratio from which on an LED gets the full weight.
+            Below, the weight decreases linearly to zero at a signal of zero. Needs a reference property with a noise
+            estimate (ob_sum_col_val). If None, all LEDs are weighted equally. Defaults to None.
+        :type snr_full_weight: float or None
+        :param min_layer_weight: Linear solver with snr_full_weight only: layers whose path-length-weighted mean LED weight
+            is below this value are set to NaN. Defaults to 0.5.
+        :type min_layer_weight: float
+        :param num_avg_images: Linear solver only: number of consecutive images over which the reference property is
+            averaged (centred moving average) before the normalisation. Defaults to 1 (no averaging).
+        :type num_avg_images: int
         """
         cp.ConfigParser.__init__(self, allow_no_value=True)
         if load_config_file:
@@ -60,6 +76,8 @@ class ConfigDataAnalysis(cp.ConfigParser):
             self['DEFAULT']['   num_ref_images'] = str(num_ref_images)
             self.set('DEFAULT', '   # Indices of reference images to use')
             self['DEFAULT']['   ref_img_indices'] = str(ref_img_indices)
+            self.set('DEFAULT', '   # Indices of images with LEDs and ambient light off, used to subtract a dark level')
+            self['DEFAULT']['   dark_img_indices'] = str(dark_img_indices)
             self.set('DEFAULT', '   # Camera channels to be considered in the analysis')
             self['DEFAULT']['   camera_channels'] = str(camera_channels)
             self.set('DEFAULT', '   # Intensities are computed as average from two consecutive images if set to True ')
@@ -72,6 +90,12 @@ class ConfigDataAnalysis(cp.ConfigParser):
             self['DEFAULT']['   num_iterations'] = str(num_iterations)
             self.set('DEFAULT', '   # Options for linear solver (ignored when nonlinear solver is used) ')
             self['DEFAULT']['   lambda_reg'] = str(lambda_reg)
+            self.set('DEFAULT', '   # Signal-to-noise ratio from which on an LED gets the full weight (None: equal weights)')
+            self['DEFAULT']['   snr_full_weight'] = str(snr_full_weight)
+            self.set('DEFAULT', '   # Layers with a lower mean LED weight are set to NaN (only with snr_full_weight)')
+            self['DEFAULT']['   min_layer_weight'] = str(min_layer_weight)
+            self.set('DEFAULT', '   # Number of consecutive images for a moving average of the reference property (1: none)')
+            self['DEFAULT']['   num_avg_images'] = str(num_avg_images)
 
             self['experiment_geometry'] = {}
             self.set('experiment_geometry', '# Global X Y Z position of the camera ')

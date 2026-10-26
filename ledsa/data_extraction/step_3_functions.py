@@ -9,7 +9,7 @@ import scipy.optimize
 from ledsa.core.ConfigData import ConfigData
 from ledsa.core.file_handling import read_table
 from ledsa.core.image_handling import get_img_name
-from ledsa.core.image_reading import read_channel_data_from_img
+from ledsa.core.image_reading import read_channel_data_and_optical_black_from_img, _channel_mask
 from ledsa.data_extraction.LEDAnalysisData import LEDAnalysisData
 from ledsa.data_extraction.model import target_function
 
@@ -39,13 +39,14 @@ def generate_analysis_data(img_filename: str, channel: int, search_areas: np.nda
     :rtype: List[LEDAnalysisData]
     """
     file_path = os.path.join(conf['DEFAULT']['img_directory'], img_filename)
-    data = read_channel_data_from_img(file_path, channel=channel)
+    data, ob_data, filter_array, ob_noise = read_channel_data_and_optical_black_from_img(file_path, channel=channel)
+    ob = (ob_data, filter_array, ob_noise, channel)
     search_area_radius = int(conf['find_search_areas']['search_area_radius'])
     img_analysis_data = []
 
     if debug:
         analysis_res = _generate_led_analysis_data(conf, channel, data, debug, debug_led, img_filename, 0, search_areas,
-                                                   search_area_radius, fit_leds)
+                                                   search_area_radius, fit_leds, ob)
         return analysis_res
 
     num_of_arrays = len(line_indices)
@@ -53,7 +54,8 @@ def generate_analysis_data(img_filename: str, channel: int, search_areas: np.nda
         for iled in line_indices[led_array_idx]:
             if iled % (int(conf['analyse_photo']['num_skip_leds']) + 1) == 0:
                 led_analysis_data = _generate_led_analysis_data(conf, channel, data, debug, iled, img_filename,
-                                                                led_array_idx, search_areas, search_area_radius, fit_leds)
+                                                                led_array_idx, search_areas, search_area_radius, fit_leds,
+                                                                ob)
                 img_analysis_data.append(led_analysis_data)
     return img_analysis_data
 
@@ -107,7 +109,7 @@ def find_and_save_not_analysed_imgs(channel: int) -> None:
     _save_list_of_remaining_imgs_needed_to_be_processed(remaining_imgs)
 
 
-def _generate_led_analysis_data(conf: ConfigData, channel: int, data: np.ndarray, debug: bool, iled: int, img_filename: str, led_array_idx: int, search_areas: np.ndarray, search_area_radius: int, fit_leds: bool = True) -> LEDAnalysisData:
+def _generate_led_analysis_data(conf: ConfigData, channel: int, data: np.ndarray, debug: bool, iled: int, img_filename: str, led_array_idx: int, search_areas: np.ndarray, search_area_radius: int, fit_leds: bool = True, ob: tuple = None) -> LEDAnalysisData:
     """
     Generate analysis data for a specific LED.
 
@@ -131,6 +133,10 @@ def _generate_led_analysis_data(conf: ConfigData, channel: int, data: np.ndarray
     :type search_area_radius: int
     :param fit_leds: If True, the LED is fitted to a model function.
     :type fit_leds: bool
+    :param ob: Output of read_channel_data_and_optical_black_from_img without the default channel data, plus the
+        channel: (optical-black-corrected channel data, Bayer filter array, read noise per Bayer color, channel). If
+        None or if the image has no optical black, the optical black values of the LED are NaN.
+    :type ob: tuple or None
     :return: Analysis data for the LED.
     :rtype: LEDAnalysisData
     """
@@ -161,6 +167,11 @@ def _generate_led_analysis_data(conf: ConfigData, channel: int, data: np.ndarray
     background = _estimate_local_background(data[search_area])
     led_data.bgsub_sum_color_value = float(np.sum(np.clip(data[search_area].astype(np.float64) - background,
                                                           0.0, None)))
+    if ob is not None and ob[0] is not None:
+        ob_data, filter_array, ob_noise, ob_channel = ob
+        led_data.ob_sum_color_value = float(np.sum(ob_data[search_area], dtype=np.float64))
+        colors = filter_array[search_area][_channel_mask(filter_array[search_area], ob_channel)]
+        led_data.ob_noise_sum_color_value = float(np.sqrt(np.sum(ob_noise[colors] ** 2)))
 
     return led_data
 
@@ -333,6 +344,7 @@ def _create_header(channel: int, img_id: str, img_filename: str, img_infos: np.n
     out_str += f"channel = {channel}, "
     out_str += f"time[s] = {img_infos[int(img_id) - 1][3]}\n"
     out_str += "# id,line,sum_col_value,average_col_value,max_col_value,bgsub_sum_col_value"
+    out_str += ",ob_sum_col_value,ob_noise_sum_col_value"
     if fit_leds:
         out_str += ",led_center_x, led_center_y"
         out_str += ",x,y,dx,dy,A,alpha,wx,wy,fit_success,fit_fun,fit_nfev,fit_time"

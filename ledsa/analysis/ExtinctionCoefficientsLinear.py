@@ -19,7 +19,8 @@ class ExtinctionCoefficientsLinear(ExtinctionCoefficients):
     :vartype solver: str
     """
 
-    def __init__(self, experiment, reference_property='sum_col_val', num_ref_imgs=10, average_images=False, ref_img_indices=None, lambda_reg=1e-3,):
+    def __init__(self, experiment, reference_property='sum_col_val', num_ref_imgs=10, average_images=False, ref_img_indices=None, lambda_reg=1e-3,
+                 dark_img_indices=None, snr_full_weight=None, min_layer_weight=0.5, num_avg_images=1):
         """
         Initialize the ExtinctionCoefficientsLinear object.
 
@@ -35,19 +36,42 @@ class ExtinctionCoefficientsLinear(ExtinctionCoefficients):
         :type average_images: bool
         :param lambda_reg: Regularization parameter for Tikhonov regularization.
         :type lambda_reg: float
+        :param dark_img_indices: Indices of images taken with the LEDs and the ambient light switched off. If None, no
+            dark level is subtracted.
+        :type dark_img_indices: list[int] or None
+        :param snr_full_weight: Signal-to-noise ratio from which on an LED gets the full weight in the solver. Below,
+            the weight decreases linearly to zero at a signal of zero. If None, all LEDs are weighted equally.
+        :type snr_full_weight: float or None
+        :param min_layer_weight: Only with snr_full_weight: a layer is set to NaN if the mean weight of the LEDs crossing
+            it, weighted with their path length in the layer, is below this value.
+        :type min_layer_weight: float
+        :param num_avg_images: Number of consecutive images for a centred moving average of the reference property.
+        :type num_avg_images: int
         """
-        super().__init__(experiment, reference_property, num_ref_imgs, ref_img_indices, average_images)
+        self.min_layer_weight = min_layer_weight
+        super().__init__(experiment, reference_property, num_ref_imgs, ref_img_indices, average_images,
+                         dark_img_indices, snr_full_weight, num_avg_images)
         self.lambda_reg = lambda_reg
         self.solver = 'linear'
 
-    def calc_coefficients_of_img(self, rel_intensities: np.ndarray) -> np.ndarray:
+    def calc_coefficients_of_img(self, rel_intensities: np.ndarray, snr: np.ndarray = None) -> np.ndarray:
         """
         Calculate the extinction coefficients for a single image using a linearized approach.
         This method solves the linear system derived from the Beer-Lambert law using
         non-negative least squares with Tikhonov regularization.
 
+        If snr is given, every LED is weighted with min(1, snr / snr_full_weight). The standard deviation of the
+        optical depth -ln(I_e/I_0) is about 1/snr, so the weight is the inverse standard deviation, capped such that
+        well-measured LEDs keep the weight 1 and the meaning of lambda_reg does not change. LEDs with a signal at or
+        below zero get the weight 0. If the weights add up to less than one LED with full weight, no coefficients
+        can be computed and NaN is returned. Layers in which the path-length-weighted mean weight of the crossing LEDs
+        is below min_layer_weight are set to NaN: their coefficients would rest mainly on LEDs near the noise level,
+        where the linearised Beer-Lambert law is biased.
+
         :param rel_intensities: Array of relative (normalized) LED intensities (I_e/I_0).
         :type rel_intensities: np.ndarray
+        :param snr: Signal-to-noise ratio of every LED, or None for equal weights.
+        :type snr: np.ndarray or None
         :return: Array of the computed extinction coefficients (sigmas).
         :rtype: np.ndarray
         """
@@ -61,6 +85,14 @@ class ExtinctionCoefficientsLinear(ExtinctionCoefficients):
 
         # Get dimensions of the problem
         n_leds, n_layers = self.distances_per_led_and_layer.shape
+
+        # Weights of the LEDs (inverse standard deviation of the optical depth, capped at 1)
+        if snr is None:
+            weights = np.ones(n_leds)
+        else:
+            weights = np.clip(np.nan_to_num(np.asarray(snr, dtype=float) / self.snr_full_weight, nan=0.0), 0.0, 1.0)
+            if weights.sum() < 1.0:
+                return np.full(n_layers, np.nan)
 
         # Build finite-difference matrix L for second derivative (curvature penalty)
         # This matrix approximates the second derivative and is used for regularization
@@ -80,14 +112,18 @@ class ExtinctionCoefficientsLinear(ExtinctionCoefficients):
 
         # Augment the system with regularization
         # A_aug = [A; sqrt(lambda)*L], where A is the distance matrix
-        A_aug = np.vstack((self.distances_per_led_and_layer, sqrt_lambda * L))
+        A_aug = np.vstack((self.distances_per_led_and_layer * weights[:, None], sqrt_lambda * L))
 
         # Augment the right-hand side: b_aug = [b; 0]
-        b_aug = np.hstack((optical_depths, np.zeros(L.shape[0])))
+        b_aug = np.hstack((optical_depths * weights, np.zeros(L.shape[0])))
 
         # Solve the non-negative least squares problem: min ||A_aug*x - b_aug||^2 subject to x >= 0
         sigmas, residuals = nnls(A_aug, b_aug)
         # sigmas, residuals, rank, s = np.linalg.lstsq(A_aug, b_aug, rcond=None)
+        if snr is not None and self.min_layer_weight is not None:
+            path = self.distances_per_led_and_layer
+            layer_weight = (weights[:, None] * path).sum(axis=0) / np.maximum(path.sum(axis=0), 1e-12)
+            sigmas = np.where(layer_weight < self.min_layer_weight, np.nan, sigmas)
 
         return sigmas
 

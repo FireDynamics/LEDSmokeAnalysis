@@ -36,6 +36,10 @@ class ExperimentData:
     :type num_ref_images: int
     :ivar ref_img_indices: Indices of reference images to use. If None, use num_ref_imgs.
     :type ref_img_indices: list[int] or None
+    :ivar dark_img_indices: Indices of images with the LEDs and the ambient light off. If None, no dark level is subtracted.
+    :type dark_img_indices: list[int] or None
+    :ivar snr_full_weight: Signal-to-noise ratio from which on an LED gets the full weight in the linear solver.
+    :type snr_full_weight: float or None
     :ivar reference_property: Reference property to be analysed.
     :type reference_property: str
     :ivar merge_led_arrays: Merge LED arrays option.
@@ -56,6 +60,10 @@ class ExperimentData:
         self.num_iterations = None
         self.num_ref_images = None
         self.ref_img_indices = None
+        self.dark_img_indices = None
+        self.snr_full_weight = None
+        self.min_layer_weight = 0.5
+        self.num_avg_images = 1
         self.lambda_reg = None
         self.reference_property = None
         self.merge_led_arrays = None
@@ -73,6 +81,8 @@ class ExperimentData:
         self.ref_img_indices = config_analysis.get_list_of_values('DEFAULT', 'ref_img_indices')
         if self.ref_img_indices is None:
             self.num_ref_images = int(config_analysis['DEFAULT']['num_ref_images'])
+        if config_analysis.has_option('DEFAULT', 'dark_img_indices'):
+            self.dark_img_indices = config_analysis.get_list_of_values('DEFAULT', 'dark_img_indices')
         self.solver = config_analysis['DEFAULT']['solver']
         if self.solver == 'nonlinear':
             self.weighting_preference = float(config_analysis['DEFAULT']['weighting_preference'])
@@ -80,6 +90,13 @@ class ExperimentData:
             self.num_iterations = int(config_analysis['DEFAULT']['num_iterations'])
         elif self.solver == 'linear':
             self.lambda_reg = float(config_analysis['DEFAULT']['lambda_reg'])
+            if config_analysis.has_option('DEFAULT', 'snr_full_weight') and \
+                    config_analysis['DEFAULT']['snr_full_weight'].strip().lower() != 'none':
+                self.snr_full_weight = float(config_analysis['DEFAULT']['snr_full_weight'])
+            if config_analysis.has_option('DEFAULT', 'num_avg_images'):
+                self.num_avg_images = int(config_analysis['DEFAULT']['num_avg_images'])
+            if config_analysis.has_option('DEFAULT', 'min_layer_weight'):
+                self.min_layer_weight = float(config_analysis['DEFAULT']['min_layer_weight'])
         self.reference_property = config_analysis['DEFAULT']['reference_property']
 
         self.led_arrays = config_analysis.get_list_of_values('model_parameters', 'led_array_indices')
