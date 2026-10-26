@@ -90,6 +90,55 @@ For a complete list of options, run:
 python -m ledsa --help
 ```
 
+### Stacked multi-camera analysis
+
+Several cameras that watch the same LED arrays can be inverted jointly, so that the
+rays of all of them constrain one set of extinction coefficients. Create the
+configuration file and run the analysis with:
+
+```bash
+python -m ledsa -conf_s
+python -m ledsa -as
+```
+
+`config_stacked.ini` holds the solver and domain settings in `[DEFAULT]`, one
+`[simulation_N]` section per camera, and a `[led_arrays]` section that maps a virtual
+array ID to the array IDs of the individual runs.
+
+Reference images are chosen per camera. Image IDs are counted within each run and the
+cameras usually record at their own cadence, so the same ID is a different point in time
+in each of them, and the first images of one camera can be disturbed while those of
+another are clean. `num_ref_images` and `ref_img_indices` can therefore be set inside a
+`[simulation_N]` section, where they override `[DEFAULT]` for that camera alone:
+
+```ini
+[DEFAULT]
+num_ref_images  = 10
+ref_img_indices = None
+
+[simulation_0]
+path            = /data/exp01/cam0
+camera_position = 1.0 0.0 1.5
+
+[simulation_1]
+path            = /data/exp01/cam1
+camera_position = -1.0 0.0 1.5
+# the first images of this camera are disturbed, so I0 is taken from the images
+# recorded at the same time as images 1-10 of camera 0
+ref_img_indices = 385 386 387 388 389 390 391 392 393 394
+```
+
+A camera without its own setting inherits the one from `[DEFAULT]`, and
+`ref_img_indices = None` in a section switches that camera back to `num_ref_images` even
+when `[DEFAULT]` names a list. Pick images from the same time window before the fire in
+every camera - a reference image recorded at a different time gives that camera an I0 of
+its own and biases its share of the joint inversion. The images that went into I0 are
+named per simulation in the header of the result file:
+
+```
+# Stacked inversion | sim0:arr0 | sim1:arr0 | solver: linear | ref_prop: sum_col_val | ref_imgs: sim0 first 10, sim1 [385, 386, 387] | LEDSA 0.10.0
+```
+
 ### Corrupted images
 
 Images that cannot be read - missing, empty, truncated or stored in an unsupported

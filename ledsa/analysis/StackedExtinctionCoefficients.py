@@ -100,8 +100,11 @@ class StackedExtinctionCoefficients:
             )
             self.sub_experiments.append(exp)
 
+        # sub_experiments follows sorted(self.led_array_mapping), so the simulation index of every
+        # experiment is the one its reference image settings have to be read from
         self._sub_solvers: List = [
-            self._build_sub_solver(exp) for exp in self.sub_experiments
+            self._build_sub_solver(exp, sim_idx)
+            for sim_idx, exp in zip(sorted(self.led_array_mapping), self.sub_experiments)
         ]
 
         self.distances_per_led_and_layer: np.ndarray = np.array([])
@@ -115,15 +118,21 @@ class StackedExtinctionCoefficients:
     # Sub-solver factory
     # ------------------------------------------------------------------
 
-    def _build_sub_solver(self, experiment: Experiment):
-        """Create a single-experiment solver instance for *experiment*."""
+    def _build_sub_solver(self, experiment: Experiment, sim_idx: int):
+        """Create a single-experiment solver instance for *experiment*.
+
+        :param experiment: Experiment of the simulation the solver belongs to.
+        :type experiment: Experiment
+        :param sim_idx: Index of that simulation, used to read its own reference images.
+        :type sim_idx: int
+        """
         cfg = self.config
         if cfg.solver == 'linear':
             return ExtinctionCoefficientsLinear(
                 experiment=experiment,
                 reference_property=cfg.reference_property,
-                num_ref_imgs=cfg.num_ref_images,
-                ref_img_indices=cfg.ref_img_indices,
+                num_ref_imgs=cfg.get_num_ref_images(sim_idx),
+                ref_img_indices=cfg.get_ref_img_indices(sim_idx),
                 average_images=cfg.average_images,
                 lambda_reg=cfg.lambda_reg,
             )
@@ -131,8 +140,8 @@ class StackedExtinctionCoefficients:
             return ExtinctionCoefficientsNonLinear(
                 experiment=experiment,
                 reference_property=cfg.reference_property,
-                num_ref_imgs=cfg.num_ref_images,
-                ref_img_indices=cfg.ref_img_indices,
+                num_ref_imgs=cfg.get_num_ref_images(sim_idx),
+                ref_img_indices=cfg.get_ref_img_indices(sim_idx),
                 average_images=cfg.average_images,
                 weighting_preference=cfg.weighting_preference,
                 weighting_curvature=cfg.weighting_curvature,
@@ -468,6 +477,7 @@ class StackedExtinctionCoefficients:
         header = (
             f'Stacked inversion | {sim_info} | solver: {self.solver} | '
             f'ref_prop: {self.config.reference_property} | '
+            f'ref_imgs: {self._ref_img_info()} | '
             f'LEDSA {version("ledsa")}\n'
         )
         header += 'Layer_bottom_height[m],' + ','.join(map(str, layers.borders[:-1])) + '\n'
@@ -508,6 +518,23 @@ class StackedExtinctionCoefficients:
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+
+    def _ref_img_info(self) -> str:
+        """Describe the reference images of every simulation, e.g. ``sim0 first 10, sim1 [385, 386]``.
+
+        Every camera can use reference images of its own, so the result only states which ones
+        went into I₀ if it names them per simulation.
+
+        :return: One entry per simulation, in the order of the simulation indices.
+        :rtype: str
+        """
+        descriptions = []
+        for sim_idx, sub in zip(sorted(self.led_array_mapping), self._sub_solvers):
+            if sub.ref_img_indices is None:
+                descriptions.append(f'sim{sim_idx} first {sub.num_ref_imgs}')
+            else:
+                descriptions.append(f'sim{sim_idx} {list(sub.ref_img_indices)}')
+        return ', '.join(descriptions)
 
     def _output_dir(self) -> Path:
         return (
