@@ -1,4 +1,5 @@
 import os
+import re
 from typing import List, Union
 
 import numpy as np
@@ -304,6 +305,32 @@ COLUMN_LAYOUTS = {
 LEGACY_FIT_COLUMNS = BASE_COLUMNS + LED_CENTER_COLUMNS + FIT_COLUMNS[:-1]
 
 
+def _find_first_result_file(channel: int) -> str:
+    """
+    Find the step 3 result file with the lowest image ID of a channel.
+
+    An image that could not be read has no result file at all, so the lowest analysed image ID is not
+    necessarily 1 and the result file of image 1 does not have to exist.
+
+    :param channel: Channel number whose result files are searched.
+    :type channel: int
+    :return: Path of the result file with the lowest image ID.
+    :rtype: str
+    :raises FileNotFoundError: If the channel has no result file.
+    """
+    dir_path = os.path.join('analysis', f'channel{channel}')
+    img_ids = []
+    if os.path.isdir(dir_path):
+        for file_name in os.listdir(dir_path):
+            img = re.search(r"(\d+)_led_positions.csv", file_name)
+            if img is not None:
+                img_ids.append(int(img.group(1)))
+    if not img_ids:
+        raise FileNotFoundError(f'No analysis results in {dir_path}. Run the data extraction (-s3 or '
+                                f'-s3_fast) before the analysis.')
+    return os.path.join(dir_path, f'{min(img_ids)}_led_positions.csv')
+
+
 def _get_column_names(channel: int) -> List[str]:
     """
     Get the column names for the specified channel from the number of columns of the CSV files.
@@ -313,8 +340,9 @@ def _get_column_names(channel: int) -> List[str]:
     :return: List of column names.
     :rtype: List[str]
     :raises ValueError: If the file cannot be parsed or the number of columns matches no known layout.
+    :raises FileNotFoundError: If the channel has no result file.
     """
-    file_path = os.path.join('analysis', f'channel{channel}', '1_led_positions.csv')
+    file_path = _find_first_result_file(channel)
     try:
         parameters = ledsa.core.file_handling.read_table(file_path, delim=',', silent=True, atleast_2d=True)
     except ValueError as error:
