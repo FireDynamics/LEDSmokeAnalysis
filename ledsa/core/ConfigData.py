@@ -17,7 +17,8 @@ class ConfigData(cp.ConfigParser):
                  time_diff_to_image_time=None, img_name_string=None, num_img_overflow=None,
                  first_img_experiment_id=None, last_img_experiment_id=None, ref_img_id=None, ignore_led_indices=None,
                  led_array_edge_indices=None, led_array_edge_coordinates=None, first_img_analysis_id=None,
-                 last_img_analysis_id=None, num_skip_imgs=0, num_skip_leds=0, merge_led_array_indices=None):  # TODO: merge LED arrays
+                 last_img_analysis_id=None, num_skip_imgs=0, num_skip_leds=0, merge_led_array_indices=None,
+                 sideband_distances='25 60', sideband_floor=0.05, sideband_exclusion_margin=None):  # TODO: merge LED arrays
         """
         :param load_config_file: Determines whether to load the config file on initialization. Defaults to True.
         :type load_config_file: bool
@@ -76,6 +77,15 @@ class ConfigData(cp.ConfigParser):
         :type num_skip_leds: int
         :param merge_led_array_indices: Flag to merge LED arrays for analysis. Defaults to None. TODO: not a flag but list of arrays to merge?
         :type merge_led_array_indices: bool or None
+        :param sideband_distances: Inner and outer distance in pixels across the LED strip of the side bands used to
+            estimate the pedestal for sidebg_sum_col_val. Defaults to '25 60'.
+        :type sideband_distances: str
+        :param sideband_floor: Lower limit of sidebg_sum_col_val and bgsub2_sum_col_val as fraction of sum_col_val.
+            Defaults to 0.05.
+        :type sideband_floor: float
+        :param sideband_exclusion_margin: Side band pixels within search_area_radius + margin of any other search area
+            are excluded. Defaults to None, i.e. margin = search_area_radius.
+        :type sideband_exclusion_margin: int or None
         """
         cp.ConfigParser.__init__(self, allow_no_value=True)
         if load_config_file:
@@ -150,6 +160,13 @@ class ConfigData(cp.ConfigParser):
             self['analyse_photo']['   num_skip_imgs'] = str(num_skip_imgs)
             self.set('analyse_photo', '   # In the analysis, only LEDs are considered with id dividable by skip_leds + 1.')
             self['analyse_photo']['   num_skip_leds'] = str(num_skip_leds)
+            self.set('analyse_photo', '   # Pedestal estimation in side bands parallel to the LED strip (sidebg_sum_col_val):')
+            self.set('analyse_photo', '   # inner and outer distance of the side bands across the strip in pixels,')
+            self['analyse_photo']['   sideband_distances'] = str(sideband_distances)
+            self.set('analyse_photo', '   # lower limit of the corrected sum as fraction of the plain sum,')
+            self['analyse_photo']['   sideband_floor'] = str(sideband_floor)
+            self.set('analyse_photo', '   # pixels within search_area_radius + margin of other search areas are excluded, None: margin = radius.')
+            self['analyse_photo']['   sideband_exclusion_margin'] = str(sideband_exclusion_margin)
 
             with open('config.ini', 'w', encoding='utf-8') as configfile:
                 self.write(configfile)
