@@ -1,6 +1,8 @@
 *** Settings ***
 Resource  global_keywords.resource
 
+Suite Setup  Extract Step 3 Results
+
 Force Tags  analysis  background_subtraction
 
 *** Variables ***
@@ -76,6 +78,13 @@ Fitted Step 3 Output Can Be Analysed
     Check Fitted Results    4
 
 *** Keywords ***
+Extract Step 3 Results
+    [Documentation]    The suites before may leave the work directory without step 3 results (suite 07 empties
+    ...                analysis/channel0), so extract them here and drop a binary of an earlier run.
+    Change Directory    ${WORKDIR}
+    Execute Ledsa    -s3_fast
+    Remove File    ${BINARY}
+
 Check Fitted Results
     [Arguments]    ${image_id}
     ${rmse_sum} =    Check Input Vs Computed Extinction Coefficients    ${image_id}    linear
