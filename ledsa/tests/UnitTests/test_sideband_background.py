@@ -4,7 +4,10 @@ import pytest
 from ledsa.data_extraction.sideband_background import (build_sideband_pixels, estimate_sideband_background,
                                                        estimate_strip_directions, get_sideband_pixels,
                                                        subtract_pedestal)
-from ledsa.data_extraction.step_3_functions import _generate_led_analysis_data, get_sideband_parameters
+import ledsa.core.image_reading as image_reading
+from ledsa.core.image_reading import get_bayer_channel_mask
+from ledsa.data_extraction.step_3_functions import (_generate_led_analysis_data, _get_unmerged_led_arrays,
+                                                    get_sideband_parameters)
 
 SEARCH_AREA_RADIUS = 8
 LED_SPACING = 20
@@ -227,3 +230,78 @@ class TestSidebandParameters:
         ConfigData(load_config_file=False, sideband_distances='12 20', sideband_floor=0.1,
                    sideband_exclusion_margin=3)
         assert get_sideband_parameters(ConfigData()) == ((12.0, 20.0), 0.1, 3)
+
+
+class TestUnmergedLedArrays:
+    def test_without_merge_the_analysis_arrays_are_used(self):
+        conf = {'analyse_positions': {'merge_led_array_indices': 'None', 'num_arrays': '2'}}
+        assert _get_unmerged_led_arrays(conf, [[0, 1], [2, 3]]) == [[0, 1], [2, 3]]
+
+    def test_with_merge_the_arrays_of_step_2_are_read(self, tmp_path, monkeypatch):
+        # merged arrays may contain several strips, the strip direction is estimated per array of step 2
+        from ledsa.data_extraction.step_2_functions import generate_led_array_indices_files
+        monkeypatch.chdir(tmp_path)
+        generate_led_array_indices_files([[0, 1, 2], [3, 4, 5]])
+        conf = {'analyse_positions': {'merge_led_array_indices': '0 1', 'num_arrays': '2'}}
+        led_arrays = _get_unmerged_led_arrays(conf, [[0, 1, 2, 3, 4, 5]])
+        assert [sorted(led_ids.tolist()) for led_ids in led_arrays] == [[0, 1, 2], [3, 4, 5]]
+
+
+class TestNanReferenceProperty:
+    @pytest.fixture
+    def coefficients(self, monkeypatch):
+        from types import SimpleNamespace
+        import pandas as pd
+        import ledsa.analysis.ExtinctionCoefficients as extinction_coefficients
+        from ledsa.analysis.ExtinctionCoefficientsLinear import ExtinctionCoefficientsLinear
+        index = pd.MultiIndex.from_product([[1, 2], [0, 1, 2]], names=['img_id', 'led_id'])
+        img_data = pd.DataFrame({'led_array_id': 0, 'sum_col_val': 100.0,
+                                 'sidebg_sum_col_val': [90.0, np.nan, 90.0, 90.0, np.nan, 90.0]}, index=index)
+        monkeypatch.setattr(extinction_coefficients, 'read_hdf', lambda channel, path: img_data)
+        coefficients = ExtinctionCoefficientsLinear.__new__(ExtinctionCoefficientsLinear)
+        coefficients.experiment = SimpleNamespace(channel=0, path='.', led_array=0)
+        coefficients.average_images = False
+        return coefficients
+
+    def test_nan_values_stop_the_analysis(self, coefficients):
+        # the solvers would fail with an unspecific error (linear) or return zeros (nonlinear)
+        coefficients.reference_property = 'sidebg_sum_col_val'
+        with pytest.raises(ValueError, match=r'2 values of sidebg_sum_col_val of led array 0 are NaN \(led ids 1\)'):
+            coefficients.load_img_data()
+
+    def test_property_without_nan_is_loaded(self, coefficients):
+        coefficients.reference_property = 'sum_col_val'
+        coefficients.load_img_data()
+        assert coefficients.analysed_img_ids == [1, 2]
+
+
+class TestChannelMask:
+    # RGGB pattern as in rawpy raw_colors_visible: 0 red, 1 and 3 green, 2 blue
+    FILTER_ARRAY = np.tile(np.array([[0, 1], [3, 2]]), (2, 2))
+
+    @pytest.mark.parametrize('channel, colors', [(0, [0]), (1, [1, 3]), (2, [2])])
+    def test_bayer_channel_mask(self, channel, colors):
+        mask = get_bayer_channel_mask(self.FILTER_ARRAY, channel)
+        np.testing.assert_array_equal(mask, np.isin(self.FILTER_ARRAY, colors))
+
+    def test_raw_mask_keeps_channel_pixels_with_value_zero(self, monkeypatch):
+        data = np.where(self.FILTER_ARRAY == 1, 0, 7)  # the first green channel is clipped at 0
+        monkeypatch.setattr(image_reading, '_read_img_array_from_raw_file',
+                            lambda filename, channel: (data, self.FILTER_ARRAY))
+        channel_array, mask = image_reading.read_channel_data_and_mask_from_img('img.CR3', 1)
+        np.testing.assert_array_equal(mask, np.isin(self.FILTER_ARRAY, [1, 3]))
+        np.testing.assert_array_equal(channel_array, np.where(mask, data, 0))
+        np.testing.assert_array_equal(channel_array, image_reading._read_channel_data_from_raw_file('img.CR3', 1))
+
+    def test_all_pixels_of_a_png_belong_to_the_channel(self, tmp_path):
+        import matplotlib.pyplot as plt
+        path = tmp_path / 'img.png'
+        plt.imsave(path, np.random.default_rng(0).random((6, 8, 3)))
+        channel_array, mask = image_reading.read_channel_data_and_mask_from_img(str(path), 1)
+        np.testing.assert_array_equal(channel_array, image_reading.read_channel_data_from_img(str(path), 1))
+        assert mask.shape == channel_array.shape and mask.all()
+
+    def test_unsupported_format_raises(self):
+        from ledsa.core.image_integrity import CorruptedImageError
+        with pytest.raises(CorruptedImageError, match='unsupported file extension'):
+            image_reading.read_channel_data_and_mask_from_img('img.xyz', 0)
