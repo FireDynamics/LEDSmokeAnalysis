@@ -90,16 +90,31 @@ class TestBackgroundSubtractedSum:
     def test_csv_serialization_contains_bgsub_value(self):
         led_data = extract_led_data(make_synthetic_image(background=10.0))
         main_data_fields = led_data.get_main_data_string().split(',')
-        assert len(main_data_fields) == 6
+        assert len(main_data_fields) >= 6  # further background columns are appended after bgsub
         assert float(main_data_fields[5]) == pytest.approx(led_data.bgsub_sum_color_value, rel=1e-4)
 
 
 class TestColumnNames:
-    def _write_led_positions_csv(self, tmp_path, num_columns):
+    def _write_led_positions_csv(self, tmp_path, num_columns, header='# header'):
         channel_dir = tmp_path / 'analysis' / 'channel0'
         channel_dir.mkdir(parents=True)
         row = ','.join(str(float(i)) for i in range(num_columns))
-        (channel_dir / '1_led_positions.csv').write_text(f'# header\n{row}\n{row}\n', encoding='utf-8')
+        (channel_dir / '1_led_positions.csv').write_text(f'{header}\n{row}\n{row}\n', encoding='utf-8')
+
+    def test_csv_written_by_step_3_without_fit(self, tmp_path, monkeypatch):
+        from ledsa.core.file_handling import _get_column_names
+        from ledsa.data_extraction.step_3_functions import _create_header
+        img_infos = np.array([['1', 'img.jpg', '12:00:00', '0']])
+        header = _create_header(0, '1', 'img.jpg', img_infos, 'root', False).strip()
+        num_columns = len(header.split('\n')[1].split(','))
+        self._write_led_positions_csv(tmp_path, num_columns, header)
+        monkeypatch.chdir(tmp_path)
+        columns = _get_column_names(0)
+        assert columns[:7] == ["img_id", "led_id", "led_array_id", "sum_col_val", "mean_col_val",
+                               "max_col_val", "bgsub_sum_col_val"]
+        assert "sidebg_sum_col_val" in columns and "sidebg_pedestal" in columns
+        assert columns[-2:] == ["width", "height"]
+        assert len(columns) == num_columns + 3
 
     def test_new_csv_with_bgsub_column(self, tmp_path, monkeypatch):
         from ledsa.core.file_handling import _get_column_names
@@ -125,6 +140,8 @@ class TestColumnNames:
         led_data = LEDAnalysisData(3, 0, True)
         led_data.sum_color_value, led_data.mean_color_value, led_data.max_color_value = 41210.0, 103.0, 232
         led_data.bgsub_sum_color_value = 40000.0
+        led_data.sidebg_sum_color_value, led_data.sidebg_pedestal = 39000.0, 2210.0
+        led_data.bgsub2_sum_color_value = 39500.0
         led_data.led_center_x, led_data.led_center_y = 50.521, 60.25
         led_data.fit_results = SimpleNamespace(x=np.arange(1.5, 9.5), success=True, fun=0.5, nfev=120)
         led_data.fit_time = 0.25
@@ -138,10 +155,25 @@ class TestColumnNames:
         named = dict(zip(columns[1:], values))
         assert named['max_col_val'] == 232
         assert named['bgsub_sum_col_val'] == pytest.approx(40000.0)
+        assert named['sidebg_pedestal'] == pytest.approx(2210.0)
+        assert named['bgsub2_sum_col_val'] == pytest.approx(39500.0)
         assert named['led_center_x'] == pytest.approx(50.521)
         assert named['A'] == pytest.approx(5.5)
         assert named['fit_nfev'] == 120
         assert named['fit_time'] == pytest.approx(0.25)
+
+    @pytest.mark.parametrize('num_columns, last_main', [(6, 'bgsub_sum_col_val'), (9, 'bgsub2_sum_col_val'),
+                                                         (20, 'bgsub_sum_col_val'), (23, 'bgsub2_sum_col_val')])
+    def test_layouts(self, tmp_path, monkeypatch, num_columns, last_main):
+        from ledsa.core.file_handling import _get_column_names
+        self._write_led_positions_csv(tmp_path, num_columns)
+        monkeypatch.chdir(tmp_path)
+        columns = _get_column_names(0)
+        assert len(columns) == num_columns + 1 + 2
+        main = columns[:columns.index('led_center_x')] if 'led_center_x' in columns else columns[:-2]
+        assert main[-1] == last_main
+        if num_columns > 9:
+            assert columns[-3:] == ['fit_time', 'width', 'height']
 
     def test_fitted_csv_without_delimiter_raises_with_hint(self, tmp_path, monkeypatch):
         # fitted files of this branch written before the delimiter fix: bgsub_sum_col_value and led_center_x glued
@@ -177,7 +209,7 @@ class TestColumnNames:
         assert columns[:4] == first_names
         assert len(columns) == num_columns + 1 + 2
 
-    @pytest.mark.parametrize('num_columns', [7, 19, 21])
+    @pytest.mark.parametrize('num_columns', [7, 19, 21, 22])
     def test_unknown_layout_raises(self, tmp_path, monkeypatch, num_columns):
         from ledsa.core.file_handling import _get_column_names
         self._write_led_positions_csv(tmp_path, num_columns)
