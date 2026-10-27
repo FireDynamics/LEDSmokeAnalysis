@@ -11,6 +11,12 @@ strip and over +-R along the strip (R = search_area_radius), so they sample the 
 The strip direction is estimated locally for each LED from its nearest neighbours in the same LED array, so vertical,
 horizontal and oblique strips are supported. Pixels close to any other search area are excluded from the bands, so
 neighbouring strips do not enter the estimate.
+
+The exclusion is purely geometric and does not know the halo of the LEDs, so for strips closer than the outer band
+distance and for wide halos the light of a neighbouring strip can still reach the bands and raise the estimated
+pedestal. Most of that light cancels in the ratio to the reference image, because it is LED light and dims with the
+same transmission as the LED itself; what remains is a bias only if the two strips lie at different depths in the
+smoke, which is removed by raising sideband_exclusion_margin above the visible halo.
 """
 from typing import List, Optional, Sequence, Tuple
 
