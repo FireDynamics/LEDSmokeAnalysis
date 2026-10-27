@@ -233,7 +233,11 @@ def create_binary_data(channel: int, path: str = '.') -> None:
     try:
         os.chdir(path)
         config = ConfigData()
+        first_file_path = _find_first_result_file(channel)
         columns = _get_column_names(channel)
+        # the names carry the img_id that is prepended on load and the coordinates that are appended below,
+        # the result file itself has neither
+        num_columns_of_first_file = len(columns) - 3
 
         fit_params_list = []
 
@@ -261,6 +265,16 @@ def create_binary_data(channel: int, path: str = '.') -> None:
                 skipped_img_ids.append(image_id)
                 continue
 
+            # The column names are taken from the first result file and used for all of them, so files of
+            # different width cannot be loaded together. They occur when step 3 was run again for part of
+            # the images after a LEDSA version that writes further columns was installed.
+            if parameters.shape[-1] != num_columns_of_first_file:
+                raise ValueError(f'{in_file_path} has {parameters.shape[-1]} columns, while '
+                                 f'{first_file_path} has {num_columns_of_first_file} columns. The result '
+                                 f'files of channel {channel} were written with different column layouts, '
+                                 f'so the column names of the first file do not fit the others. Run the '
+                                 f'data extraction (-s3 or -s3_fast) again for every image of the channel.')
+
             parameters = parameters[parameters[:, 0].argsort()]  # sort for led_id
             parameters = _append_coordinates(parameters)
             fit_params_fragment = _param_array_to_dataframe(parameters, image_id, columns)
@@ -282,7 +296,13 @@ def create_binary_data(channel: int, path: str = '.') -> None:
         fit_params['max_col_val'] = fit_params['max_col_val'].astype(int)
         fit_params['sum_col_val'] = fit_params['sum_col_val'].astype(int)
         out_file_path = os.path.join('analysis', f'channel{channel}', 'all_parameters.h5')
-        fit_params.to_hdf(out_file_path, key='channel_values', format='table', append=True)
+        if os.path.exists(out_file_path):
+            # The binary data are derived from the step 3 files, so they are rewritten from scratch.
+            # Appending would keep every LED of the earlier run next to the new one, and after a change of
+            # the columns it fails in the middle of the write.
+            print(f'{out_file_path} of an earlier run is replaced.')
+            os.remove(out_file_path)
+        fit_params.to_hdf(out_file_path, key='channel_values', format='table')
     finally:
         os.chdir(prev_dir)
 
