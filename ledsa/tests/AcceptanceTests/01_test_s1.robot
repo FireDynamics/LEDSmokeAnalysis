@@ -16,6 +16,16 @@ Step One Without Existing Config File
     ${infos} =  Start Step One      use_config=${FALSE}
     Hundred leds should be found and the pdf created    ${infos}
 
+Step One Keeps The Help Texts Of The Config
+    [Documentation]     The run fills in values and writes the config back, which must not
+    ...                 cost the config the comments explaining its options.
+    Create Config
+    ${before} =     Count Config Help Texts
+    Should Be True  ${before} > 0
+    Start Step One
+    ${after} =      Count Config Help Texts
+    Should Be Equal As Integers     ${after}    ${before}
+
 
 *** Keywords ***
 Start Step One

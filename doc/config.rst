@@ -25,3 +25,11 @@ ConfigDataStacked
    :members:
    :undoc-members:
    :show-inheritance:
+
+config_file
+-----------
+
+.. automodule:: ledsa.core.config_file
+   :members:
+   :undoc-members:
+   :show-inheritance:

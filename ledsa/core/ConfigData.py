@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 
 import numpy as np
 
+from ledsa.core.config_file import save_config
 from ledsa.core.image_reading import get_exif_datetime
 
 
@@ -202,9 +203,10 @@ class ConfigData(cp.ConfigParser):
     def save(self) -> None:
         """
         Saves the current configuration to 'config.ini' file.
+
+        The comments of the file, which hold the help texts of the options, are kept.
         """
-        with open('config.ini', 'w', encoding='utf-8') as configfile:
-            self.write(configfile)
+        save_config(self, 'config.ini')
         print('config.ini saved')
 
     def get2dnparray(self, section, option, num_col=2, dtype=int) -> np.ndarray:

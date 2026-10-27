@@ -2,6 +2,8 @@ import configparser as cp
 from pathlib import Path
 from typing import Dict, List, Optional
 
+from ledsa.core.config_file import save_config
+
 
 class ConfigDataStacked(cp.ConfigParser):
     """
@@ -85,9 +87,8 @@ class ConfigDataStacked(cp.ConfigParser):
         print(f'{self._filename} loaded.')
 
     def save(self) -> None:
-        """Write the current configuration back to disk."""
-        with open(self._filename, 'w', encoding='utf-8') as f:
-            self.write(f)
+        """Write the current configuration back to disk, keeping the comments of the file."""
+        save_config(self, self._filename)
         print(f'{self._filename} saved.')
 
     # ------------------------------------------------------------------
