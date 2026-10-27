@@ -1,6 +1,7 @@
 import os
 import re
 import time
+from importlib.metadata import version
 from typing import List, Optional, Tuple
 
 import numpy as np
@@ -465,7 +466,8 @@ def _create_header(channel: int, img_id: str, img_filename: str, img_infos: np.n
     """
     out_str = f'# image root = {basename}, photo file name = {img_filename}, '
     out_str += f"channel = {channel}, "
-    out_str += f"time[s] = {img_infos[int(img_id) - 1][3]}\n"
+    out_str += f"time[s] = {img_infos[int(img_id) - 1][3]}, "
+    out_str += f"LEDSA {version('ledsa')}\n"
     out_str += "# id,line,sum_col_value,average_col_value,max_col_value,bgsub_sum_col_value"
     out_str += ",sidebg_sum_col_value,sidebg_pedestal,bgsub2_sum_col_value"
     out_str += ",ob_sum_col_value,ob_noise_sum_col_value"
