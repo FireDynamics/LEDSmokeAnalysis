@@ -265,7 +265,6 @@ def extionction_coefficient_calculation(args) -> None:
                     eca = ECN.ExtinctionCoefficientsNonLinear(ex, reference_property=ex_data.reference_property,
                                                               num_ref_imgs=ex_data.num_ref_images,
                                                               ref_img_indices=ex_data.ref_img_indices,
-                                                              dark_img_indices=ex_data.dark_img_indices,
                                                               weighting_curvature=ex_data.weighting_curvature,
                                                               weighting_preference=ex_data.weighting_preference,
                                                               num_iterations=ex_data.num_iterations)
@@ -273,7 +272,6 @@ def extionction_coefficient_calculation(args) -> None:
                     eca = ECA.ExtinctionCoefficientsLinear(ex, reference_property=ex_data.reference_property,
                                                            num_ref_imgs=ex_data.num_ref_images,
                                                            ref_img_indices=ex_data.ref_img_indices,
-                                                           dark_img_indices=ex_data.dark_img_indices,
                                                            snr_full_weight=ex_data.snr_full_weight,
                                                            min_layer_weight=ex_data.min_layer_weight,
                                                            num_avg_images=ex_data.num_avg_images,

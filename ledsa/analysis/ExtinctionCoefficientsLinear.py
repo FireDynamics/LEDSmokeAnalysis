@@ -20,7 +20,7 @@ class ExtinctionCoefficientsLinear(ExtinctionCoefficients):
     """
 
     def __init__(self, experiment, reference_property='sum_col_val', num_ref_imgs=10, average_images=False, ref_img_indices=None, lambda_reg=1e-3,
-                 dark_img_indices=None, snr_full_weight=None, min_layer_weight=0.5, num_avg_images=1):
+                 snr_full_weight=None, min_layer_weight=0.5, num_avg_images=1):
         """
         Initialize the ExtinctionCoefficientsLinear object.
 
@@ -36,9 +36,6 @@ class ExtinctionCoefficientsLinear(ExtinctionCoefficients):
         :type average_images: bool
         :param lambda_reg: Regularization parameter for Tikhonov regularization.
         :type lambda_reg: float
-        :param dark_img_indices: Indices of images taken with the LEDs and the ambient light switched off. If None, no
-            dark level is subtracted.
-        :type dark_img_indices: list[int] or None
         :param snr_full_weight: Signal-to-noise ratio from which on an LED gets the full weight in the solver. Below,
             the weight decreases linearly to zero at a signal of zero. If None, all LEDs are weighted equally.
         :type snr_full_weight: float or None
@@ -50,7 +47,7 @@ class ExtinctionCoefficientsLinear(ExtinctionCoefficients):
         """
         self.min_layer_weight = min_layer_weight
         super().__init__(experiment, reference_property, num_ref_imgs, ref_img_indices, average_images,
-                         dark_img_indices, snr_full_weight, num_avg_images)
+                         snr_full_weight, num_avg_images)
         self.lambda_reg = lambda_reg
         self.solver = 'linear'
 

@@ -39,36 +39,6 @@ def read_channel_data_from_img(filename: str, channel: int) -> np.ndarray:
     return _read_or_raise(filename, reader, channel)
 
 
-def read_channel_data_and_mask_from_img(filename: str, channel: int) -> Tuple[np.ndarray, np.ndarray]:
-    """
-    Returns the same 2D channel array as read_channel_data_from_img together with a boolean mask of the
-    pixels that belong to the selected color channel.
-
-    For RAW files the mask is taken from the Bayer filter pattern (raw_colors_visible) and not from the pixel
-    values, because pixels of the selected channel can be 0 as well (noise clipped at 0 after the black level
-    subtraction). For JPG/PNG files every pixel belongs to the channel.
-
-    :param filename: The path of the image file to read.
-    :type filename: str
-    :param channel: The color channel to process.
-    :type channel: int
-    :return: The channel array and the boolean channel mask of the same shape.
-    :rtype: tuple[np.ndarray, np.ndarray]
-    :raises CorruptedImageError: If the image cannot be read or has an unsupported file extension.
-    """
-    def read_img_file(img_filename, img_channel):
-        channel_array = _read_channel_data_from_img_file(img_filename, img_channel)
-        return channel_array, np.ones(channel_array.shape, dtype=bool)
-
-    def read_raw_file(raw_filename, raw_channel):
-        img_array, filter_array = _read_img_array_from_raw_file(raw_filename, raw_channel)
-        channel_mask = get_bayer_channel_mask(filter_array, raw_channel)
-        return np.where(channel_mask, img_array, 0), channel_mask
-
-    reader = _get_reader(filename, read_img_file, read_raw_file)
-    return _read_or_raise(filename, reader, channel)
-
-
 def read_channel_data_and_optical_black_from_img(filename: str, channel: int) -> Tuple[np.ndarray, Optional[np.ndarray],
                                                                                       Optional[np.ndarray],
                                                                                       Optional[np.ndarray]]:

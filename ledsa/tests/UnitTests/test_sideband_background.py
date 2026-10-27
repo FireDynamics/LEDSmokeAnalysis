@@ -264,7 +264,6 @@ class TestNanReferenceProperty:
         # set in __init__; neither property analysed here has a noise column, and the LED weighting and the
         # averaging of the linear solver are off
         coefficients.noise_property = None
-        coefficients.dark_img_indices = None
         coefficients.num_avg_images = 1
         return coefficients
 
@@ -289,24 +288,46 @@ class TestChannelMask:
         mask = get_bayer_channel_mask(self.FILTER_ARRAY, channel)
         np.testing.assert_array_equal(mask, np.isin(self.FILTER_ARRAY, colors))
 
+    class FakeRaw:
+        """The part of a rawpy RawPy object that LEDSA reads, for a sensor without an optical black margin."""
+
+        def __init__(self, data, filter_array):
+            self.raw_image_visible = data
+            self.raw_colors_visible = filter_array
+            self.raw_image = data
+            self.raw_colors = filter_array
+            self.sizes = type('Sizes', (), {'left_margin': 0, 'top_margin': 0, 'height': data.shape[0]})
+            self.black_level_per_channel = [0, 0, 0, 0]
+            self.white_level = 255
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
     def test_raw_mask_keeps_channel_pixels_with_value_zero(self, monkeypatch):
-        data = np.where(self.FILTER_ARRAY == 1, 0, 7)  # the first green channel is clipped at 0
-        monkeypatch.setattr(image_reading, '_read_img_array_from_raw_file',
-                            lambda filename, channel: (data, self.FILTER_ARRAY))
-        channel_array, mask = image_reading.read_channel_data_and_mask_from_img('img.CR3', 1)
+        data = np.where(self.FILTER_ARRAY == 1, 0, 7).astype(np.uint16)  # the first green is clipped at 0
+        monkeypatch.setattr(image_reading.rawpy, 'imread',
+                            lambda filename: self.FakeRaw(data, self.FILTER_ARRAY))
+        channel_array, _, filter_array, _ = \
+            image_reading.read_channel_data_and_optical_black_from_img('img.CR3', 1)
+        mask = get_bayer_channel_mask(filter_array, 1)
         np.testing.assert_array_equal(mask, np.isin(self.FILTER_ARRAY, [1, 3]))
         np.testing.assert_array_equal(channel_array, np.where(mask, data, 0))
         np.testing.assert_array_equal(channel_array, image_reading._read_channel_data_from_raw_file('img.CR3', 1))
 
-    def test_all_pixels_of_a_png_belong_to_the_channel(self, tmp_path):
+    def test_a_png_has_no_filter_array(self, tmp_path):
+        # the side bands read a filter array of None as "every pixel belongs to the channel"
         import matplotlib.pyplot as plt
         path = tmp_path / 'img.png'
         plt.imsave(path, np.random.default_rng(0).random((6, 8, 3)))
-        channel_array, mask = image_reading.read_channel_data_and_mask_from_img(str(path), 1)
+        channel_array, ob_data, filter_array, ob_noise = \
+            image_reading.read_channel_data_and_optical_black_from_img(str(path), 1)
         np.testing.assert_array_equal(channel_array, image_reading.read_channel_data_from_img(str(path), 1))
-        assert mask.shape == channel_array.shape and mask.all()
+        assert filter_array is None and ob_data is None and ob_noise is None
 
     def test_unsupported_format_raises(self):
         from ledsa.core.image_integrity import CorruptedImageError
         with pytest.raises(CorruptedImageError, match='unsupported file extension'):
-            image_reading.read_channel_data_and_mask_from_img('img.xyz', 0)
+            image_reading.read_channel_data_and_optical_black_from_img('img.xyz', 0)

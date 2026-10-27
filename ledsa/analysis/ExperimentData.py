@@ -36,8 +36,6 @@ class ExperimentData:
     :type num_ref_images: int
     :ivar ref_img_indices: Indices of reference images to use. If None, use num_ref_imgs.
     :type ref_img_indices: list[int] or None
-    :ivar dark_img_indices: Indices of images with the LEDs and the ambient light off. If None, no dark level is subtracted.
-    :type dark_img_indices: list[int] or None
     :ivar snr_full_weight: Signal-to-noise ratio from which on an LED gets the full weight in the linear solver.
     :type snr_full_weight: float or None
     :ivar reference_property: Reference property to be analysed.
@@ -60,7 +58,6 @@ class ExperimentData:
         self.num_iterations = None
         self.num_ref_images = None
         self.ref_img_indices = None
-        self.dark_img_indices = None
         self.snr_full_weight = None
         self.min_layer_weight = 0.5
         self.num_avg_images = 1
@@ -81,8 +78,6 @@ class ExperimentData:
         self.ref_img_indices = config_analysis.get_list_of_values('DEFAULT', 'ref_img_indices')
         if self.ref_img_indices is None:
             self.num_ref_images = int(config_analysis['DEFAULT']['num_ref_images'])
-        if config_analysis.has_option('DEFAULT', 'dark_img_indices'):
-            self.dark_img_indices = config_analysis.get_list_of_values('DEFAULT', 'dark_img_indices')
         self.solver = config_analysis['DEFAULT']['solver']
         if self.solver == 'nonlinear':
             self.weighting_preference = float(config_analysis['DEFAULT']['weighting_preference'])

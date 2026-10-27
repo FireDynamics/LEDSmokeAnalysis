@@ -12,7 +12,7 @@ class ConfigDataAnalysis(cp.ConfigParser):
                  led_array_indices=None, num_ref_images=10, ref_img_indices=None, camera_channels=0, num_cores=1,
                  reference_property='sum_col_val',
                  average_images=False, solver='linear', weighting_preference=-6e-3, weighting_curvature=1e-6,
-                 num_iterations=200, lambda_reg=1e-3, dark_img_indices=None,
+                 num_iterations=200, lambda_reg=1e-3,
                  snr_full_weight=None, min_layer_weight=0.5, num_avg_images=1):
         """
         :param load_config_file: Determines whether to load the config file on initialization. Defaults to True.
@@ -50,10 +50,6 @@ class ConfigDataAnalysis(cp.ConfigParser):
         :type num_iterations: int
         :param lambda_reg: Regularization parameter for the linear solver. Defaults to 1e-3.
         :type lambda_reg: float
-        :param dark_img_indices: Indices of images taken with the LEDs and the ambient light switched off. The median
-            of the reference property over these images is subtracted from every LED before the normalisation. If
-            None, no dark level is subtracted. Defaults to None.
-        :type dark_img_indices: list[int] or None
         :param snr_full_weight: Linear solver only: signal-to-noise ratio from which on an LED gets the full weight.
             Below, the weight decreases linearly to zero at a signal of zero. Needs a reference property with a noise
             estimate (ob_sum_col_val). If None, all LEDs are weighted equally. Defaults to None.
@@ -78,8 +74,6 @@ class ConfigDataAnalysis(cp.ConfigParser):
             self['DEFAULT']['   num_ref_images'] = str(num_ref_images)
             self.set('DEFAULT', '   # Indices of reference images to use')
             self['DEFAULT']['   ref_img_indices'] = str(ref_img_indices)
-            self.set('DEFAULT', '   # Indices of images with LEDs and ambient light off, used to subtract a dark level')
-            self['DEFAULT']['   dark_img_indices'] = str(dark_img_indices)
             self.set('DEFAULT', '   # Camera channels to be considered in the analysis')
             self['DEFAULT']['   camera_channels'] = str(camera_channels)
             self.set('DEFAULT', '   # Intensities are computed as average from two consecutive images if set to True ')
