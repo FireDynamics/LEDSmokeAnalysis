@@ -86,8 +86,8 @@ class TestCreateBinaryData:
         channel_dir.mkdir(parents=True)
         coordinates = '\n'.join(f'{float(led_id)},{float(led_id)},{float(led_id) + 0.5}'
                                  for led_id in range(self.NUM_LEDS))
-        (tmp_path / 'analysis' / 'led_search_areas_with_coordinates.csv').write_text(f'{coordinates}\n',
-                                                                                    encoding='utf-8')
+        coordinates_path = tmp_path / 'analysis' / 'led_search_areas_with_coordinates.csv'
+        coordinates_path.write_text(f'{coordinates}\n', encoding='utf-8')
         monkeypatch.chdir(tmp_path)
         return tmp_path
 
