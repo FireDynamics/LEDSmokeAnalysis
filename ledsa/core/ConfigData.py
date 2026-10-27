@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 
 import numpy as np
 
+from ledsa.core.config_file import save_config
 from ledsa.core.image_reading import get_exif_datetime
 
 
@@ -17,7 +18,8 @@ class ConfigData(cp.ConfigParser):
                  time_diff_to_image_time=None, img_name_string=None, num_img_overflow=None,
                  first_img_experiment_id=None, last_img_experiment_id=None, ref_img_id=None, ignore_led_indices=None,
                  led_array_edge_indices=None, led_array_edge_coordinates=None, first_img_analysis_id=None,
-                 last_img_analysis_id=None, num_skip_imgs=0, num_skip_leds=0, merge_led_array_indices=None):  # TODO: merge LED arrays
+                 last_img_analysis_id=None, num_skip_imgs=0, num_skip_leds=0, merge_led_array_indices=None,
+                 sideband_distances='25 60', background_floor=0.05, sideband_exclusion_margin=None):  # TODO: merge LED arrays
         """
         :param load_config_file: Determines whether to load the config file on initialization. Defaults to True.
         :type load_config_file: bool
@@ -43,8 +45,6 @@ class ConfigData(cp.ConfigParser):
         :type time_ref_img_id: str or None
         :param time_ref_img_file: File path of time reference image with a visible clock used for synchronization. Defaults to None.
         :type time_ref_img_file: str or None
-        :param time_ref_img_id: File path of time reference image with a visible clock used for synchronization. Defaults to None.
-        :type time_ref_img_id: str or None
         :param time_ref_img_time: Time shown on the time reference image with. Defaults to None. #TODO: format
         :type time_ref_img_time: str or None
         :param time_diff_to_image_time: Time difference in seconds to the actual image time. Defaults to None.
@@ -76,6 +76,15 @@ class ConfigData(cp.ConfigParser):
         :type num_skip_leds: int
         :param merge_led_array_indices: Flag to merge LED arrays for analysis. Defaults to None. TODO: not a flag but list of arrays to merge?
         :type merge_led_array_indices: bool or None
+        :param sideband_distances: Inner and outer distance in pixels across the LED strip of the side bands used to
+            estimate the pedestal for sidebg_sum_col_val. Defaults to '25 60'.
+        :type sideband_distances: str
+        :param background_floor: Lower limit of sidebg_sum_col_val and bgsub2_sum_col_val as fraction of sum_col_val.
+            Defaults to 0.05.
+        :type background_floor: float
+        :param sideband_exclusion_margin: Side band pixels within search_area_radius + margin of any other search area
+            are excluded. Defaults to None, i.e. margin = search_area_radius.
+        :type sideband_exclusion_margin: int or None
         """
         cp.ConfigParser.__init__(self, allow_no_value=True)
         if load_config_file:
@@ -102,9 +111,9 @@ class ConfigData(cp.ConfigParser):
             self['DEFAULT']['   start_time'] = str(start_time)
             self.set('DEFAULT', '   # ID of time reference image name with a clock to calculate the offset of the camera time. Can be None,')
             self.set('DEFAULT', '   # if time_diff_to_img_time in seconds is given. You might also use time_ref_img_file instead.')
-            self['DEFAULT']['   time_img_id'] = str(time_ref_img_id)
+            self['DEFAULT']['   time_ref_img_id'] = str(time_ref_img_id)
             self.set('DEFAULT', '   # Path of time reference image with a clock to calculate the offset of the camera time. Can be None,')
-            self.set('DEFAULT', '   # if time_diff_to_img_time in seconds is given. ou might also use time_ref_img_id instead.')
+            self.set('DEFAULT', '   # if time_diff_to_img_time in seconds is given. You might also use time_ref_img_id instead.')
             self['DEFAULT']['   time_ref_img_file'] = str(time_ref_img_file)
             self.set('DEFAULT', '   # Time shown on the time reference image')
             self['DEFAULT']['   time_ref_img_time'] = str(time_ref_img_time)
@@ -150,6 +159,14 @@ class ConfigData(cp.ConfigParser):
             self['analyse_photo']['   num_skip_imgs'] = str(num_skip_imgs)
             self.set('analyse_photo', '   # In the analysis, only LEDs are considered with id dividable by skip_leds + 1.')
             self['analyse_photo']['   num_skip_leds'] = str(num_skip_leds)
+            self.set('analyse_photo', '   # Pedestal estimation in side bands parallel to the LED strip (sidebg_sum_col_val):')
+            self.set('analyse_photo', '   # inner and outer distance of the side bands across the strip in pixels,')
+            self['analyse_photo']['   sideband_distances'] = str(sideband_distances)
+            self.set('analyse_photo', '   # lower limit of the corrected sums sidebg_sum_col_val and bgsub2_sum_col_val as fraction of the plain sum,')
+            self['analyse_photo']['   background_floor'] = str(background_floor)
+            self.set('analyse_photo', '   # pixels within search_area_radius + margin of other search areas are excluded, None: margin = radius.')
+            self.set('analyse_photo', '   # Raise the margin above the halo of the LEDs if the strips are close, otherwise their light enters the side bands.')
+            self['analyse_photo']['   sideband_exclusion_margin'] = str(sideband_exclusion_margin)
 
             with open('config.ini', 'w', encoding='utf-8') as configfile:
                 self.write(configfile)
@@ -186,9 +203,10 @@ class ConfigData(cp.ConfigParser):
     def save(self) -> None:
         """
         Saves the current configuration to 'config.ini' file.
+
+        The comments of the file, which hold the help texts of the options, are kept.
         """
-        with open('config.ini', 'w', encoding='utf-8') as configfile:
-            self.write(configfile)
+        save_config(self, 'config.ini')
         print('config.ini saved')
 
     def get2dnparray(self, section, option, num_col=2, dtype=int) -> np.ndarray:
@@ -302,12 +320,16 @@ class ConfigData(cp.ConfigParser):
         """
         import warnings
 
-        has_id = self['DEFAULT']['time_ref_img_id'] != 'None'
-        has_file = self['DEFAULT']['time_ref_img_file'] != 'None'
+        # A config that names the time reference image one way does not carry the option of the other,
+        # so both are read through get, whose fallback stands for an option that is not set.
+        time_ref_img_id = self.get('DEFAULT', 'time_ref_img_id')
+        time_ref_img_file = self.get('DEFAULT', 'time_ref_img_file')
+        has_id = time_ref_img_id != 'None'
+        has_file = time_ref_img_file != 'None'
 
         if not has_id and not has_file:
             raise ValueError(
-                "Neither 'time_img_id' nor 'time_ref_img_file' is set. "
+                "Neither 'time_ref_img_id' nor 'time_ref_img_file' is set. "
                 "Please provide at least one to identify the time reference image."
             )
 
@@ -315,16 +337,16 @@ class ConfigData(cp.ConfigParser):
             generated_path = os.path.abspath(os.path.join(
                 self['DEFAULT']['img_directory'],
                 # the ID is read as a string, a format spec like {:04d} needs it as a number
-                self['DEFAULT']['img_name_string'].format(int(self['DEFAULT']['time_ref_img_id']))
+                self['DEFAULT']['img_name_string'].format(int(time_ref_img_id))
             ))
 
         if has_file:
-            direct_path = os.path.abspath(self['DEFAULT']['time_ref_img_file'])
+            direct_path = os.path.abspath(time_ref_img_file)
 
         if has_id and has_file:
             if generated_path != direct_path:
                 warnings.warn(
-                    f"The path generated from 'time_img_id' ({generated_path}) differs from "
+                    f"The path generated from 'time_ref_img_id' ({generated_path}) differs from "
                     f"'time_ref_img_file' ({direct_path}). Using 'time_ref_img_file'.",
                     UserWarning
                 )

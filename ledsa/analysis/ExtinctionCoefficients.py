@@ -1,5 +1,7 @@
+import warnings
 from abc import ABC, abstractmethod
 from multiprocessing import Pool
+from typing import List
 
 import numpy as np
 import pandas as pd
@@ -167,6 +169,7 @@ class ExtinctionCoefficients(ABC):
         """
         Load processed image data from binary file
 
+        :raises ValueError: If the reference property contains NaN values.
         """
         if self.average_images:
             img_data = read_hdf_avg(self.experiment.channel, path=self.experiment.path)
@@ -180,6 +183,16 @@ class ExtinctionCoefficients(ABC):
         self.calculated_img_data = img_data_cropped[img_data_cropped['led_array_id'] == self.experiment.led_array]
         if self.calculated_img_data.empty:
             exit(f"Apparently there are no intensity values for led array {self.experiment.led_array}!")
+        # The solvers cannot handle NaN: the linear one stops with an unspecific error, the nonlinear one returns
+        # zeros without a warning. sidebg_sum_col_val is NaN for LEDs without side band pixels, for example.
+        nan_values = self.calculated_img_data[self.reference_property].isna()
+        if nan_values.any():
+            nan_led_ids = sorted(self.calculated_img_data[nan_values].index.get_level_values('led_id').unique())
+            led_ids_text = ', '.join(map(str, nan_led_ids[:10])) + (', ...' if len(nan_led_ids) > 10 else '')
+            raise ValueError(f'{int(nan_values.sum())} values of {self.reference_property} of led array '
+                             f'{self.experiment.led_array} are NaN (led ids {led_ids_text}). For sidebg_sum_col_val '
+                             f'this means that no side band pixels were found for these LEDs, see sideband_distances '
+                             f'in config.ini.')
         # Images without analysis results are missing from the binary data, so the IDs are not necessarily a
         # gapless range. They are kept to pair every computed coefficient with the time of its own image.
         self.analysed_img_ids = sorted(
@@ -293,17 +306,52 @@ class ExtinctionCoefficients(ABC):
         """
          Calculate and set the reference intensities for all LEDs based on the reference images.
 
+         :raises ValueError: if none of the reference images holds LED data.
          """
         if self.ref_img_indices is not None:
+            requested_img_ids = list(self.ref_img_indices)
             ref_img_data = self.calculated_img_data.query(f'img_id == {self.ref_img_indices}')
         else:
+            # The reference window is the first num_ref_imgs images, whether or not they were analysed,
+            # so a skipped image among them is missing from the average and has to be reported
+            requested_img_ids = list(range(1, self.num_ref_imgs + 1))
             ref_img_data = self.calculated_img_data.query(f'img_id <= {self.num_ref_imgs}')
+        self._check_requested_ref_imgs_available(ref_img_data, requested_img_ids)
         print(
             f"Images with indices {ref_img_data.index.get_level_values('img_id').unique().values} were used for calculating reference intensities.")
 
         ref_intensities = ref_img_data.groupby(level='led_id')[self.reference_property].mean()
         check_intensity_normalization(ref_img_data, ref_intensities, self.reference_property)
         self.ref_intensities = ref_intensities.to_numpy()
+
+    def _check_requested_ref_imgs_available(self, ref_img_data: pd.DataFrame,
+                                            requested_img_ids: List[int]) -> None:
+        """
+        Report the requested reference images that hold no LED data.
+
+        Images skipped during the intensity extraction keep their ID in the image infos but
+        produce no intensities, so a reference image ID naming one of them would silently
+        drop out of the average instead of being noticed. This holds for the images named by
+        :attr:`ref_img_indices` and for the first :attr:`num_ref_imgs` images alike.
+
+        :param ref_img_data: Intensity data of the requested reference images.
+        :type ref_img_data: pd.DataFrame
+        :param requested_img_ids: IDs of the reference images the configuration asks for.
+        :type requested_img_ids: List[int]
+        :raises ValueError: if none of the requested reference images holds LED data.
+        """
+        available = set(ref_img_data.index.get_level_values('img_id').unique())
+        missing = [img_id for img_id in requested_img_ids if img_id not in available]
+        if not missing:
+            return
+        msg = (f'The reference images {missing} of LED array {self.experiment.led_array} in '
+               f'{self.experiment.path} hold no intensity values. They were either skipped during '
+               f'the extraction of the LED intensities or they lie outside the analysed images.')
+        if not available:
+            raise ValueError(f'{msg} No reference intensities can be calculated. Set num_ref_images or '
+                             f'ref_img_indices in config_analysis.ini to images that hold results.')
+        warnings.warn(f'{msg} The reference intensities are averaged over the remaining images '
+                      f'{sorted(available)}.', category=UserWarning, stacklevel=2)
 
     def apply_color_correction(self, cc_matrix, on='sum_col_val',
                                nchannels=3) -> None:  # TODO: remove hardcoding of nchannels

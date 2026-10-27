@@ -21,11 +21,21 @@ class LEDAnalysisData:
     :ivar bgsub_sum_color_value: Integrated color value of the LED over the search area after subtraction of the
         local background estimated from the border of the search area.
     :vartype bgsub_sum_color_value: float
-    :ivar ob_sum_color_value: Integrated color value of the LED over the search area with the black level taken from
-        the optical black of the sensor and without clipping at zero (RAW images only, NaN otherwise).
+    :ivar sidebg_sum_color_value: Integrated color value of the LED over the search area after subtraction of the
+        pedestal estimated in side bands next to the LED strip, at least a fraction of the plain sum.
+    :vartype sidebg_sum_color_value: float
+    :ivar sidebg_pedestal: Pedestal N * B subtracted for sidebg_sum_color_value (N channel pixels of the search
+        area, B mean per channel pixel in the side bands).
+    :vartype sidebg_pedestal: float
+    :ivar bgsub2_sum_color_value: Integrated color value of the LED over the search area minus N * b, with b the mean
+        over the channel pixels (including 0) of the border ring of the search area, at least a fraction of the
+        plain sum (background_floor).
+    :vartype bgsub2_sum_color_value: float
+    :ivar ob_sum_color_value: Integrated color value of the LED over the search area without the clipping at zero
+        after the black level subtraction (RAW images with an optical black margin only, NaN otherwise).
     :vartype ob_sum_color_value: float
-    :ivar ob_noise_sum_color_value: Standard deviation of ob_sum_color_value from the read noise of the sensor, estimated
-        from the optical black (RAW images only, NaN otherwise).
+    :ivar ob_noise_sum_color_value: Standard deviation of ob_sum_color_value from the read noise of the sensor,
+        estimated from the optical black (RAW images with an optical black margin only, NaN otherwise).
     :vartype ob_noise_sum_color_value: float
     :ivar fit_results: Fit results after fitting.
     :vartype fit_results: OptimizeResult
@@ -51,6 +61,9 @@ class LEDAnalysisData:
         self.sum_color_value = None
         self.max_color_value = None
         self.bgsub_sum_color_value = None
+        self.sidebg_sum_color_value = None
+        self.sidebg_pedestal = None
+        self.bgsub2_sum_color_value = None
         self.ob_sum_color_value = float('nan')
         self.ob_noise_sum_color_value = float('nan')
         self.fit_leds = fit_leds
@@ -81,6 +94,8 @@ class LEDAnalysisData:
         out_str = f'{self.led_id:4d},{self.led_array:2d},'
         out_str += f'{self.sum_color_value:10.4e},{self.mean_color_value:10.4e},{self.max_color_value}'
         out_str += f',{self.bgsub_sum_color_value:10.4e}'
+        out_str += f',{self.sidebg_sum_color_value:10.4e},{self.sidebg_pedestal:10.4e}'
+        out_str += f',{self.bgsub2_sum_color_value:10.4e}'
         out_str += f',{self.ob_sum_color_value:10.4e},{self.ob_noise_sum_color_value:10.4e}'
         return out_str
 

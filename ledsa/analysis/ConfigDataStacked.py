@@ -2,6 +2,8 @@ import configparser as cp
 from pathlib import Path
 from typing import Dict, List, Optional
 
+from ledsa.core.config_file import save_config
+
 
 class ConfigDataStacked(cp.ConfigParser):
     """
@@ -37,6 +39,8 @@ class ConfigDataStacked(cp.ConfigParser):
         [simulation_1]
         path             = /data/exp01/cam1
         camera_position  = -1.0 0.0 1.5
+        # num_ref_images and ref_img_indices may be set per camera and override [DEFAULT]
+        ref_img_indices  = 385 386 387
 
         [led_arrays]
         # integer_id = sim_index:led_array_id  [sim_index:led_array_id ...]
@@ -83,9 +87,8 @@ class ConfigDataStacked(cp.ConfigParser):
         print(f'{self._filename} loaded.')
 
     def save(self) -> None:
-        """Write the current configuration back to disk."""
-        with open(self._filename, 'w', encoding='utf-8') as f:
-            self.write(f)
+        """Write the current configuration back to disk, keeping the comments of the file."""
+        save_config(self, self._filename)
         print(f'{self._filename} saved.')
 
     # ------------------------------------------------------------------
@@ -137,6 +140,23 @@ class ConfigDataStacked(cp.ConfigParser):
     def get_camera_position(self, sim_idx: int) -> List[float]:
         """Camera position ``[x, y, z]`` for simulation *sim_idx*."""
         return self.get_list_of_values(f'simulation_{sim_idx}', 'camera_position', dtype=float)
+
+    def get_ref_img_indices(self, sim_idx: int) -> Optional[List[int]]:
+        """Reference image IDs of simulation *sim_idx*; ``None`` means use
+        :meth:`get_num_ref_images`.
+
+        Image IDs are counted per camera and the cameras run at their own cadence, so the
+        images taken before the fire differ from camera to camera. A value in
+        ``[simulation_N]`` therefore overrides the one in ``[DEFAULT]`` for that camera,
+        a missing value is inherited from ``[DEFAULT]``, and ``None`` in a section switches
+        that camera back to :meth:`get_num_ref_images` even if ``[DEFAULT]`` holds a list.
+        """
+        return self.get_list_of_values(f'simulation_{sim_idx}', 'ref_img_indices',
+                                       dtype=int, fallback=None)
+
+    def get_num_ref_images(self, sim_idx: int) -> int:
+        """Number of reference images of simulation *sim_idx*, inherited from ``[DEFAULT]``."""
+        return int(self.get(f'simulation_{sim_idx}', 'num_ref_images', fallback='10'))
 
     # ------------------------------------------------------------------
     # LED-array mapping
@@ -203,12 +223,18 @@ class ConfigDataStacked(cp.ConfigParser):
 
     @property
     def num_ref_images(self) -> int:
-        """Number of reference images used to compute I₀."""
+        """Number of reference images used to compute I₀, as set in ``[DEFAULT]``.
+
+        Use :meth:`get_num_ref_images` to get the value of a single camera.
+        """
         return int(self.get('DEFAULT', 'num_ref_images', fallback='10'))
 
     @property
     def ref_img_indices(self) -> Optional[List[int]]:
-        """Explicit reference image indices; ``None`` → use *num_ref_images*."""
+        """Explicit reference image indices of ``[DEFAULT]``; ``None`` → use *num_ref_images*.
+
+        Use :meth:`get_ref_img_indices` to get the indices of a single camera.
+        """
         return self.get_list_of_values('DEFAULT', 'ref_img_indices', dtype=int, fallback=None)
 
     @property
@@ -296,6 +322,11 @@ class ConfigDataStacked(cp.ConfigParser):
             cfg[section]['path'] = f'/path/to/sim{i}'
             cfg.set(section, '# Global X Y Z position [m] of camera')
             cfg[section]['camera_position'] = '0.0 0.0 1.5'
+            cfg.set(section, '# Reference images of this camera; both options override the ones above')
+            cfg.set(section, '# Image IDs are counted per camera, so choose images from the same time')
+            cfg.set(section, '# window before the fire in every camera')
+            cfg.set(section, '# ref_img_indices = 385 386 387   (None falls back to num_ref_images)')
+            cfg.set(section, '# num_ref_images = 10')
 
         cfg['led_arrays'] = {}
         cfg.set('led_arrays', '# Each line maps a virtual array ID (integer) to one or more  sim_index:led_array_id  tokens.')

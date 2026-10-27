@@ -38,27 +38,58 @@ def read_channel_data_from_img(filename: str, channel: int) -> np.ndarray:
     reader = _get_reader(filename, _read_channel_data_from_img_file, _read_channel_data_from_raw_file)
     return _read_or_raise(filename, reader, channel)
 
-def read_channel_data_and_optical_black_from_img(filename: str, channel: int) -> Tuple[np.ndarray, Optional[np.ndarray],
-                                                                                      Optional[np.ndarray],
-                                                                                      Optional[np.ndarray]]:
-    """
-    Returns the channel data as read_channel_data_from_img and, for RAW files, a second version of it with the black
-    level taken from the optical black of the same image and without clipping at zero.
 
-    The black level in the RAW metadata can differ from the actual black level of the sensor by a fraction of a count,
-    and the default data are clipped at zero after its subtraction, which turns the negative half of the read noise
-    into a positive offset. Both add up to a constant offset of the integrated intensity of every LED. The second
-    version has no such offset: the black level of every color of the Bayer pattern is the mean of the masked (optical
-    black) pixels at the left margin of the sensor, and values below the black level are kept negative.
+def read_channel_data_and_mask_from_img(filename: str, channel: int) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Returns the same 2D channel array as read_channel_data_from_img together with a boolean mask of the
+    pixels that belong to the selected color channel.
+
+    For RAW files the mask is taken from the Bayer filter pattern (raw_colors_visible) and not from the pixel
+    values, because pixels of the selected channel can be 0 as well (noise clipped at 0 after the black level
+    subtraction). For JPG/PNG files every pixel belongs to the channel.
 
     :param filename: The path of the image file to read.
     :type filename: str
     :param channel: The color channel to process.
     :type channel: int
-    :return: The channel data as read_channel_data_from_img, the optical-black-corrected channel data (float32, other
-        channels masked with 0), the Bayer filter array and the read noise per Bayer color (standard deviation of the
-        optical black, in the scaled units of the channel data). The last three are None for non-RAW images or if the
-        sensor has no optical black margin.
+    :return: The channel array and the boolean channel mask of the same shape.
+    :rtype: tuple[np.ndarray, np.ndarray]
+    :raises CorruptedImageError: If the image cannot be read or has an unsupported file extension.
+    """
+    def read_img_file(img_filename, img_channel):
+        channel_array = _read_channel_data_from_img_file(img_filename, img_channel)
+        return channel_array, np.ones(channel_array.shape, dtype=bool)
+
+    def read_raw_file(raw_filename, raw_channel):
+        img_array, filter_array = _read_img_array_from_raw_file(raw_filename, raw_channel)
+        channel_mask = get_bayer_channel_mask(filter_array, raw_channel)
+        return np.where(channel_mask, img_array, 0), channel_mask
+
+    reader = _get_reader(filename, read_img_file, read_raw_file)
+    return _read_or_raise(filename, reader, channel)
+
+
+def read_channel_data_and_optical_black_from_img(filename: str, channel: int) -> Tuple[np.ndarray, Optional[np.ndarray],
+                                                                                      Optional[np.ndarray],
+                                                                                      Optional[np.ndarray]]:
+    """
+    Returns the channel data as read_channel_data_from_img and, for RAW files, a second version of it without the
+    clipping at zero and with the black level of every color of the Bayer pattern taken individually.
+
+    The channel data of read_channel_data_from_img are clipped at zero after the black level subtraction, which
+    turns the negative half of the read noise into a positive offset of the integrated intensity of every LED. The
+    second version has no such offset: values below the black level are kept negative and every color of the Bayer
+    pattern gets the black level of its own optical black pixels instead of the one of the selected channel.
+
+    :param filename: The path of the image file to read.
+    :type filename: str
+    :param channel: The color channel to process.
+    :type channel: int
+    :return: The channel data as read_channel_data_from_img, the unclipped channel data (float32, other channels
+        masked with 0), the Bayer filter array and the read noise per Bayer color (standard deviation of the optical
+        black, in the scaled units of the channel data). The Bayer filter array is None for non-RAW images, where
+        every pixel belongs to the channel; the unclipped data and the read noise are also None if the sensor has no
+        optical black margin.
     :rtype: tuple
     :raises CorruptedImageError: If the image cannot be read or has an unsupported file extension.
     """
@@ -67,6 +98,22 @@ def read_channel_data_and_optical_black_from_img(filename: str, channel: int) ->
                          _read_channel_data_and_optical_black_from_raw_file)
     return _read_or_raise(filename, reader, channel)
 
+
+def get_bayer_channel_mask(filter_array: np.ndarray, channel: int) -> np.ndarray:
+    """
+    Returns a boolean mask of the Bayer filter positions that belong to the given color channel.
+    The Bayer array contains two green channels (1 and 3), one red (0) and one blue (2).
+
+    :param filter_array: Bayer filter pattern of the raw image (rawpy raw_colors_visible).
+    :type filter_array: np.ndarray
+    :param channel: The color channel (0 red, 1 green, 2 blue).
+    :type channel: int
+    :return: Boolean mask, True where the pixel belongs to the channel.
+    :rtype: np.ndarray
+    """
+    if channel == 1:
+        return (filter_array == 1) | (filter_array == 3)
+    return filter_array == channel
 
 def read_img_array_from_img(filename: str, channel: int) -> np.ndarray:
     """
@@ -173,15 +220,6 @@ def _read_channel_data_from_raw_file(filename: str, channel: int) -> np.ndarray:
     return channel_array
 
 
-def _channel_mask(filter_array: np.ndarray, channel: int) -> np.ndarray:
-    """
-    Mask of the pixels of a color channel in the Bayer filter array (green consists of the colors 1 and 3).
-    """
-    if channel == 1:
-        return (filter_array == 1) | (filter_array == 3)
-    return filter_array == channel
-
-
 # Minimum width of the optical black margin in pixels to estimate the black level from it
 MIN_OPTICAL_BLACK_WIDTH = 8
 
@@ -214,14 +252,14 @@ def _read_channel_data_and_optical_black_from_raw_file(filename: str, channel: i
         white_level = raw.white_level
         ob_mean, ob_std = _optical_black_statistics(raw)
     scale = white_level / (white_level - black_level)
-    mask = _channel_mask(filter_array, channel)
+    mask = get_bayer_channel_mask(filter_array, channel)
     # default data, identical to _read_channel_data_from_raw_file
     img_array = data.astype(np.int16) - black_level
     img_array = (img_array * scale).astype(np.int16)
     img_array = np.clip(img_array, 0, white_level)
     channel_array = np.where(mask, img_array, 0)
     if ob_mean is None:
-        return channel_array, None, None, None
+        return channel_array, None, filter_array, None
     ob_array = data.astype(np.float32)
     ob_array -= ob_mean.astype(np.float32)[filter_array]
     ob_array *= np.float32(scale)
