@@ -163,7 +163,9 @@ class TestRawFileOrientation:
         def __init__(self, raw_image_visible, filter_array, flip):
             self.raw_image_visible = raw_image_visible
             self.raw_colors_visible = filter_array
-            self.sizes = type('Sizes', (), {'flip': flip})
+            # a sensor without an optical black margin, so the black level comes from the metadata
+            self.sizes = type('Sizes', (), {'flip': flip, 'left_margin': 0, 'top_margin': 0,
+                                            'height': raw_image_visible.shape[0]})
             self.black_level_per_channel = [0, 0, 0, 0]
             self.white_level = 255
 

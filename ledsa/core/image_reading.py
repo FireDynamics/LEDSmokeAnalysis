@@ -244,13 +244,60 @@ def _read_channel_data_from_raw_file(filename: str, channel: int, orientation: O
     return channel_array
 
 
+# Minimum width of the optical black margin in pixels to estimate the black level from it
+MIN_OPTICAL_BLACK_WIDTH = 8
+
+
+def _optical_black_mean(raw) -> Optional[np.ndarray]:
+    """
+    Mean of the optical black pixels of a RAW image for every color of the Bayer pattern (index as in
+    raw_colors). The optical black pixels are the masked pixels at the left margin of the sensor, which is
+    read out with the image itself.
+
+    :param raw: The opened RAW image (rawpy).
+    :return: Mean per Bayer color, None if the sensor has no optical black margin of at least
+        MIN_OPTICAL_BLACK_WIDTH pixels.
+    :rtype: np.ndarray or None
+    """
+    sizes = raw.sizes
+    if sizes.left_margin < MIN_OPTICAL_BLACK_WIDTH:
+        return None
+    rows = np.s_[sizes.top_margin:sizes.top_margin + sizes.height]
+    margin = raw.raw_image[rows, :sizes.left_margin].astype(np.float64)
+    colors = raw.raw_colors[rows, :sizes.left_margin]
+    num_colors = int(raw.raw_colors_visible.max()) + 1
+    return np.array([margin[colors == color].mean() for color in range(num_colors)])
+
+
+def _black_level(raw, channel: int) -> float:
+    """
+    Black level of a color channel, taken from the optical black pixels of the image itself.
+
+    The black level of the RAW metadata is a nominal value of the camera model and is used only as a
+    fallback, for sensors without an optical black margin. The two differ by a fraction of a count, and the
+    integration over the search area of an LED turns that difference into a constant offset of its
+    intensity, which does not vanish when the LED dims in smoke. The mean of the optical black pixels also
+    follows the drift of the black level with the sensor temperature.
+
+    :param raw: The opened RAW image (rawpy).
+    :param channel: The color channel to process.
+    :type channel: int
+    :return: Black level of the channel.
+    :rtype: float
+    """
+    optical_black_mean = _optical_black_mean(raw)
+    if optical_black_mean is None:
+        return float(raw.black_level_per_channel[channel])
+    return float(optical_black_mean[channel])
+
+
 def _read_img_array_from_raw_file(filename: str, channel: int,
                                   orientation: Optional[int] = None) -> Tuple[np.ndarray, np.ndarray]:
     # TODO: channel is only relevant for black level, consider individually!
     with rawpy.imread(filename) as raw:
         data = raw.raw_image_visible.copy()
         filter_array = raw.raw_colors_visible
-        black_level = raw.black_level_per_channel[channel]
+        black_level = _black_level(raw, channel)
         white_level = raw.white_level
         raw_orientation = RAW_FLIP_ORIENTATIONS.get(raw.sizes.flip, UPRIGHT_ORIENTATION)
     img_array = data.astype(np.int16) - black_level
