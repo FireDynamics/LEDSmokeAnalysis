@@ -143,6 +143,28 @@ lies within `time_sync_tolerance`. A restart with `-re` retries the skipped imag
 `ref_img_id`, `first_img_experiment_id` and the time reference image stop the run with a
 message naming the file instead of being skipped.
 
+### Vertical images
+
+A camera held on its side writes the pixels in the orientation of its sensor and notes how it
+was held in the metadata, so a vertical photo is stored as a horizontal image. LEDSA turns every
+image upright while it reads it, taking the rotation from the EXIF orientation of JPG and PNG
+files and from the maker notes of the camera for RAW files. The LED positions, the search areas,
+the plots and the coordinates computed from them are therefore all in the orientation the photo
+was taken in.
+
+Images that were exported without their metadata carry no orientation. `img_rotation` in
+`config.ini` turns those, and overrides a wrong orientation:
+
+| `img_rotation` | Rotation of the stored image |
+|---|---|
+| `auto` (default) | as the metadata of each image names it |
+| `0` | none |
+| `90`, `180`, `270` | that many degrees clockwise |
+
+The rotation is part of reading an image, so step 1 and step 3 have to use the same one: changing
+it means running the workflow again from `-s1`, because the search areas of the LEDs no longer fit
+an image read in another orientation.
+
 ### Background correction (optional)
 
 By default the extinction coefficients are computed from `sum_col_val`, the plain sum of

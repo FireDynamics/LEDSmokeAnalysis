@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 import numpy as np
 
 from ledsa.core.config_file import save_config
-from ledsa.core.image_reading import get_exif_datetime
+from ledsa.core.image_reading import AUTO_ROTATION, get_exif_datetime
 
 
 class ConfigData(cp.ConfigParser):
@@ -16,6 +16,7 @@ class ConfigData(cp.ConfigParser):
     def __init__(self, load_config_file=True, img_directory=None, search_area_radius=10, pixel_value_percentile=99.875, channel=0,
                  max_num_leds=None, num_arrays=None, num_cores=1, date=None, start_time=None, time_ref_img_id=None, time_ref_img_file=None, time_ref_img_time=None,
                  time_diff_to_image_time=None, img_name_string=None, num_img_overflow=None,
+                 img_rotation=AUTO_ROTATION,
                  first_img_experiment_id=None, last_img_experiment_id=None, ref_img_id=None, ignore_led_indices=None,
                  led_array_edge_indices=None, led_array_edge_coordinates=None, first_img_analysis_id=None,
                  last_img_analysis_id=None, num_skip_imgs=0, num_skip_leds=0, merge_led_array_indices=None,
@@ -54,6 +55,9 @@ class ConfigData(cp.ConfigParser):
         :type img_name_string: str or None
         :param num_img_overflow: Maximal number an image file ID can have. Defaults to None.
         :type num_img_overflow: int or None
+        :param img_rotation: Degrees the images are turned clockwise to be upright, one of 0, 90, 180 and 270.
+            Defaults to 'auto', which takes the rotation from the metadata of every image.
+        :type img_rotation: str or int
         :param first_img_experiment_id: ID of the first image of the experiment. Defaults to None.
         :type first_img_experiment_id: int or None
         :param last_img_experiment_id: ID of the last image of the experiment. Defaults to None.
@@ -98,6 +102,10 @@ class ConfigData(cp.ConfigParser):
             self['DEFAULT']['   img_name_string'] = str(img_name_string)
             self.set('DEFAULT', '   # Maximum number of image counter.')
             self['DEFAULT']['   num_img_overflow'] = str(num_img_overflow)
+            self.set('DEFAULT', '   # Degrees the images have to be turned clockwise to be upright, for photos')
+            self.set('DEFAULT', '   # taken with the camera on its side: 0, 90, 180 or 270. "auto" takes the')
+            self.set('DEFAULT', '   # rotation from the metadata of every image, which is what cameras store.')
+            self['DEFAULT']['   img_rotation'] = str(img_rotation)
             self.set('DEFAULT', '# Specify which images ar part of the experiment by image indices.')
             self['DEFAULT']['   first_img_experiment_id'] = str(first_img_experiment_id)
             self['DEFAULT']['   last_img_experiment_id'] = str(last_img_experiment_id)

@@ -97,16 +97,19 @@ class DataExtractor:
         config = self.config['find_search_areas']
         in_file_path = os.path.join(config['img_directory'], config['img_name_string'].format(int(config['ref_img_id'])))
         channel = config['channel']
+        rotation = self.config.get('DEFAULT', 'img_rotation')
         search_area_radius = int(config['search_area_radius'])
         max_num_leds = int(config['max_num_leds'])
         pixel_value_percentile = float(config['pixel_value_percentile'])
         try:
             if channel == 'all':
                 # TODO this currently only works for RAW files but should work for JPG files as well
-                data = ledsa.core.image_reading.read_img_array_from_img(in_file_path, channel=0) # TODO: Channel to be removed here!
+                data = ledsa.core.image_reading.read_img_array_from_img(in_file_path, channel=0,
+                                                                        rotation=rotation) # TODO: Channel to be removed here!
             else:
                 channel = int(channel)
-                data = ledsa.core.image_reading.read_channel_data_from_img(in_file_path, channel=channel)
+                data = ledsa.core.image_reading.read_channel_data_from_img(in_file_path, channel=channel,
+                                                                           rotation=rotation)
         except CorruptedImageError as error:
             # The reference image defines the search areas of all other images, so it cannot be skipped
             report_corrupted_images([error], 'search for the LED positions in the reference image')
@@ -137,7 +140,8 @@ class DataExtractor:
         in_file_path = os.path.join(config['img_directory'], config['img_name_string'].format(int(config['ref_img_id'])))
         # TODO this currently only works for RAW files but should work for JPG files as well
         try:
-            data = ledsa.core.image_reading.read_img_array_from_img(in_file_path, channel=0)
+            data = ledsa.core.image_reading.read_img_array_from_img(
+                in_file_path, channel=0, rotation=self.config.get('DEFAULT', 'img_rotation'))
         except CorruptedImageError as error:
             # The plot only illustrates the search areas, so a missing one must not stop the analysis
             report_corrupted_images([error], 'plot of the LED search areas')

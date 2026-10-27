@@ -42,7 +42,8 @@ def generate_analysis_data(img_filename: str, channel: int, search_areas: np.nda
     :rtype: List[LEDAnalysisData]
     """
     file_path = os.path.join(conf['DEFAULT']['img_directory'], img_filename)
-    data, channel_mask = read_channel_data_and_mask_from_img(file_path, channel=channel)
+    data, channel_mask = read_channel_data_and_mask_from_img(file_path, channel=channel,
+                                                             rotation=conf.get('DEFAULT', 'img_rotation'))
     search_area_radius = int(conf['find_search_areas']['search_area_radius'])
     img_analysis_data = []
 

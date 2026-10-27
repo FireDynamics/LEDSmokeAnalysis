@@ -546,7 +546,8 @@ class SimData(_BaseSimData):
             pixel_positions = self.get_pixel_cordinates_of_LED(led_id)
             imagename = self.get_image_name_from_time(time)
             imagefile = os.path.join(self.path_images, imagename)
-            channel_array = read_channel_data_from_img(imagefile, channel)
+            channel_array = read_channel_data_from_img(imagefile, channel,
+                                                       rotation=self.config.get('DEFAULT', 'img_rotation'))
             x, y = pixel_positions[0], pixel_positions[1]
             return np.flip(channel_array[x - radius:x + radius, y - radius:y + radius], axis=0)
         return None

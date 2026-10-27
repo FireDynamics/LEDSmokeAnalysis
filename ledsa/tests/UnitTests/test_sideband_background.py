@@ -287,7 +287,7 @@ class TestChannelMask:
     def test_raw_mask_keeps_channel_pixels_with_value_zero(self, monkeypatch):
         data = np.where(self.FILTER_ARRAY == 1, 0, 7)  # the first green channel is clipped at 0
         monkeypatch.setattr(image_reading, '_read_img_array_from_raw_file',
-                            lambda filename, channel: (data, self.FILTER_ARRAY))
+                            lambda filename, channel, orientation=None: (data, self.FILTER_ARRAY))
         channel_array, mask = image_reading.read_channel_data_and_mask_from_img('img.CR3', 1)
         np.testing.assert_array_equal(mask, np.isin(self.FILTER_ARRAY, [1, 3]))
         np.testing.assert_array_equal(channel_array, np.where(mask, data, 0))

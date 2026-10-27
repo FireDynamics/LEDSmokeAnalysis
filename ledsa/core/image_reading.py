@@ -1,6 +1,6 @@
 import os
 from datetime import datetime, timedelta
-from typing import Callable, Tuple
+from typing import Callable, Optional, Tuple
 
 import exiv2
 import numpy as np
@@ -20,8 +20,36 @@ SUBSEC_TAGS = {'DateTimeOriginal': 'SubSecTimeOriginal',
                'DateTimeDigitized': 'SubSecTimeDigitized'}
 EXIF_DATETIME_FORMATS = ['%Y:%m:%d %H:%M:%S', '%d.%m.%Y %H:%M:%S']
 
+# A camera turned on its side writes the pixels in the orientation of its sensor and notes how it was held in
+# the metadata, so a vertical photo is stored as a horizontal array. The arrays are turned upright while they
+# are read, which keeps the LED positions, the search areas and the plots of every image in one orientation.
+AUTO_ROTATION = 'auto'
+ORIENTATION_EXIF_KEY = 'Exif.Image.Orientation'
+UPRIGHT_ORIENTATION = 1
 
-def read_channel_data_from_img(filename: str, channel: int) -> np.ndarray:
+# The transformation that makes the stored array upright, for every orientation EXIF defines. The numpy
+# functions turn and mirror the first two axes, which leaves the color axis of an RGB array untouched.
+ORIENTATION_TRANSFORMATIONS = {
+    1: lambda img_array: img_array,                                 # upright
+    2: lambda img_array: np.fliplr(img_array),                      # mirrored left to right
+    3: lambda img_array: np.rot90(img_array, 2),                    # upside down
+    4: lambda img_array: np.flipud(img_array),                      # mirrored top to bottom
+    5: lambda img_array: np.swapaxes(img_array, 0, 1),              # mirrored along the main diagonal
+    6: lambda img_array: np.rot90(img_array, -1),                   # to be turned clockwise
+    7: lambda img_array: np.rot90(np.swapaxes(img_array, 0, 1), 2),  # mirrored along the second diagonal
+    8: lambda img_array: np.rot90(img_array, 1),                    # to be turned counter-clockwise
+}
+
+# The orientation an image has if it must be turned by that many degrees clockwise to be upright, used for the
+# img_rotation option of config.ini.
+ROTATION_ORIENTATIONS = {0: 1, 90: 6, 180: 3, 270: 8}
+
+# Orientation of the stored array as LibRaw reports it in sizes.flip of a RAW file. LibRaw derives it from the
+# metadata of the camera maker, so it covers the RAW formats that do not store a plain EXIF orientation.
+RAW_FLIP_ORIENTATIONS = {0: 1, 1: 2, 2: 4, 3: 3, 4: 5, 5: 8, 6: 6, 7: 7}
+
+
+def read_channel_data_from_img(filename: str, channel: int, rotation: str = AUTO_ROTATION) -> np.ndarray:
     """
     Returns a 2D array of the image for a single color channel.
     8bit is default range for JPG. For RAW files the Bayer array is returned as a 2D array where
@@ -31,15 +59,21 @@ def read_channel_data_from_img(filename: str, channel: int) -> np.ndarray:
     :type filename: str
     :param channel: The color channel to process.
     :type channel: int
+    :param rotation: Degrees the stored array is turned clockwise to be upright, 'auto' to take the rotation
+                     from the metadata of the image.
+    :type rotation: str or int
     :return: A 2D array containing the processed image data for one channel.
     :rtype: np.ndarray
     :raises CorruptedImageError: If the image cannot be read or has an unsupported file extension.
+    :raises ValueError: If rotation is neither 'auto' nor one of 0, 90, 180 and 270.
     """
+    orientation = _orientation_from_rotation(rotation)
     reader = _get_reader(filename, _read_channel_data_from_img_file, _read_channel_data_from_raw_file)
-    return _read_or_raise(filename, reader, channel)
+    return _read_or_raise(filename, reader, channel, orientation)
 
 
-def read_channel_data_and_mask_from_img(filename: str, channel: int) -> Tuple[np.ndarray, np.ndarray]:
+def read_channel_data_and_mask_from_img(filename: str, channel: int,
+                                        rotation: str = AUTO_ROTATION) -> Tuple[np.ndarray, np.ndarray]:
     """
     Returns the same 2D channel array as read_channel_data_from_img together with a boolean mask of the
     pixels that belong to the selected color channel.
@@ -52,21 +86,26 @@ def read_channel_data_and_mask_from_img(filename: str, channel: int) -> Tuple[np
     :type filename: str
     :param channel: The color channel to process.
     :type channel: int
+    :param rotation: Degrees the stored array is turned clockwise to be upright, 'auto' to take the rotation
+                     from the metadata of the image.
+    :type rotation: str or int
     :return: The channel array and the boolean channel mask of the same shape.
     :rtype: tuple[np.ndarray, np.ndarray]
     :raises CorruptedImageError: If the image cannot be read or has an unsupported file extension.
+    :raises ValueError: If rotation is neither 'auto' nor one of 0, 90, 180 and 270.
     """
-    def read_img_file(img_filename, img_channel):
-        channel_array = _read_channel_data_from_img_file(img_filename, img_channel)
+    def read_img_file(img_filename, img_channel, img_orientation=None):
+        channel_array = _read_channel_data_from_img_file(img_filename, img_channel, img_orientation)
         return channel_array, np.ones(channel_array.shape, dtype=bool)
 
-    def read_raw_file(raw_filename, raw_channel):
-        img_array, filter_array = _read_img_array_from_raw_file(raw_filename, raw_channel)
+    def read_raw_file(raw_filename, raw_channel, raw_orientation=None):
+        img_array, filter_array = _read_img_array_from_raw_file(raw_filename, raw_channel, raw_orientation)
         channel_mask = get_bayer_channel_mask(filter_array, raw_channel)
         return np.where(channel_mask, img_array, 0), channel_mask
 
+    orientation = _orientation_from_rotation(rotation)
     reader = _get_reader(filename, read_img_file, read_raw_file)
-    return _read_or_raise(filename, reader, channel)
+    return _read_or_raise(filename, reader, channel, orientation)
 
 
 def get_bayer_channel_mask(filter_array: np.ndarray, channel: int) -> np.ndarray:
@@ -85,7 +124,7 @@ def get_bayer_channel_mask(filter_array: np.ndarray, channel: int) -> np.ndarray
         return (filter_array == 1) | (filter_array == 3)
     return filter_array == channel
 
-def read_img_array_from_img(filename: str, channel: int) -> np.ndarray:
+def read_img_array_from_img(filename: str, channel: int, rotation: str = AUTO_ROTATION) -> np.ndarray:
     """
     Returns a 2D array of the image for all color channels.
 
@@ -94,17 +133,24 @@ def read_img_array_from_img(filename: str, channel: int) -> np.ndarray:
     :type filename: str
     :param channel: The color channel used for calculating black level values.
     :type channel: int
+    :param rotation: Degrees the stored array is turned clockwise to be upright, 'auto' to take the rotation
+                     from the metadata of the image.
+    :type rotation: str or int
     :return: A 2D array containing the processed image data for all color channels.
     :rtype: np.ndarray
     :raises CorruptedImageError: If the image cannot be read or has an unsupported file extension.
+    :raises ValueError: If rotation is neither 'auto' nor one of 0, 90, 180 and 270.
     """
-    def read_raw_file(raw_filename, raw_channel):
-        img_array, _ = _read_img_array_from_raw_file(raw_filename, raw_channel)
+    def read_img_file(img_filename, _, img_orientation=None):
+        return _read_grayscale_img_array_from_img_file(img_filename, img_orientation)
+
+    def read_raw_file(raw_filename, raw_channel, raw_orientation=None):
+        img_array, _ = _read_img_array_from_raw_file(raw_filename, raw_channel, raw_orientation)
         return img_array
 
-    reader = _get_reader(filename, lambda img_filename, _: _read_grayscale_img_array_from_img_file(img_filename),
-                         read_raw_file)
-    return _read_or_raise(filename, reader, channel)
+    orientation = _orientation_from_rotation(rotation)
+    reader = _get_reader(filename, read_img_file, read_raw_file)
+    return _read_or_raise(filename, reader, channel, orientation)
 
 
 def _get_reader(filename: str, img_file_reader: Callable, raw_file_reader: Callable) -> Callable:
@@ -131,7 +177,7 @@ def _get_reader(filename: str, img_file_reader: Callable, raw_file_reader: Calla
                                                 f"LEDSA can read {supported} in any case")
 
 
-def _read_or_raise(filename: str, reader: Callable, channel: int) -> np.ndarray:
+def _read_or_raise(filename: str, reader: Callable, channel: int, orientation: Optional[int] = None) -> np.ndarray:
     """
     Read an image and translate every error of the imaging library into a CorruptedImageError.
 
@@ -145,17 +191,21 @@ def _read_or_raise(filename: str, reader: Callable, channel: int) -> np.ndarray:
     :type reader: Callable
     :param channel: The color channel to process.
     :type channel: int
+    :param orientation: EXIF orientation of the stored array, None to take it from the metadata of the image.
+    :type orientation: int or None
     :return: The image data returned by the reader.
     :rtype: np.ndarray
     :raises CorruptedImageError: If the reader fails on the image.
     """
     try:
-        return reader(filename, channel)
+        return reader(filename, channel, orientation)
+    except CorruptedImageError:
+        raise  # the reader already named the image and the reason
     except Exception as error:
         raise CorruptedImageError(filename, error) from error
 
 
-def _read_channel_data_from_img_file(filename: str, channel: int) -> np.ndarray:
+def _read_channel_data_from_img_file(filename: str, channel: int, orientation: Optional[int] = None) -> np.ndarray:
     """
     Reads an image file and extracts a single color channel.
 
@@ -163,14 +213,16 @@ def _read_channel_data_from_img_file(filename: str, channel: int) -> np.ndarray:
     :type filename: str
     :param channel: The index of the color channel to extract (0 for Red, 1 for Green, 2 for Blue in RGB images).
     :type channel: int
+    :param orientation: EXIF orientation of the stored array, None to take it from the metadata of the image.
+    :type orientation: int or None
     :return: A 2D numpy array containing the data of the specified color channel from the image.
     :rtype: np.ndarray
     """
-    img_array = _read_img_array_from_img_file(filename)
+    img_array = _read_img_array_from_img_file(filename, orientation)
     return img_array[:, :, channel]
 
 
-def _read_channel_data_from_raw_file(filename: str, channel: int) -> np.ndarray:
+def _read_channel_data_from_raw_file(filename: str, channel: int, orientation: Optional[int] = None) -> np.ndarray:
     """
     Extracts a single color channel from a RAW image file.
 
@@ -179,10 +231,12 @@ def _read_channel_data_from_raw_file(filename: str, channel: int) -> np.ndarray:
     :param channel: The index of the color channel to extract. The Bayer array typically contains two green channels (1 and 3),
                     one red (0), and one blue (2).
     :type channel: int
+    :param orientation: EXIF orientation of the stored array, None to take it from the metadata of the image.
+    :type orientation: int or None
     :return: A 2D numpy array representing the extracted channel, with all other channel values masked or set to zero.
     :rtype: np.ndarray
     """
-    img_array, filter_array = _read_img_array_from_raw_file(filename, channel)
+    img_array, filter_array = _read_img_array_from_raw_file(filename, channel, orientation)
     if channel == 0 or channel == 2:
         channel_array = np.where(filter_array == channel, img_array, 0)
     elif channel == 1:
@@ -190,27 +244,101 @@ def _read_channel_data_from_raw_file(filename: str, channel: int) -> np.ndarray:
     return channel_array
 
 
-def _read_img_array_from_raw_file(filename: str, channel: int) -> np.ndarray:
+def _read_img_array_from_raw_file(filename: str, channel: int,
+                                  orientation: Optional[int] = None) -> Tuple[np.ndarray, np.ndarray]:
     # TODO: channel is only relevant for black level, consider individually!
     with rawpy.imread(filename) as raw:
         data = raw.raw_image_visible.copy()
         filter_array = raw.raw_colors_visible
         black_level = raw.black_level_per_channel[channel]
         white_level = raw.white_level
+        raw_orientation = RAW_FLIP_ORIENTATIONS.get(raw.sizes.flip, UPRIGHT_ORIENTATION)
     img_array = data.astype(np.int16) - black_level
     img_array = (img_array * (white_level / (white_level - black_level))).astype(np.int16)
     img_array = np.clip(img_array, 0, white_level)
-    return img_array, filter_array
+    if orientation is None:
+        orientation = raw_orientation
+    # The Bayer pattern is turned with the pixels, so the filter array keeps naming the color of every pixel
+    return _apply_orientation(img_array, orientation), _apply_orientation(filter_array, orientation)
 
-def _read_img_array_from_img_file(filename: str) -> np.ndarray:
+def _read_img_array_from_img_file(filename: str, orientation: Optional[int] = None) -> np.ndarray:
     img_array = plt.imread(filename)
-    return img_array
+    if orientation is None:
+        orientation = _read_orientation_from_exif(filename)
+    return _apply_orientation(img_array, orientation)
 
-def _read_grayscale_img_array_from_img_file(filename: str) -> np.ndarray:
-    img_array = plt.imread(filename)
+def _read_grayscale_img_array_from_img_file(filename: str, orientation: Optional[int] = None) -> np.ndarray:
+    img_array = _read_img_array_from_img_file(filename, orientation)
     weights = np.array([0.2989, 0.5870, 0.1140])
     gray = np.dot(img_array[..., :3], weights).astype(np.uint8)
     return gray
+
+
+def _orientation_from_rotation(rotation) -> Optional[int]:
+    """
+    Translate the rotation an analysis is configured with into an EXIF orientation.
+
+    :param rotation: Degrees the stored array is turned clockwise to be upright, 'auto' (or 'None', which an
+                     older config file leaves the option at) to take the rotation from the metadata.
+    :type rotation: str or int or None
+    :return: The orientation of every image of the experiment, None if it is read from each image.
+    :rtype: int or None
+    :raises ValueError: If rotation is neither 'auto' nor one of 0, 90, 180 and 270.
+    """
+    text = str(rotation).strip().lower()
+    if text in (AUTO_ROTATION, 'none', ''):
+        return None
+    try:
+        degrees = float(text)
+    except ValueError:
+        degrees = None
+    if degrees is None or degrees % 90 != 0 or int(degrees) % 360 not in ROTATION_ORIENTATIONS:
+        raise ValueError(f"img_rotation must be '{AUTO_ROTATION}' or one of "
+                         f"{', '.join(str(d) for d in ROTATION_ORIENTATIONS)}, got '{rotation}'")
+    return ROTATION_ORIENTATIONS[int(degrees) % 360]
+
+
+def _read_orientation_from_exif(filename: str) -> int:
+    """
+    Read the orientation of the stored pixel array from the metadata of a JPG or PNG file.
+
+    An image without the entry is taken to be upright, which is how cameras that cannot tell how they were
+    held write their photos and how every image was read before the orientation was taken into account.
+
+    :param filename: The path of the image file to read.
+    :type filename: str
+    :return: The EXIF orientation of the image, 1 if it does not carry one.
+    :rtype: int
+    :raises CorruptedImageError: If the metadata of the image cannot be read.
+    """
+    img, exif_data = _read_exif_data(filename)  # img keeps exif_data alive
+    entry = exif_data.findKey(exiv2.ExifKey(ORIENTATION_EXIF_KEY))
+    if entry == exif_data.end():
+        return UPRIGHT_ORIENTATION
+    try:
+        return int(entry.toInt64())
+    except Exception:  # an entry of an unexpected type says nothing about the orientation
+        return UPRIGHT_ORIENTATION
+
+
+def _apply_orientation(img_array: np.ndarray, orientation: int) -> np.ndarray:
+    """
+    Turn the stored pixel array of an image upright.
+
+    :param img_array: The pixel array as it is stored in the image file.
+    :type img_array: np.ndarray
+    :param orientation: The EXIF orientation of the stored array. The values 0 and 9, which cameras write if
+                        they do not know how they were held, leave the array as it is.
+    :type orientation: int
+    :return: The upright array.
+    :rtype: np.ndarray
+    """
+    transformation = ORIENTATION_TRANSFORMATIONS.get(int(orientation))
+    if transformation is None or int(orientation) == UPRIGHT_ORIENTATION:
+        return img_array
+    # The transformations return a view with reordered axes, whose pixels the analysis would read across the
+    # memory layout of the stored array, so the upright array is laid out as it is read.
+    return np.ascontiguousarray(transformation(img_array))
 
 
 def get_exif_entry(filename: str, tag: str) -> str:
