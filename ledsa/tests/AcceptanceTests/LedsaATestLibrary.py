@@ -426,9 +426,9 @@ class LedsaATestLibrary:
         conf = ConfigDataAnalysis(load_config_file=False, camera_position=None, num_layers=20, domain_bounds=None,
                                   led_array_indices=0, num_ref_images=int(num_ref_images), camera_channels=0,
                                   num_cores=1, reference_property=reference_property,
-                                  average_images=False, solver=solver, weighting_preference=-6e-4,
-                                  weighting_curvature=1e-7,
-                                  num_iterations=2000, lambda_reg=1e-3)
+                                  average_images=False, solver=solver, weighting_preference=-6e-3,
+                                  weighting_curvature=1e-2,
+                                  num_iterations=1000, lambda_reg=1e-3)
         conf.set('experiment_geometry', '   camera_position', '0 0 2')
         conf.set('model_parameters', '   domain_bounds', '0 3')
         conf.save()

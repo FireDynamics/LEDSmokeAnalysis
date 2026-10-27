@@ -208,12 +208,12 @@ class ConfigDataStacked(cp.ConfigParser):
     @property
     def weighting_curvature(self) -> float:
         """Curvature weighting for the nonlinear solver."""
-        return float(self.get('DEFAULT', 'weighting_curvature', fallback='1e-6'))
+        return float(self.get('DEFAULT', 'weighting_curvature', fallback='1e-2'))
 
     @property
     def num_iterations(self) -> int:
         """Maximum iterations for the nonlinear solver."""
-        return int(self.get('DEFAULT', 'num_iterations', fallback='200'))
+        return int(self.get('DEFAULT', 'num_iterations', fallback='1000'))
 
     @property
     def reference_property(self) -> str:
@@ -292,8 +292,8 @@ class ConfigDataStacked(cp.ConfigParser):
         cfg['DEFAULT']['lambda_reg'] = '1e-3'
         cfg.set('DEFAULT', '# Nonlinear solver weights (ignored when solver = linear)')
         cfg['DEFAULT']['weighting_preference'] = '-6e-3'
-        cfg['DEFAULT']['weighting_curvature'] = '1e-6'
-        cfg['DEFAULT']['num_iterations'] = '200'
+        cfg['DEFAULT']['weighting_curvature'] = '1e-2'
+        cfg['DEFAULT']['num_iterations'] = '1000'
         cfg.set('DEFAULT', '# ── Image / reference ──────────────────────────────────────────────')
         cfg['DEFAULT']['reference_property'] = 'sum_col_val'
         cfg['DEFAULT']['num_ref_images'] = '10'
