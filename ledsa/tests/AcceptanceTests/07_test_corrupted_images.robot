@@ -40,6 +40,19 @@ Analysis Skips Images Without Extraction Results
     # mismatch of the time axes and must not be reported as one
     Extco Time Axis Should Be Accepted
 
+Analysis Reads The Column Names From The First Existing Result File
+    [Documentation]     The column names of the analysis are read from one result file. An image that could
+    ...                 not be read has none at all, so an unreadable first image must not keep the analysis
+    ...                 from reading the names from the first file that does exist.
+    Corrupt Image   test_img_1.jpg  truncate
+    Execute Ledsa   -s3_fast
+    Corrupted Images Report Should List     test_img_1.jpg  extraction of the LED intensities
+    # image 1 is the default reference image and has no results here, so image 2 provides the reference
+    Create And Fill Config Analysis     linear      num_ref_images=2
+    Execute Ledsa   --analysis
+    Analysis Should Exclude Image   test_img_1.jpg
+    Extco Time Axis Should Be Accepted
+
 *** Keywords ***
 Restore Test Images
     Restore Corrupted Images

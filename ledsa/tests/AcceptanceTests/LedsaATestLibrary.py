@@ -421,10 +421,11 @@ class LedsaATestLibrary:
         conf.save()
 
     @keyword
-    def create_and_fill_config_analysis(self, solver, reference_property='sum_col_val'):
+    def create_and_fill_config_analysis(self, solver, reference_property='sum_col_val', num_ref_images=1):
+        """Write config_analysis.ini. num_ref_images lets a test take the reference from another image than the first."""
         conf = ConfigDataAnalysis(load_config_file=False, camera_position=None, num_layers=20, domain_bounds=None,
-                                  led_array_indices=0, num_ref_images=1, camera_channels=0, num_cores=1,
-                                  reference_property=reference_property,
+                                  led_array_indices=0, num_ref_images=int(num_ref_images), camera_channels=0,
+                                  num_cores=1, reference_property=reference_property,
                                   average_images=False, solver=solver, weighting_preference=-6e-4,
                                   weighting_curvature=1e-7,
                                   num_iterations=2000, lambda_reg=1e-3)
