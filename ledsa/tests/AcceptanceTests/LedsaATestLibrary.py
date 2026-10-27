@@ -643,6 +643,28 @@ class LedsaATestLibrary:
             os.rename(path, os.path.join('test_data', f'test_img_{img_id:0{int(num_digits)}d}.jpg'))
 
     @keyword
+    def get_led_search_area_extent(self):
+        """Return how far the LED positions found by step 1 reach, as (rows, columns) in pixels.
+
+        The test images show one LED array along the height of the image, so the extent tells
+        whether step 1 read the image in the orientation it was taken in.
+        """
+        search_areas = np.atleast_2d(np.loadtxt(os.path.join('analysis', 'led_search_areas.csv'), delimiter=','))
+        return [int(np.ptp(search_areas[:, 1])), int(np.ptp(search_areas[:, 2]))]
+
+    @keyword
+    def turn_test_images_sideways(self, write_orientation=True):
+        """Store the test images the way a camera held on its side writes a vertical photo.
+
+        The pixels are turned counter-clockwise, so that they have to be turned back clockwise
+        to be upright, and the EXIF orientation of the image says so. Images exported without
+        their metadata carry no orientation, which write_orientation=False reproduces: only the
+        img_rotation option of the config can turn those back.
+        """
+        for path in sorted(glob.glob(os.path.join('test_data', 'test_img_*.jpg'))):
+            turn_img_sideways(path, write_orientation=write_orientation)
+
+    @keyword
     def set_config_option(self, section, option, value):
         """Set an option in the config.ini of the current directory."""
         conf = ConfigData()
@@ -730,6 +752,25 @@ def create_test_image(image_id, experiment, img_dir='test_data', background=0):
     ex["Exif.Photo.SubSecTimeOriginal"] = f"{image_id * 25 % 100:02d}"
     img2.setExifData(ex)
     img2.writeMetadata()
+
+
+def turn_img_sideways(path, write_orientation=True):
+    """Turn the pixels of an image counter-clockwise, keeping the EXIF entries of the camera.
+
+    Saving the turned pixels writes a file without any metadata, so the entries of the original
+    are read before and written back afterwards, together with the orientation of a camera that
+    was held on its side.
+    """
+    img = exiv2.ImageFactory.open(path)
+    img.readMetadata()
+    exif_data = img.exifData()  # img keeps exif_data alive
+    Image.fromarray(np.rot90(np.asarray(Image.open(path)))).save(path)
+    if write_orientation:
+        exif_data['Exif.Image.Orientation'] = '6'  # to be turned clockwise to be upright
+    turned_img = exiv2.ImageFactory.open(path)
+    turned_img.readMetadata()
+    turned_img.setExifData(exif_data)
+    turned_img.writeMetadata()
 
 
 def create_img_array(num_of_leds, transmissions, background=0):
