@@ -455,6 +455,29 @@ class LedsaATestLibrary:
         return out
 
     @keyword
+    def execute_ledsa_expecting_failure(self, arg):
+        """Run ledsa and return its stderr, for a run that is supposed to stop with an error.
+
+        execute_ledsa hands its output to check_error_msg, which aborts the whole suite as soon as
+        anything reaches stderr, so a test of a reported error cannot go through it.
+        """
+        returncode, stderr = run_ledsa_capturing_stderr(arg)
+        if returncode == 0:
+            raise AssertionError(f'ledsa {arg} succeeded, but it was expected to stop with an error.')
+        return stderr
+
+    @keyword
+    def execute_ledsa_expecting_warning(self, arg):
+        """Run ledsa to completion and return its stderr, for a run that is supposed to warn.
+
+        A warning reaches stderr as well, which execute_ledsa would treat as a failed suite.
+        """
+        returncode, stderr = run_ledsa_capturing_stderr(arg)
+        if returncode != 0:
+            raise AssertionError(f'ledsa {arg} stopped with an error:\n{stderr}')
+        return stderr
+
+    @keyword
     def create_cc_matrix_file(self):
         file = open("mean_all_cc_matrix_integral.csv", "w", encoding="utf-8")
         file.write("2,3,4\n1,2,7\n3,4,5")
@@ -737,6 +760,18 @@ def _read_extco_with_warnings():
         # SimData changes into the experiment directory and does not change back
         os.chdir(experiment_dir)
     return [str(entry.message) for entry in caught if entry.category is UserWarning]
+
+
+def run_ledsa_capturing_stderr(arg):
+    """Run ledsa and return its exit code and stderr, without the stderr check of execute_ledsa.
+
+    :param arg: Command line argument ledsa is called with.
+    :return: Exit code and decoded stderr of the run.
+    :rtype: Tuple[int, str]
+    """
+    p = Popen(['python', '-m', 'ledsa', arg], stdin=PIPE, stdout=PIPE, stderr=PIPE)
+    _, stderr = p.communicate()
+    return p.returncode, stderr.decode('utf-8')
 
 
 def wait_for_process_to_finish(p, inp=None):
