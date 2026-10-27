@@ -12,7 +12,7 @@ from ledsa.core.image_handling import get_img_name
 from ledsa.core.image_reading import read_channel_data_and_mask_from_img
 from ledsa.data_extraction.LEDAnalysisData import LEDAnalysisData
 from ledsa.data_extraction.model import target_function
-from ledsa.data_extraction.sideband_background import (DEFAULT_SIDEBAND_DISTANCES, DEFAULT_SIDEBAND_FLOOR,
+from ledsa.data_extraction.sideband_background import (DEFAULT_SIDEBAND_DISTANCES, DEFAULT_BACKGROUND_FLOOR,
                                                         estimate_sideband_background, get_sideband_pixels,
                                                         subtract_pedestal)
 
@@ -51,7 +51,7 @@ def generate_analysis_data(img_filename: str, channel: int, search_areas: np.nda
                                                    search_area_radius, fit_leds)
         return analysis_res
 
-    sideband_distances, sideband_floor, sideband_exclusion_margin = get_sideband_parameters(conf)
+    sideband_distances, background_floor, sideband_exclusion_margin = get_sideband_parameters(conf)
     sideband_pixels = get_sideband_pixels(search_areas, _get_unmerged_led_arrays(conf, line_indices), data.shape,
                                           search_area_radius, sideband_distances, sideband_exclusion_margin)
 
@@ -63,7 +63,7 @@ def generate_analysis_data(img_filename: str, channel: int, search_areas: np.nda
                                                                 led_array_idx, search_areas, search_area_radius, fit_leds,
                                                                 channel_mask=channel_mask,
                                                                 sideband_pixels=sideband_pixels[iled],
-                                                                sideband_floor=sideband_floor)
+                                                                background_floor=background_floor)
                 img_analysis_data.append(led_analysis_data)
     return img_analysis_data
 
@@ -80,15 +80,15 @@ def get_sideband_parameters(conf: ConfigData) -> Tuple[Tuple[float, float], floa
     :rtype: tuple[tuple[float, float], float, int or None]
     """
     distances = DEFAULT_SIDEBAND_DISTANCES
-    floor = DEFAULT_SIDEBAND_FLOOR
+    floor = DEFAULT_BACKGROUND_FLOOR
     exclusion_margin = None
     if conf is not None:
         if conf.get('analyse_photo', 'sideband_distances') != 'None':
             distances = tuple(float(d) for d in conf.get('analyse_photo', 'sideband_distances').split())
             if len(distances) != 2 or not 0 <= distances[0] < distances[1]:
                 raise ValueError(f'sideband_distances must be two distances 0 <= inner < outer, got {distances}.')
-        if conf.get('analyse_photo', 'sideband_floor') != 'None':
-            floor = float(conf.get('analyse_photo', 'sideband_floor'))
+        if conf.get('analyse_photo', 'background_floor') != 'None':
+            floor = float(conf.get('analyse_photo', 'background_floor'))
         if conf.get('analyse_photo', 'sideband_exclusion_margin') != 'None':
             exclusion_margin = int(conf.get('analyse_photo', 'sideband_exclusion_margin'))
     return distances, floor, exclusion_margin
@@ -111,7 +111,14 @@ def _get_unmerged_led_arrays(conf: ConfigData, line_indices: List[List[int]]) ->
     led_arrays = []
     for i in range(int(conf['analyse_positions']['num_arrays'])):
         file_path = os.path.join('analysis', f'led_array_indices_{i:03}.csv')
-        led_arrays.append(read_table(file_path, dtype='int', silent=True))
+        # read_table stays silent, it would report every file of every image; its error message is unspecific
+        try:
+            led_arrays.append(read_table(file_path, dtype='int', silent=True))
+        except OSError as error:
+            raise OSError(f'{file_path} could not be read ({error}). The LED arrays of step 2 are needed to '
+                          f'estimate the strip direction of sidebg_sum_col_val, because merge_led_array_indices '
+                          f'merges LED arrays that may contain several strips. Run step 2 again to write the '
+                          f'files, or unset merge_led_array_indices.') from error
     return led_arrays
 
 
@@ -167,7 +174,7 @@ def find_and_save_not_analysed_imgs(channel: int) -> None:
 def _generate_led_analysis_data(conf: ConfigData, channel: int, data: np.ndarray, debug: bool, iled: int, img_filename: str, led_array_idx: int, search_areas: np.ndarray, search_area_radius: int, fit_leds: bool = True,
                                 channel_mask: Optional[np.ndarray] = None,
                                 sideband_pixels: Optional[Tuple[np.ndarray, np.ndarray]] = None,
-                                sideband_floor: float = DEFAULT_SIDEBAND_FLOOR) -> LEDAnalysisData:
+                                background_floor: float = DEFAULT_BACKGROUND_FLOOR) -> LEDAnalysisData:
     """
     Generate analysis data for a specific LED.
 
@@ -196,8 +203,8 @@ def _generate_led_analysis_data(conf: ConfigData, channel: int, data: np.ndarray
     :type channel_mask: np.ndarray or None
     :param sideband_pixels: Row and column indices of the side band pixels of the LED, None if not available.
     :type sideband_pixels: tuple[np.ndarray, np.ndarray] or None
-    :param sideband_floor: Lower limit of the side band and ring corrected sums as fraction of the box sum.
-    :type sideband_floor: float
+    :param background_floor: Lower limit of the side band and ring corrected sums as fraction of the box sum.
+    :type background_floor: float
     :return: Analysis data for the LED.
     :rtype: LEDAnalysisData
     """
@@ -237,13 +244,13 @@ def _generate_led_analysis_data(conf: ConfigData, channel: int, data: np.ndarray
     # same lower limit as for the side band correction
     ring_background = _estimate_local_background_mean(data[search_area], box_mask)
     led_data.bgsub2_sum_color_value = subtract_pedestal(float(led_data.sum_color_value),
-                                                        num_channel_pixels * ring_background, sideband_floor)
+                                                        num_channel_pixels * ring_background, background_floor)
 
     # b = mean over the channel pixels in the side bands next to the LED strip
     sideband_background = estimate_sideband_background(data, channel_mask, sideband_pixels)
     led_data.sidebg_pedestal = num_channel_pixels * sideband_background
     led_data.sidebg_sum_color_value = subtract_pedestal(float(led_data.sum_color_value), led_data.sidebg_pedestal,
-                                                        sideband_floor)
+                                                        background_floor)
 
     return led_data
 

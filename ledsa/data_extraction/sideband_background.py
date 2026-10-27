@@ -17,7 +17,7 @@ from typing import List, Optional, Sequence, Tuple
 import numpy as np
 
 DEFAULT_SIDEBAND_DISTANCES = (25, 60)
-DEFAULT_SIDEBAND_FLOOR = 0.05
+DEFAULT_BACKGROUND_FLOOR = 0.05
 NUM_DIRECTION_NEIGHBOURS = 4
 
 # geometry of the side bands, cached per process because it only depends on the LED positions
@@ -167,7 +167,7 @@ def estimate_sideband_background(data: np.ndarray, channel_mask: Optional[np.nda
     return float(np.mean(values, dtype=np.float64))
 
 
-def subtract_pedestal(sum_color_value: float, pedestal: float, floor: float = DEFAULT_SIDEBAND_FLOOR) -> float:
+def subtract_pedestal(sum_color_value: float, pedestal: float, floor: float = DEFAULT_BACKGROUND_FLOOR) -> float:
     """
     Subtract the pedestal N * B from the box sum S with a lower limit: max(S - N * B, floor * S).
 

@@ -196,7 +196,16 @@ cannot be estimated (an LED array with a single LED) or if the side bands contai
 for example because the image ends closer to the strip. The analysis stops with an error
 naming these LEDs if the selected `reference_property` contains NaN.
 
-`bgsub2_sum_col_val` and `sidebg_sum_col_val` are kept at least at `sideband_floor`
+Pixels within `search_area_radius` + `sideband_exclusion_margin` of another search area are
+excluded from the bands, with the margin defaulting to the search area radius. This is a
+geometric distance and does not know the halo of the LEDs, so for strips closer than the
+outer band distance and for wide halos the light of the neighbouring strip can still reach
+the bands and raise B. Most of it cancels in the ratio to the reference image, because it is
+LED light and dims with the same transmission as the LED itself; what remains is a bias if
+the two strips lie at different depths in the smoke. Raise `sideband_exclusion_margin` above
+the visible halo of the LEDs in that case.
+
+`bgsub2_sum_col_val` and `sidebg_sum_col_val` are kept at least at `background_floor`
 (default 5 %) of `sum_col_val`; values at this limit carry no information on the
 extinction.
 

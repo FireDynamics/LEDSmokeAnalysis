@@ -59,7 +59,7 @@ def led_data_for(img, mask, search_areas, led_id, floor=0.05):
                                           SIDEBAND_DISTANCES)
     return _generate_led_analysis_data(None, 1, img, False, led_id, 'test_img', 0, search_areas, SEARCH_AREA_RADIUS,
                                        fit_leds=False, channel_mask=mask, sideband_pixels=sideband_pixels[led_id],
-                                       sideband_floor=floor)
+                                       background_floor=floor)
 
 
 class TestStripDirection:
@@ -227,7 +227,7 @@ class TestSidebandParameters:
     def test_values_from_config(self, tmp_path, monkeypatch):
         from ledsa.core.ConfigData import ConfigData
         monkeypatch.chdir(tmp_path)
-        ConfigData(load_config_file=False, sideband_distances='12 20', sideband_floor=0.1,
+        ConfigData(load_config_file=False, sideband_distances='12 20', background_floor=0.1,
                    sideband_exclusion_margin=3)
         assert get_sideband_parameters(ConfigData()) == ((12.0, 20.0), 0.1, 3)
 

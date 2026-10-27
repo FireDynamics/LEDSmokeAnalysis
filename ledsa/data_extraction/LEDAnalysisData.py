@@ -29,7 +29,7 @@ class LEDAnalysisData:
     :vartype sidebg_pedestal: float
     :ivar bgsub2_sum_color_value: Integrated color value of the LED over the search area minus N * b, with b the mean
         over the channel pixels (including 0) of the border ring of the search area, at least a fraction of the
-        plain sum (sideband_floor).
+        plain sum (background_floor).
     :vartype bgsub2_sum_color_value: float
     :ivar fit_results: Fit results after fitting.
     :vartype fit_results: OptimizeResult
