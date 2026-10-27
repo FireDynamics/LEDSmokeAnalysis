@@ -43,8 +43,6 @@ class ConfigData(cp.ConfigParser):
         :type time_ref_img_id: str or None
         :param time_ref_img_file: File path of time reference image with a visible clock used for synchronization. Defaults to None.
         :type time_ref_img_file: str or None
-        :param time_ref_img_id: File path of time reference image with a visible clock used for synchronization. Defaults to None.
-        :type time_ref_img_id: str or None
         :param time_ref_img_time: Time shown on the time reference image with. Defaults to None. #TODO: format
         :type time_ref_img_time: str or None
         :param time_diff_to_image_time: Time difference in seconds to the actual image time. Defaults to None.
@@ -102,9 +100,9 @@ class ConfigData(cp.ConfigParser):
             self['DEFAULT']['   start_time'] = str(start_time)
             self.set('DEFAULT', '   # ID of time reference image name with a clock to calculate the offset of the camera time. Can be None,')
             self.set('DEFAULT', '   # if time_diff_to_img_time in seconds is given. You might also use time_ref_img_file instead.')
-            self['DEFAULT']['   time_img_id'] = str(time_ref_img_id)
+            self['DEFAULT']['   time_ref_img_id'] = str(time_ref_img_id)
             self.set('DEFAULT', '   # Path of time reference image with a clock to calculate the offset of the camera time. Can be None,')
-            self.set('DEFAULT', '   # if time_diff_to_img_time in seconds is given. ou might also use time_ref_img_id instead.')
+            self.set('DEFAULT', '   # if time_diff_to_img_time in seconds is given. You might also use time_ref_img_id instead.')
             self['DEFAULT']['   time_ref_img_file'] = str(time_ref_img_file)
             self.set('DEFAULT', '   # Time shown on the time reference image')
             self['DEFAULT']['   time_ref_img_time'] = str(time_ref_img_time)
@@ -302,12 +300,16 @@ class ConfigData(cp.ConfigParser):
         """
         import warnings
 
-        has_id = self['DEFAULT']['time_ref_img_id'] != 'None'
-        has_file = self['DEFAULT']['time_ref_img_file'] != 'None'
+        # A config that names the time reference image one way does not carry the option of the other,
+        # so both are read through get, whose fallback stands for an option that is not set.
+        time_ref_img_id = self.get('DEFAULT', 'time_ref_img_id')
+        time_ref_img_file = self.get('DEFAULT', 'time_ref_img_file')
+        has_id = time_ref_img_id != 'None'
+        has_file = time_ref_img_file != 'None'
 
         if not has_id and not has_file:
             raise ValueError(
-                "Neither 'time_img_id' nor 'time_ref_img_file' is set. "
+                "Neither 'time_ref_img_id' nor 'time_ref_img_file' is set. "
                 "Please provide at least one to identify the time reference image."
             )
 
@@ -315,16 +317,16 @@ class ConfigData(cp.ConfigParser):
             generated_path = os.path.abspath(os.path.join(
                 self['DEFAULT']['img_directory'],
                 # the ID is read as a string, a format spec like {:04d} needs it as a number
-                self['DEFAULT']['img_name_string'].format(int(self['DEFAULT']['time_ref_img_id']))
+                self['DEFAULT']['img_name_string'].format(int(time_ref_img_id))
             ))
 
         if has_file:
-            direct_path = os.path.abspath(self['DEFAULT']['time_ref_img_file'])
+            direct_path = os.path.abspath(time_ref_img_file)
 
         if has_id and has_file:
             if generated_path != direct_path:
                 warnings.warn(
-                    f"The path generated from 'time_img_id' ({generated_path}) differs from "
+                    f"The path generated from 'time_ref_img_id' ({generated_path}) differs from "
                     f"'time_ref_img_file' ({direct_path}). Using 'time_ref_img_file'.",
                     UserWarning
                 )
