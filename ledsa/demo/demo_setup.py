@@ -88,8 +88,8 @@ def _create_config_files(path):
         average_images=False,
         solver='linear',
         weighting_preference=-6e-3,
-        weighting_curvature=1e-6,
-        num_iterations=200
+        weighting_curvature=1e-2,
+        num_iterations=1000
     )
     config_analysis.set('experiment_geometry', '   camera_position', '7.29 6.46 2.3')
     config_analysis.set('DEFAULT', '   camera_channels', '0 1 2')

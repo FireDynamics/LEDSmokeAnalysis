@@ -52,11 +52,17 @@ jobs:
             exit 1
           fi
 
-      # 5. Create a directory where Robot Framework will place its reports (HTML, XML, etc.)
+      # 5. Run the unit tests, which cover the parts the acceptance tests reach only indirectly
+      - name: Run unit tests
+        run: |
+          pip install pytest
+          python -m pytest ledsa/tests/UnitTests
+
+      # 6. Create a directory where Robot Framework will place its reports (HTML, XML, etc.)
       - name: Create folder for reports
         run: mkdir reports
 
-      # 6. Execute Robot Framework acceptance tests located in ledsa/tests/AcceptanceTests
+      # 7. Execute Robot Framework acceptance tests located in ledsa/tests/AcceptanceTests
       #    The --outputdir option tells Robot where to store its output files.
       - name: Run Robot Framework Tests
         run: |
@@ -64,7 +70,7 @@ jobs:
           --outputdir reports \
           ledsa/tests/AcceptanceTests
 
-      # 7. Always upload the test logs & reports as a GitHub Actions artifact so they can be inspected
+      # 8. Always upload the test logs & reports as a GitHub Actions artifact so they can be inspected
       - name: Upload Robot Framework logs
         if: always()  # Run this step regardless of test success/failure
         uses: actions/upload-artifact@v4

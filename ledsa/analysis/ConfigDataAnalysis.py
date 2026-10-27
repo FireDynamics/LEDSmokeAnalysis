@@ -11,8 +11,8 @@ class ConfigDataAnalysis(cp.ConfigParser):
     def __init__(self, load_config_file=True, camera_position=None, num_layers=20, domain_bounds=None,
                  led_array_indices=None, num_ref_images=10, ref_img_indices=None, camera_channels=0, num_cores=1,
                  reference_property='sum_col_val',
-                 average_images=False, solver='linear', weighting_preference=-6e-3, weighting_curvature=1e-6,
-                 num_iterations=200, lambda_reg=1e-3):
+                 average_images=False, solver='linear', weighting_preference=-6e-3, weighting_curvature=1e-2,
+                 num_iterations=1000, lambda_reg=1e-3):
         """
         :param load_config_file: Determines whether to load the config file on initialization. Defaults to True.
         :type load_config_file: bool
@@ -42,9 +42,9 @@ class ConfigDataAnalysis(cp.ConfigParser):
         :type solver: str
         :param weighting_preference: Weighting factor for the preference to push the nonlinear solver to high or low values for the extinction coeffiientes. Defaults to -6e-3.
         :type weighting_preference: float
-        :param weighting_curvature:  Weighting factor for the smoothness of the solution. Defaults to 1e-6.
+        :param weighting_curvature:  Weighting factor for the smoothness of the solution. Defaults to 1e-2.
         :type weighting_curvature: float
-        :param num_iterations: Maximum number of iterations for the nonlinear solver. Defaults to 200.
+        :param num_iterations: Maximum number of iterations for the nonlinear solver. Defaults to 1000.
         :type num_iterations: int
         :param lambda_reg: Regularization parameter for the linear solver. Defaults to 1e-3.
         :type lambda_reg: float
