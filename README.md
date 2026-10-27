@@ -169,6 +169,37 @@ defines the LED search areas, the first image of the experiment
 (`first_img_experiment_id`), which defines the experiment start time, and the time
 reference image.
 
+### Background correction (optional)
+
+By default the extinction coefficients are computed from `sum_col_val`, the plain sum of
+the pixel values in the search area of each LED. Step 3 additionally writes
+background-corrected sums, which can be selected with `reference_property` in
+`config_analysis.ini`:
+
+| `reference_property` | Background estimate |
+|---|---|
+| `sum_col_val` (default) | none |
+| `bgsub_sum_col_val` | median of the pixels > 0 in a 2 px border ring of the search area, subtracted pixel-wise |
+| `bgsub2_sum_col_val` | mean over the channel pixels (including 0) of the same border ring, subtracted as N·b |
+| `sidebg_sum_col_val` | mean over the channel pixels in side bands next to the LED strip, subtracted as N·B |
+
+N is the number of channel pixels in the search area. For small search areas the border
+ring lies in the halo of the LED itself, whereas the side bands sample the additive
+pedestal next to the LED: stray light, light from the smoke and noise clipped at 0. Under
+dense smoke the box sum consists mostly of this pedestal.
+
+The side bands run parallel to the strip, 25 to 60 px across it (`sideband_distances` in
+`config.ini`); pixels close to other search areas are excluded. The direction of the strip
+is estimated for each LED from its nearest neighbours in the same LED array.
+`sidebg_pedestal` holds the subtracted N·B. `sidebg_sum_col_val` is NaN if the direction
+cannot be estimated (an LED array with a single LED) or if the side bands contain no pixel,
+for example because the image ends closer to the strip. The analysis stops with an error
+naming these LEDs if the selected `reference_property` contains NaN.
+
+`bgsub2_sum_col_val` and `sidebg_sum_col_val` are kept at least at `sideband_floor`
+(default 5 %) of `sum_col_val`; values at this limit carry no information on the
+extinction.
+
 ## Demo
 
 LEDSA includes a demo that demonstrates its functionality using sample data.

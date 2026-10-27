@@ -21,6 +21,16 @@ class LEDAnalysisData:
     :ivar bgsub_sum_color_value: Integrated color value of the LED over the search area after subtraction of the
         local background estimated from the border of the search area.
     :vartype bgsub_sum_color_value: float
+    :ivar sidebg_sum_color_value: Integrated color value of the LED over the search area after subtraction of the
+        pedestal estimated in side bands next to the LED strip, at least a fraction of the plain sum.
+    :vartype sidebg_sum_color_value: float
+    :ivar sidebg_pedestal: Pedestal N * B subtracted for sidebg_sum_color_value (N channel pixels of the search
+        area, B mean per channel pixel in the side bands).
+    :vartype sidebg_pedestal: float
+    :ivar bgsub2_sum_color_value: Integrated color value of the LED over the search area minus N * b, with b the mean
+        over the channel pixels (including 0) of the border ring of the search area, at least a fraction of the
+        plain sum (sideband_floor).
+    :vartype bgsub2_sum_color_value: float
     :ivar fit_results: Fit results after fitting.
     :vartype fit_results: OptimizeResult
     :ivar fit_time: Time taken for fitting.
@@ -45,6 +55,9 @@ class LEDAnalysisData:
         self.sum_color_value = None
         self.max_color_value = None
         self.bgsub_sum_color_value = None
+        self.sidebg_sum_color_value = None
+        self.sidebg_pedestal = None
+        self.bgsub2_sum_color_value = None
         self.fit_leds = fit_leds
         self.fit_results = None
         self.fit_time = None
@@ -73,6 +86,8 @@ class LEDAnalysisData:
         out_str = f'{self.led_id:4d},{self.led_array:2d},'
         out_str += f'{self.sum_color_value:10.4e},{self.mean_color_value:10.4e},{self.max_color_value}'
         out_str += f',{self.bgsub_sum_color_value:10.4e}'
+        out_str += f',{self.sidebg_sum_color_value:10.4e},{self.sidebg_pedestal:10.4e}'
+        out_str += f',{self.bgsub2_sum_color_value:10.4e}'
         return out_str
 
     def get_fit_data_string(self) -> str:

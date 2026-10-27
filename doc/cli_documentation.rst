@@ -34,7 +34,7 @@ Data Extraction
      - Step 3: Analyse all images to extract pixel values inside the search areas and fit them to an LED model (SLOW!).
      - ``--r`` (Use the red channel, default), ``--g`` (Use the green channel), ``--b`` (Use the blue channel), ``-rgb`` (Run for each channel)
    * - ``-s3_fast``, ``--step_3_fast`, ``--analyse_photo_fast``
-     - Step 3: Analyse all images to extract pixel values and calculate the accumulated values inside the search areas (FAST!).
+     - Step 3: Analyse all images to extract pixel values and calculate the accumulated values inside the search areas (FAST!). Besides the plain sum, the background-corrected sums ``bgsub_sum_col_val``, ``bgsub2_sum_col_val`` and ``sidebg_sum_col_val`` are written (see ``reference_property`` in the analysis configuration).
      - --
    * - ``-re``, ``--restart``
      - Restart step 3 if it was previously interrupted. Only the images that have not been analysed are taken into account.
