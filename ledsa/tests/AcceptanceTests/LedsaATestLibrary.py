@@ -650,6 +650,17 @@ class LedsaATestLibrary:
         conf.save()
 
     @keyword
+    def count_config_help_texts(self):
+        """Return the number of comment lines of the config.ini of the current directory.
+
+        The comments are the only documentation the options of a config carry, so a run of
+        LEDSA, which writes the config back whenever it fills in a value it asked for or read
+        from an image, has to leave them where they are.
+        """
+        with open('config.ini', encoding='utf-8-sig') as config_file:
+            return len([line for line in config_file if line.strip().startswith(('#', ';'))])
+
+    @keyword
     def analysed_image_names_should_be(self, *expected_img_names):
         """Fail unless exactly the given images are listed in 'image_infos_analysis.csv'."""
         file_path = os.path.join('analysis', 'image_infos_analysis.csv')

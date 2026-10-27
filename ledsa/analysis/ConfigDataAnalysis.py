@@ -1,5 +1,7 @@
 import configparser as cp
 
+from ledsa.core.config_file import save_config
+
 
 class ConfigDataAnalysis(cp.ConfigParser):
     """
@@ -109,9 +111,10 @@ class ConfigDataAnalysis(cp.ConfigParser):
     def save(self) -> None:
         """
         Saves the current configuration to 'config_analysis.ini' file.
+
+        The comments of the file, which hold the help texts of the options, are kept.
         """
-        with open('config_analysis.ini', 'w', encoding='utf-8') as configfile:
-            self.write(configfile)
+        save_config(self, 'config_analysis.ini')
         print('config_analysis.ini saved')
 
     def get_list_of_values(self, section: str, option: str, dtype=int, fallback=None):
