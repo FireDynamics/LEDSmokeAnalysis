@@ -26,6 +26,11 @@ Analysis
    :undoc-members:
    :show-inheritance:
 
+.. automodule:: ledsa.analysis.temperature_correction
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Stacked Multi-Camera Analysis
 ------------------------------
 

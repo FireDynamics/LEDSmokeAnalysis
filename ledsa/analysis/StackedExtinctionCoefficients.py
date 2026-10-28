@@ -29,7 +29,8 @@ from ledsa.analysis.ConfigDataStacked import ConfigDataStacked
 from ledsa.analysis.Experiment import Camera, Experiment, Layers
 from ledsa.analysis.ExtinctionCoefficientsLinear import ExtinctionCoefficientsLinear
 from ledsa.analysis.ExtinctionCoefficientsNonLinear import ExtinctionCoefficientsNonLinear
-from ledsa.core.file_handling import get_extinction_coefficients_file_path
+from ledsa.analysis.temperature_correction import TemperatureCorrection
+from ledsa.core.file_handling import get_extinction_coefficients_file_path, read_experiment_times
 from importlib.metadata import version
 
 
@@ -97,6 +98,12 @@ class StackedExtinctionCoefficients:
         self.layers = Layers(config.num_layers, *config.domain_bounds)
         self.led_array_mapping: Dict[int, int] = config.get_led_array_mapping(led_array_id)
 
+        # The factors belong to the LEDs, so every camera of this inversion is corrected with them
+        reduction_file = config.get_reduction_file(channel)
+        self.temperature_correction: Optional[TemperatureCorrection] = (
+            TemperatureCorrection.from_file(reduction_file) if reduction_file is not None else None
+        )
+
         self.sub_experiments: List[Experiment] = []
         for sim_idx, arr_id in sorted(self.led_array_mapping.items()):
             cam_pos = config.get_camera_position(sim_idx)
@@ -146,6 +153,7 @@ class StackedExtinctionCoefficients:
                 average_images=cfg.average_images,
                 n_summarize=cfg.n_summarize,
                 lambda_reg=cfg.lambda_reg,
+                temperature_correction=self.temperature_correction,
             )
         elif cfg.solver == 'nonlinear':
             return ExtinctionCoefficientsNonLinear(
@@ -158,6 +166,7 @@ class StackedExtinctionCoefficients:
                 weighting_preference=cfg.weighting_preference,
                 weighting_curvature=cfg.weighting_curvature,
                 num_iterations=cfg.num_iterations,
+                temperature_correction=self.temperature_correction,
             )
         else:
             raise ValueError(
@@ -487,6 +496,7 @@ class StackedExtinctionCoefficients:
             f'Stacked inversion | {sim_info} | solver: {self.solver} | '
             f'ref_prop: {self.reference_property} | '
             f'ref_imgs: {self._ref_img_info()} | '
+            f'temperature_correction: {self._sub_solvers[0].temperature_correction_info()} | '
             f'LEDSA {version("ledsa")}\n'
         )
         header += 'Layer_bottom_height[m],' + ','.join(map(str, layers.borders[:-1])) + '\n'
@@ -562,11 +572,7 @@ class StackedExtinctionCoefficients:
         :return: ``{img_id: experiment_time}`` of the images available for matching.
         :rtype: dict[int, float]
         """
-        info_file = (
-            'image_infos_analysis_avg.csv' if average_images else 'image_infos_analysis.csv'
-        )
-        df = pd.read_csv(experiment.path / 'analysis' / info_file)
-        time_map = {int(i): float(t) for i, t in zip(df['#ID'], df['Experiment_Time[s]'])}
+        time_map = read_experiment_times(experiment.path, average_images)
         if img_data is not None and not img_data.empty:
             # Images without extraction results have no LED intensities and must not be matched
             available_img_ids = set(img_data.index.get_level_values('img_id'))

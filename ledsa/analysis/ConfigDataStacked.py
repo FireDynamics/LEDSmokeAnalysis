@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from ledsa.analysis.ConfigDataAnalysis import DEFAULT_REFERENCE_PROPERTY, parse_reference_properties
+from ledsa.analysis.temperature_correction import TEMPERATURE_CORRECTION_CHANNELS
 from ledsa.core.config_file import save_config
 
 
@@ -289,6 +290,27 @@ class ConfigDataStacked(cp.ConfigParser):
         """Maximum allowed difference [s] when matching images across simulations."""
         return float(self.get('DEFAULT', 'time_sync_tolerance', fallback='0.5'))
 
+    def get_reduction_file(self, channel: int) -> Optional[str]:
+        """Path of the reduction factor file of the temperature correction of *channel*.
+
+        The factors apply to the LEDs themselves, so all cameras of a stacked inversion share
+        the file of a channel. A config file written before the temperature correction existed
+        has no ``[temperature_correction]`` section, which asks for no correction just like the
+        option left at ``None``.
+
+        :param channel: The camera channel.
+        :return: The configured path, ``None`` if the channel is analysed without the correction.
+        """
+        option = f'reduction_file_channel_{channel}'
+        if not self.has_section('temperature_correction'):
+            return None
+        if not self.has_option('temperature_correction', option):
+            return None
+        raw = self.get('temperature_correction', option, fallback='None').strip()
+        if raw.lower() == 'none' or raw == '':
+            return None
+        return raw
+
     # ------------------------------------------------------------------
     # Factory: write a template config to disk
     # ------------------------------------------------------------------
@@ -347,6 +369,17 @@ class ConfigDataStacked(cp.ConfigParser):
             cfg.set(section, '# window before the fire in every camera')
             cfg.set(section, '# ref_img_indices = 385 386 387   (None falls back to num_ref_images)')
             cfg.set(section, '# num_ref_images = 10')
+
+        cfg['temperature_correction'] = {}
+        cfg.set('temperature_correction', '# Correction of the LED intensities for the temperature of the LEDs.')
+        cfg.set('temperature_correction', '# Path of the reduction factor file of every camera channel. A channel with a file')
+        cfg.set('temperature_correction', '# is corrected with it, a channel set to None is analysed as extracted. The factors')
+        cfg.set('temperature_correction', '# are computed outside LEDSA and read from a CSV file holding the experiment time [s]')
+        cfg.set('temperature_correction', '# in its first column, the LED height [m] in its header and the factor the intensity')
+        cfg.set('temperature_correction', '# of that time and height is reduced by in its cells. They apply to the LEDs, so all')
+        cfg.set('temperature_correction', '# cameras of the stacked inversion share the file of a channel.')
+        for channel in TEMPERATURE_CORRECTION_CHANNELS:
+            cfg['temperature_correction'][f'reduction_file_channel_{channel}'] = 'None'
 
         cfg['led_arrays'] = {}
         cfg.set('led_arrays', '# Each line maps a virtual array ID (integer) to one or more  sim_index:led_array_id  tokens.')
