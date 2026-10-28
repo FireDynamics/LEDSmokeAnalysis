@@ -163,7 +163,7 @@ def _find_img_number_list(first: int, last: int, increment: int, number_string_l
 
 
 def _insert_ref_img_ids(img_id_list: List[str], ref_img_experiment_ids: List[int], first: int,
-                        number_string_length=4) -> List[str]:
+                        last: int, number_string_length=4) -> List[str]:
     """
     Add the images used for normalization to the list of the images that are analysed.
 
@@ -178,6 +178,9 @@ def _insert_ref_img_ids(img_id_list: List[str], ref_img_experiment_ids: List[int
     :type ref_img_experiment_ids: List[int]
     :param first: Experiment ID of the first analysed image, the order is counted from.
     :type first: int
+    :param last: Experiment ID of the last analysed image. A reference image may lie behind the
+        last step of the increment, which does not reach the end of the range in general.
+    :type last: int
     :param number_string_length: Number of digits in the image ID (default is 4).
     :type number_string_length: int
     :return: Image IDs of the analysed images, in the order they were taken.
@@ -193,13 +196,15 @@ def _insert_ref_img_ids(img_id_list: List[str], ref_img_experiment_ids: List[int
     def position(img_id) -> int:
         return (int(img_id) - first) % cycle
 
-    last_position = position(img_id_list[-1])
+    # the increment does not reach the end of the range in general, so a reference image behind
+    # its last step is still one of the images of the experiment and is analysed like the others
+    last_position = position(last)
     img_ids = {int(img_id): img_id for img_id in img_id_list}
     outside = [img_id for img_id in ref_img_experiment_ids if position(img_id) > last_position]
     if outside:
         raise ValueError(f'The reference images {outside} of ref_img_experiment_ids in config.ini lie '
-                         f'outside the analysed images {img_id_list[0]} to {img_id_list[-1]}. Widen '
-                         f'that range in config.ini or name other images for the normalization.')
+                         f'outside the analysed images {first} to {last}. Widen that range in '
+                         f'config.ini or name other images for the normalization.')
     for img_id in ref_img_experiment_ids:
         img_ids.setdefault(int(img_id), str(img_id).zfill(number_string_length))
     return [img_ids[img_id] for img_id in sorted(img_ids, key=position)]
@@ -235,7 +240,7 @@ def _build_img_data_string(build_type: str, config: ConfigData) -> str:
         # image_infos.csv of the experiment holds every image anyway, only the analysed ones are
         # thinned out and can lose a reference image
         img_id_list = _insert_ref_img_ids(img_id_list, config.get_ref_img_experiment_ids(),
-                                          first_img_id)
+                                          first_img_id, last_img_id)
     for img_id in img_id_list:
         tag = 'DateTimeOriginal'
         try:

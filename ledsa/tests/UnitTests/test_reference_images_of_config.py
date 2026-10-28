@@ -80,24 +80,30 @@ class TestInsertIntoTheAnalysedImages:
     """num_skip_imgs thins out the analysed images, the named ones are analysed all the same."""
 
     def test_a_skipped_reference_image_is_analysed(self):
-        assert _insert_ref_img_ids(['0001', '0004', '0007'], [5, 6], first=1) == \
+        assert _insert_ref_img_ids(['0001', '0004', '0007'], [5, 6], first=1, last=7) == \
                ['0001', '0004', '0005', '0006', '0007']
 
     def test_a_reference_image_of_the_increment_is_not_analysed_twice(self):
-        assert _insert_ref_img_ids(['0001', '0004', '0007'], [4], first=1) == \
+        assert _insert_ref_img_ids(['0001', '0004', '0007'], [4], first=1, last=7) == \
                ['0001', '0004', '0007']
 
     def test_images_without_a_reference_image_are_left_alone(self):
-        assert _insert_ref_img_ids(['0001', '0003'], None, first=1) == ['0001', '0003']
-        assert _insert_ref_img_ids(['0001', '0003'], [], first=1) == ['0001', '0003']
+        assert _insert_ref_img_ids(['0001', '0003'], None, first=1, last=3) == ['0001', '0003']
+        assert _insert_ref_img_ids(['0001', '0003'], [], first=1, last=3) == ['0001', '0003']
+
+    def test_a_reference_image_behind_the_last_step_of_the_increment_is_analysed(self):
+        # the increment stops at 4 of the images 1 to 5, while image 5 is one of the analysed
+        # images all the same
+        assert _insert_ref_img_ids(['0001', '0004'], [5], first=1, last=5) == \
+               ['0001', '0004', '0005']
 
     def test_a_reference_image_outside_the_analysed_range_raises(self):
         with pytest.raises(ValueError, match=r'\[9\]'):
-            _insert_ref_img_ids(['0001', '0004', '0007'], [9], first=1)
+            _insert_ref_img_ids(['0001', '0004', '0007'], [9], first=1, last=7)
 
     def test_image_ids_that_start_at_one_again_keep_their_order(self):
         # the IDs of the camera run over 9999 and start at 1 again in the middle of the experiment
-        assert _insert_ref_img_ids(['9998', '0001'], [9999], first=9998) == \
+        assert _insert_ref_img_ids(['9998', '0001'], [9999], first=9998, last=1) == \
                ['9998', '9999', '0001']
 
 
