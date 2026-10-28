@@ -38,6 +38,9 @@ class ExperimentData:
     :type ref_img_indices: list[int] or None
     :ivar reference_property: Reference property to be analysed.
     :type reference_property: str
+    :ivar reduction_files: Path of the reduction factor file of the temperature correction per camera
+        channel, None for the channels analysed without the correction.
+    :type reduction_files: dict[int, str or None]
     :ivar merge_led_arrays: Merge LED arrays option.
     :type merge_led_arrays: str
     :ivar lambda_reg: Regularization parameter for linear solver.
@@ -58,6 +61,7 @@ class ExperimentData:
         self.ref_img_indices = None
         self.lambda_reg = None
         self.reference_property = None
+        self.reduction_files = {}
         self.merge_led_arrays = None
         self.solver = None
         self.load_config_parameters()  # Todo: Does that belong here?
@@ -81,6 +85,8 @@ class ExperimentData:
         elif self.solver == 'linear':
             self.lambda_reg = float(config_analysis['DEFAULT']['lambda_reg'])
         self.reference_property = config_analysis['DEFAULT']['reference_property']
+        self.reduction_files = {channel: config_analysis.get_reduction_file(channel)
+                                for channel in (self.channels or [])}
 
         self.led_arrays = config_analysis.get_list_of_values('model_parameters', 'led_array_indices')
         if self.led_arrays is None:

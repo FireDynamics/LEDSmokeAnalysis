@@ -19,7 +19,7 @@ class ExtinctionCoefficientsLinear(ExtinctionCoefficients):
     :vartype solver: str
     """
 
-    def __init__(self, experiment, reference_property='sum_col_val', num_ref_imgs=10, average_images=False, ref_img_indices=None, lambda_reg=1e-3,):
+    def __init__(self, experiment, reference_property='sum_col_val', num_ref_imgs=10, average_images=False, ref_img_indices=None, lambda_reg=1e-3, temperature_correction=None):
         """
         Initialize the ExtinctionCoefficientsLinear object.
 
@@ -35,8 +35,12 @@ class ExtinctionCoefficientsLinear(ExtinctionCoefficients):
         :type average_images: bool
         :param lambda_reg: Regularization parameter for Tikhonov regularization.
         :type lambda_reg: float
+        :param temperature_correction: Reduction factors of the LED intensities of the channel. None
+            leaves the intensities as they were extracted.
+        :type temperature_correction: TemperatureCorrection or None
         """
-        super().__init__(experiment, reference_property, num_ref_imgs, ref_img_indices, average_images)
+        super().__init__(experiment, reference_property, num_ref_imgs, ref_img_indices, average_images,
+                         temperature_correction)
         self.lambda_reg = lambda_reg
         self.solver = 'linear'
 

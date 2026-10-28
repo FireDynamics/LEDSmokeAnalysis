@@ -1,6 +1,6 @@
 import os
 import re
-from typing import List, Union
+from typing import Dict, List, Union
 
 import numpy as np
 import pandas as pd
@@ -72,6 +72,26 @@ def create_analysis_infos_avg():  # TODO: Move funtion somewhere else
     img_infos_analysis_avg.reset_index()
     out_file_path = os.path.join('analysis', 'image_infos_analysis_avg.csv')
     img_infos_analysis_avg.to_csv(out_file_path)
+
+
+def read_experiment_times(path: Union[str, os.PathLike] = '.', average_images: bool = False) -> Dict[int, float]:
+    """
+    Read the experiment time of every image of a LEDSA run from its image infos.
+
+    :param path: Root directory of the LEDSA run, defaults to the current directory.
+    :type path: str or os.PathLike
+    :param average_images: Whether the image infos of the averaged images are read.
+    :type average_images: bool
+    :return: Experiment time [s] of every image ID.
+    :rtype: dict[int, float]
+    :raises FileNotFoundError: If the image infos file does not exist.
+    """
+    info_file = 'image_infos_analysis_avg.csv' if average_images else 'image_infos_analysis.csv'
+    file_path = os.path.join(path, 'analysis', info_file)
+    image_infos = pd.read_csv(file_path)
+    return {int(img_id): float(experiment_time)
+            for img_id, experiment_time in zip(image_infos['#ID'], image_infos['Experiment_Time[s]'])}
+
 
 def read_table(filename: str, delim=' ', dtype='float', atleast_2d=False, silent=False) -> np.ndarray:
     """

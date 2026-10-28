@@ -7,7 +7,9 @@ import numpy as np
 import pandas as pd
 
 from ledsa.analysis.Experiment import Experiment, Layers, Camera
-from ledsa.core.file_handling import read_hdf, read_hdf_avg, extend_hdf, create_analysis_infos_avg
+from ledsa.analysis.temperature_correction import TemperatureCorrection
+from ledsa.core.file_handling import (read_hdf, read_hdf_avg, extend_hdf, create_analysis_infos_avg,
+                                      read_experiment_times)
 from ledsa.data_extraction.data_integrity import check_intensity_normalization
 
 from importlib.metadata import version
@@ -37,12 +39,17 @@ class ExtinctionCoefficients(ABC):
     :vartype cc_matrix: np.ndarray or None
     :ivar average_images: Flag to determine if intensities are computed as an average from two consecutive images.
     :vartype average_images: bool
+    :ivar temperature_correction: Reduction factors of the LED intensities over time and height, None for
+        an analysis without the temperature correction.
+    :vartype temperature_correction: TemperatureCorrection or None
+    :ivar temperature_corrected: Whether the reduction factors have been divided out of the loaded data.
+    :vartype temperature_corrected: bool
     :ivar solver: Indication whether the calculation is to be carried out numerically or analytically.
     :vartype type: str
     """
 
     def __init__(self, experiment, reference_property='sum_col_val', num_ref_imgs=10, ref_img_indices=None,
-                 average_images=False):
+                 average_images=False, temperature_correction=None):
         """
         :param experiment: Object representing the experimental setup.
         :type experiment: Experiment
@@ -54,6 +61,9 @@ class ExtinctionCoefficients(ABC):
         :type ref_img_indices: list[int] or None
         :param average_images: Flag to determine if intensities are computed as an average from two consecutive images.
         :type average_images: bool
+        :param temperature_correction: Reduction factors of the LED intensities of the channel. None
+            leaves the intensities as they were extracted.
+        :type temperature_correction: TemperatureCorrection or None
         """
         self.coefficients_per_image_and_layer = []
         self.experiment = experiment
@@ -66,13 +76,27 @@ class ExtinctionCoefficients(ABC):
         self.ref_intensities = np.array([])
         self.cc_matrix = None
         self.average_images = average_images
+        self.temperature_correction = temperature_correction
+        self.temperature_corrected = False
         self.solver = None
         self.lambda_reg = None
 
     def __str__(self):
         out = str(self.experiment) + \
-              f'Reference_property: {self.reference_property}, Ref_img_indices: {self.ref_img_indices}, Solver: {self.solver}, Lambda_reg: {self.lambda_reg}, LEDSA {version("ledsa")}\n'
+              f'Reference_property: {self.reference_property}, Ref_img_indices: {self.ref_img_indices}, Solver: {self.solver}, Lambda_reg: {self.lambda_reg}, Temperature_correction: {self.temperature_correction_info()}, LEDSA {version("ledsa")}\n'
         return out
+
+    def temperature_correction_info(self) -> str:
+        """
+        Note for the result file stating whether the channel of this run is temperature corrected.
+
+        :return: The channel and the reduction factors it was corrected with, 'None' if the
+            intensities were analysed as they were extracted.
+        :rtype: str
+        """
+        if self.temperature_correction is None:
+            return 'None'
+        return f'channel {self.experiment.channel} from {self.temperature_correction}'
 
     def calc_and_set_coefficients(self) -> None:
         """
@@ -123,6 +147,8 @@ class ExtinctionCoefficients(ABC):
                 np.savetxt(file_name, self.distances_per_led_and_layer)
         if self.calculated_img_data.empty:
             self.load_img_data()
+        # before the reference intensities are averaged, whether or not the data were loaded here
+        self.apply_temperature_correction()
         if self.ref_intensities.shape[0] == 0:
             self.calc_and_set_ref_intensities()
 
@@ -155,6 +181,73 @@ class ExtinctionCoefficients(ABC):
         # gapless range. They are kept to pair every computed coefficient with the time of its own image.
         self.analysed_img_ids = sorted(
             self.calculated_img_data.index.get_level_values('img_id').unique().tolist())
+
+    def apply_temperature_correction(self) -> None:
+        """
+        Divide the reference property by the reduction factor of the time and height of every value.
+
+        Does nothing if the channel has no reduction factors configured or if they were divided out
+        already, so that the factors enter the intensities exactly once however often this is called.
+
+        The correction runs before the reference intensities are averaged, so that I0 is a corrected
+        intensity as well and the reduction of the reference images cancels out of the relative
+        intensities. The factors are looked up on the (img_id, led_id) index of the loaded data rather
+        than on a positional array, because the LED axis of the intensities is ordered by LED ID while
+        the distance matrix follows the reversed LEDs of the experiment.
+
+        :raises ValueError: If an image or an LED of the loaded data has no time or height.
+        """
+        if self.temperature_correction is None or self.temperature_corrected:
+            return
+        index = self.calculated_img_data.index
+        times = self._experiment_times_of(index.get_level_values('img_id').to_numpy())
+        heights = self._heights_of(index.get_level_values('led_id').to_numpy())
+        factors = self.temperature_correction.factors_at(times, heights)
+        corrected_intensities = self.calculated_img_data[self.reference_property] / factors
+        self.calculated_img_data = self.calculated_img_data.assign(
+            **{self.reference_property: corrected_intensities})
+        self.temperature_corrected = True
+        print(f'Temperature correction applied to {self.reference_property} of channel '
+              f'{self.experiment.channel}, LED array {self.experiment.led_array}, with the reduction '
+              f'factors of {self.temperature_correction}.')
+
+    def _experiment_times_of(self, img_ids: np.ndarray) -> np.ndarray:
+        """
+        Experiment time of every given image, read from the image infos of the experiment.
+
+        :param img_ids: IDs of the images to look up, with repetitions.
+        :type img_ids: np.ndarray
+        :return: Experiment time [s] of every given image, in the order of the argument.
+        :rtype: np.ndarray
+        :raises ValueError: If one of the images is missing from the image infos.
+        """
+        times_per_img_id = read_experiment_times(self.experiment.path, self.average_images)
+        missing = sorted(set(img_ids.tolist()) - set(times_per_img_id))
+        if missing:
+            raise ValueError(f'The images {missing} of channel {self.experiment.channel} hold intensity '
+                             f'values but no experiment time, so the reduction factors of the '
+                             f'temperature correction cannot be interpolated to them. The image infos '
+                             f'and the analysis results in {self.experiment.path} are out of sync.')
+        return np.array([times_per_img_id[img_id] for img_id in img_ids], dtype=float)
+
+    def _heights_of(self, led_ids: np.ndarray) -> np.ndarray:
+        """
+        Height of every given LED, taken from the coordinates of the LED array.
+
+        :param led_ids: IDs of the LEDs to look up, with repetitions.
+        :type led_ids: np.ndarray
+        :return: Height [m] of every given LED, in the order of the argument.
+        :rtype: np.ndarray
+        :raises ValueError: If one of the LEDs has no coordinates.
+        """
+        height_per_led_id = {led.id: led.pos_z for led in self.experiment.leds}
+        missing = sorted(set(led_ids.tolist()) - set(height_per_led_id))
+        if missing:
+            raise ValueError(f'The LEDs {missing} of LED array {self.experiment.led_array} have no '
+                             f'coordinates, so the reduction factors of the temperature correction '
+                             f'cannot be interpolated to their height. Run the computation of the LED '
+                             f'coordinates (-coord) in {self.experiment.path} before the analysis.')
+        return np.array([height_per_led_id[led_id] for led_id in led_ids], dtype=float)
 
     def save(self) -> None:
         """

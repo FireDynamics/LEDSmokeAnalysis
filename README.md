@@ -195,6 +195,78 @@ extinction. `sidebg_sum_col_val` is NaN if the strip direction cannot be estimat
 array with a single LED) or if the side bands contain no pixel, and the analysis stops
 with an error naming these LEDs if the selected `reference_property` contains NaN.
 
+### Temperature correction (optional)
+
+An LED loses radiant power as it heats up, so the LEDs in the hot gas layer dim over the
+course of an experiment even where no smoke is between them and the camera. Left
+uncorrected, that drift enters the relative intensities as an extinction that is not there.
+
+The factors the intensities are reduced by are determined outside LEDSA and handed to the
+analysis as one file per camera channel, named in `config_analysis.ini`:
+
+```ini
+[temperature_correction]
+   reduction_file_channel_0 = reduction_factors_red.csv
+   reduction_file_channel_1 = None
+   reduction_file_channel_2 = None
+```
+
+A channel with a file is corrected with it, a channel left at `None` is analysed as its
+intensities were extracted. A `config_analysis.ini` written before the correction existed has
+no such section and corrects nothing, so an older analysis is reproduced unchanged.
+
+The file is read in either of two layouts. As a table, the first column holds the time in
+seconds, the header of the other columns the height in metres, and every cell the factor the
+intensity of that time and height is reduced by:
+
+```
+Time / s,3.3,3.2,3.1,2.9,2.6
+0,1.0,1.0,1.0,1.0,1.0
+60,0.991,0.993,0.994,0.996,0.998
+```
+
+As a list, the file has the three columns `height`, `time` and `reduction_factor` in any
+order and one row per pair of a height and a time, which LEDSA pivots into the same table:
+
+```
+height,time,reduction_factor
+0.0,0.0,1.0
+0.0,100.0,0.85
+1.0,0.0,1.0
+1.0,100.0,0.85
+```
+
+The time is the experiment time in seconds, counted from `start_time` of `config.ini`. That is the
+same reference as `Experiment_Time[s]` of `analysis/image_infos_analysis.csv`, the times the factors
+are interpolated to, so a file written against the clock has to be shifted by `start_time` before it
+is handed to LEDSA.
+
+Neither layout has to be sorted, so the heights may be written in the order of the LEDs of
+the array. LEDSA interpolates the table bilinearly to the experiment time of every image and the
+height of every LED and divides the intensities by the result. The correction runs before the
+reference intensities are averaged, so that I0 is a corrected intensity as well and the
+factors of the reference images cancel out of the relative intensities.
+
+The interpolation stays between the tabulated times and heights. An image or an LED outside them
+keeps the intensity it was extracted with, because the table states where the reduction of the LEDs
+was determined and there is nothing outside it to extrapolate from. A warning names the range the
+table covers and how many values lie outside it, so a table that spans only part of the LED array
+or only the first minutes of the experiment corrects only that part of the data.
+
+The header of every result file states whether its channel was corrected and with which
+factors:
+
+```
+# Reference_property: sum_col_val, ..., Temperature_correction: channel 0 from reduction_factors_red.csv (0.0 s to 1200.0 s, 2.60 m to 3.30 m), LEDSA 0.11.0
+```
+
+The name of the result file does not change, so a corrected run replaces the uncorrected
+result of the same channel, reference property and solver, as a changed solver parameter does.
+
+The factors belong to the LEDs rather than to a camera, so `config_stacked.ini` takes the
+same section and every camera of a stacked inversion is corrected with the file of its
+channel.
+
 ## Demo
 
 LEDSA includes a demo that demonstrates its functionality using sample data.
