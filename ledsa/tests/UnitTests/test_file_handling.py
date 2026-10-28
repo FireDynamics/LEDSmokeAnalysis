@@ -158,3 +158,91 @@ class TestCreateBinaryData:
         self._write_result_file(analysis_dir, 2, self.NUM_COLUMNS)
         create_binary_data(0)
         assert sorted(self._load(analysis_dir)['img_id'].unique()) == [2]
+
+
+class TestAveragedBinaryData:
+    # the averaging summarizes n_summarize consecutive images, starting after num_ref_imgs reference images
+    NUM_REF_IMGS = 10
+    N_SUMMARIZE = 2
+    NUM_IMAGES = 16
+    NUM_LEDS = 2
+
+    @pytest.fixture
+    def analysis_dir(self, tmp_path, monkeypatch):
+        # the averaging reads all_parameters.h5 and nothing else, so the binary is written directly and
+        # neither the step 3 result files nor a config.ini are needed
+        import pandas as pd
+        rows = [{'img_id': img_id, 'led_id': led_id, 'led_array_id': 0,
+                 'sum_col_val': img_id * 100 + led_id, 'mean_col_val': float(img_id)}
+                for img_id in range(1, self.NUM_IMAGES + 1) for led_id in range(self.NUM_LEDS)]
+        channel_dir = tmp_path / 'analysis' / 'channel0'
+        channel_dir.mkdir(parents=True)
+        pd.DataFrame(rows).to_hdf(channel_dir / 'all_parameters.h5', key='channel_values', format='table')
+        monkeypatch.chdir(tmp_path)
+        return tmp_path
+
+    def _load_averaged(self, tmp_path):
+        import pandas as pd
+        return pd.read_hdf(tmp_path / 'analysis' / 'channel0' / 'all_parameters_avg.h5',
+                           key='channel_values')
+
+    def test_the_averaged_data_are_not_the_unaveraged_ones(self, analysis_dir):
+        # read_hdf_avg read all_parameters.h5, the file read_hdf reads, so average_images = True
+        # silently computed the extinction coefficients from the raw intensities
+        from ledsa.core.file_handling import read_hdf, read_hdf_avg
+        averaged = read_hdf_avg(0)
+        unaveraged = read_hdf(0)
+        num_averaged_imgs = (self.NUM_IMAGES - self.NUM_REF_IMGS) // self.N_SUMMARIZE
+        assert len(averaged) == (self.NUM_REF_IMGS + num_averaged_imgs) * self.NUM_LEDS
+        assert len(averaged) < len(unaveraged)
+
+    def test_consecutive_images_are_summarized(self, analysis_dir):
+        from ledsa.core.file_handling import read_hdf_avg
+        averaged = read_hdf_avg(0)
+        # images 11 and 12 of LED 0 hold 1100 and 1200 and become one image of their mean
+        assert averaged.loc[(11, 0), 'sum_col_val'] == 1150
+        assert averaged.loc[(12, 0), 'sum_col_val'] == 1350
+
+    def test_the_reference_images_are_kept_as_they_are(self, analysis_dir):
+        # the reference intensities are measured without smoke, so averaging them would blur the
+        # reference of the extinction coefficients
+        from ledsa.core.file_handling import read_hdf_avg
+        averaged = read_hdf_avg(0)
+        assert averaged.loc[(3, 0), 'sum_col_val'] == 300
+
+    def test_the_averaged_data_go_into_a_file_of_their_own(self, analysis_dir):
+        from ledsa.core.file_handling import read_hdf, read_hdf_avg
+        read_hdf_avg(0)
+        assert (analysis_dir / 'analysis' / 'channel0' / 'all_parameters_avg.h5').exists()
+        # the unaveraged binary stays available for runs with average_images = False
+        assert len(read_hdf(0)) == self.NUM_IMAGES * self.NUM_LEDS
+
+    def test_an_averaged_file_of_an_earlier_run_is_replaced(self, analysis_dir, capsys):
+        # appending kept every image of the earlier run next to the new one, so the rows piled up with
+        # every run and the analysis saw each image twice
+        from ledsa.core.file_handling import average_all_fitpar
+        average_all_fitpar(0)
+        rows_of_the_first_run = len(self._load_averaged(analysis_dir))
+        average_all_fitpar(0)
+        assert len(self._load_averaged(analysis_dir)) == rows_of_the_first_run
+        assert 'is replaced' in capsys.readouterr().out
+
+    def test_a_file_written_under_another_key_is_recomputed(self, analysis_dir):
+        # a binary of an older version carries the key 'table', and pd.read_hdf raises KeyError instead
+        # of FileNotFoundError for it
+        import pandas as pd
+        from ledsa.core.file_handling import read_hdf_avg
+        out_file_path = analysis_dir / 'analysis' / 'channel0' / 'all_parameters_avg.h5'
+        pd.DataFrame({'img_id': [1], 'led_id': [0]}).to_hdf(out_file_path, key='table', format='table')
+        assert len(read_hdf_avg(0)) > 1
+
+    def test_the_experiment_directory_is_taken_from_the_path(self, analysis_dir, tmp_path, monkeypatch):
+        # the analysis is started from outside the experiment directory, so the averaging has to read
+        # and write under the given path instead of the working directory
+        from ledsa.core.file_handling import read_hdf_avg
+        elsewhere = tmp_path.parent / 'elsewhere'
+        elsewhere.mkdir()
+        monkeypatch.chdir(elsewhere)
+        read_hdf_avg(0, path=str(analysis_dir))
+        assert (analysis_dir / 'analysis' / 'channel0' / 'all_parameters_avg.h5').exists()
+        assert not (elsewhere / 'analysis').exists()

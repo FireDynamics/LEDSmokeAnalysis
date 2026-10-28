@@ -199,20 +199,21 @@ def read_hdf_avg(channel: int, path='.') -> pd.DataFrame:
     :type path: str
     :return: DataFrame with multi-index 'img_id' and 'led_id'.
     :rtype: pd.DataFrame
-
-    :raises FileNotFoundError: If the HDF file is not found.
     """
-    file_path = os.path.join(path, 'analysis', f'channel{channel}','all_parameters.h5',)
+    file_path = os.path.join(path, 'analysis', f'channel{channel}', 'all_parameters_avg.h5')
     try:
         fit_parameters = pd.read_hdf(file_path, key='channel_values')
-    except FileNotFoundError:
-        average_all_fitpar(channel)
+    except (FileNotFoundError, KeyError):
+        # A file of an older version carries a different key, so a missing key leaves the averaged data
+        # just as unreadable as a missing file and they have to be computed again either way.
+        average_all_fitpar(channel, path=path)
         fit_parameters = pd.read_hdf(file_path, key='channel_values')
     fit_parameters.set_index(['img_id', 'led_id'], inplace=True)
     return fit_parameters
 
 
-def average_all_fitpar(channel, n_summarize=2, num_ref_imgs=10) -> None:  # TODO: rename variables within function
+def average_all_fitpar(channel: int, n_summarize=2, num_ref_imgs=10,
+                       path='.') -> None:  # TODO: rename variables within function
     """
     Averages all fit parameters for a given channel and writes them to an HDF file.
 
@@ -222,8 +223,10 @@ def average_all_fitpar(channel, n_summarize=2, num_ref_imgs=10) -> None:  # TODO
     :type n_summarize: int
     :param num_ref_imgs: Number of reference images (Excluded from averaging).
     :type num_ref_imgs: int
+    :param path: Root directory of the LEDSA simulation. Defaults to the current directory.
+    :type path: str
     """
-    fit_parameters = read_hdf(channel)
+    fit_parameters = read_hdf(channel, path=path)
     fit_parameters_grouped = fit_parameters.groupby(['led_array_id', 'led_id'])
     avg_dataset_list = []
     for name, dataset in fit_parameters_grouped:
@@ -237,13 +240,18 @@ def average_all_fitpar(channel, n_summarize=2, num_ref_imgs=10) -> None:  # TODO
         avg_dataset_list.append(combined_dataset)
     all_fitpar = pd.concat(avg_dataset_list)
     all_fitpar[["led_array_id", "sum_col_val"]] = all_fitpar[["led_array_id", "sum_col_val"]].astype(int)
-    try: # TODO: Resolve
-        all_fitpar[["sum_col_val_cc"]] = all_fitpar[["sum_col_val_cc"]].astype(int)
-    except:
-        pass
+    # sum_col_val_cc is only present in binaries of versions that wrote a colour corrected intensity
+    if "sum_col_val_cc" in all_fitpar.columns:
+        all_fitpar["sum_col_val_cc"] = all_fitpar["sum_col_val_cc"].astype(int)
     all_fitpar.reset_index(inplace=True)
-    file_path = os.path.join('analysis', f'channel{channel}', 'all_parameters_avg.h5'),
-    all_fitpar.to_hdf(file_path, key='channel_values', format='table', append=True)
+    out_file_path = os.path.join(path, 'analysis', f'channel{channel}', 'all_parameters_avg.h5')
+    if os.path.exists(out_file_path):
+        # The averaged data are derived from all_parameters.h5, so they are rewritten from scratch.
+        # Appending would keep every image of the earlier run next to the new one, so the analysis
+        # would see each of them twice.
+        print(f'{out_file_path} of an earlier run is replaced.')
+        os.remove(out_file_path)
+    all_fitpar.to_hdf(out_file_path, key='channel_values', format='table')
 
 
 def extend_hdf(channel: int, quantity: str, values: np.ndarray) -> None:
