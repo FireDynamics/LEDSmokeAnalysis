@@ -276,8 +276,8 @@ class ExtinctionCoefficients(ABC):
             fit_parameters = read_hdf(channel)[quanity]
             fit_params_list.append(fit_parameters)
         raw_val_array = pd.concat(fit_params_list, axis=1)
+        # The corrected values stay floats, see ledsa.analysis.data_preparation.apply_color_correction
         cc_val_array = np.dot(cc_matrix_inv, raw_val_array.T).T
-        cc_val_array = cc_val_array.astype(np.int16)
         for channel in range(nchannels):
             extend_hdf(channel, quanity + '_cc', cc_val_array[:, channel])
         print(f"Color correction applied on {nchannels} Channels!")
