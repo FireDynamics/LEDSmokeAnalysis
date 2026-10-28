@@ -15,6 +15,9 @@ from ledsa.analysis.Experiment import Layers
 from ledsa.analysis.ExtinctionCoefficients import ExtinctionCoefficients
 from ledsa.core.file_handling import (average_all_fitpar, create_analysis_infos_avg,
                                       get_binary_file_path, read_hdf_avg)
+# the fixtures that build the step 3 result files of a channel, so that the averaged data can be
+# read over the real files instead of a binary written by hand
+from ledsa.tests.UnitTests.test_file_handling import BinaryDataFiles
 
 NUM_LEDS = 2
 NUM_IMGS = 6
@@ -195,3 +198,45 @@ class TestLoadImgData:
         solver = self.make_solver(tmp_path, ref_img_indices=[5, 6])
         with pytest.raises(ValueError, match='average_images and ref_img_indices'):
             solver.load_img_data()
+
+
+class TestAveragedBinaryOverTheResultFiles(BinaryDataFiles):
+    """The averaged data are a cache of a cache, so a re-run of step 3 has to reach them too.
+
+    The step 3 result files reach the averaged binary through the binary of the single images, and
+    that one is rebuilt only when it is read. Comparing the two binaries with each other alone
+    would therefore miss a data extraction run that nothing has read back yet.
+    """
+
+    # the fixture writes the images 1 and 2, so one reference image leaves one summarized image
+    NUM_REF_IMGS_OF_THE_FIXTURE = 1
+
+    def _read_averaged(self, tmp_path):
+        return read_hdf_avg(0, path=tmp_path, n_summarize=N_SUMMARIZE,
+                            num_ref_imgs=self.NUM_REF_IMGS_OF_THE_FIXTURE)
+
+    def test_a_rerun_of_step_3_is_picked_up(self, analysis_dir):
+        for img_id in (1, 2):
+            self._write_result_file(analysis_dir, img_id, self.NUM_COLUMNS)
+        # the offset of the re-run shifts every column of the result files, led_id included, so the
+        # values are compared instead of the row of one LED
+        assert sorted(self._read_averaged(analysis_dir)['sum_col_val']) == [2, 2, 12, 12]
+
+        rerun_paths = [self._write_result_file(analysis_dir, img_id, self.NUM_COLUMNS, offset=100)
+                       for img_id in (1, 2)]
+        # only the result files moved; both binaries are untouched and the averaged one is the newer
+        for path in rerun_paths:
+            self._set_age_against_the_binary(analysis_dir, path, 10)
+
+        assert sorted(self._read_averaged(analysis_dir)['sum_col_val']) == [102, 102, 112, 112]
+
+    def test_an_untouched_averaged_binary_is_not_rebuilt(self, analysis_dir, capsys):
+        for img_id in (1, 2):
+            self._write_result_file(analysis_dir, img_id, self.NUM_COLUMNS)
+        self._read_averaged(analysis_dir)
+        self._make_all_sources_older(analysis_dir)
+        capsys.readouterr()
+
+        self._read_averaged(analysis_dir)
+
+        assert 'is replaced' not in capsys.readouterr().out
