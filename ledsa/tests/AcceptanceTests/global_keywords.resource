@@ -17,6 +17,6 @@ Create Config
     Create And Fill Config
 
 Create Config Analysis
-    [Arguments]  ${solver}
+    [Arguments]  ${solver}  ${average_images}=False
     Log     Creating config_analysis.ini with ${solver} solver
-    Create And Fill Config Analysis    ${solver}
+    Create And Fill Config Analysis    ${solver}    average_images=${average_images}

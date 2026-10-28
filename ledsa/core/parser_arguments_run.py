@@ -269,6 +269,7 @@ def extionction_coefficient_calculation(args) -> None:
                     eca = ECN.ExtinctionCoefficientsNonLinear(ex, reference_property=reference_property,
                                                               num_ref_imgs=ex_data.num_ref_images,
                                                               ref_img_indices=ex_data.ref_img_indices,
+                                                              average_images=ex_data.average_images,
                                                               weighting_curvature=ex_data.weighting_curvature,
                                                               weighting_preference=ex_data.weighting_preference,
                                                               num_iterations=ex_data.num_iterations)
@@ -276,6 +277,7 @@ def extionction_coefficient_calculation(args) -> None:
                     eca = ECA.ExtinctionCoefficientsLinear(ex, reference_property=reference_property,
                                                            num_ref_imgs=ex_data.num_ref_images,
                                                            ref_img_indices=ex_data.ref_img_indices,
+                                                           average_images=ex_data.average_images,
                                                            lambda_reg=ex_data.lambda_reg)
                 else:
                     raise ValueError(f"Invalid solver type '{solver}'. Must be 'linear' or 'nonlinear'.")

@@ -404,7 +404,8 @@ class TestOutdatedAveragedData(BinaryDataFiles):
         self._set_binary_age_against_the_averaged_data(analysis_dir, 10)
         capsys.readouterr()
         read_hdf_avg(0)
-        assert 'is rebuilt' in capsys.readouterr().out
+        # average_all_fitpar reports the rewrite, so its message says the averaging ran again
+        assert 'is replaced' in capsys.readouterr().out
 
     def test_untouched_averaged_data_are_not_rebuilt(self, analysis_dir, capsys):
         # averaging a real experiment costs the loading time of the whole channel, so it is not repeated
@@ -415,4 +416,4 @@ class TestOutdatedAveragedData(BinaryDataFiles):
         self._set_binary_age_against_the_averaged_data(analysis_dir, -10)
         capsys.readouterr()
         read_hdf_avg(0)
-        assert 'is rebuilt' not in capsys.readouterr().out
+        assert 'is replaced' not in capsys.readouterr().out
