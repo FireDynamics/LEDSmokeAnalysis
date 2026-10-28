@@ -1,5 +1,6 @@
 import os
 import re
+import warnings
 from pathlib import Path
 from typing import List, Union
 
@@ -97,6 +98,111 @@ NUM_IMGS_PER_AVERAGE = 2
 DEFAULT_NUM_REF_IMGS = 10
 
 
+def build_avg_img_groups(img_ids: List[int], n_summarize: int = NUM_IMGS_PER_AVERAGE,
+                         num_ref_imgs: int = DEFAULT_NUM_REF_IMGS,
+                         ref_img_ids: List[int] = None) -> List[List[int]]:
+    """
+    Group the analysed images into the images of the averaged data set.
+
+    Every reference image forms a group of its own and is therefore kept as it is, while the
+    images between them are summarized in groups of n_summarize. A group never reaches across a
+    reference image, so the reference images keep the place in the sequence they were taken in,
+    whether they lie at the beginning of the experiment or anywhere else.
+
+    :param img_ids: IDs of the analysed images, in the order they were taken.
+    :type img_ids: List[int]
+    :param n_summarize: Number of consecutive images that are summarized into one.
+    :type n_summarize: int
+    :param num_ref_imgs: Number of reference images at the beginning of the experiment, used when
+        ref_img_ids is None.
+    :type num_ref_imgs: int
+    :param ref_img_ids: IDs of the images the LED intensities are normalized with, which are kept
+        unaveraged. None: the first num_ref_imgs images are kept.
+    :type ref_img_ids: List[int] or None
+    :return: IDs of the images every averaged image is computed from, in the order they were taken.
+    :rtype: List[List[int]]
+    """
+    kept_img_ids = set(ref_img_ids) if ref_img_ids is not None else set(img_ids[:num_ref_imgs])
+    groups = []
+    summarized = []
+    for img_id in img_ids:
+        if img_id in kept_img_ids:
+            if summarized:
+                groups.append(summarized)
+                summarized = []
+            groups.append([img_id])
+            continue
+        summarized.append(img_id)
+        if len(summarized) == n_summarize:
+            groups.append(summarized)
+            summarized = []
+    if summarized:
+        groups.append(summarized)
+    return groups
+
+
+def avg_img_ids_of_ref_imgs(ref_img_ids: List[int], img_ids: List[int],
+                            n_summarize: int = NUM_IMGS_PER_AVERAGE) -> List[int]:
+    """
+    Translate the IDs of the reference images into the IDs they carry in the averaged data set.
+
+    The averaged images are numbered from 1 again, so the IDs the configuration names would point
+    at other images after the averaging. The reference images themselves are kept unaveraged, so
+    each of them is still an image of its own and only its number changes.
+
+    :param ref_img_ids: IDs of the reference images among the analysed images.
+    :type ref_img_ids: List[int]
+    :param img_ids: IDs of the analysed images, in the order they were taken.
+    :type img_ids: List[int]
+    :param n_summarize: Number of consecutive images that are summarized into one.
+    :type n_summarize: int
+    :return: IDs of the reference images in the averaged data set.
+    :rtype: List[int]
+    :raises ValueError: If none of the reference images is among the analysed images.
+    """
+    groups = build_avg_img_groups(img_ids, n_summarize=n_summarize, ref_img_ids=ref_img_ids)
+    requested = set(ref_img_ids)
+    avg_img_id_of = {group[0]: avg_img_id for avg_img_id, group in enumerate(groups, start=1)
+                     if len(group) == 1 and group[0] in requested}
+    missing = [img_id for img_id in ref_img_ids if img_id not in avg_img_id_of]
+    if missing:
+        msg = (f'The reference images {missing} are not among the analysed images, so they cannot '
+               f'be kept out of the averaging.')
+        if len(missing) == len(ref_img_ids):
+            raise ValueError(f'{msg} Set ref_img_indices in config_analysis.ini or '
+                             f'ref_img_experiment_ids in config.ini to images that were analysed.')
+        warnings.warn(f'{msg} The remaining ones are used.', category=UserWarning, stacklevel=2)
+    return [avg_img_id_of[img_id] for img_id in ref_img_ids if img_id in avg_img_id_of]
+
+
+def _averaging_parameters(n_summarize: int, num_ref_imgs: int, ref_img_ids: List[int]) -> dict:
+    """Parameters the averaged data were computed with, kept next to them in the binary."""
+    named = ref_img_ids is not None
+    return {'n_summarize': n_summarize,
+            # the number of reference images is only read when none of them is named
+            'num_ref_imgs': None if named else num_ref_imgs,
+            'ref_img_ids': sorted(ref_img_ids) if named else None}
+
+
+def _averaged_binary_was_built_differently(file_path: Union[str, Path], n_summarize: int,
+                                           num_ref_imgs: int, ref_img_ids: List[int]) -> bool:
+    """
+    Check whether the averaged binary was computed with other reference images.
+
+    A binary of an earlier run is newer than the data it was computed from, so the modification
+    times alone would hand out averages of other reference images after a change of the
+    configuration. A binary written before the parameters were kept with the data counts as
+    different and is computed again.
+    """
+    try:
+        with pd.HDFStore(file_path, mode='r') as store:
+            stored_parameters = getattr(store.get_storer('channel_values').attrs,
+                                        'averaging_parameters', None)
+    except (AttributeError, KeyError, OSError):
+        return True
+    return stored_parameters != _averaging_parameters(n_summarize, num_ref_imgs, ref_img_ids)
+
+
 def get_binary_file_path(channel: int, path: Union[str, Path] = '.', averaged: bool = False) -> str:
     """
     Build the path of the binary data of one channel.
@@ -117,22 +223,40 @@ def get_binary_file_path(channel: int, path: Union[str, Path] = '.', averaged: b
     return os.path.join(path, 'analysis', f'channel{channel}', file_name)
 
 
+def read_analysis_img_ids(path: Union[str, Path] = '.') -> List[int]:
+    """
+    Read the analysis IDs of the analysed images, in the order they were taken.
+
+    :param path: Root directory of the LEDSA simulation, defaults to the current directory.
+    :type path: Union[str, Path]
+    :return: Analysis IDs of the images the data extraction worked on.
+    :rtype: List[int]
+    """
+    file_path = os.path.join(path, 'analysis', 'image_infos_analysis.csv')
+    return pd.read_csv(file_path)['#ID'].tolist()
+
+
 def create_analysis_infos_avg(n_summarize: int = NUM_IMGS_PER_AVERAGE,
                               num_ref_imgs: int = DEFAULT_NUM_REF_IMGS,
+                              ref_img_ids: List[int] = None,
                               path: Union[str, Path] = '.') -> None:  # TODO: Move funtion somewhere else
     """
     Generate a CSV file with the image information of the averaged images from the existing
-    image_infos_analysis.csv file. The first num_ref_imgs images are kept as they are, the
-    remaining ones are summarized in groups of n_summarize. Contains image name and experiment time.
+    image_infos_analysis.csv file. The reference images are kept as they are, the remaining ones
+    are summarized in groups of n_summarize. Contains image name and experiment time.
 
-    The averaged images are numbered from 1 again. Called with the same n_summarize and
-    num_ref_imgs as :func:`average_all_fitpar`, which averages the intensities of the very same
+    The averaged images are numbered from 1 again. Called with the same n_summarize, num_ref_imgs
+    and ref_img_ids as :func:`average_all_fitpar`, which averages the intensities of the very same
     images, both files hold the same image IDs and the same number of images.
 
     :param n_summarize: Number of consecutive images that are summarized into one.
     :type n_summarize: int
-    :param num_ref_imgs: Number of reference images at the beginning, which are not averaged.
+    :param num_ref_imgs: Number of reference images at the beginning of the experiment, used when
+        ref_img_ids is None.
     :type num_ref_imgs: int
+    :param ref_img_ids: IDs of the images the LED intensities are normalized with, which are not
+        averaged. None: the first num_ref_imgs images are kept.
+    :type ref_img_ids: List[int] or None
     :param path: Root directory of the LEDSA simulation, defaults to the current directory.
     :type path: Union[str, Path]
     """
@@ -140,15 +264,16 @@ def create_analysis_infos_avg(n_summarize: int = NUM_IMGS_PER_AVERAGE,
     image_infos = pd.read_csv(in_file_path)
     img_names = image_infos['Name'].tolist()
     exp_time = image_infos['Experiment_Time[s]']
-    head_img_names = img_names[:num_ref_imgs]
-    head_exp_times = exp_time[:num_ref_imgs]
-    tail_img_names = img_names[num_ref_imgs:]
-    tail_exp_times = exp_time[num_ref_imgs:]
-    img_names_avg = ["/".join(tail_img_names[n:n + n_summarize]) for n in range(0, len(tail_img_names), n_summarize)]
-    exp_times_avg = tail_exp_times.groupby(np.arange(len(tail_exp_times)) // n_summarize).mean()
-    combined_exp_times = pd.concat([head_exp_times, exp_times_avg])
-    combined_exp_times.index = range(len(combined_exp_times))
-    combined_img_names = head_img_names + img_names_avg
+    img_ids = image_infos['#ID'].tolist()
+    groups = build_avg_img_groups(img_ids, n_summarize=n_summarize, num_ref_imgs=num_ref_imgs,
+                                  ref_img_ids=ref_img_ids)
+    # the images of a group are the rows the group is built from, so the names and the times are
+    # taken by position and a group of one image keeps the name and the time of that image
+    row_of_img_id = {img_id: row for row, img_id in enumerate(img_ids)}
+    rows_per_group = [[row_of_img_id[img_id] for img_id in group] for group in groups]
+    combined_img_names = ["/".join(img_names[row] for row in rows) for rows in rows_per_group]
+    combined_exp_times = pd.Series(
+        [exp_time.iloc[rows].mean() for rows in rows_per_group], index=range(len(groups)))
     ids = range(1, len(combined_img_names) + 1)
     img_infos_analysis_avg = pd.DataFrame(
         {"#ID": ids, "Name": combined_img_names, "Experiment_Time[s]": combined_exp_times})
@@ -280,7 +405,8 @@ def read_hdf(channel: int, path='.') -> pd.DataFrame:
 
 
 def read_hdf_avg(channel: int, path='.', n_summarize: int = NUM_IMGS_PER_AVERAGE,
-                 num_ref_imgs: int = DEFAULT_NUM_REF_IMGS) -> pd.DataFrame:
+                 num_ref_imgs: int = DEFAULT_NUM_REF_IMGS,
+                 ref_img_ids: List[int] = None) -> pd.DataFrame:
     """
     Reads averaged data from an HDF file for a given channel. If the averaged binary is not up to
     date, it is created from the binary of the single images.
@@ -296,8 +422,12 @@ def read_hdf_avg(channel: int, path='.', n_summarize: int = NUM_IMGS_PER_AVERAGE
     :type path: str
     :param n_summarize: Number of consecutive images that are averaged into one.
     :type n_summarize: int
-    :param num_ref_imgs: Number of reference images at the beginning, which are not averaged.
+    :param num_ref_imgs: Number of reference images at the beginning of the experiment, used when
+        ref_img_ids is None.
     :type num_ref_imgs: int
+    :param ref_img_ids: IDs of the images the LED intensities are normalized with, which are not
+        averaged. None: the first num_ref_imgs images are kept.
+    :type ref_img_ids: List[int] or None
     :return: DataFrame with multi-index 'img_id' and 'led_id'.
     :rtype: pd.DataFrame
     """
@@ -312,9 +442,11 @@ def read_hdf_avg(channel: int, path='.', n_summarize: int = NUM_IMGS_PER_AVERAGE
         # back yet, since that binary is rebuilt only when it is read.
         outdated = _binary_data_is_outdated(file_path, channel, path=path) or (
             os.path.exists(single_img_file_path) and
-            os.path.getmtime(file_path) < os.path.getmtime(single_img_file_path))
+            os.path.getmtime(file_path) < os.path.getmtime(single_img_file_path)) or \
+            _averaged_binary_was_built_differently(file_path, n_summarize, num_ref_imgs, ref_img_ids)
     if outdated:
-        average_all_fitpar(channel, n_summarize=n_summarize, num_ref_imgs=num_ref_imgs, path=path)
+        average_all_fitpar(channel, n_summarize=n_summarize, num_ref_imgs=num_ref_imgs,
+                           ref_img_ids=ref_img_ids, path=path)
     try:
         fit_parameters = pd.read_hdf(file_path, key='channel_values')
     except KeyError:
@@ -322,7 +454,8 @@ def read_hdf_avg(channel: int, path='.', n_summarize: int = NUM_IMGS_PER_AVERAGE
         # still allows for the binary of the single images. Only a checkout between 787fd26 and
         # ff1843e wrote one, since v0.9.0 already carried the path that never reached this file, so
         # this is the same courtesy read_hdf extends and not a case anyone is likely to hit.
-        average_all_fitpar(channel, n_summarize=n_summarize, num_ref_imgs=num_ref_imgs, path=path)
+        average_all_fitpar(channel, n_summarize=n_summarize, num_ref_imgs=num_ref_imgs,
+                           ref_img_ids=ref_img_ids, path=path)
         fit_parameters = pd.read_hdf(file_path, key='channel_values')
     fit_parameters.set_index(['img_id', 'led_id'], inplace=True)
     return fit_parameters
@@ -330,21 +463,26 @@ def read_hdf_avg(channel: int, path='.', n_summarize: int = NUM_IMGS_PER_AVERAGE
 
 def average_all_fitpar(channel, n_summarize: int = NUM_IMGS_PER_AVERAGE,
                        num_ref_imgs: int = DEFAULT_NUM_REF_IMGS,
+                       ref_img_ids: List[int] = None,
                        path: Union[str, Path] = '.') -> None:  # TODO: rename variables within function
     """
     Averages all fit parameters for a given channel and writes them to an HDF file.
 
-    The first num_ref_imgs images of every LED are kept as they are, the remaining ones are
-    averaged in groups of n_summarize and numbered from num_ref_imgs + 1 on. Called with the same
-    n_summarize and num_ref_imgs as :func:`create_analysis_infos_avg`, the binary and the averaged
-    image infos hold the same image IDs and the same number of images.
+    The reference images of every LED are kept as they are, the remaining ones are averaged in
+    groups of n_summarize, and the averaged images are numbered from 1 again. Called with the same
+    n_summarize, num_ref_imgs and ref_img_ids as :func:`create_analysis_infos_avg`, the binary and
+    the averaged image infos hold the same image IDs and the same number of images.
 
     :param channel: Channel number for which data is to be averaged.
     :type channel: int
     :param n_summarize: Number of images to average over.
     :type n_summarize: int
-    :param num_ref_imgs: Number of reference images (Excluded from averaging).
+    :param num_ref_imgs: Number of reference images at the beginning of the experiment, used when
+        ref_img_ids is None.
     :type num_ref_imgs: int
+    :param ref_img_ids: IDs of the images the LED intensities are normalized with (excluded from
+        averaging). None: the first num_ref_imgs images are kept.
+    :type ref_img_ids: List[int] or None
     :param path: Root directory of the LEDSA simulation, defaults to the current directory.
     :type path: Union[str, Path]
     """
@@ -355,14 +493,20 @@ def average_all_fitpar(channel, n_summarize: int = NUM_IMGS_PER_AVERAGE,
         # the images of one LED are summarized in the order they were taken, whatever order they
         # lie in the binary
         dataset = dataset.sort_index(level='img_id')
-        head = dataset.iloc[:num_ref_imgs]
-        tail = dataset.iloc[num_ref_imgs:]
-        avg_dataset = tail.groupby(np.arange(len(tail)) // n_summarize).mean()
-        avg_dataset["img_id"] = range(num_ref_imgs + 1, num_ref_imgs + len(avg_dataset) + 1)
+        groups = build_avg_img_groups(dataset.index.get_level_values('img_id').tolist(),
+                                      n_summarize=n_summarize, num_ref_imgs=num_ref_imgs,
+                                      ref_img_ids=ref_img_ids)
+        if not groups:
+            continue
+        # a reference image is a group of its own, so its mean is the image itself and it passes
+        # the averaging unchanged
+        group_of_row = np.concatenate([np.full(len(group), group_idx)
+                                       for group_idx, group in enumerate(groups)])
+        avg_dataset = dataset.groupby(group_of_row).mean()
+        avg_dataset["img_id"] = range(1, len(groups) + 1)
         avg_dataset["led_id"] = name[1]
         avg_dataset.set_index(['img_id', 'led_id'], inplace=True)
-        combined_dataset = pd.concat([head, avg_dataset])
-        avg_dataset_list.append(combined_dataset)
+        avg_dataset_list.append(avg_dataset)
     all_fitpar = pd.concat(avg_dataset_list)
     all_fitpar[["led_array_id", "sum_col_val"]] = all_fitpar[["led_array_id", "sum_col_val"]].astype(int)
     # sum_col_val_cc is only present in binaries of versions that wrote a colour corrected intensity
@@ -377,6 +521,11 @@ def average_all_fitpar(channel, n_summarize: int = NUM_IMGS_PER_AVERAGE,
         print(f'{out_file_path} of an earlier run is replaced.')
         os.remove(out_file_path)
     all_fitpar.to_hdf(out_file_path, key='channel_values', format='table')
+    with pd.HDFStore(out_file_path, mode='a') as store:
+        # kept with the data, so that an analysis with other reference images computes the averages
+        # again instead of reading those of the earlier run
+        store.get_storer('channel_values').attrs.averaging_parameters = _averaging_parameters(
+            n_summarize, num_ref_imgs, ref_img_ids)
 
 
 def extend_hdf(channel: int, quantity: str, values: np.ndarray) -> None:
@@ -394,6 +543,33 @@ def extend_hdf(channel: int, quantity: str, values: np.ndarray) -> None:
     fit_parameters = pd.read_hdf(file, key='channel_values')
     fit_parameters[quantity] = values
     fit_parameters.to_hdf(file, key='channel_values', format='table')
+
+
+def _number_of_analysed_images(config) -> int:
+    """
+    Number of images the data extraction gave an analysis ID.
+
+    The analysis IDs are a gapless sequence from 1 on, so the highest one is the number of images.
+    It is read from the image infos, which name the images the extraction really worked on, the
+    reference images that num_skip_imgs leaves out included. Only when they are missing, the
+    number is computed from the image range of the configuration, as every version before them did.
+
+    :param config: Configuration data of the experiment.
+    :type config: ConfigData
+    :return: Number of analysed images.
+    :rtype: int
+    """
+    file_path = os.path.join('analysis', 'image_infos_analysis.csv')
+    if os.path.exists(file_path):
+        return int(pd.read_csv(file_path)['#ID'].max())
+    first_img_id = int(config['analyse_photo']['first_img_analysis_id'])
+    last_img_id = int(config['analyse_photo']['last_img_analysis_id'])
+    if config['DEFAULT']['num_img_overflow'] != 'None':
+        max_id = int(config['DEFAULT']['num_img_overflow'])
+    else:
+        max_id = 10 ** 7
+    number_of_images = (max_id + last_img_id - first_img_id) % max_id + 1
+    return number_of_images // (int(config['analyse_photo']['num_skip_imgs']) + 1)
 
 
 def create_binary_data(channel: int, path: str = '.') -> None:
@@ -420,15 +596,7 @@ def create_binary_data(channel: int, path: str = '.') -> None:
 
         # find time and fit parameter for every image
 
-        first_img_id = int(config['analyse_photo']['first_img_analysis_id'])
-        last_img_id = int(config['analyse_photo']['last_img_analysis_id'])
-
-        if config['DEFAULT']['num_img_overflow'] != 'None':
-            max_id = int(config['DEFAULT']['num_img_overflow'])
-        else:
-            max_id = 10 ** 7
-        number_of_images = (max_id + last_img_id - first_img_id) % max_id + 1
-        number_of_images //= int(config['analyse_photo']['num_skip_imgs']) + 1
+        number_of_images = _number_of_analysed_images(config)
         print('Loading fit parameters...')
         skipped_img_ids = []
         for image_id in range(1, number_of_images + 1):

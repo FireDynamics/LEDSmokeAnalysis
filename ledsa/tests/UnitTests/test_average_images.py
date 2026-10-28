@@ -1,9 +1,10 @@
 """Unit tests for the average_images option of config_analysis.ini.
 
 With average_images set, the intensities of consecutive images are summarized into one averaged
-image, while the reference images at the beginning of the experiment are kept as they are. The
-averaged intensities go into a binary of their own and the averaged images are numbered from 1
-again, so the averaged image infos have to carry the same image IDs and the same number of rows.
+image, while the reference images are kept as they are, whether they are the first images of the
+experiment or the ones ref_img_indices names. The averaged intensities go into a binary of their
+own and the averaged images are numbered from 1 again, so the averaged image infos have to carry
+the same image IDs and the same number of rows.
 """
 import os
 
@@ -13,7 +14,8 @@ import pytest
 
 from ledsa.analysis.Experiment import Layers
 from ledsa.analysis.ExtinctionCoefficients import ExtinctionCoefficients
-from ledsa.core.file_handling import (average_all_fitpar, create_analysis_infos_avg,
+from ledsa.core.file_handling import (average_all_fitpar, avg_img_ids_of_ref_imgs,
+                                      build_avg_img_groups, create_analysis_infos_avg,
                                       get_binary_file_path, read_hdf_avg)
 # the fixtures that build the step 3 result files of a channel, so that the averaged data can be
 # read over the real files instead of a binary written by hand
@@ -190,14 +192,141 @@ class TestLoadImgData:
         image_infos = pd.read_csv(tmp_path / 'analysis' / 'image_infos_analysis_avg.csv')
         assert list(image_infos['#ID']) == solver.analysed_img_ids
 
-    def test_explicit_reference_image_indices_are_refused(self, tmp_path, monkeypatch):
-        # the averaging numbers the images from 1 again, so the indices would name other images
+
+# the images 3 and 4 are kept, so 1 and 2 are summarized into one image and 5 and 6 into another
+REF_IMG_IDS = [3, 4]
+AVG_IMG_IDS_OF_THE_REF_IMGS = [2, 3]
+NUM_AVG_IMGS_WITH_NAMED_REF_IMGS = 4
+# the intensities of the images 3 and 4, which they keep through the averaging
+MEAN_COL_VALS_WITH_NAMED_REF_IMGS = [1.5, 3.0, 4.0, 5.5]
+
+
+def read_averaged_with_named_ref_imgs(tmp_path):
+    return read_hdf_avg(0, path=tmp_path, n_summarize=N_SUMMARIZE, ref_img_ids=REF_IMG_IDS)
+
+
+class TestNamedReferenceImages:
+    """ref_img_indices names the images that are kept unaveraged, wherever they lie."""
+
+    def test_the_named_images_are_kept_unaveraged(self, tmp_path):
+        write_binary_data(tmp_path)
+        averaged = read_averaged_with_named_ref_imgs(tmp_path)
+        assert sorted(averaged.index.get_level_values('img_id').unique()) == \
+               list(range(1, NUM_AVG_IMGS_WITH_NAMED_REF_IMGS + 1))
+        # the images 3 and 4 keep their own intensity, the ones around them are summarized
+        assert [averaged.loc[(img_id, 0), 'mean_col_val'] for img_id
+                in range(1, NUM_AVG_IMGS_WITH_NAMED_REF_IMGS + 1)] == \
+               MEAN_COL_VALS_WITH_NAMED_REF_IMGS
+
+    def test_a_group_never_reaches_across_a_named_image(self, tmp_path):
+        write_image_infos(tmp_path)
+        create_analysis_infos_avg(n_summarize=N_SUMMARIZE, ref_img_ids=REF_IMG_IDS,
+                                  path=tmp_path)
+        image_infos = pd.read_csv(tmp_path / 'analysis' / 'image_infos_analysis_avg.csv')
+        assert list(image_infos['Name']) == ['img1.jpg/img2.jpg', 'img3.jpg', 'img4.jpg',
+                                             'img5.jpg/img6.jpg']
+        assert list(image_infos['Experiment_Time[s]']) == [0.5, 2.0, 3.0, 4.5]
+
+    def test_the_image_ids_of_the_binary_and_the_image_infos_agree(self, tmp_path):
+        write_binary_data(tmp_path)
+        write_image_infos(tmp_path)
+        create_analysis_infos_avg(n_summarize=N_SUMMARIZE, ref_img_ids=REF_IMG_IDS,
+                                  path=tmp_path)
+        image_infos = pd.read_csv(tmp_path / 'analysis' / 'image_infos_analysis_avg.csv')
+        averaged = read_averaged_with_named_ref_imgs(tmp_path)
+        assert list(image_infos['#ID']) == \
+               sorted(averaged.index.get_level_values('img_id').unique())
+
+    def test_the_averaged_binary_follows_a_change_of_the_reference_images(self, tmp_path):
+        # the binary of an earlier run is newer than the data it was computed from, so the
+        # modification times alone would hand out the averages of the other reference images
+        write_binary_data(tmp_path)
+        read_hdf_avg(0, path=tmp_path, n_summarize=N_SUMMARIZE, num_ref_imgs=NUM_REF_IMGS)
+        averaged = read_averaged_with_named_ref_imgs(tmp_path)
+        assert [averaged.loc[(img_id, 0), 'mean_col_val'] for img_id
+                in range(1, NUM_AVG_IMGS_WITH_NAMED_REF_IMGS + 1)] == \
+               MEAN_COL_VALS_WITH_NAMED_REF_IMGS
+
+
+class TestLoadImgDataOfNamedReferenceImages:
+    """The analysis has to ask for the reference images by the IDs they carry after the averaging."""
+
+    def make_solver(self, tmp_path, **kwargs):
+        return SolverStub(ExperimentStub(tmp_path), num_ref_imgs=NUM_REF_IMGS,
+                          average_images=True, **kwargs)
+
+    def test_the_reference_image_ids_follow_the_averaging(self, tmp_path, monkeypatch):
         write_binary_data(tmp_path)
         write_image_infos(tmp_path)
         monkeypatch.chdir(tmp_path)
-        solver = self.make_solver(tmp_path, ref_img_indices=[5, 6])
-        with pytest.raises(ValueError, match='average_images and ref_img_indices'):
+        solver = self.make_solver(tmp_path, ref_img_indices=REF_IMG_IDS)
+
+        solver.load_img_data()
+
+        assert solver.ref_img_ids_of_loaded_data == AVG_IMG_IDS_OF_THE_REF_IMGS
+        # the configured indices are kept, they are the ones the result file header names
+        assert solver.ref_img_indices == REF_IMG_IDS
+
+    def test_the_reference_intensities_are_the_ones_of_the_named_images(self, tmp_path, monkeypatch):
+        write_binary_data(tmp_path)
+        write_image_infos(tmp_path)
+        monkeypatch.chdir(tmp_path)
+        solver = self.make_solver(tmp_path, ref_img_indices=REF_IMG_IDS)
+
+        solver.load_img_data()
+        solver.calc_and_set_ref_intensities()
+
+        # the images 3 and 4 pass the averaging unchanged, so I0 is the mean of their intensities
+        assert list(solver.ref_intensities) == [350.0] * NUM_LEDS
+
+    def test_a_reference_image_outside_the_analysed_images_raises(self, tmp_path, monkeypatch):
+        write_binary_data(tmp_path)
+        write_image_infos(tmp_path)
+        monkeypatch.chdir(tmp_path)
+        solver = self.make_solver(tmp_path, ref_img_indices=[NUM_IMGS + 1])
+
+        with pytest.raises(ValueError, match='not among the analysed images'):
             solver.load_img_data()
+
+
+class TestAvgImgGroups:
+    """The grouping both the averaged binary and the averaged image infos are built from."""
+
+    def test_the_first_images_are_kept_when_none_is_named(self):
+        assert build_avg_img_groups([1, 2, 3, 4, 5, 6], n_summarize=2, num_ref_imgs=2) == \
+               [[1], [2], [3, 4], [5, 6]]
+
+    def test_a_group_of_the_tail_can_stay_incomplete(self):
+        assert build_avg_img_groups([1, 2, 3, 4], n_summarize=3, num_ref_imgs=1) == \
+               [[1], [2, 3, 4]]
+        assert build_avg_img_groups([1, 2, 3], n_summarize=2, num_ref_imgs=0) == [[1, 2], [3]]
+
+    def test_named_images_split_the_groups_around_them(self):
+        assert build_avg_img_groups([1, 2, 3, 4, 5, 6, 7], n_summarize=2, ref_img_ids=[4, 5]) == \
+               [[1, 2], [3], [4], [5], [6, 7]]
+
+    def test_the_named_images_need_not_lie_next_to_each_other(self):
+        assert build_avg_img_groups([1, 2, 3, 4, 5], n_summarize=2, ref_img_ids=[2, 5]) == \
+               [[1], [2], [3, 4], [5]]
+
+    def test_gaps_in_the_analysed_ids_are_kept(self):
+        # images without extraction results are missing from the binary, so the IDs have gaps
+        assert build_avg_img_groups([1, 3, 4, 7], n_summarize=2, ref_img_ids=[3]) == \
+               [[1], [3], [4, 7]]
+
+
+class TestAvgImgIdsOfRefImgs:
+
+    def test_the_new_ids_are_the_places_in_the_averaged_sequence(self):
+        assert avg_img_ids_of_ref_imgs([4, 5], [1, 2, 3, 4, 5, 6, 7], n_summarize=2) == [3, 4]
+
+    def test_a_missing_reference_image_warns_and_leaves_the_others(self):
+        with pytest.warns(UserWarning, match=r'\[9\]'):
+            assert avg_img_ids_of_ref_imgs([4, 9], [1, 2, 3, 4, 5], n_summarize=2) == [3]
+
+    def test_reference_images_without_any_image_raise(self):
+        with pytest.raises(ValueError, match='ref_img_experiment_ids'):
+            avg_img_ids_of_ref_imgs([8, 9], [1, 2, 3], n_summarize=2)
 
 
 class TestAveragedBinaryOverTheResultFiles(BinaryDataFiles):

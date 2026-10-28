@@ -122,6 +122,38 @@ The stacked analysis reads its quantities from `reference_property` in `config_s
 writes them into the same layout below its `output_path`. Result files of earlier LEDSA versions
 lie directly in `analysis/extinction_coefficients/<solver>/` and are left where they are.
 
+### Reference images of the normalization
+
+The extinction coefficients are computed from the relative intensities I/I0, so the images I0 is
+averaged over decide what the analysis takes for clear air. Three options name them, and the
+first one that is set wins:
+
+| Option | File | Names the images by |
+| --- | --- | --- |
+| `ref_img_indices` | `config_analysis.ini` | analysis ID |
+| `ref_img_experiment_ids` | `config.ini` | experiment ID, the number the file name is built from |
+| `num_ref_images` | `config_analysis.ini` | the number of images at the beginning of the experiment |
+
+`ref_img_experiment_ids` is the only one the data extraction reads, so it is the one to use
+whenever `num_skip_imgs` or `average_images` is set:
+
+```ini
+[analyse_photo]
+num_skip_imgs = 9
+ref_img_experiment_ids = 385 386 387 388 389 390
+```
+
+The images it names are analysed whatever `num_skip_imgs` leaves out, so the reference window
+keeps the time span it is meant to have instead of being pulled apart by the increment, and
+`average_images` keeps every one of them as it is instead of summarizing it with its neighbours.
+They have to lie between the first and the last analysed image, and they have to be named
+before step 3, since an image that was never analysed holds no intensities.
+
+The analysis prints the images I0 was computed from and names them in the header of the result
+file. With `average_images` the averaged images are numbered from 1 again, so the IDs in the
+header are the ones of the averaged data set. The stacked analysis names the reference images of
+every camera in `config_stacked.ini`, see below.
+
 ### Stacked multi-camera analysis
 
 Several cameras that watch the same LED arrays can be inverted jointly, so that the rays

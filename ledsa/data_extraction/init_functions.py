@@ -162,6 +162,49 @@ def _find_img_number_list(first: int, last: int, increment: int, number_string_l
     return num_list
 
 
+def _insert_ref_img_ids(img_id_list: List[str], ref_img_experiment_ids: List[int], first: int,
+                        number_string_length=4) -> List[str]:
+    """
+    Add the images used for normalization to the list of the images that are analysed.
+
+    num_skip_imgs thins out the analysed images, which would pull the reference images apart in
+    time and let I0 reach into the fire. The images named in ref_img_experiment_ids are therefore
+    analysed whatever the increment leaves out. They are inserted in the order they were taken,
+    so the analysis IDs stay a gapless sequence that follows the time axis.
+
+    :param img_id_list: Image IDs the increment selected, in the order they were taken.
+    :type img_id_list: List[str]
+    :param ref_img_experiment_ids: Experiment IDs of the images used for normalization.
+    :type ref_img_experiment_ids: List[int]
+    :param first: Experiment ID of the first analysed image, the order is counted from.
+    :type first: int
+    :param number_string_length: Number of digits in the image ID (default is 4).
+    :type number_string_length: int
+    :return: Image IDs of the analysed images, in the order they were taken.
+    :rtype: List[str]
+    :raises ValueError: If a reference image lies outside the analysed image range.
+    """
+    if not ref_img_experiment_ids:
+        return img_id_list
+    # the IDs can run over the largest number the file names hold and start at 1 again, so the
+    # order is counted from the first image instead of comparing the IDs themselves
+    cycle = 10 ** number_string_length
+
+    def position(img_id) -> int:
+        return (int(img_id) - first) % cycle
+
+    last_position = position(img_id_list[-1])
+    img_ids = {int(img_id): img_id for img_id in img_id_list}
+    outside = [img_id for img_id in ref_img_experiment_ids if position(img_id) > last_position]
+    if outside:
+        raise ValueError(f'The reference images {outside} of ref_img_experiment_ids in config.ini lie '
+                         f'outside the analysed images {img_id_list[0]} to {img_id_list[-1]}. Widen '
+                         f'that range in config.ini or name other images for the normalization.')
+    for img_id in ref_img_experiment_ids:
+        img_ids.setdefault(int(img_id), str(img_id).zfill(number_string_length))
+    return [img_ids[img_id] for img_id in sorted(img_ids, key=position)]
+
+
 def _build_img_data_string(build_type: str, config: ConfigData) -> str:
     """
     Construct image data string for CSV generation.
@@ -188,6 +231,11 @@ def _build_img_data_string(build_type: str, config: ConfigData) -> str:
 
     img_increment = config.getint(build_type, 'num_skip_imgs') + 1 if build_type == 'analyse_photo' else 1
     img_id_list = _find_img_number_list(first_img_id, last_img_id, img_increment)
+    if build_type == 'analyse_photo':
+        # image_infos.csv of the experiment holds every image anyway, only the analysed ones are
+        # thinned out and can lose a reference image
+        img_id_list = _insert_ref_img_ids(img_id_list, config.get_ref_img_experiment_ids(),
+                                          first_img_id)
     for img_id in img_id_list:
         tag = 'DateTimeOriginal'
         try:
