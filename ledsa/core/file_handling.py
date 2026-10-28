@@ -287,8 +287,9 @@ def read_hdf_avg(channel: int, path='.', n_summarize: int = NUM_IMGS_PER_AVERAGE
 
     The averaged binary has a file name of its own, so that the averaged data are returned
     whenever they are asked for. It is rebuilt whenever it is missing, older than the binary of the
-    single images it is computed from, or older than the step 3 result files those are built from,
-    so that an analysis never reads the averaged data of an earlier extraction run.
+    single images it is computed from, older than the step 3 result files those are built from, or
+    older than config_analysis.ini, which holds the counts the images are summarized with. So an
+    analysis never reads the averaged data of an earlier extraction run or of other counts.
 
     :param channel: Channel number for which data is to be read.
     :type channel: int
@@ -302,17 +303,22 @@ def read_hdf_avg(channel: int, path='.', n_summarize: int = NUM_IMGS_PER_AVERAGE
     :rtype: pd.DataFrame
     """
     file_path = get_binary_file_path(channel, path=path, averaged=True)
-    single_img_file_path = get_binary_file_path(channel, path=path)
     if not os.path.exists(file_path):
         outdated = True
     else:
         # The averaged data are built from the binary of the single images, which is itself only a
         # cache of the step 3 result files, so both are sources. Comparing the averaged data with
         # the single image binary alone would miss a data extraction run that has not been read
-        # back yet, since that binary is rebuilt only when it is read.
-        outdated = _binary_data_is_outdated(file_path, channel, path=path) or (
-            os.path.exists(single_img_file_path) and
-            os.path.getmtime(file_path) < os.path.getmtime(single_img_file_path))
+        # back yet, since that binary is rebuilt only when it is read. config_analysis.ini is a
+        # source as well, because num_ref_images and n_summarize decide which images are summarized
+        # into which, so averages computed with other counts no longer answer what it asks for. A
+        # save of the config that leaves both counts alone costs a rebuild that was not needed,
+        # which is the loading time of the channel.
+        sources = [get_binary_file_path(channel, path=path),
+                   os.path.join(path, 'config_analysis.ini')]
+        outdated = _binary_data_is_outdated(file_path, channel, path=path) or any(
+            os.path.exists(source) and os.path.getmtime(file_path) < os.path.getmtime(source)
+            for source in sources)
     if outdated:
         average_all_fitpar(channel, n_summarize=n_summarize, num_ref_imgs=num_ref_imgs, path=path)
     try:

@@ -87,3 +87,17 @@ class TestCompatibility:
         for sim_idx in range(2):
             assert config.get_ref_img_indices(sim_idx) is None
             assert config.get_num_ref_images(sim_idx) == 10
+
+
+class TestNSummarize:
+    """Number of consecutive images summarized into one when average_images is set."""
+
+    def test_the_default_section_value_is_read(self, tmp_path):
+        config = load_config(tmp_path, 'average_images = True\nn_summarize = 5\n')
+        assert config.n_summarize == 5
+
+    def test_a_config_written_before_the_option_keeps_the_former_behaviour(self, tmp_path):
+        # the averaging was hardcoded to summarize two images, so a config of an earlier version is
+        # read with that count
+        config = load_config(tmp_path)
+        assert config.n_summarize == 2

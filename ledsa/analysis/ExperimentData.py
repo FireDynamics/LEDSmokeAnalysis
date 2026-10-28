@@ -38,6 +38,8 @@ class ExperimentData:
     :type ref_img_indices: list[int] or None
     :ivar average_images: Intensities are computed as an average from consecutive images.
     :type average_images: bool
+    :ivar n_summarize: Number of consecutive images summarized into one when averaging.
+    :type n_summarize: int
     :ivar reference_properties: Reference properties to be analysed, one analysis each.
     :type reference_properties: List[str]
     :ivar merge_led_arrays: Merge LED arrays option.
@@ -59,6 +61,7 @@ class ExperimentData:
         self.num_ref_images = None
         self.ref_img_indices = None
         self.average_images = False
+        self.n_summarize = 2
         self.lambda_reg = None
         self.reference_properties = None
         self.merge_led_arrays = None
@@ -77,6 +80,9 @@ class ExperimentData:
         if self.ref_img_indices is None:
             self.num_ref_images = int(config_analysis['DEFAULT']['num_ref_images'])
         self.average_images = config_analysis.getboolean('DEFAULT', 'average_images', fallback=False)
+        # The number of images per group was named by no config key at all, so the averaging kept
+        # the two it was written with whatever the experiment asked for.
+        self.n_summarize = int(config_analysis.get('DEFAULT', 'n_summarize', fallback='2'))
         self.solver = config_analysis['DEFAULT']['solver']
         if self.solver == 'nonlinear':
             self.weighting_preference = float(config_analysis['DEFAULT']['weighting_preference'])
