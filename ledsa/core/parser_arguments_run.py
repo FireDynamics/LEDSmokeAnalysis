@@ -270,7 +270,6 @@ def extionction_coefficient_calculation(args) -> None:
                                                               num_ref_imgs=ex_data.num_ref_images,
                                                               ref_img_indices=ex_data.ref_img_indices,
                                                               average_images=ex_data.average_images,
-                                                           n_summarize=ex_data.n_summarize,
                                                               n_summarize=ex_data.n_summarize,
                                                               weighting_curvature=ex_data.weighting_curvature,
                                                               weighting_preference=ex_data.weighting_preference,
