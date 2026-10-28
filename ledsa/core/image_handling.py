@@ -1,6 +1,8 @@
 import os
 from typing import List
 
+import pandas as pd
+
 from ledsa.core.file_handling import read_table
 
 
@@ -42,8 +44,11 @@ def get_analysis_img_ids(experiment_img_ids: List[int], img_name_string: str,
     :raises ValueError: If one of the images was not analysed.
     """
     file_path = os.path.join(path, 'analysis', 'image_infos_analysis.csv')
-    infos = read_table(file_path, ',', 'str', silent=True, atleast_2d=True)
-    analysis_img_id_of_name = {infos[i, 1]: int(infos[i, 0]) for i in range(infos.shape[0])}
+    # read with the header, which names the columns, instead of as a table of numbers: the header
+    # of the image infos starts with a '#' and would be read as a comment line that holds no data
+    image_infos = pd.read_csv(file_path)
+    analysis_img_id_of_name = {name: int(analysis_img_id) for name, analysis_img_id
+                               in zip(image_infos['Name'], image_infos['#ID'])}
     img_names = [img_name_string.format(int(img_id)) for img_id in experiment_img_ids]
     missing = [img_id for img_id, name in zip(experiment_img_ids, img_names)
                if name not in analysis_img_id_of_name]

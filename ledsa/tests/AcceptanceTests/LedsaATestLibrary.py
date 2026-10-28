@@ -149,11 +149,16 @@ class LedsaATestLibrary:
                 create_test_image(image_id, ex, img_dir=img_dir)
 
     @keyword
-    def create_and_fill_config_for_stacked_cam(self, cam_z, first=1, last=4):
+    def create_and_fill_config_for_stacked_cam(self, cam_z, first=1, last=4, num_skip_imgs=0,
+                                               ref_img_experiment_ids=None):
         """Create config.ini in the current directory for one camera simulation.
 
         The camera height *cam_z* is only needed for the LEDSA coordinate step;
         it is not stored in config.ini (that uses the physical LED array geometry).
+
+        :param num_skip_imgs: Only every num_skip_imgs + 1 image is analysed.
+        :param ref_img_experiment_ids: Experiment IDs of the images the intensities of this camera
+            are normalized with, e.g. ``'5'``. They are analysed whatever num_skip_imgs leaves out.
         """
         conf = ConfigData(
             load_config_file=False,
@@ -179,7 +184,8 @@ class LedsaATestLibrary:
             led_array_edge_coordinates=None,
             first_img_analysis_id=first,
             last_img_analysis_id=last,
-            num_skip_imgs=0,
+            num_skip_imgs=int(num_skip_imgs),
+            ref_img_experiment_ids=ref_img_experiment_ids,
             num_skip_leds=0,
             merge_led_array_indices=None,
         )
@@ -302,6 +308,25 @@ class LedsaATestLibrary:
                                  f'expected {expected}')
         if np.isnan(extinction_coefficients).any():
             raise AssertionError('The stacked result contains NaN extinction coefficients')
+
+    @keyword
+    def analysed_images_should_be(self, simulation_dir, *expected_names):
+        """Fail unless the image infos of a simulation name exactly the given images.
+
+        num_skip_imgs thins out the images an analysis works on, while the images named in
+        ref_img_experiment_ids are analysed all the same, so the image infos say which ones a run
+        really got.
+
+        :param simulation_dir: Directory of the simulation, which holds the analysis directory.
+        :param expected_names: File names of the analysed images, in the order they were taken.
+        """
+        path = os.path.join(simulation_dir, 'analysis', 'image_infos_analysis.csv')
+        with open(path, encoding='utf-8') as infos_file:
+            rows = [line for line in infos_file.read().splitlines()[1:] if line]
+        names = [row.split(',')[1] for row in rows]
+        if names != list(expected_names):
+            raise AssertionError(f'{path} names the images {names} instead of '
+                                 f'{list(expected_names)}.')
 
     @keyword
     def stacked_analysis_should_report_reference_images(self, output, *reported_indices):

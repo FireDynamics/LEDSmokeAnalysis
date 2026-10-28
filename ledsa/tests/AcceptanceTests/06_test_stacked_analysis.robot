@@ -8,6 +8,7 @@ Force Tags  analysis  stacked
 # repeated in a directory they already ran in.
 ${SKIPPEDDIR}   ${WORKDIR}${/}stacked_skipped_image
 ${REFIMGDIR}    ${WORKDIR}${/}stacked_ref_images
+${CAMREFDIR}    ${WORKDIR}${/}stacked_ref_images_of_the_cameras
 
 *** Test Cases ***
 Step Stacked Analysis Linear Solver
@@ -54,6 +55,28 @@ Stacked Analysis Uses The Reference Images Of Every Camera
     Stacked Result Header Should Name Reference Images    sim0 [1], sim1 [5]
     Check Stacked Extinction Coefficient Results    linear
 
+Stacked Analysis Takes The Reference Images From The Config Of Every Camera
+    [Documentation]     A camera names the images its intensities are normalized with in
+    ...                 ref_img_experiment_ids of its own config.ini, where the data extraction
+    ...                 reads them to analyse them whatever num_skip_imgs leaves out. Naming them
+    ...                 a second time in config_stacked.ini would only repeat what the extraction
+    ...                 already knows, so a [simulation_N] without ref_img_indices takes them from
+    ...                 the camera.
+    Create Stacked Test Data    ${CAMREFDIR}    num_extra_ref_images=1
+    Setup Camera Simulation    cam0    0.5    root=${CAMREFDIR}    last=5
+    ...    ref_img_experiment_ids=1
+    # cam1 analyses every third image, so the increment leaves the images 1 and 4 and the
+    # undisturbed image 5 it is normalized with is inserted, which makes it the analysis ID 3
+    Setup Camera Simulation    cam1    2.5    root=${CAMREFDIR}    last=5
+    ...    num_skip_imgs=2    ref_img_experiment_ids=5
+    Analysed Images Should Be    ${CAMREFDIR}${/}stacked${/}cam1
+    ...    test_img_1.jpg    test_img_4.jpg    test_img_5.jpg
+    Change Directory    ${CAMREFDIR}${/}stacked
+    Create And Fill Config Stacked    cam0    cam1
+    ${output} =    Execute Ledsa    -as
+    Stacked Analysis Should Report Reference Images    ${output}    [1]    [3]
+    Stacked Result Header Should Name Reference Images    sim0 [1], sim1 [3]
+
 
 *** Keywords ***
 Create Stacked Test Data
@@ -65,10 +88,11 @@ Create Stacked Test Data
 
 Setup Camera Simulation
     [Arguments]    ${cam_dir}    ${cam_z}    ${root}=${WORKDIR}    ${corrupted_img}=${EMPTY}
-    ...    ${last}=4
+    ...    ${last}=4    ${num_skip_imgs}=0    ${ref_img_experiment_ids}=${NONE}
     Log    Setting up camera simulation in ${cam_dir} with camera height z=${cam_z}
     Change Directory    ${root}${/}stacked${/}${cam_dir}
     Create And Fill Config For Stacked Cam    ${cam_z}    last=${last}
+    ...    num_skip_imgs=${num_skip_imgs}    ref_img_experiment_ids=${ref_img_experiment_ids}
     Execute Ledsa    -s1
     Execute Ledsa    -s2
     Execute Ledsa    --coordinates
