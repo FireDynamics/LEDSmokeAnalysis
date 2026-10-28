@@ -181,6 +181,8 @@ class TestCreateBinaryData(BinaryDataFiles):
         self._write_result_file(analysis_dir, 2, self.NUM_COLUMNS)
         create_binary_data(0)
         assert sorted(self._load(analysis_dir)['img_id'].unique()) == [2]
+
+
 class TestOutdatedBinaryData(BinaryDataFiles):
     """The binary data are a cache of the step 3 result files, so they must not outlive them.
 
