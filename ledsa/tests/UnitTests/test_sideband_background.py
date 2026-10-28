@@ -261,6 +261,9 @@ class TestNanReferenceProperty:
         coefficients = ExtinctionCoefficientsLinear.__new__(ExtinctionCoefficientsLinear)
         coefficients.experiment = SimpleNamespace(channel=0, path='.', led_array=0)
         coefficients.average_images = False
+        # set in __init__: the property analysed here has no noise column and is not smoothed
+        coefficients.noise_property = None
+        coefficients.num_moving_avg_images = 1
         return coefficients
 
     def test_nan_values_stop_the_analysis(self, coefficients):

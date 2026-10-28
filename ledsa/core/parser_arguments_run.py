@@ -285,7 +285,10 @@ def extionction_coefficient_calculation(args) -> None:
                                                            average_images=ex_data.average_images,
                                                            n_summarize=ex_data.n_summarize,
                                                            temperature_correction=temperature_corrections.get(channel),
-                                                           lambda_reg=ex_data.lambda_reg)
+                                                           lambda_reg=ex_data.lambda_reg,
+                                                           snr_full_weight=ex_data.snr_full_weight,
+                                                           min_layer_weight=ex_data.min_layer_weight,
+                                                           num_moving_avg_images=ex_data.num_moving_avg_images)
                 else:
                     raise ValueError(f"Invalid solver type '{solver}'. Must be 'linear' or 'nonlinear'.")
                 if ex_data.n_cpus > 1:

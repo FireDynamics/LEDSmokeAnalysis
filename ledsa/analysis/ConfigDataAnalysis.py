@@ -58,7 +58,8 @@ class ConfigDataAnalysis(cp.ConfigParser):
                  reference_property='sum_col_val',
                  average_images=False, n_summarize=2, solver='linear', weighting_preference=-6e-3,
                  weighting_curvature=1e-2,
-                 num_iterations=1000, lambda_reg=1e-3, reduction_files=None):
+                 num_iterations=1000, lambda_reg=1e-3, snr_full_weight=None, min_layer_weight=0.5,
+                 num_moving_avg_images=1, reduction_files=None):
         """
         :param load_config_file: Determines whether to load the config file on initialization. Defaults to True.
         :type load_config_file: bool
@@ -99,6 +100,18 @@ class ConfigDataAnalysis(cp.ConfigParser):
         :type num_iterations: int
         :param lambda_reg: Regularization parameter for the linear solver. Defaults to 1e-3.
         :type lambda_reg: float
+        :param snr_full_weight: Linear solver only: signal-to-noise ratio from which on an LED gets the
+            full weight. Below it the weight falls linearly to zero at a signal of zero. Needs a reference
+            property with a noise column, which only ob_sum_col_val has. None weights all LEDs equally and
+            is the default.
+        :type snr_full_weight: float or None
+        :param min_layer_weight: Linear solver with snr_full_weight only: a layer whose path length
+            weighted mean LED weight stays below this value is set to NaN. Defaults to 0.5.
+        :type min_layer_weight: float
+        :param num_moving_avg_images: Linear solver only: number of consecutive images over which the
+            reference property is smoothed by a centred moving average, every image keeping its own time.
+            1 leaves it as it is and is the default. Cannot be combined with average_images.
+        :type num_moving_avg_images: int
         :param reduction_files: Path of the reduction factor file of the temperature correction per
             camera channel. Channels without an entry are analysed without the correction, which is
             the default for every channel.
@@ -133,6 +146,14 @@ class ConfigDataAnalysis(cp.ConfigParser):
             self['DEFAULT']['   num_iterations'] = str(num_iterations)
             self.set('DEFAULT', '   # Options for linear solver (ignored when nonlinear solver is used) ')
             self['DEFAULT']['   lambda_reg'] = str(lambda_reg)
+            self.set('DEFAULT', '   # SNR from which on an LED gets the full weight, None for equal weights.')
+            self.set('DEFAULT', '   # Needs a reference property with a noise column (ob_sum_col_val).')
+            self['DEFAULT']['   snr_full_weight'] = str(snr_full_weight)
+            self.set('DEFAULT', '   # Layers whose mean LED weight stays below this value become NaN')
+            self['DEFAULT']['   min_layer_weight'] = str(min_layer_weight)
+            self.set('DEFAULT', '   # Images for a centred moving average of the reference property, 1 is off.')
+            self.set('DEFAULT', '   # Every image keeps its own time, unlike average_images with n_summarize.')
+            self['DEFAULT']['   num_moving_avg_images'] = str(num_moving_avg_images)
 
             self['experiment_geometry'] = {}
             self.set('experiment_geometry', '# Global X Y Z position of the camera ')
