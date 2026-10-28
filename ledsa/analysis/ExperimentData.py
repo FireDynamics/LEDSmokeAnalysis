@@ -4,6 +4,7 @@ from ledsa.analysis.ConfigDataAnalysis import ConfigDataAnalysis
 from ledsa.analysis.Experiment import Camera, Layers
 # Todo: Import init_function for request of missing data
 from ledsa.core.ConfigData import ConfigData
+from ledsa.core.image_handling import get_analysis_img_ids
 
 
 @dataclass
@@ -84,6 +85,22 @@ class ExperimentData:
         self.solver = None
         self.load_config_parameters()  # Todo: Does that belong here?
 
+    def _ref_img_indices_of_config(self) -> list:
+        """
+        Analysis IDs of the images config.ini names for the normalization of the LED intensities.
+
+        ref_img_experiment_ids of config.ini names them by the ID their file name is built from,
+        since the data extraction has to know them before the analysis IDs exist. The analysis
+        works with the analysis IDs, which the image infos translate them into.
+
+        :return: Analysis IDs of the reference images, or None if config.ini names none.
+        :rtype: list or None
+        """
+        experiment_img_ids = self.config.get_ref_img_experiment_ids()
+        if experiment_img_ids is None:
+            return None
+        return get_analysis_img_ids(experiment_img_ids, self.config['DEFAULT']['img_name_string'])
+
     def load_config_parameters(self) -> None:
         """
         Load experiment data from configuration file.
@@ -93,6 +110,8 @@ class ExperimentData:
         num_layers = int(config_analysis['model_parameters']['num_layers'])
         self.channels = config_analysis.get_list_of_values('DEFAULT', 'camera_channels')
         self.ref_img_indices = config_analysis.get_list_of_values('DEFAULT', 'ref_img_indices')
+        if self.ref_img_indices is None:
+            self.ref_img_indices = self._ref_img_indices_of_config()
         if self.ref_img_indices is None:
             self.num_ref_images = int(config_analysis['DEFAULT']['num_ref_images'])
         self.average_images = config_analysis.getboolean('DEFAULT', 'average_images', fallback=False)

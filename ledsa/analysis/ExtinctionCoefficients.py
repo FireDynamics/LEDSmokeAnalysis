@@ -8,8 +8,10 @@ import pandas as pd
 
 from ledsa.analysis.Experiment import Experiment, Layers, Camera
 from ledsa.analysis.temperature_correction import TemperatureCorrection
-from ledsa.core.file_handling import (NOISE_COLUMNS, NUM_IMGS_PER_AVERAGE, create_analysis_infos_avg, extend_hdf,
-                                      get_extinction_coefficients_file_path, read_experiment_times,
+from ledsa.core.file_handling import (NOISE_COLUMNS, NUM_IMGS_PER_AVERAGE, avg_img_ids_of_ref_imgs,
+                                      create_analysis_infos_avg, extend_hdf,
+                                      get_extinction_coefficients_file_path, read_analysis_img_ids,
+                                      read_experiment_times,
                                       read_hdf, read_hdf_avg)
 from ledsa.data_extraction.data_integrity import check_intensity_normalization
 
@@ -30,6 +32,10 @@ class ExtinctionCoefficients(ABC):
     :vartype num_ref_imgs: int
     :ivar ref_img_indices: Indices of reference images to use. If None, use num_ref_imgs.
     :vartype ref_img_indices: list[int] or None
+    :ivar ref_img_ids_of_loaded_data: Indices the reference images carry in the loaded image data.
+        They differ from ref_img_indices when the averaged data are loaded, which are numbered
+        from 1 again.
+    :vartype ref_img_ids_of_loaded_data: list[int] or None
     :ivar calculated_img_data: DataFrame containing calculated image data.
     :vartype calculated_img_data: pd.DataFrame
     :ivar distances_per_led_and_layer: Array of distances traversed between camera and LEDs in each layer.
@@ -92,6 +98,7 @@ class ExtinctionCoefficients(ABC):
         self.reference_property = reference_property
         self.num_ref_imgs = num_ref_imgs
         self.ref_img_indices = ref_img_indices
+        self.ref_img_ids_of_loaded_data = ref_img_indices
         self.calculated_img_data = pd.DataFrame()
         self.analysed_img_ids = []
         self.distances_per_led_and_layer = np.array([])
@@ -201,19 +208,20 @@ class ExtinctionCoefficients(ABC):
             contains NaN values.
         """
         if self.average_images:
-            # The averaged images are numbered from 1 again, so indices that name single images
-            # would point at different images after the averaging.
-            if self.ref_img_indices is not None:
-                raise ValueError('average_images and ref_img_indices cannot be combined: averaging '
-                                 'summarizes the images and numbers them from 1 again, so the '
-                                 'indices would name other images than intended. Use num_ref_images '
-                                 'instead, which names the images that are left unaveraged.')
-            # the binary and the image infos of the averaged images are built from the same counts,
-            # so that they hold the same image IDs
+            # the binary and the image infos of the averaged images are built from the same
+            # counts and reference images, so that they hold the same image IDs
             img_data = read_hdf_avg(self.experiment.channel, path=self.experiment.path,
-                                    n_summarize=self.n_summarize, num_ref_imgs=self.num_ref_imgs)
+                                    n_summarize=self.n_summarize, num_ref_imgs=self.num_ref_imgs,
+                                    ref_img_ids=self.ref_img_indices)
             create_analysis_infos_avg(n_summarize=self.n_summarize, num_ref_imgs=self.num_ref_imgs,
-                                      path=self.experiment.path)
+                                      ref_img_ids=self.ref_img_indices, path=self.experiment.path)
+            if self.ref_img_indices is not None:
+                # The reference images are kept unaveraged, so each of them is still an image of
+                # its own, but the averaged images are numbered from 1 again and the configured
+                # indices would name other images in them.
+                self.ref_img_ids_of_loaded_data = avg_img_ids_of_ref_imgs(
+                    self.ref_img_indices, read_analysis_img_ids(self.experiment.path),
+                    n_summarize=self.n_summarize)
         else:
             img_data = read_hdf(self.experiment.channel, path=self.experiment.path)
         if self.reference_property not in img_data.columns:
@@ -404,9 +412,9 @@ class ExtinctionCoefficients(ABC):
 
          :raises ValueError: if none of the reference images holds LED data.
          """
-        if self.ref_img_indices is not None:
-            requested_img_ids = list(self.ref_img_indices)
-            ref_img_data = self.calculated_img_data.query(f'img_id == {self.ref_img_indices}')
+        if self.ref_img_ids_of_loaded_data is not None:
+            requested_img_ids = list(self.ref_img_ids_of_loaded_data)
+            ref_img_data = self.calculated_img_data.query(f'img_id == {requested_img_ids}')
         else:
             # The reference window is the first num_ref_imgs images, whether or not they were analysed,
             # so a skipped image among them is missing from the average and has to be reported
