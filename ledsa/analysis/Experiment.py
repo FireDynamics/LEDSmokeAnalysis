@@ -6,6 +6,15 @@ from typing import List
 import numpy as np
 
 
+class InconsistentDistanceError(ValueError):
+    """The light path of an LED does not add up to its distance from the camera.
+
+    The traversed distances are accumulated per layer, so the part of a light path that lies
+    outside the layers is lost. Computing extinction coefficients from such a path would
+    attribute the dimming of the whole path to the layers covering a part of it.
+    """
+
+
 @dataclass
 class Layer:
     """
@@ -175,6 +184,8 @@ class Experiment:
         :type led: LED
         :return: Array of distances traversed in each layer
         :rtype: np.ndarray
+        :raises InconsistentDistanceError: If the distances do not add up to the distance between
+                                           the LED and the camera.
         """
         horizontal_dist = np.sqrt((self.camera.pos_x - led.pos_x) ** 2 + (self.camera.pos_y - led.pos_y) ** 2)
         alpha = np.arctan((led.pos_z - self.camera.pos_z) / horizontal_dist)
@@ -184,7 +195,17 @@ class Experiment:
             distance_per_layer = self.calc_traversed_dist_per_layer_with_nonzero_alpha(alpha, led)
 
         if not self.distance_calculation_is_consistent(distance_per_layer, led):
-            distance_per_layer = None
+            euclidean_dist = np.sqrt((self.camera.pos_x - led.pos_x) ** 2 +
+                                     (self.camera.pos_y - led.pos_y) ** 2 +
+                                     (self.camera.pos_z - led.pos_z) ** 2)
+            raise InconsistentDistanceError(
+                f'The light path of LED {led.id} of LED array {self.led_array} traverses the layers '
+                f'over {np.sum(distance_per_layer):.6g}, while the LED is {euclidean_dist:.6g} away '
+                f'from the camera. LED position: ({led.pos_x}, {led.pos_y}, {led.pos_z}), camera '
+                f'position: ({self.camera.pos_x}, {self.camera.pos_y}, {self.camera.pos_z}), layers: '
+                f'{self.layers.bottom_border} to {self.layers.top_border}. The part of the light path '
+                f'outside the layers belongs to no layer, so set domain_bounds in the analysis '
+                f'configuration to a range that holds the camera and every LED of the array.')
         return distance_per_layer
 
     def calc_traversed_dist_in_plane(self, led: LED) -> np.ndarray:
