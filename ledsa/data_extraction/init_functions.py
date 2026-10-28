@@ -222,7 +222,7 @@ def _build_img_data_string(build_type: str, config: ConfigData) -> str:
     if config['analyse_photo']['first_img_analysis_id'] == 'None':
         config.in_first_img_analysis_id()
         config.save()
-    first_img_id = config.getint(build_type, 'first_img_experiment_id')
+    first_img_id = config.getint(build_type, 'first_img_experiment_id' if build_type == 'DEFAULT' else 'first_img_analysis_id')
 
     if config['analyse_photo']['last_img_analysis_id'] == 'None':
         config.in_last_img_analysis_id()

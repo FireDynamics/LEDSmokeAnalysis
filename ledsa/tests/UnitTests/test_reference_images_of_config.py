@@ -120,6 +120,7 @@ class TestNumberOfAnalysedImages:
         assert _number_of_analysed_images(config) == 5
 
     def test_the_image_range_is_used_without_the_image_infos(self, tmp_path, monkeypatch):
-        # every version before the image infos were read computed the number this way
+        # every version before the image infos were read computed the number from the range and
+        # the increment, which counts the images 1, 4 and 7 of the IDs 1 to 7
         config = write_config(tmp_path, monkeypatch)
-        assert _number_of_analysed_images(config) == 2
+        assert _number_of_analysed_images(config) == 3

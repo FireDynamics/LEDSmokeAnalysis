@@ -1,6 +1,7 @@
 import configparser as cp
-from typing import Iterable, List, Union
+from typing import Iterable, List, Optional, Union
 
+from ledsa.analysis.temperature_correction import TEMPERATURE_CORRECTION_CHANNELS
 from ledsa.core.config_file import save_config
 
 DEFAULT_REFERENCE_PROPERTY = 'sum_col_val'
@@ -55,8 +56,9 @@ class ConfigDataAnalysis(cp.ConfigParser):
     def __init__(self, load_config_file=True, camera_position=None, num_layers=20, domain_bounds=None,
                  led_array_indices=None, num_ref_images=10, ref_img_indices=None, camera_channels=0, num_cores=1,
                  reference_property='sum_col_val',
-                 average_images=False, solver='linear', weighting_preference=-6e-3, weighting_curvature=1e-2,
-                 num_iterations=1000, lambda_reg=1e-3):
+                 average_images=False, n_summarize=2, solver='linear', weighting_preference=-6e-3,
+                 weighting_curvature=1e-2,
+                 num_iterations=1000, lambda_reg=1e-3, reduction_files=None):
         """
         :param load_config_file: Determines whether to load the config file on initialization. Defaults to True.
         :type load_config_file: bool
@@ -84,6 +86,9 @@ class ConfigDataAnalysis(cp.ConfigParser):
         :type reference_property: Union[str, Iterable[str]]
         :param average_images: Determines if intensities are computed as an average from two consecutive images. Defaults to False.
         :type average_images: bool
+        :param n_summarize: Number of consecutive images summarized into one if average_images is set. The first
+            num_ref_images images are kept as they are. Defaults to 2.
+        :type n_summarize: int
         :param solver: Method used to compute extinction coefficients - can be 'linear' or 'nonlinear'. Defaults to 'linear'.
         :type solver: str
         :param weighting_preference: Weighting factor for the preference to push the nonlinear solver to high or low values for the extinction coeffiientes. Defaults to -6e-3.
@@ -94,6 +99,10 @@ class ConfigDataAnalysis(cp.ConfigParser):
         :type num_iterations: int
         :param lambda_reg: Regularization parameter for the linear solver. Defaults to 1e-3.
         :type lambda_reg: float
+        :param reduction_files: Path of the reduction factor file of the temperature correction per
+            camera channel. Channels without an entry are analysed without the correction, which is
+            the default for every channel.
+        :type reduction_files: dict[int, str] or None
         """
         cp.ConfigParser.__init__(self, allow_no_value=True)
         if load_config_file:
@@ -112,8 +121,10 @@ class ConfigDataAnalysis(cp.ConfigParser):
             self['DEFAULT']['   ref_img_indices'] = str(ref_img_indices)
             self.set('DEFAULT', '   # Camera channels to be considered in the analysis')
             self['DEFAULT']['   camera_channels'] = str(camera_channels)
-            self.set('DEFAULT', '   # Intensities are computed as average from two consecutive images if set to True ')
+            self.set('DEFAULT', '   # Intensities are computed as average from n_summarize consecutive images if set to True ')
             self['DEFAULT']['   average_images'] = str(average_images)
+            self.set('DEFAULT', '   # Number of consecutive images summarized into one, the reference images excluded ')
+            self['DEFAULT']['   n_summarize'] = str(n_summarize)
             self.set('DEFAULT', '   # Extinction coefficients can be computed by linear or numeric solver ')
             self['DEFAULT']['   solver'] = str(solver)
             self.set('DEFAULT', '   # Options for nonlinear solver (ignored when linear solver is used) ')
@@ -135,6 +146,20 @@ class ConfigDataAnalysis(cp.ConfigParser):
             self['model_parameters']['   num_layers'] = str(num_layers)
             self.set('model_parameters', '   # Lower and upper bounds of the computational domain  ')
             self['model_parameters']['   domain_bounds'] = str(domain_bounds)
+
+            reduction_files = reduction_files if reduction_files is not None else {}
+            self['temperature_correction'] = {}
+            self.set('temperature_correction', '# Correction of the LED intensities for the temperature of the LEDs.')
+            self.set('temperature_correction', '   # Path of the reduction factor file of every camera channel. A channel with a')
+            self.set('temperature_correction', '   # file is corrected with it, a channel set to None is analysed as extracted.')
+            self.set('temperature_correction', '   # The factors are computed outside LEDSA and read from a CSV file holding the')
+            self.set('temperature_correction', '   # experiment time [s] in its first column, the LED height [m] in its header')
+            self.set('temperature_correction', '   # and the factor the intensity of that time and height is reduced by in its')
+            self.set('temperature_correction', '   # cells. They are interpolated to the time of every image and the height of')
+            self.set('temperature_correction', '   # every LED, and the intensities are divided by them.')
+            for channel in TEMPERATURE_CORRECTION_CHANNELS:
+                self['temperature_correction'][f'   reduction_file_channel_{channel}'] = str(
+                    reduction_files.get(channel))
 
             with open('config_analysis.ini', 'w', encoding='utf-8') as configfile:
                 self.write(configfile)
@@ -210,6 +235,29 @@ class ConfigDataAnalysis(cp.ConfigParser):
                 section, option, raw, e, fallback
             )
             return fallback
+
+    def get_reduction_file(self, channel: int) -> Optional[str]:
+        """
+        Path of the reduction factor file of the temperature correction of a camera channel.
+
+        A config file written before the temperature correction existed has no
+        [temperature_correction] section at all, which asks for no correction just like the option
+        left at None, so that an older analysis is reproduced unchanged.
+
+        :param channel: The camera channel.
+        :type channel: int
+        :return: The configured path, None if the channel is analysed without the correction.
+        :rtype: str or None
+        """
+        option = f'reduction_file_channel_{channel}'
+        if not self.has_section('temperature_correction'):
+            return None
+        if not self.has_option('temperature_correction', option):
+            return None
+        raw = self.get('temperature_correction', option, fallback='None').strip()
+        if raw.lower() == 'none' or raw == '':
+            return None
+        return raw
 
     def in_camera_channels(self) -> None:
         """

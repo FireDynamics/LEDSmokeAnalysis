@@ -2,7 +2,7 @@ import os
 import re
 import warnings
 from pathlib import Path
-from typing import List, Union
+from typing import Dict, List, Union
 
 import numpy as np
 import pandas as pd
@@ -282,6 +282,26 @@ def create_analysis_infos_avg(n_summarize: int = NUM_IMGS_PER_AVERAGE,
     # single images it is derived from
     img_infos_analysis_avg.to_csv(out_file_path, index=False)
 
+
+def read_experiment_times(path: Union[str, os.PathLike] = '.', average_images: bool = False) -> Dict[int, float]:
+    """
+    Read the experiment time of every image of a LEDSA run from its image infos.
+
+    :param path: Root directory of the LEDSA run, defaults to the current directory.
+    :type path: str or os.PathLike
+    :param average_images: Whether the image infos of the averaged images are read.
+    :type average_images: bool
+    :return: Experiment time [s] of every image ID.
+    :rtype: dict[int, float]
+    :raises FileNotFoundError: If the image infos file does not exist.
+    """
+    info_file = 'image_infos_analysis_avg.csv' if average_images else 'image_infos_analysis.csv'
+    file_path = os.path.join(path, 'analysis', info_file)
+    image_infos = pd.read_csv(file_path)
+    return {int(img_id): float(experiment_time)
+            for img_id, experiment_time in zip(image_infos['#ID'], image_infos['Experiment_Time[s]'])}
+
+
 def read_table(filename: str, delim=' ', dtype='float', atleast_2d=False, silent=False) -> np.ndarray:
     """
     Reads data from a file into a numpy array.
@@ -413,8 +433,9 @@ def read_hdf_avg(channel: int, path='.', n_summarize: int = NUM_IMGS_PER_AVERAGE
 
     The averaged binary has a file name of its own, so that the averaged data are returned
     whenever they are asked for. It is rebuilt whenever it is missing, older than the binary of the
-    single images it is computed from, or older than the step 3 result files those are built from,
-    so that an analysis never reads the averaged data of an earlier extraction run.
+    single images it is computed from, older than the step 3 result files those are built from, or
+    older than config_analysis.ini, which holds the counts the images are summarized with. So an
+    analysis never reads the averaged data of an earlier extraction run or of other counts.
 
     :param channel: Channel number for which data is to be read.
     :type channel: int
@@ -432,18 +453,26 @@ def read_hdf_avg(channel: int, path='.', n_summarize: int = NUM_IMGS_PER_AVERAGE
     :rtype: pd.DataFrame
     """
     file_path = get_binary_file_path(channel, path=path, averaged=True)
-    single_img_file_path = get_binary_file_path(channel, path=path)
     if not os.path.exists(file_path):
         outdated = True
     else:
         # The averaged data are built from the binary of the single images, which is itself only a
         # cache of the step 3 result files, so both are sources. Comparing the averaged data with
         # the single image binary alone would miss a data extraction run that has not been read
-        # back yet, since that binary is rebuilt only when it is read.
-        outdated = _binary_data_is_outdated(file_path, channel, path=path) or (
-            os.path.exists(single_img_file_path) and
-            os.path.getmtime(file_path) < os.path.getmtime(single_img_file_path)) or \
-            _averaged_binary_was_built_differently(file_path, n_summarize, num_ref_imgs, ref_img_ids)
+        # back yet, since that binary is rebuilt only when it is read. config_analysis.ini is a
+        # source as well, because num_ref_images and n_summarize decide which images are summarized
+        # into which, so averages computed with other counts no longer answer what it asks for. A
+        # save of the config that leaves both counts alone costs a rebuild that was not needed,
+        # which is the loading time of the channel.
+        sources = [get_binary_file_path(channel, path=path),
+                   os.path.join(path, 'config_analysis.ini')]
+        # The reference images can also be named in config.ini or, for the stacked analysis, in
+        # config_stacked.ini, which does not lie next to the data at all, so the parameters the
+        # averages were computed with are compared with the ones they are asked for as well.
+        outdated = _binary_data_is_outdated(file_path, channel, path=path) or any(
+            os.path.exists(source) and os.path.getmtime(file_path) < os.path.getmtime(source)
+            for source in sources) or _averaged_binary_was_built_differently(
+                file_path, n_summarize, num_ref_imgs, ref_img_ids)
     if outdated:
         average_all_fitpar(channel, n_summarize=n_summarize, num_ref_imgs=num_ref_imgs,
                            ref_img_ids=ref_img_ids, path=path)
@@ -569,7 +598,10 @@ def _number_of_analysed_images(config) -> int:
     else:
         max_id = 10 ** 7
     number_of_images = (max_id + last_img_id - first_img_id) % max_id + 1
-    return number_of_images // (int(config['analyse_photo']['num_skip_imgs']) + 1)
+    img_increment = int(config['analyse_photo']['num_skip_imgs']) + 1
+    # rounded up, because the first image is always analysed: the IDs 1 to 11 with every second
+    # image skipped are the six images 1, 3, 5, 7, 9 and 11, not five
+    return (number_of_images + img_increment - 1) // img_increment
 
 
 def create_binary_data(channel: int, path: str = '.') -> None:

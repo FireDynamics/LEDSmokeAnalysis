@@ -8,6 +8,7 @@ from ledsa.analysis.ConfigDataStacked import ConfigDataStacked
 from ledsa.analysis.Experiment import Experiment
 from ledsa.analysis.ExperimentData import ExperimentData
 from ledsa.analysis.StackedExtinctionCoefficients import StackedExtinctionCoefficients
+from ledsa.analysis.temperature_correction import load_temperature_corrections
 from ledsa.analysis.data_preparation import apply_color_correction
 import numpy as np
 
@@ -241,6 +242,8 @@ def extionction_coefficient_calculation(args) -> None:
     """
     ex_data = ExperimentData()
     ex_data.request_config_parameters()
+    # read before the first coefficient is computed, so that an unreadable file stops the run here
+    temperature_corrections = load_temperature_corrections(ex_data.reduction_files)
 
     # Determine which solver to use based on config
     solver = ex_data.solver.lower()
@@ -270,6 +273,8 @@ def extionction_coefficient_calculation(args) -> None:
                                                               num_ref_imgs=ex_data.num_ref_images,
                                                               ref_img_indices=ex_data.ref_img_indices,
                                                               average_images=ex_data.average_images,
+                                                              n_summarize=ex_data.n_summarize,
+                                                              temperature_correction=temperature_corrections.get(channel),
                                                               weighting_curvature=ex_data.weighting_curvature,
                                                               weighting_preference=ex_data.weighting_preference,
                                                               num_iterations=ex_data.num_iterations)
@@ -278,6 +283,8 @@ def extionction_coefficient_calculation(args) -> None:
                                                            num_ref_imgs=ex_data.num_ref_images,
                                                            ref_img_indices=ex_data.ref_img_indices,
                                                            average_images=ex_data.average_images,
+                                                           n_summarize=ex_data.n_summarize,
+                                                           temperature_correction=temperature_corrections.get(channel),
                                                            lambda_reg=ex_data.lambda_reg)
                 else:
                     raise ValueError(f"Invalid solver type '{solver}'. Must be 'linear' or 'nonlinear'.")
