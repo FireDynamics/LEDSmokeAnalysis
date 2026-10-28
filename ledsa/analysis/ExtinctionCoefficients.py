@@ -7,7 +7,8 @@ import numpy as np
 import pandas as pd
 
 from ledsa.analysis.Experiment import Experiment, Layers, Camera
-from ledsa.core.file_handling import read_hdf, read_hdf_avg, extend_hdf, create_analysis_infos_avg
+from ledsa.core.file_handling import (create_analysis_infos_avg, extend_hdf,
+                                      get_extinction_coefficients_file_path, read_hdf, read_hdf_avg)
 from ledsa.data_extraction.data_integrity import check_intensity_normalization
 
 from importlib.metadata import version
@@ -160,11 +161,13 @@ class ExtinctionCoefficients(ABC):
         """
         Save the computed extinction coefficients to a file.
 
+        The file goes into a directory of its solver and its analysed quantity, so that the
+        results of the quantities of one analysis run do not overwrite each other.
         """
-        path = self.experiment.path / 'analysis' / 'extinction_coefficients' / self.solver
-        if not path.exists():
-            path.mkdir(parents=True)
-        path = path / f'extinction_coefficients_{self.solver}_channel_{self.experiment.channel}_{self.reference_property}_led_array_{self.experiment.led_array}.csv'
+        path = get_extinction_coefficients_file_path(self.solver, self.experiment.channel,
+                                                     self.reference_property, self.experiment.led_array,
+                                                     root=self.experiment.path)
+        path.parent.mkdir(parents=True, exist_ok=True)
         header = str(self)
         header += 'Layer_bottom_height[m],'
         header += ','.join(map(str, self.experiment.layers.borders[:-1])) + '\n'

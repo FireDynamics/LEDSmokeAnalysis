@@ -1,5 +1,6 @@
 import os
 import re
+from pathlib import Path
 from typing import List, Union
 
 import numpy as np
@@ -45,6 +46,49 @@ def remove_flag(flag: str) -> None:
         os.remove(f'.{flag}.flag')
     except OSError:
         pass
+
+def get_extinction_coefficients_dir(solver: str, reference_property: str,
+                                   root: Union[str, Path] = '.') -> Path:
+    """
+    Build the directory the extinction coefficients of one solver and one quantity are stored in.
+
+    Every analysed quantity gets a directory of its own, so that the results of an analysis run
+    with several quantities stay apart from each other.
+
+    :param solver: Solver the coefficients were computed with.
+    :type solver: str
+    :param reference_property: Quantity the coefficients were computed from.
+    :type reference_property: str
+    :param root: Root directory of the LEDSA simulation, defaults to the current directory.
+    :type root: Union[str, Path]
+    :return: Directory of the extinction coefficient files.
+    :rtype: Path
+    """
+    return Path(root) / 'analysis' / 'extinction_coefficients' / str(solver) / str(reference_property)
+
+
+def get_extinction_coefficients_file_path(solver: str, channel: int, reference_property: str, led_array: int,
+                                          root: Union[str, Path] = '.') -> Path:
+    """
+    Build the path of the extinction coefficients of one solver, quantity, channel and LED array.
+
+    :param solver: Solver the coefficients were computed with.
+    :type solver: str
+    :param channel: Camera channel the coefficients were computed from.
+    :type channel: int
+    :param reference_property: Quantity the coefficients were computed from.
+    :type reference_property: str
+    :param led_array: LED array the coefficients belong to.
+    :type led_array: int
+    :param root: Root directory of the LEDSA simulation, defaults to the current directory.
+    :type root: Union[str, Path]
+    :return: Path of the extinction coefficient file.
+    :rtype: Path
+    """
+    file_name = (f'extinction_coefficients_{solver}_channel_{channel}_{reference_property}'
+                 f'_led_array_{led_array}.csv')
+    return get_extinction_coefficients_dir(solver, reference_property, root) / file_name
+
 
 def create_analysis_infos_avg():  # TODO: Move funtion somewhere else
     """

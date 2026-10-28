@@ -36,8 +36,8 @@ class ExperimentData:
     :type num_ref_images: int
     :ivar ref_img_indices: Indices of reference images to use. If None, use num_ref_imgs.
     :type ref_img_indices: list[int] or None
-    :ivar reference_property: Reference property to be analysed.
-    :type reference_property: str
+    :ivar reference_properties: Reference properties to be analysed, one analysis each.
+    :type reference_properties: List[str]
     :ivar merge_led_arrays: Merge LED arrays option.
     :type merge_led_arrays: str
     :ivar lambda_reg: Regularization parameter for linear solver.
@@ -57,7 +57,7 @@ class ExperimentData:
         self.num_ref_images = None
         self.ref_img_indices = None
         self.lambda_reg = None
-        self.reference_property = None
+        self.reference_properties = None
         self.merge_led_arrays = None
         self.solver = None
         self.load_config_parameters()  # Todo: Does that belong here?
@@ -80,7 +80,7 @@ class ExperimentData:
             self.num_iterations = int(config_analysis['DEFAULT']['num_iterations'])
         elif self.solver == 'linear':
             self.lambda_reg = float(config_analysis['DEFAULT']['lambda_reg'])
-        self.reference_property = config_analysis['DEFAULT']['reference_property']
+        self.reference_properties = config_analysis.get_reference_properties()
 
         self.led_arrays = config_analysis.get_list_of_values('model_parameters', 'led_array_indices')
         if self.led_arrays is None:

@@ -8,11 +8,12 @@ Usage example::
 
     cfg = ConfigDataStacked()                    # reads config_stacked.ini
 
-    for arr_id in cfg.get_led_array_ids():
-        for channel in cfg.camera_channels:
-            sec = StackedExtinctionCoefficients(cfg, arr_id, channel)
-            sec.calc_and_set_coefficients()
-            sec.save()
+    for reference_property in cfg.reference_properties:
+        for arr_id in cfg.get_led_array_ids():
+            for channel in cfg.camera_channels:
+                sec = StackedExtinctionCoefficients(cfg, arr_id, channel, reference_property)
+                sec.calc_and_set_coefficients()
+                sec.save()
 """
 
 from __future__ import annotations
@@ -28,6 +29,7 @@ from ledsa.analysis.ConfigDataStacked import ConfigDataStacked
 from ledsa.analysis.Experiment import Camera, Experiment, Layers
 from ledsa.analysis.ExtinctionCoefficientsLinear import ExtinctionCoefficientsLinear
 from ledsa.analysis.ExtinctionCoefficientsNonLinear import ExtinctionCoefficientsNonLinear
+from ledsa.core.file_handling import get_extinction_coefficients_file_path
 from importlib.metadata import version
 
 
@@ -47,7 +49,7 @@ class StackedExtinctionCoefficients:
        time-alignment report to ``<output_path>/``, and stores it for reuse.
     4. Solves the augmented Beer–Lambert system with the configured solver.
     5. Writes extinction coefficient CSVs to
-       ``<output_path>/analysis/extinction_coefficients/<solver>/``.
+       ``<output_path>/analysis/extinction_coefficients/<solver>/<reference_property>/``.
 
     :ivar config: Stacked-analysis configuration.
     :vartype config: ConfigDataStacked
@@ -55,6 +57,8 @@ class StackedExtinctionCoefficients:
     :vartype led_array_id: int
     :ivar channel: Colour channel index.
     :vartype channel: int
+    :ivar reference_property: Quantity the coefficients are computed from.
+    :vartype reference_property: str
     :ivar layers: Shared layer discretisation.
     :vartype layers: Layers
     :ivar led_array_mapping: ``{sim_idx: led_array_id}`` for this virtual array.
@@ -71,7 +75,8 @@ class StackedExtinctionCoefficients:
     :vartype common_times: np.ndarray or None
     """
 
-    def __init__(self, config: ConfigDataStacked, led_array_id: int, channel: int) -> None:
+    def __init__(self, config: ConfigDataStacked, led_array_id: int, channel: int,
+                 reference_property: Optional[str] = None) -> None:
         """
         :param config: Parsed ``config_stacked.ini``.
         :type config: ConfigDataStacked
@@ -79,10 +84,15 @@ class StackedExtinctionCoefficients:
         :type led_array_id: int
         :param channel: Colour channel (0 = R, 1 = G, 2 = B).
         :type channel: int
+        :param reference_property: Quantity the coefficients are computed from. Defaults to the
+            first quantity the configuration names.
+        :type reference_property: str or None
         """
         self.config = config
         self.led_array_id = led_array_id
         self.channel = channel
+        self.reference_property = (reference_property if reference_property is not None
+                                   else config.reference_property)
 
         self.layers = Layers(config.num_layers, *config.domain_bounds)
         self.led_array_mapping: Dict[int, int] = config.get_led_array_mapping(led_array_id)
@@ -130,7 +140,7 @@ class StackedExtinctionCoefficients:
         if cfg.solver == 'linear':
             return ExtinctionCoefficientsLinear(
                 experiment=experiment,
-                reference_property=cfg.reference_property,
+                reference_property=self.reference_property,
                 num_ref_imgs=cfg.get_num_ref_images(sim_idx),
                 ref_img_indices=cfg.get_ref_img_indices(sim_idx),
                 average_images=cfg.average_images,
@@ -139,7 +149,7 @@ class StackedExtinctionCoefficients:
         elif cfg.solver == 'nonlinear':
             return ExtinctionCoefficientsNonLinear(
                 experiment=experiment,
-                reference_property=cfg.reference_property,
+                reference_property=self.reference_property,
                 num_ref_imgs=cfg.get_num_ref_images(sim_idx),
                 ref_img_indices=cfg.get_ref_img_indices(sim_idx),
                 average_images=cfg.average_images,
@@ -165,7 +175,7 @@ class StackedExtinctionCoefficients:
         """
         self._ensure_stacked_variables()
 
-        ref_prop = self.config.reference_property
+        ref_prop = self.reference_property
         for _, aligned_intensities in self._iter_aligned_images(ref_prop):
             rel_intensities = aligned_intensities / self.ref_intensities
             if self.config.solver == 'nonlinear' and self.coefficients_per_image_and_layer:
@@ -187,7 +197,7 @@ class StackedExtinctionCoefficients:
             cores = self.config.num_cores
 
         self._ensure_stacked_variables()
-        ref_prop = self.config.reference_property
+        ref_prop = self.reference_property
         all_rel_intensities = [
             aligned / self.ref_intensities
             for _, aligned in self._iter_aligned_images(ref_prop)
@@ -456,19 +466,16 @@ class StackedExtinctionCoefficients:
 
         Output path::
 
-            <output_path>/analysis/extinction_coefficients/<solver>/
+            <output_path>/analysis/extinction_coefficients/<solver>/<ref_prop>/
             extinction_coefficients_<solver>_channel_<ch>_<ref_prop>_led_array_<id>.csv
         """
         if not self.coefficients_per_image_and_layer:
             raise RuntimeError('No coefficients computed yet. Call calc_and_set_coefficients first.')
 
-        out_path = self._output_dir()
-        out_path.mkdir(parents=True, exist_ok=True)
-        out_file = (
-            out_path
-            / f'extinction_coefficients_{self.solver}_channel_{self.channel}'
-              f'_{self.config.reference_property}_led_array_{self.led_array_id}.csv'
-        )
+        out_file = get_extinction_coefficients_file_path(self.solver, self.channel,
+                                                         self.reference_property, self.led_array_id,
+                                                         root=self.config.output_path)
+        out_file.parent.mkdir(parents=True, exist_ok=True)
 
         layers = self.layers
         sim_info = ' | '.join(
@@ -476,7 +483,7 @@ class StackedExtinctionCoefficients:
         )
         header = (
             f'Stacked inversion | {sim_info} | solver: {self.solver} | '
-            f'ref_prop: {self.config.reference_property} | '
+            f'ref_prop: {self.reference_property} | '
             f'ref_imgs: {self._ref_img_info()} | '
             f'LEDSA {version("ledsa")}\n'
         )
@@ -510,6 +517,7 @@ class StackedExtinctionCoefficients:
         return (
             f'StackedExtinctionCoefficients | led_array_id={self.led_array_id} | '
             f'channel={self.channel} | solver={self.solver} | '
+            f'ref_prop={self.reference_property} | '
             f'simulations=[{sim_info}] | '
             f'n_leds={sum(e.num_leds for e in self.sub_experiments if e.num_leds is not None)} | '
             f'n_layers={self.layers.amount}\n'
@@ -535,14 +543,6 @@ class StackedExtinctionCoefficients:
             else:
                 descriptions.append(f'sim{sim_idx} {list(sub.ref_img_indices)}')
         return ', '.join(descriptions)
-
-    def _output_dir(self) -> Path:
-        return (
-            self.config.output_path
-            / 'analysis'
-            / 'extinction_coefficients'
-            / self.solver
-        )
 
     @staticmethod
     def _load_time_map(experiment: Experiment, average_images: bool,
