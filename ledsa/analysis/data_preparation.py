@@ -22,7 +22,8 @@ def apply_color_correction(cc_matrix: np.ndarray, on='sum_col_val', channels=(0,
         fit_parameters = read_hdf(channel)[quantity]
         fit_params_list.append(fit_parameters)
     raw_val_array = pd.concat(fit_params_list, axis=1)
+    # The corrected values stay floats: a search area of 8 bit pixels already sums to more than
+    # the int16 range, and the linear combination is not integral anyway.
     cc_val_array = np.dot(cc_matrix_inv, raw_val_array.T).T
-    cc_val_array = cc_val_array.astype(np.int16)
     for channel in channels:
         extend_hdf(channel, quantity + '_cc', cc_val_array[:, channel])

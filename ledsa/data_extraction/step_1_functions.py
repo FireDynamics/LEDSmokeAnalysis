@@ -34,7 +34,10 @@ def find_search_areas(image: np.ndarray, search_area_radius, pixel_value_percent
     while max_pixel_value > threshold and led_id < max_n_leds:
         (_, max_pixel_value, _, max_pixel_loc) = cv2.minMaxLoc(image)
         if max_pixel_value > threshold:
-            image[max_pixel_loc[1] - search_area_radius: max_pixel_loc[1] + search_area_radius, max_pixel_loc[0] - search_area_radius: max_pixel_loc[0] + search_area_radius] = 0
+            # The lower bounds are clamped, because a negative one makes the slice empty, so the LED
+            # would stay the brightest pixel and be found again until max_n_leds is reached.
+            image[max(max_pixel_loc[1] - search_area_radius, 0): max_pixel_loc[1] + search_area_radius,
+                  max(max_pixel_loc[0] - search_area_radius, 0): max_pixel_loc[0] + search_area_radius] = 0
             search_areas_list.append((led_id, max_pixel_loc[1], max_pixel_loc[0]))
             print('.', end='', flush=True)
             led_id += 1

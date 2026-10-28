@@ -175,6 +175,36 @@ class TestCreateBinaryData(BinaryDataFiles):
                                              r'1_led_positions\.csv has 9 columns'):
             create_binary_data(0)
 
+    def _patch_config(self, monkeypatch, first_img_id, last_img_id, num_skip_imgs):
+        from ledsa.core import file_handling
+        monkeypatch.setattr(file_handling, 'ConfigData',
+                            lambda: {'DEFAULT': {'num_img_overflow': 'None'},
+                                     'analyse_photo': {'first_img_analysis_id': str(first_img_id),
+                                                       'last_img_analysis_id': str(last_img_id),
+                                                       'num_skip_imgs': str(num_skip_imgs)}})
+
+    def test_the_last_image_of_a_run_with_skipped_images_is_loaded(self, analysis_dir, monkeypatch):
+        # the IDs 1 to 11 with every second image skipped are the six images 1, 3, 5, 7, 9 and 11,
+        # whose results step 3 numbers 1 to 6. Rounding the count down left out the last of them,
+        # without listing it among the images that hold no results.
+        from ledsa.core.file_handling import create_binary_data
+        self._patch_config(monkeypatch, first_img_id=1, last_img_id=11, num_skip_imgs=1)
+        for img_id in range(1, 7):
+            self._write_result_file(analysis_dir, img_id, self.NUM_COLUMNS)
+        create_binary_data(0)
+        assert sorted(self._load(analysis_dir)['img_id'].unique()) == [1, 2, 3, 4, 5, 6]
+
+    def test_no_image_beyond_the_last_analysed_one_is_looked_for(self, analysis_dir, monkeypatch,
+                                                                 capsys):
+        # the IDs 1 to 10 with every second image skipped are the five images 1, 3, 5, 7 and 9
+        from ledsa.core.file_handling import create_binary_data
+        self._patch_config(monkeypatch, first_img_id=1, last_img_id=10, num_skip_imgs=1)
+        for img_id in range(1, 6):
+            self._write_result_file(analysis_dir, img_id, self.NUM_COLUMNS)
+        create_binary_data(0)
+        assert sorted(self._load(analysis_dir)['img_id'].unique()) == [1, 2, 3, 4, 5]
+        assert 'No analysis results' not in capsys.readouterr().out
+
     def test_an_image_without_results_is_still_skipped(self, analysis_dir):
         # image 1 could not be read, so it has no result file and the names come from image 2
         from ledsa.core.file_handling import create_binary_data
