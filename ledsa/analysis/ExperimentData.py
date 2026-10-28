@@ -36,8 +36,12 @@ class ExperimentData:
     :type num_ref_images: int
     :ivar ref_img_indices: Indices of reference images to use. If None, use num_ref_imgs.
     :type ref_img_indices: list[int] or None
-    :ivar reference_property: Reference property to be analysed.
-    :type reference_property: str
+    :ivar average_images: Intensities are computed as an average from consecutive images.
+    :type average_images: bool
+    :ivar n_summarize: Number of consecutive images summarized into one when averaging.
+    :type n_summarize: int
+    :ivar reference_properties: Reference properties to be analysed, one analysis each.
+    :type reference_properties: List[str]
     :ivar reduction_files: Path of the reduction factor file of the temperature correction per camera
         channel, None for the channels analysed without the correction.
     :type reduction_files: dict[int, str or None]
@@ -59,8 +63,10 @@ class ExperimentData:
         self.num_iterations = None
         self.num_ref_images = None
         self.ref_img_indices = None
+        self.average_images = False
+        self.n_summarize = 2
         self.lambda_reg = None
-        self.reference_property = None
+        self.reference_properties = None
         self.reduction_files = {}
         self.merge_led_arrays = None
         self.solver = None
@@ -77,6 +83,10 @@ class ExperimentData:
         self.ref_img_indices = config_analysis.get_list_of_values('DEFAULT', 'ref_img_indices')
         if self.ref_img_indices is None:
             self.num_ref_images = int(config_analysis['DEFAULT']['num_ref_images'])
+        self.average_images = config_analysis.getboolean('DEFAULT', 'average_images', fallback=False)
+        # The number of images per group was named by no config key at all, so the averaging kept
+        # the two it was written with whatever the experiment asked for.
+        self.n_summarize = int(config_analysis.get('DEFAULT', 'n_summarize', fallback='2'))
         self.solver = config_analysis['DEFAULT']['solver']
         if self.solver == 'nonlinear':
             self.weighting_preference = float(config_analysis['DEFAULT']['weighting_preference'])
@@ -84,7 +94,7 @@ class ExperimentData:
             self.num_iterations = int(config_analysis['DEFAULT']['num_iterations'])
         elif self.solver == 'linear':
             self.lambda_reg = float(config_analysis['DEFAULT']['lambda_reg'])
-        self.reference_property = config_analysis['DEFAULT']['reference_property']
+        self.reference_properties = config_analysis.get_reference_properties()
         self.reduction_files = {channel: config_analysis.get_reduction_file(channel)
                                 for channel in (self.channels or [])}
 

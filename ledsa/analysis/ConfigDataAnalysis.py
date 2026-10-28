@@ -1,8 +1,51 @@
 import configparser as cp
-from typing import Optional
+from typing import Iterable, List, Optional, Union
 
 from ledsa.analysis.temperature_correction import TEMPERATURE_CORRECTION_CHANNELS
 from ledsa.core.config_file import save_config
+
+DEFAULT_REFERENCE_PROPERTY = 'sum_col_val'
+
+
+def parse_reference_properties(value: str) -> List[str]:
+    """
+    Split the value of the reference_property option into the quantities to be analysed.
+
+    Step 3 writes several intensity quantities per LED, and one analysis run computes the
+    extinction coefficients of every quantity it is given, so the option holds one or more
+    quantity names separated by whitespace. A repeated name is dropped, because its results
+    would be written into the same file twice.
+
+    :param value: Value of the reference_property option.
+    :type value: str
+    :return: Quantities in the order the option names them.
+    :rtype: List[str]
+    :raises ValueError: If the option names no quantity.
+    """
+    properties = []
+    for name in str(value).split():
+        if name.lower() == 'none':
+            continue
+        if name not in properties:
+            properties.append(name)
+    if not properties:
+        raise ValueError(f"The reference_property option names no quantity ({value!r}). Give one or "
+                         f"more quantities separated by spaces, e.g. 'sum_col_val bgsub_sum_col_val'.")
+    return properties
+
+
+def format_reference_properties(reference_property: Union[str, Iterable[str]]) -> str:
+    """
+    Render one quantity or a list of quantities the way the config file holds them.
+
+    :param reference_property: Quantity or quantities to be analysed.
+    :type reference_property: Union[str, Iterable[str]]
+    :return: Value of the reference_property option.
+    :rtype: str
+    """
+    if isinstance(reference_property, str):
+        return reference_property
+    return ' '.join(str(name) for name in reference_property)
 
 
 class ConfigDataAnalysis(cp.ConfigParser):
@@ -13,7 +56,8 @@ class ConfigDataAnalysis(cp.ConfigParser):
     def __init__(self, load_config_file=True, camera_position=None, num_layers=20, domain_bounds=None,
                  led_array_indices=None, num_ref_images=10, ref_img_indices=None, camera_channels=0, num_cores=1,
                  reference_property='sum_col_val',
-                 average_images=False, solver='linear', weighting_preference=-6e-3, weighting_curvature=1e-2,
+                 average_images=False, n_summarize=2, solver='linear', weighting_preference=-6e-3,
+                 weighting_curvature=1e-2,
                  num_iterations=1000, lambda_reg=1e-3, reduction_files=None):
         """
         :param load_config_file: Determines whether to load the config file on initialization. Defaults to True.
@@ -34,12 +78,17 @@ class ConfigDataAnalysis(cp.ConfigParser):
         :type camera_channels: List[int]
         :param num_cores: Number of CPU cores for (multicore) processing. If greater than 1, multicore processing is applied. Defaults to 1.
         :type num_cores: int
-        :param reference_property: Property used for reference in LEDSA. Defaults to 'sum_col_val'.
-            Use 'bgsub_sum_col_val' to base the analysis on intensities with the local background
-            subtracted, estimated from the border of each LED search area.
-        :type reference_property: str
+        :param reference_property: Quantity or quantities the extinction coefficients are computed
+            from. Defaults to 'sum_col_val'. Use 'bgsub_sum_col_val' to base the analysis on
+            intensities with the local background subtracted, estimated from the border of each LED
+            search area. Several quantities, given as a list or separated by spaces, are analysed one
+            after another, each into a directory of its own.
+        :type reference_property: Union[str, Iterable[str]]
         :param average_images: Determines if intensities are computed as an average from two consecutive images. Defaults to False.
         :type average_images: bool
+        :param n_summarize: Number of consecutive images summarized into one if average_images is set. The first
+            num_ref_images images are kept as they are. Defaults to 2.
+        :type n_summarize: int
         :param solver: Method used to compute extinction coefficients - can be 'linear' or 'nonlinear'. Defaults to 'linear'.
         :type solver: str
         :param weighting_preference: Weighting factor for the preference to push the nonlinear solver to high or low values for the extinction coeffiientes. Defaults to -6e-3.
@@ -63,15 +112,19 @@ class ConfigDataAnalysis(cp.ConfigParser):
             self.set('DEFAULT', '# Variables used in multiple parts of LEDSA')
             self.set('DEFAULT', '   # Number of CPUs, multicore processing is applied if > 1')
             self['DEFAULT']['   num_cores'] = str(num_cores)
-            self['DEFAULT']['   reference_property'] = str(reference_property)
+            self.set('DEFAULT', '   # Quantities the extinction coefficients are computed from, '
+                                'separated by spaces')
+            self['DEFAULT']['   reference_property'] = format_reference_properties(reference_property)
             self.set('DEFAULT', '   # Number images used to compute normalize LED intensities')
             self['DEFAULT']['   num_ref_images'] = str(num_ref_images)
             self.set('DEFAULT', '   # Indices of reference images to use')
             self['DEFAULT']['   ref_img_indices'] = str(ref_img_indices)
             self.set('DEFAULT', '   # Camera channels to be considered in the analysis')
             self['DEFAULT']['   camera_channels'] = str(camera_channels)
-            self.set('DEFAULT', '   # Intensities are computed as average from two consecutive images if set to True ')
+            self.set('DEFAULT', '   # Intensities are computed as average from n_summarize consecutive images if set to True ')
             self['DEFAULT']['   average_images'] = str(average_images)
+            self.set('DEFAULT', '   # Number of consecutive images summarized into one, the reference images excluded ')
+            self['DEFAULT']['   n_summarize'] = str(n_summarize)
             self.set('DEFAULT', '   # Extinction coefficients can be computed by linear or numeric solver ')
             self['DEFAULT']['   solver'] = str(solver)
             self.set('DEFAULT', '   # Options for nonlinear solver (ignored when linear solver is used) ')
@@ -136,6 +189,17 @@ class ConfigDataAnalysis(cp.ConfigParser):
         """
         save_config(self, 'config_analysis.ini')
         print('config_analysis.ini saved')
+
+    def get_reference_properties(self) -> List[str]:
+        """
+        Return the quantities the extinction coefficients are to be computed from.
+
+        :return: Quantities in the order the config file names them.
+        :rtype: List[str]
+        :raises ValueError: If the reference_property option names no quantity.
+        """
+        return parse_reference_properties(
+            self.get('DEFAULT', 'reference_property', fallback=DEFAULT_REFERENCE_PROPERTY))
 
     def get_list_of_values(self, section: str, option: str, dtype=int, fallback=None):
         """

@@ -8,8 +8,9 @@ import pandas as pd
 
 from ledsa.analysis.Experiment import Experiment, Layers, Camera
 from ledsa.analysis.temperature_correction import TemperatureCorrection
-from ledsa.core.file_handling import (read_hdf, read_hdf_avg, extend_hdf, create_analysis_infos_avg,
-                                      read_experiment_times)
+from ledsa.core.file_handling import (NUM_IMGS_PER_AVERAGE, create_analysis_infos_avg, extend_hdf,
+                                      get_extinction_coefficients_file_path, read_experiment_times,
+                                      read_hdf, read_hdf_avg)
 from ledsa.data_extraction.data_integrity import check_intensity_normalization
 
 from importlib.metadata import version
@@ -39,6 +40,8 @@ class ExtinctionCoefficients(ABC):
     :vartype cc_matrix: np.ndarray or None
     :ivar average_images: Flag to determine if intensities are computed as an average from two consecutive images.
     :vartype average_images: bool
+    :ivar n_summarize: Number of consecutive images summarized into one when averaging.
+    :vartype n_summarize: int
     :ivar temperature_correction: Reduction factors of the LED intensities over time and height, None for
         an analysis without the temperature correction.
     :vartype temperature_correction: TemperatureCorrection or None
@@ -49,7 +52,8 @@ class ExtinctionCoefficients(ABC):
     """
 
     def __init__(self, experiment, reference_property='sum_col_val', num_ref_imgs=10, ref_img_indices=None,
-                 average_images=False, temperature_correction=None):
+                 average_images=False, n_summarize=NUM_IMGS_PER_AVERAGE,
+                 temperature_correction=None):
         """
         :param experiment: Object representing the experimental setup.
         :type experiment: Experiment
@@ -61,6 +65,8 @@ class ExtinctionCoefficients(ABC):
         :type ref_img_indices: list[int] or None
         :param average_images: Flag to determine if intensities are computed as an average from two consecutive images.
         :type average_images: bool
+        :param n_summarize: Number of consecutive images summarized into one when averaging.
+        :type n_summarize: int
         :param temperature_correction: Reduction factors of the LED intensities of the channel. None
             leaves the intensities as they were extracted.
         :type temperature_correction: TemperatureCorrection or None
@@ -76,6 +82,7 @@ class ExtinctionCoefficients(ABC):
         self.ref_intensities = np.array([])
         self.cc_matrix = None
         self.average_images = average_images
+        self.n_summarize = n_summarize
         self.temperature_correction = temperature_correction
         self.temperature_corrected = False
         self.solver = None
@@ -156,13 +163,35 @@ class ExtinctionCoefficients(ABC):
         """
         Load processed image data from binary file
 
-        :raises ValueError: If the reference property contains NaN values.
+        :raises ValueError: If the reference property is not among the columns of the binary data or
+            contains NaN values.
         """
         if self.average_images:
-            img_data = read_hdf_avg(self.experiment.channel, path=self.experiment.path)
-            create_analysis_infos_avg()
+            # The averaged images are numbered from 1 again, so indices that name single images
+            # would point at different images after the averaging.
+            if self.ref_img_indices is not None:
+                raise ValueError('average_images and ref_img_indices cannot be combined: averaging '
+                                 'summarizes the images and numbers them from 1 again, so the '
+                                 'indices would name other images than intended. Use num_ref_images '
+                                 'instead, which names the images that are left unaveraged.')
+            # the binary and the image infos of the averaged images are built from the same counts,
+            # so that they hold the same image IDs
+            img_data = read_hdf_avg(self.experiment.channel, path=self.experiment.path,
+                                    n_summarize=self.n_summarize, num_ref_imgs=self.num_ref_imgs)
+            create_analysis_infos_avg(n_summarize=self.n_summarize, num_ref_imgs=self.num_ref_imgs,
+                                      path=self.experiment.path)
         else:
             img_data = read_hdf(self.experiment.channel, path=self.experiment.path)
+        if self.reference_property not in img_data.columns:
+            # The color corrected columns are not part of the step 3 result files, the analysis adds them
+            # to the binary data itself, so they are gone as soon as the binary data are rebuilt.
+            hint = ('Run the analysis with --cc to compute it again, it is added to the binary data by the '
+                    'analysis itself and is lost whenever they are rebuilt from the step 3 result files.'
+                    if self.reference_property.endswith('_cc') else
+                    'Check the reference_property option of the analysis configuration.')
+            raise ValueError(f'{self.reference_property} is not among the columns of the binary data of '
+                             f'channel {self.experiment.channel} '
+                             f'({", ".join(map(str, img_data.columns))}). {hint}')
         img_data_cropped = img_data[['led_array_id', self.reference_property]]
         self.calculated_img_data = img_data_cropped[img_data_cropped['led_array_id'] == self.experiment.led_array]
         if self.calculated_img_data.empty:
@@ -253,11 +282,13 @@ class ExtinctionCoefficients(ABC):
         """
         Save the computed extinction coefficients to a file.
 
+        The file goes into a directory of its solver and its analysed quantity, so that the
+        results of the quantities of one analysis run do not overwrite each other.
         """
-        path = self.experiment.path / 'analysis' / 'extinction_coefficients' / self.solver
-        if not path.exists():
-            path.mkdir(parents=True)
-        path = path / f'extinction_coefficients_{self.solver}_channel_{self.experiment.channel}_{self.reference_property}_led_array_{self.experiment.led_array}.csv'
+        path = get_extinction_coefficients_file_path(self.solver, self.experiment.channel,
+                                                     self.reference_property, self.experiment.led_array,
+                                                     root=self.experiment.path)
+        path.parent.mkdir(parents=True, exist_ok=True)
         header = str(self)
         header += 'Layer_bottom_height[m],'
         header += ','.join(map(str, self.experiment.layers.borders[:-1])) + '\n'

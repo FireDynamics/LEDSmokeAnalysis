@@ -1,5 +1,6 @@
 import os
 import re
+from pathlib import Path
 from typing import Dict, List, Union
 
 import numpy as np
@@ -46,21 +47,103 @@ def remove_flag(flag: str) -> None:
     except OSError:
         pass
 
-def create_analysis_infos_avg():  # TODO: Move funtion somewhere else
+def get_extinction_coefficients_dir(solver: str, reference_property: str,
+                                   root: Union[str, Path] = '.') -> Path:
     """
-    Generate CSV files with image information for experiment and/or analysis averaged over n images from the existing
-    image_infos_analysis.csv file. Skips the first n images. Contains image name, exif time and experiment time
+    Build the directory the extinction coefficients of one solver and one quantity are stored in.
+
+    Every analysed quantity gets a directory of its own, so that the results of an analysis run
+    with several quantities stay apart from each other.
+
+    :param solver: Solver the coefficients were computed with.
+    :type solver: str
+    :param reference_property: Quantity the coefficients were computed from.
+    :type reference_property: str
+    :param root: Root directory of the LEDSA simulation, defaults to the current directory.
+    :type root: Union[str, Path]
+    :return: Directory of the extinction coefficient files.
+    :rtype: Path
     """
-    n_summarize = 2 # TODO: remove hardcoding
-    n_skip_images = 10 # TODO: Remove hardcoding
-    in_file_path = os.path.join('analysis', 'image_infos_analysis.csv')
+    return Path(root) / 'analysis' / 'extinction_coefficients' / str(solver) / str(reference_property)
+
+
+def get_extinction_coefficients_file_path(solver: str, channel: int, reference_property: str, led_array: int,
+                                          root: Union[str, Path] = '.') -> Path:
+    """
+    Build the path of the extinction coefficients of one solver, quantity, channel and LED array.
+
+    :param solver: Solver the coefficients were computed with.
+    :type solver: str
+    :param channel: Camera channel the coefficients were computed from.
+    :type channel: int
+    :param reference_property: Quantity the coefficients were computed from.
+    :type reference_property: str
+    :param led_array: LED array the coefficients belong to.
+    :type led_array: int
+    :param root: Root directory of the LEDSA simulation, defaults to the current directory.
+    :type root: Union[str, Path]
+    :return: Path of the extinction coefficient file.
+    :rtype: Path
+    """
+    file_name = (f'extinction_coefficients_{solver}_channel_{channel}_{reference_property}'
+                 f'_led_array_{led_array}.csv')
+    return get_extinction_coefficients_dir(solver, reference_property, root) / file_name
+
+
+# Number of consecutive images that are summarized into one when average_images is set in
+# config_analysis.ini. The option is documented as the average of two consecutive images.
+NUM_IMGS_PER_AVERAGE = 2
+# Number of reference images at the beginning of an experiment that are left unaveraged
+DEFAULT_NUM_REF_IMGS = 10
+
+
+def get_binary_file_path(channel: int, path: Union[str, Path] = '.', averaged: bool = False) -> str:
+    """
+    Build the path of the binary data of one channel.
+
+    The averaged binary lies next to the one of the single images it is computed from, so that an
+    analysis with average_images set never reads the unaveraged data by accident.
+
+    :param channel: Camera channel the binary data belong to.
+    :type channel: int
+    :param path: Root directory of the LEDSA simulation, defaults to the current directory.
+    :type path: Union[str, Path]
+    :param averaged: If True, the path of the averaged binary is built.
+    :type averaged: bool
+    :return: Path of the binary file.
+    :rtype: str
+    """
+    file_name = 'all_parameters_avg.h5' if averaged else 'all_parameters.h5'
+    return os.path.join(path, 'analysis', f'channel{channel}', file_name)
+
+
+def create_analysis_infos_avg(n_summarize: int = NUM_IMGS_PER_AVERAGE,
+                              num_ref_imgs: int = DEFAULT_NUM_REF_IMGS,
+                              path: Union[str, Path] = '.') -> None:  # TODO: Move funtion somewhere else
+    """
+    Generate a CSV file with the image information of the averaged images from the existing
+    image_infos_analysis.csv file. The first num_ref_imgs images are kept as they are, the
+    remaining ones are summarized in groups of n_summarize. Contains image name and experiment time.
+
+    The averaged images are numbered from 1 again. Called with the same n_summarize and
+    num_ref_imgs as :func:`average_all_fitpar`, which averages the intensities of the very same
+    images, both files hold the same image IDs and the same number of images.
+
+    :param n_summarize: Number of consecutive images that are summarized into one.
+    :type n_summarize: int
+    :param num_ref_imgs: Number of reference images at the beginning, which are not averaged.
+    :type num_ref_imgs: int
+    :param path: Root directory of the LEDSA simulation, defaults to the current directory.
+    :type path: Union[str, Path]
+    """
+    in_file_path = os.path.join(path, 'analysis', 'image_infos_analysis.csv')
     image_infos = pd.read_csv(in_file_path)
     img_names = image_infos['Name'].tolist()
     exp_time = image_infos['Experiment_Time[s]']
-    head_img_names = img_names[:n_skip_images]
-    head_exp_times = exp_time[:n_skip_images]
-    tail_img_names = img_names[n_skip_images:]
-    tail_exp_times = exp_time[n_skip_images:]
+    head_img_names = img_names[:num_ref_imgs]
+    head_exp_times = exp_time[:num_ref_imgs]
+    tail_img_names = img_names[num_ref_imgs:]
+    tail_exp_times = exp_time[num_ref_imgs:]
     img_names_avg = ["/".join(tail_img_names[n:n + n_summarize]) for n in range(0, len(tail_img_names), n_summarize)]
     exp_times_avg = tail_exp_times.groupby(np.arange(len(tail_exp_times)) // n_summarize).mean()
     combined_exp_times = pd.concat([head_exp_times, exp_times_avg])
@@ -69,9 +152,10 @@ def create_analysis_infos_avg():  # TODO: Move funtion somewhere else
     ids = range(1, len(combined_img_names) + 1)
     img_infos_analysis_avg = pd.DataFrame(
         {"#ID": ids, "Name": combined_img_names, "Experiment_Time[s]": combined_exp_times})
-    img_infos_analysis_avg.reset_index()
-    out_file_path = os.path.join('analysis', 'image_infos_analysis_avg.csv')
-    img_infos_analysis_avg.to_csv(out_file_path)
+    out_file_path = os.path.join(path, 'analysis', 'image_infos_analysis_avg.csv')
+    # written without the row index, so that the file has the same columns as the one of the
+    # single images it is derived from
+    img_infos_analysis_avg.to_csv(out_file_path, index=False)
 
 
 def read_experiment_times(path: Union[str, os.PathLike] = '.', average_images: bool = False) -> Dict[int, float]:
@@ -135,9 +219,53 @@ def read_table(filename: str, delim=' ', dtype='float', atleast_2d=False, silent
     return np.atleast_1d(data)
 
 
+def _binary_data_is_outdated(binary_file_path: str, channel: int, path: str = '.') -> bool:
+    """
+    Tell whether the binary data of a channel are older than one of the files they are built from.
+
+    The binary data hold the step 3 result files of a channel together with the LED coordinates, cut to
+    the image range of config.ini, so all three are sources. A source that is newer than the binary data
+    means they were built before it and no longer describe it.
+
+    Only the modification times are compared. A source rewritten within the same clock tick as the binary
+    data is therefore not recognised, and a change to config.ini that does not concern the image range
+    causes a rebuild that was not needed. The rebuild costs the loading time of the result files, while a
+    missed source would be answered with the values of the earlier run.
+
+    :param binary_file_path: Path of the binary HDF file of the channel.
+    :type binary_file_path: str
+    :param channel: Channel number whose result files are compared.
+    :type channel: int
+    :param path: Root directory of the LEDSA simulation. Defaults to the current directory.
+    :type path: str
+    :return: True if the binary data exist and one of their sources is newer.
+    :rtype: bool
+    """
+    if not os.path.exists(binary_file_path):
+        # Nothing to compare against. The caller builds the binary data because they are missing.
+        return False
+    binary_mtime = os.path.getmtime(binary_file_path)
+    source_paths = [os.path.join(path, 'config.ini'),
+                    os.path.join(path, 'analysis', 'led_search_areas_with_coordinates.csv')]
+    result_dir_path = os.path.join(path, 'analysis', f'channel{channel}')
+    if os.path.isdir(result_dir_path):
+        source_paths.extend(os.path.join(result_dir_path, file_name)
+                            for file_name in os.listdir(result_dir_path)
+                            if re.search(r"\d+_led_positions\.csv", file_name) is not None)
+    for source_path in source_paths:
+        try:
+            if os.path.getmtime(source_path) > binary_mtime:
+                return True
+        except OSError:
+            # A source that is not there cannot have outdated the binary data.
+            continue
+    return False
+
+
 def read_hdf(channel: int, path='.') -> pd.DataFrame:
     """
-    Reads data from an HDF file for a given channel. If the binary does not exist, it is created.
+    Reads data from an HDF file for a given channel. If the binary does not exist or is older than the
+    files it is built from, it is created.
 
     :param channel: Channel number for which data is to be read.
     :type channel: int
@@ -148,7 +276,13 @@ def read_hdf(channel: int, path='.') -> pd.DataFrame:
 
     :raises FileNotFoundError: If the HDF file is not found.
     """
-    file_path = os.path.join(path, 'analysis', f'channel{channel}', 'all_parameters.h5')
+    file_path = get_binary_file_path(channel, path=path)
+    if _binary_data_is_outdated(file_path, channel, path=path):
+        # The binary data are only a cache of the step 3 result files. Without this they were read as
+        # they were, so an analysis after the data extraction had run again silently reported the
+        # extinction coefficients of the values of the earlier run.
+        print(f'{file_path} is older than the files it is built from and is rebuilt.')
+        create_binary_data(channel, path=path)
     try:
         # Try reading with 'channel_values' key first
         fit_parameters = pd.read_hdf(file_path, key='channel_values')
@@ -165,32 +299,71 @@ def read_hdf(channel: int, path='.') -> pd.DataFrame:
     return fit_parameters
 
 
-def read_hdf_avg(channel: int, path='.') -> pd.DataFrame:
+def read_hdf_avg(channel: int, path='.', n_summarize: int = NUM_IMGS_PER_AVERAGE,
+                 num_ref_imgs: int = DEFAULT_NUM_REF_IMGS) -> pd.DataFrame:
     """
-    Reads averaged data from an HDF file for a given channel. If binary does not exist, it's created.
+    Reads averaged data from an HDF file for a given channel. If the averaged binary is not up to
+    date, it is created from the binary of the single images.
+
+    The averaged binary has a file name of its own, so that the averaged data are returned
+    whenever they are asked for. It is rebuilt whenever it is missing, older than the binary of the
+    single images it is computed from, older than the step 3 result files those are built from, or
+    older than config_analysis.ini, which holds the counts the images are summarized with. So an
+    analysis never reads the averaged data of an earlier extraction run or of other counts.
 
     :param channel: Channel number for which data is to be read.
     :type channel: int
     :param path: Directory path where the HDF is stored, defaults to the current directory.
     :type path: str
+    :param n_summarize: Number of consecutive images that are averaged into one.
+    :type n_summarize: int
+    :param num_ref_imgs: Number of reference images at the beginning, which are not averaged.
+    :type num_ref_imgs: int
     :return: DataFrame with multi-index 'img_id' and 'led_id'.
     :rtype: pd.DataFrame
-
-    :raises FileNotFoundError: If the HDF file is not found.
     """
-    file_path = os.path.join(path, 'analysis', f'channel{channel}','all_parameters.h5',)
+    file_path = get_binary_file_path(channel, path=path, averaged=True)
+    if not os.path.exists(file_path):
+        outdated = True
+    else:
+        # The averaged data are built from the binary of the single images, which is itself only a
+        # cache of the step 3 result files, so both are sources. Comparing the averaged data with
+        # the single image binary alone would miss a data extraction run that has not been read
+        # back yet, since that binary is rebuilt only when it is read. config_analysis.ini is a
+        # source as well, because num_ref_images and n_summarize decide which images are summarized
+        # into which, so averages computed with other counts no longer answer what it asks for. A
+        # save of the config that leaves both counts alone costs a rebuild that was not needed,
+        # which is the loading time of the channel.
+        sources = [get_binary_file_path(channel, path=path),
+                   os.path.join(path, 'config_analysis.ini')]
+        outdated = _binary_data_is_outdated(file_path, channel, path=path) or any(
+            os.path.exists(source) and os.path.getmtime(file_path) < os.path.getmtime(source)
+            for source in sources)
+    if outdated:
+        average_all_fitpar(channel, n_summarize=n_summarize, num_ref_imgs=num_ref_imgs, path=path)
     try:
         fit_parameters = pd.read_hdf(file_path, key='channel_values')
-    except FileNotFoundError:
-        average_all_fitpar(channel)
+    except KeyError:
+        # An averaged binary written before the key was named carries 'table', the key read_hdf
+        # still allows for the binary of the single images. Only a checkout between 787fd26 and
+        # ff1843e wrote one, since v0.9.0 already carried the path that never reached this file, so
+        # this is the same courtesy read_hdf extends and not a case anyone is likely to hit.
+        average_all_fitpar(channel, n_summarize=n_summarize, num_ref_imgs=num_ref_imgs, path=path)
         fit_parameters = pd.read_hdf(file_path, key='channel_values')
     fit_parameters.set_index(['img_id', 'led_id'], inplace=True)
     return fit_parameters
 
 
-def average_all_fitpar(channel, n_summarize=2, num_ref_imgs=10) -> None:  # TODO: rename variables within function
+def average_all_fitpar(channel, n_summarize: int = NUM_IMGS_PER_AVERAGE,
+                       num_ref_imgs: int = DEFAULT_NUM_REF_IMGS,
+                       path: Union[str, Path] = '.') -> None:  # TODO: rename variables within function
     """
     Averages all fit parameters for a given channel and writes them to an HDF file.
+
+    The first num_ref_imgs images of every LED are kept as they are, the remaining ones are
+    averaged in groups of n_summarize and numbered from num_ref_imgs + 1 on. Called with the same
+    n_summarize and num_ref_imgs as :func:`create_analysis_infos_avg`, the binary and the averaged
+    image infos hold the same image IDs and the same number of images.
 
     :param channel: Channel number for which data is to be averaged.
     :type channel: int
@@ -198,11 +371,16 @@ def average_all_fitpar(channel, n_summarize=2, num_ref_imgs=10) -> None:  # TODO
     :type n_summarize: int
     :param num_ref_imgs: Number of reference images (Excluded from averaging).
     :type num_ref_imgs: int
+    :param path: Root directory of the LEDSA simulation, defaults to the current directory.
+    :type path: Union[str, Path]
     """
-    fit_parameters = read_hdf(channel)
+    fit_parameters = read_hdf(channel, path=path)
     fit_parameters_grouped = fit_parameters.groupby(['led_array_id', 'led_id'])
     avg_dataset_list = []
     for name, dataset in fit_parameters_grouped:
+        # the images of one LED are summarized in the order they were taken, whatever order they
+        # lie in the binary
+        dataset = dataset.sort_index(level='img_id')
         head = dataset.iloc[:num_ref_imgs]
         tail = dataset.iloc[num_ref_imgs:]
         avg_dataset = tail.groupby(np.arange(len(tail)) // n_summarize).mean()
@@ -213,13 +391,18 @@ def average_all_fitpar(channel, n_summarize=2, num_ref_imgs=10) -> None:  # TODO
         avg_dataset_list.append(combined_dataset)
     all_fitpar = pd.concat(avg_dataset_list)
     all_fitpar[["led_array_id", "sum_col_val"]] = all_fitpar[["led_array_id", "sum_col_val"]].astype(int)
-    try: # TODO: Resolve
-        all_fitpar[["sum_col_val_cc"]] = all_fitpar[["sum_col_val_cc"]].astype(int)
-    except:
-        pass
+    # sum_col_val_cc is only present in binaries of versions that wrote a colour corrected intensity
+    if "sum_col_val_cc" in all_fitpar.columns:
+        all_fitpar["sum_col_val_cc"] = all_fitpar["sum_col_val_cc"].astype(int)
     all_fitpar.reset_index(inplace=True)
-    file_path = os.path.join('analysis', f'channel{channel}', 'all_parameters_avg.h5'),
-    all_fitpar.to_hdf(file_path, key='channel_values', format='table', append=True)
+    out_file_path = get_binary_file_path(channel, path=path, averaged=True)
+    if os.path.exists(out_file_path):
+        # The averaged data are derived from the binary of the single images, so they are
+        # rewritten from scratch. Appending would keep every LED of the earlier run next to the
+        # new one, and after a change of the columns it fails in the middle of the write.
+        print(f'{out_file_path} of an earlier run is replaced.')
+        os.remove(out_file_path)
+    all_fitpar.to_hdf(out_file_path, key='channel_values', format='table')
 
 
 def extend_hdf(channel: int, quantity: str, values: np.ndarray) -> None:
@@ -233,7 +416,7 @@ def extend_hdf(channel: int, quantity: str, values: np.ndarray) -> None:
     :param values: Data values for the new column.
     :type values:  np.ndarray
     """
-    file = os.path.join('analysis', f'channel{channel}', 'all_parameters.h5')
+    file = get_binary_file_path(channel)
     fit_parameters = pd.read_hdf(file, key='channel_values')
     fit_parameters[quantity] = values
     fit_parameters.to_hdf(file, key='channel_values', format='table')
@@ -315,7 +498,7 @@ def create_binary_data(channel: int, path: str = '.') -> None:
         fit_params['led_array_id'] = fit_params['led_array_id'].astype(int)
         fit_params['max_col_val'] = fit_params['max_col_val'].astype(int)
         fit_params['sum_col_val'] = fit_params['sum_col_val'].astype(int)
-        out_file_path = os.path.join('analysis', f'channel{channel}', 'all_parameters.h5')
+        out_file_path = get_binary_file_path(channel)
         if os.path.exists(out_file_path):
             # The binary data are derived from the step 3 files, so they are rewritten from scratch.
             # Appending would keep every LED of the earlier run next to the new one, and after a change of

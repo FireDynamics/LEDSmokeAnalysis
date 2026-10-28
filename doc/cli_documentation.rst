@@ -55,7 +55,7 @@ Analysis
      - Creates the analysis configuration file.
      - --
    * - ``-a``, ``--analysis``
-     - Computes the extinction coefficients.
+     - Computes the extinction coefficients of every quantity ``reference_property`` names in ``config_analysis.ini``, each into ``analysis/extinction_coefficients/<solver>/<quantity>/``.
      - --
    * - ``--cc``
      - Applies the color correction matrix before calculating the extinction coefficients. Use only if the reference property is not already color corrected.
@@ -84,7 +84,7 @@ Stacked Multi-Camera Analysis
      - Number of ``[simulation_N]`` blocks written into the template ``config_stacked.ini``. Only used together with ``-conf_s``.
      - Default: 2
    * - ``-as``, ``--analysis_stacked``
-     - Run the stacked multi-camera extinction coefficient calculation using ``config_stacked.ini`` in the current directory.
+     - Run the stacked multi-camera extinction coefficient calculation using ``config_stacked.ini`` in the current directory, for every quantity its ``reference_property`` names.
      - --
 
 Coordinates

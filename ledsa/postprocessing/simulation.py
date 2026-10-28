@@ -7,7 +7,7 @@ import pandas as pd
 
 from ledsa.core.image_reading import read_channel_data_from_img
 from ledsa.core.ConfigData import ConfigData
-from ledsa.analysis.ConfigDataAnalysis import ConfigDataAnalysis
+from ledsa.analysis.ConfigDataAnalysis import ConfigDataAnalysis, DEFAULT_REFERENCE_PROPERTY
 from ledsa.analysis.ConfigDataStacked import ConfigDataStacked
 
 
@@ -27,6 +27,7 @@ class _BaseSimData:
     def __init__(self):
         self.all_extco_df = None
         self.solver = None
+        self.reference_property = DEFAULT_REFERENCE_PROPERTY
         self.camera_channels = [0]
         self.num_ref_images = None
         self.n_layers = None
@@ -62,6 +63,29 @@ class _BaseSimData:
             / (self.upper_domain_bound - self.lower_domain_bound)
             * self.n_layers
         )
+
+    # ------------------------------------------------------------------
+    # Result files
+    # ------------------------------------------------------------------
+
+    def _extco_files(self, root):
+        """
+        Return the extinction coefficient files of the solver and the quantity of this object.
+
+        :param root: Directory the analysis directory lies in.
+        :type root: str
+        :return: Paths of the result files, empty if neither layout holds any.
+        :rtype: list[str]
+        """
+        solver_dir = os.path.join(root, 'analysis', 'extinction_coefficients', self.solver)
+        files = glob.glob(os.path.join(solver_dir, self.reference_property,
+                                       'extinction_coefficients*.csv'))
+        if not files:
+            # Results of a LEDSA version before every quantity got a directory of its own lie
+            # directly in the directory of the solver, where the quantity is part of the file
+            # name only. Such a directory holds the results of a single quantity per run.
+            files = glob.glob(os.path.join(solver_dir, 'extinction_coefficients*.csv'))
+        return files
 
     # ------------------------------------------------------------------
     # Smoothing
@@ -247,7 +271,8 @@ class _BaseSimData:
 # ──────────────────────────────────────────────────────────────────────────────
 
 class SimData(_BaseSimData):
-    def __init__(self, path_simulation, read_all=True, remove_duplicates=False, load_config_params=True):
+    def __init__(self, path_simulation, read_all=True, remove_duplicates=False, load_config_params=True,
+                 reference_property=None):
         """
         Initializes SimData with simulation and image analysis settings.
 
@@ -259,8 +284,14 @@ class SimData(_BaseSimData):
         :type remove_duplicates: bool, optional
         :param load_config_params: If True, loads parameters from config files, defaults to True.
         :type load_config_params: bool, optional
+        :param reference_property: Quantity whose extinction coefficients are read. Defaults to the
+            first quantity of the analysis configuration, since one analysis run can compute
+            several of them.
+        :type reference_property: str, optional
         """
         super().__init__()
+        if reference_property is not None:
+            self.reference_property = reference_property
         self.led_params_timedelta = 0
         self.ch0_ledparams_df = None
         self.ch1_ledparams_df = None
@@ -281,6 +312,8 @@ class SimData(_BaseSimData):
             self.path_images = self.config['find_search_areas']['img_directory']
 
             self.solver = self.config_analysis['DEFAULT']['solver']
+            if reference_property is None:
+                self.reference_property = self.config_analysis.get_reference_properties()[0]
             self.average_images = self.config_analysis.getboolean('DEFAULT', 'average_images')
             self.camera_channels = self.config_analysis.get_list_of_values('DEFAULT', 'camera_channels', dtype=int)
             self.num_ref_images = int(self.config_analysis['DEFAULT']['num_ref_images'])
@@ -347,15 +380,17 @@ class SimData(_BaseSimData):
 
     def _get_extco_df_from_path(self):
         """
-        Read all extinction coefficients from the simulation dir and put them in all_extco_df.
+        Read the extinction coefficients of one quantity from the simulation dir into all_extco_df.
         """
         extco_list = []
-        files_list = glob.glob(
-            os.path.join(
-                self.path_simulation, 'analysis', 'extinction_coefficients',
-                self.solver, 'extinction_coefficients*.csv',
-            )
-        )
+        files_list = self._extco_files(self.path_simulation)
+        if not files_list:
+            searched = os.path.join(self.path_simulation, 'analysis', 'extinction_coefficients',
+                                    str(self.solver), str(self.reference_property))
+            raise FileNotFoundError(
+                f'No extinction coefficient files of {self.reference_property} in {searched}. Run '
+                f'the analysis (--analysis) for this quantity, or name another one with the '
+                f'reference_property argument of SimData.')
         for file in files_list:
             file_df = pd.read_csv(file, skiprows=7)
             channel = int(file.split('channel_')[1].split('_')[0])
@@ -574,7 +609,7 @@ class StackedSimData(_BaseSimData):
     :vartype config_stacked: ConfigDataStacked
     """
 
-    def __init__(self, config_path='.', read_all=True):
+    def __init__(self, config_path='.', read_all=True, reference_property=None):
         """
         :param config_path: Directory containing ``config_stacked.ini``.
             Defaults to the current working directory.
@@ -582,6 +617,9 @@ class StackedSimData(_BaseSimData):
         :param read_all: If ``True``, immediately load all stacked extinction
             coefficient CSV files.  Defaults to ``True``.
         :type read_all: bool
+        :param reference_property: Quantity whose extinction coefficients are read. Defaults to
+            the first quantity of the stacked configuration.
+        :type reference_property: str, optional
         """
         super().__init__()
 
@@ -596,6 +634,8 @@ class StackedSimData(_BaseSimData):
         self.output_path = os.path.join(self.config_path, str(self.config_stacked.output_path))
 
         self.solver = self.config_stacked.solver
+        self.reference_property = (reference_property if reference_property is not None
+                                   else self.config_stacked.reference_properties[0])
         self.camera_channels = self.config_stacked.camera_channels
         self.num_ref_images = self.config_stacked.num_ref_images
         self._set_layer_geometry(self.config_stacked.domain_bounds, self.config_stacked.num_layers)
@@ -609,7 +649,7 @@ class StackedSimData(_BaseSimData):
 
         Files are expected in::
 
-            <output_path>/analysis/extinction_coefficients/<solver>/
+            <output_path>/analysis/extinction_coefficients/<solver>/<reference_property>/
 
         The virtual LED-array ID is stored as an integer in the
         ``all_extco_df`` MultiIndex (level ``"LED Array"``).
@@ -617,8 +657,9 @@ class StackedSimData(_BaseSimData):
         extco_list = []
         extco_dir = os.path.join(
             self.output_path, 'analysis', 'extinction_coefficients', self.solver,
+            self.reference_property,
         )
-        files = glob.glob(os.path.join(extco_dir, 'extinction_coefficients*.csv'))
+        files = self._extco_files(self.output_path)
 
         if not files:
             print(
