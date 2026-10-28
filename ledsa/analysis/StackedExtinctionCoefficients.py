@@ -144,6 +144,7 @@ class StackedExtinctionCoefficients:
                 num_ref_imgs=cfg.get_num_ref_images(sim_idx),
                 ref_img_indices=cfg.get_ref_img_indices(sim_idx),
                 average_images=cfg.average_images,
+                n_summarize=cfg.n_summarize,
                 lambda_reg=cfg.lambda_reg,
             )
         elif cfg.solver == 'nonlinear':
@@ -153,6 +154,7 @@ class StackedExtinctionCoefficients:
                 num_ref_imgs=cfg.get_num_ref_images(sim_idx),
                 ref_img_indices=cfg.get_ref_img_indices(sim_idx),
                 average_images=cfg.average_images,
+                n_summarize=cfg.n_summarize,
                 weighting_preference=cfg.weighting_preference,
                 weighting_curvature=cfg.weighting_curvature,
                 num_iterations=cfg.num_iterations,

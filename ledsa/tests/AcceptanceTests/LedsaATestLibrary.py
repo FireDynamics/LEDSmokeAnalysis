@@ -209,6 +209,7 @@ class LedsaATestLibrary:
         cfg['DEFAULT']['num_ref_images']     = '1'
         cfg['DEFAULT']['ref_img_indices']    = 'None'
         cfg['DEFAULT']['average_images']     = 'False'
+        cfg['DEFAULT']['n_summarize']        = '2'
         cfg['DEFAULT']['camera_channels']    = '0'
         cfg['DEFAULT']['num_cores']          = '1'
         cfg['DEFAULT']['num_layers']         = '20'
@@ -417,16 +418,18 @@ class LedsaATestLibrary:
 
     @keyword
     def create_and_fill_config_analysis(self, solver, reference_property='sum_col_val', num_ref_images=1,
-                                        average_images=False):
+                                        average_images=False, n_summarize=2):
         """Write config_analysis.ini. num_ref_images lets a test take the reference from another image than the first.
 
-        :param average_images: Summarize the images after the reference images two by two.
+        :param average_images: Summarize the images after the reference images.
+        :param n_summarize: Number of consecutive images summarized into one.
         """
         average_images = str(average_images).lower() == 'true'
         conf = ConfigDataAnalysis(load_config_file=False, camera_position=None, num_layers=20, domain_bounds=None,
                                   led_array_indices=0, num_ref_images=int(num_ref_images), camera_channels=0,
                                   num_cores=1, reference_property=reference_property,
-                                  average_images=average_images, solver=solver, weighting_preference=-6e-3,
+                                  average_images=average_images, n_summarize=int(n_summarize), solver=solver,
+                                  weighting_preference=-6e-3,
                                   weighting_curvature=1e-2,
                                   num_iterations=1000, lambda_reg=1e-3)
         conf.set('experiment_geometry', '   camera_position', '0 0 2')

@@ -11,8 +11,11 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from ledsa.analysis.ConfigDataAnalysis import ConfigDataAnalysis
 from ledsa.analysis.Experiment import Layers
+from ledsa.analysis.ExperimentData import ExperimentData
 from ledsa.analysis.ExtinctionCoefficients import ExtinctionCoefficients
+from ledsa.core.ConfigData import ConfigData
 from ledsa.core.file_handling import (average_all_fitpar, create_analysis_infos_avg,
                                       get_binary_file_path, read_hdf_avg)
 # the fixtures that build the step 3 result files of a channel, so that the averaged data can be
@@ -47,6 +50,16 @@ def write_image_infos(tmp_path):
     lines += [f'{img_id},img{img_id}.jpg,{float(img_id - 1)},{float(img_id - 1)}'
               for img_id in range(1, NUM_IMGS + 1)]
     (analysis_dir / 'image_infos_analysis.csv').write_text('\n'.join(lines) + '\n', encoding='utf-8')
+
+
+def _set_config_age_against_the_averaged_binary(tmp_path, seconds, channel=0):
+    """Give config_analysis.ini a modification time relative to the one of the averaged binary.
+
+    The modification times of two files written one after the other can land in the same clock
+    tick, which would make the age of the config depend on the file system.
+    """
+    averaged_mtime = os.path.getmtime(get_binary_file_path(channel, path=tmp_path, averaged=True))
+    os.utime(tmp_path / 'config_analysis.ini', (averaged_mtime + seconds, averaged_mtime + seconds))
 
 
 def read_averaged(tmp_path, channel=0):
@@ -110,6 +123,35 @@ class TestAveragedBinary:
         older = os.path.getmtime(single_img_file_path) - 10
         os.utime(averaged_file_path, (older, older))
         assert read_averaged(tmp_path).loc[(1, 0), 'sum_col_val'] == 1100
+
+    def test_a_changed_analysis_config_rebuilds_the_averaged_binary(self, tmp_path, capsys):
+        # num_ref_images and n_summarize come out of config_analysis.ini and decide which images are
+        # summarized into which, so averages computed with the counts of an earlier run must not be
+        # answered out of the cache after the configuration has changed
+        write_binary_data(tmp_path)
+        read_averaged(tmp_path)
+        config_path = tmp_path / 'config_analysis.ini'
+        config_path.write_text('[DEFAULT]\n   n_summarize = 3\n', encoding='utf-8')
+        _set_config_age_against_the_averaged_binary(tmp_path, 10)
+        capsys.readouterr()
+
+        read_averaged(tmp_path)
+
+        assert 'of an earlier run is replaced' in capsys.readouterr().out
+
+    def test_an_untouched_analysis_config_does_not_rebuild_it(self, tmp_path, capsys):
+        # averaging a real experiment costs the loading time of the whole channel, so a run that
+        # changed nothing is answered out of the cache
+        write_binary_data(tmp_path)
+        read_averaged(tmp_path)
+        config_path = tmp_path / 'config_analysis.ini'
+        config_path.write_text('[DEFAULT]\n   n_summarize = 2\n', encoding='utf-8')
+        _set_config_age_against_the_averaged_binary(tmp_path, -10)
+        capsys.readouterr()
+
+        read_averaged(tmp_path)
+
+        assert 'of an earlier run is replaced' not in capsys.readouterr().out
 
     def test_the_channels_do_not_overwrite_each_other(self, tmp_path):
         write_binary_data(tmp_path, channel=0)
@@ -190,6 +232,21 @@ class TestLoadImgData:
         image_infos = pd.read_csv(tmp_path / 'analysis' / 'image_infos_analysis_avg.csv')
         assert list(image_infos['#ID']) == solver.analysed_img_ids
 
+    def test_the_number_of_summarized_images_reaches_the_averaging(self, tmp_path, monkeypatch):
+        # load_img_data handed on the reference image count only, so n_summarize stayed at the two
+        # images per group the averaging was written with, whatever the configuration asked for
+        write_binary_data(tmp_path)
+        write_image_infos(tmp_path)
+        monkeypatch.chdir(tmp_path)
+        solver = self.make_solver(tmp_path, n_summarize=NUM_IMGS - NUM_REF_IMGS)
+
+        solver.load_img_data()
+
+        # the images after the reference images now form a single averaged image
+        assert solver.analysed_img_ids == list(range(1, NUM_REF_IMGS + 2))
+        image_infos = pd.read_csv(tmp_path / 'analysis' / 'image_infos_analysis_avg.csv')
+        assert list(image_infos['#ID']) == solver.analysed_img_ids
+
     def test_explicit_reference_image_indices_are_refused(self, tmp_path, monkeypatch):
         # the averaging numbers the images from 1 again, so the indices would name other images
         write_binary_data(tmp_path)
@@ -240,3 +297,48 @@ class TestAveragedBinaryOverTheResultFiles(BinaryDataFiles):
         self._read_averaged(analysis_dir)
 
         assert 'is replaced' not in capsys.readouterr().out
+
+
+def write_configs(**analysis_options):
+    """Write a config.ini and a config_analysis.ini that ExperimentData can be loaded from.
+
+    Only the options the loading asks for are filled in, the rest keeps the defaults of the
+    template, so that nothing is requested from the user on the console.
+    """
+    ConfigData(load_config_file=False, merge_led_array_indices=None).save()
+    config_analysis = ConfigDataAnalysis(load_config_file=False, **analysis_options)
+    config_analysis.set('experiment_geometry', '   camera_position', '0 0 2')
+    config_analysis.set('model_parameters', '   domain_bounds', '0 3')
+    config_analysis.set('model_parameters', '   led_array_indices', '0')
+    config_analysis.save()
+
+
+class TestNSummarizeOption:
+    """n_summarize is an option of config_analysis.ini and arrives at the analysis from there.
+
+    Both halves of the averaging took the number of summarized images as a parameter, but no config
+    key named it, so the two images per group they default to could not be changed at all.
+    """
+
+    def test_the_option_is_written_and_read_back(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        write_configs(n_summarize=5)
+        assert ConfigDataAnalysis(load_config_file=True)['DEFAULT']['n_summarize'] == '5'
+
+    def test_the_option_reaches_the_experiment_data(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        write_configs(num_ref_images=20, average_images=True, n_summarize=5)
+        experiment_data = ExperimentData()
+        assert (experiment_data.n_summarize, experiment_data.average_images,
+                experiment_data.num_ref_images) == (5, True, 20)
+
+    def test_a_config_written_before_the_option_keeps_the_former_behaviour(self, tmp_path, monkeypatch):
+        # a config_analysis.ini of an earlier version names no count, so the analysis summarizes the
+        # two images per group the averaging was hardcoded to
+        monkeypatch.chdir(tmp_path)
+        write_configs(average_images=True)
+        config_path = tmp_path / 'config_analysis.ini'
+        config_path.write_text(
+            '\n'.join(line for line in config_path.read_text(encoding='utf-8').splitlines()
+                      if 'n_summarize' not in line) + '\n', encoding='utf-8')
+        assert ExperimentData().n_summarize == 2

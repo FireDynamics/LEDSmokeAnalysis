@@ -29,6 +29,7 @@ class ConfigDataStacked(cp.ConfigParser):
         num_ref_images    = 10
         ref_img_indices   = None
         average_images    = False
+        n_summarize       = 2
         num_cores         = 1
         output_path       = .
         time_sync_tolerance = 0.5
@@ -246,8 +247,17 @@ class ConfigDataStacked(cp.ConfigParser):
 
     @property
     def average_images(self) -> bool:
-        """Whether to use averaged image pairs."""
+        """Whether to average the intensities over :attr:`n_summarize` consecutive images."""
         return self.getboolean('DEFAULT', 'average_images', fallback=False)
+
+    @property
+    def n_summarize(self) -> int:
+        """Number of consecutive images summarized into one when :attr:`average_images` is set.
+
+        The reference images are kept as they are, so the first :attr:`num_ref_images` images of
+        every camera are not summarized.
+        """
+        return int(self.get('DEFAULT', 'n_summarize', fallback='2'))
 
     @property
     def num_cores(self) -> int:
@@ -309,6 +319,8 @@ class ConfigDataStacked(cp.ConfigParser):
         cfg.set('DEFAULT', "# Explicit reference image indices (overrides num_ref_images); 'None' to disable")
         cfg['DEFAULT']['ref_img_indices'] = 'None'
         cfg['DEFAULT']['average_images'] = 'False'
+        cfg.set('DEFAULT', '# Consecutive images summarized into one when average_images is True')
+        cfg['DEFAULT']['n_summarize'] = '2'
         cfg.set('DEFAULT', '# ── Channels / parallelism ─────────────────────────────────────────')
         cfg.set('DEFAULT', '# Space-separated list: 0 = R, 1 = G, 2 = B')
         cfg['DEFAULT']['camera_channels'] = '0'

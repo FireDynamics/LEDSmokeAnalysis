@@ -55,7 +55,8 @@ class ConfigDataAnalysis(cp.ConfigParser):
     def __init__(self, load_config_file=True, camera_position=None, num_layers=20, domain_bounds=None,
                  led_array_indices=None, num_ref_images=10, ref_img_indices=None, camera_channels=0, num_cores=1,
                  reference_property='sum_col_val',
-                 average_images=False, solver='linear', weighting_preference=-6e-3, weighting_curvature=1e-2,
+                 average_images=False, n_summarize=2, solver='linear', weighting_preference=-6e-3,
+                 weighting_curvature=1e-2,
                  num_iterations=1000, lambda_reg=1e-3):
         """
         :param load_config_file: Determines whether to load the config file on initialization. Defaults to True.
@@ -84,6 +85,9 @@ class ConfigDataAnalysis(cp.ConfigParser):
         :type reference_property: Union[str, Iterable[str]]
         :param average_images: Determines if intensities are computed as an average from two consecutive images. Defaults to False.
         :type average_images: bool
+        :param n_summarize: Number of consecutive images summarized into one if average_images is set. The first
+            num_ref_images images are kept as they are. Defaults to 2.
+        :type n_summarize: int
         :param solver: Method used to compute extinction coefficients - can be 'linear' or 'nonlinear'. Defaults to 'linear'.
         :type solver: str
         :param weighting_preference: Weighting factor for the preference to push the nonlinear solver to high or low values for the extinction coeffiientes. Defaults to -6e-3.
@@ -112,8 +116,10 @@ class ConfigDataAnalysis(cp.ConfigParser):
             self['DEFAULT']['   ref_img_indices'] = str(ref_img_indices)
             self.set('DEFAULT', '   # Camera channels to be considered in the analysis')
             self['DEFAULT']['   camera_channels'] = str(camera_channels)
-            self.set('DEFAULT', '   # Intensities are computed as average from two consecutive images if set to True ')
+            self.set('DEFAULT', '   # Intensities are computed as average from n_summarize consecutive images if set to True ')
             self['DEFAULT']['   average_images'] = str(average_images)
+            self.set('DEFAULT', '   # Number of consecutive images summarized into one, the reference images excluded ')
+            self['DEFAULT']['   n_summarize'] = str(n_summarize)
             self.set('DEFAULT', '   # Extinction coefficients can be computed by linear or numeric solver ')
             self['DEFAULT']['   solver'] = str(solver)
             self.set('DEFAULT', '   # Options for nonlinear solver (ignored when linear solver is used) ')

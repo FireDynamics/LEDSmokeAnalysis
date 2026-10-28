@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 
 from ledsa.analysis.Experiment import Experiment, Layers, Camera
-from ledsa.core.file_handling import (create_analysis_infos_avg, extend_hdf,
+from ledsa.core.file_handling import (NUM_IMGS_PER_AVERAGE, create_analysis_infos_avg, extend_hdf,
                                       get_extinction_coefficients_file_path, read_hdf, read_hdf_avg)
 from ledsa.data_extraction.data_integrity import check_intensity_normalization
 
@@ -38,12 +38,14 @@ class ExtinctionCoefficients(ABC):
     :vartype cc_matrix: np.ndarray or None
     :ivar average_images: Flag to determine if intensities are computed as an average from two consecutive images.
     :vartype average_images: bool
+    :ivar n_summarize: Number of consecutive images summarized into one when averaging.
+    :vartype n_summarize: int
     :ivar solver: Indication whether the calculation is to be carried out numerically or analytically.
     :vartype type: str
     """
 
     def __init__(self, experiment, reference_property='sum_col_val', num_ref_imgs=10, ref_img_indices=None,
-                 average_images=False):
+                 average_images=False, n_summarize=NUM_IMGS_PER_AVERAGE):
         """
         :param experiment: Object representing the experimental setup.
         :type experiment: Experiment
@@ -55,6 +57,8 @@ class ExtinctionCoefficients(ABC):
         :type ref_img_indices: list[int] or None
         :param average_images: Flag to determine if intensities are computed as an average from two consecutive images.
         :type average_images: bool
+        :param n_summarize: Number of consecutive images summarized into one when averaging.
+        :type n_summarize: int
         """
         self.coefficients_per_image_and_layer = []
         self.experiment = experiment
@@ -67,6 +71,7 @@ class ExtinctionCoefficients(ABC):
         self.ref_intensities = np.array([])
         self.cc_matrix = None
         self.average_images = average_images
+        self.n_summarize = n_summarize
         self.solver = None
         self.lambda_reg = None
 
@@ -142,11 +147,12 @@ class ExtinctionCoefficients(ABC):
                                  'summarizes the images and numbers them from 1 again, so the '
                                  'indices would name other images than intended. Use num_ref_images '
                                  'instead, which names the images that are left unaveraged.')
-            # the binary and the image infos of the averaged images are built from the same number
-            # of reference images, so that they hold the same image IDs
+            # the binary and the image infos of the averaged images are built from the same counts,
+            # so that they hold the same image IDs
             img_data = read_hdf_avg(self.experiment.channel, path=self.experiment.path,
-                                    num_ref_imgs=self.num_ref_imgs)
-            create_analysis_infos_avg(num_ref_imgs=self.num_ref_imgs, path=self.experiment.path)
+                                    n_summarize=self.n_summarize, num_ref_imgs=self.num_ref_imgs)
+            create_analysis_infos_avg(n_summarize=self.n_summarize, num_ref_imgs=self.num_ref_imgs,
+                                      path=self.experiment.path)
         else:
             img_data = read_hdf(self.experiment.channel, path=self.experiment.path)
         if self.reference_property not in img_data.columns:
