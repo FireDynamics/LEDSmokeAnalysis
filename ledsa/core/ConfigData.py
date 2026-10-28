@@ -14,7 +14,7 @@ class ConfigData(cp.ConfigParser):
     Class responsible for handling configuration data related to LEDSA.
 
     """
-    def __init__(self, load_config_file=True, img_directory=None, search_area_radius=10, pixel_value_percentile=99.875, channel=0,
+    def __init__(self, load_config_file=True, path='.', img_directory=None, search_area_radius=10, pixel_value_percentile=99.875, channel=0,
                  max_num_leds=None, num_arrays=None, num_cores=1, date=None, start_time=None, time_ref_img_id=None, time_ref_img_file=None, time_ref_img_time=None,
                  time_diff_to_image_time=None, img_name_string=None, num_img_overflow=None,
                  img_rotation=AUTO_ROTATION,
@@ -26,6 +26,10 @@ class ConfigData(cp.ConfigParser):
         """
         :param load_config_file: Determines whether to load the config file on initialization. Defaults to True.
         :type load_config_file: bool
+        :param path: Directory the config.ini is read from and written to. Defaults to the working
+            directory. The stacked analysis reads the configuration of every camera, which lies in
+            the directory of that camera.
+        :type path: str
         :param img_directory: Path to the image directory. Defaults to None.
         :type img_directory: str or None
         :param search_area_radius: Pixel radius of search area around each LED. Defaults to 10.
@@ -96,6 +100,7 @@ class ConfigData(cp.ConfigParser):
         :type sideband_exclusion_margin: int or None
         """
         cp.ConfigParser.__init__(self, allow_no_value=True)
+        self.path = path
         if load_config_file:
             self.load()
         else:
@@ -187,9 +192,9 @@ class ConfigData(cp.ConfigParser):
             self.set('analyse_photo', '   # Raise the margin above the halo of the LEDs if the strips are close, otherwise their light enters the side bands.')
             self['analyse_photo']['   sideband_exclusion_margin'] = str(sideband_exclusion_margin)
 
-            with open('config.ini', 'w', encoding='utf-8') as configfile:
+            with open(self.config_file_path, 'w', encoding='utf-8') as configfile:
                 self.write(configfile)
-            print('config.ini created')
+            print(f'{self.config_file_path} created')
 
     def get(self, section, option, *, raw=False, vars=None, fallback='None') -> str:
         """
@@ -205,19 +210,25 @@ class ConfigData(cp.ConfigParser):
         """
         return super().get(section, option, raw=raw, vars=vars, fallback=fallback)
 
+    @property
+    def config_file_path(self) -> str:
+        """Path of the config.ini this configuration is read from and written to."""
+        return os.path.normpath(os.path.join(self.path, 'config.ini'))
+
     def load(self) -> None:
         """
-        Loads the configuration data from 'config.ini' file.
+        Loads the configuration data from the 'config.ini' file of :attr:`path`.
 
         Raises:
-            FileNotFoundError: If 'config.ini' is not found in the working directory.
+            FileNotFoundError: If 'config.ini' is not found in that directory.
         """
+        file_path = self.config_file_path
         try:
-            with open('config.ini', encoding='utf-8-sig') as config_file:
+            with open(file_path, encoding='utf-8-sig') as config_file:
                 self.read_file(config_file)
         except FileNotFoundError:
-            print('config.ini not found in working directory! Please create it with argument "--config".')
-        print('config.ini loaded')
+            print(f'{file_path} not found! Please create it with argument "--config".')
+        print(f'{file_path} loaded')
 
     def save(self) -> None:
         """
@@ -225,8 +236,9 @@ class ConfigData(cp.ConfigParser):
 
         The comments of the file, which hold the help texts of the options, are kept.
         """
-        save_config(self, 'config.ini')
-        print('config.ini saved')
+        file_path = self.config_file_path
+        save_config(self, file_path)
+        print(f'{file_path} saved')
 
     def get_ref_img_experiment_ids(self) -> Optional[List[int]]:
         """

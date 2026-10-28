@@ -22,7 +22,8 @@ def get_img_name(img_id: str) -> str:
     raise NameError("Could not find an image name to id {}.".format(img_id))
 
 
-def get_analysis_img_ids(experiment_img_ids: List[int], img_name_string: str) -> List[int]:
+def get_analysis_img_ids(experiment_img_ids: List[int], img_name_string: str,
+                         path: str = '.') -> List[int]:
     """
     Translate experiment image IDs into the analysis IDs of the same images.
 
@@ -33,11 +34,14 @@ def get_analysis_img_ids(experiment_img_ids: List[int], img_name_string: str) ->
     :type experiment_img_ids: List[int]
     :param img_name_string: Format string of the image file names, e.g. 'img{:04d}.jpg'.
     :type img_name_string: str
+    :param path: Root directory of the LEDSA simulation the images belong to. Defaults to the
+        working directory.
+    :type path: str
     :return: Analysis IDs of the same images.
     :rtype: List[int]
     :raises ValueError: If one of the images was not analysed.
     """
-    file_path = os.path.join('analysis', 'image_infos_analysis.csv')
+    file_path = os.path.join(path, 'analysis', 'image_infos_analysis.csv')
     infos = read_table(file_path, ',', 'str', silent=True, atleast_2d=True)
     analysis_img_id_of_name = {infos[i, 1]: int(infos[i, 0]) for i in range(infos.shape[0])}
     img_names = [img_name_string.format(int(img_id)) for img_id in experiment_img_ids]

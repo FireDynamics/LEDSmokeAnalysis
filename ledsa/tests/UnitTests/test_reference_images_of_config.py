@@ -7,6 +7,8 @@ analysis IDs of the same images.
 """
 import pytest
 
+from ledsa.analysis.ConfigDataStacked import ConfigDataStacked
+from ledsa.analysis.StackedExtinctionCoefficients import StackedExtinctionCoefficients
 from ledsa.core.ConfigData import ConfigData
 from ledsa.core.file_handling import _number_of_analysed_images
 from ledsa.core.image_handling import get_analysis_img_ids
@@ -24,13 +26,18 @@ num_skip_imgs = 2
 """
 
 
-def write_config(tmp_path, monkeypatch, ref_img_experiment_ids=None) -> ConfigData:
-    """Write a config by hand in an empty working directory and load it."""
+def write_config_file(directory, ref_img_experiment_ids=None) -> None:
+    """Write a config.ini by hand into the given directory."""
     text = CONFIG_WITHOUT_REFERENCE_IMAGES
     if ref_img_experiment_ids is not None:
         text += f'ref_img_experiment_ids = {ref_img_experiment_ids}\n'
+    (directory / 'config.ini').write_text(text, encoding='utf-8')
+
+
+def write_config(tmp_path, monkeypatch, ref_img_experiment_ids=None) -> ConfigData:
+    """Write a config by hand in an empty working directory and load it."""
+    write_config_file(tmp_path, ref_img_experiment_ids)
     monkeypatch.chdir(tmp_path)
-    (tmp_path / 'config.ini').write_text(text, encoding='utf-8')
     return ConfigData()
 
 
@@ -124,3 +131,85 @@ class TestNumberOfAnalysedImages:
         # the increment, which counts the images 1, 4 and 7 of the IDs 1 to 7
         config = write_config(tmp_path, monkeypatch)
         assert _number_of_analysed_images(config) == 3
+
+
+class TestConfigOfAnotherDirectory:
+    """The stacked analysis reads the configuration of every camera, which lies in its directory."""
+
+    def test_the_config_of_another_directory_is_loaded(self, tmp_path, monkeypatch):
+        camera_dir = tmp_path / 'cam0'
+        camera_dir.mkdir()
+        write_config_file(camera_dir, '5 6')
+        monkeypatch.chdir(tmp_path)
+        assert ConfigData(path=camera_dir).get_ref_img_experiment_ids() == [5, 6]
+
+    def test_the_analysis_ids_are_read_from_that_directory(self, tmp_path, monkeypatch):
+        camera_dir = tmp_path / 'cam0'
+        camera_dir.mkdir()
+        write_image_infos(camera_dir, [1, 4, 5, 6, 7])
+        monkeypatch.chdir(tmp_path)
+        assert get_analysis_img_ids([5, 6], 'img{:04d}.jpg', path=camera_dir) == [3, 4]
+
+
+STACKED_CONFIG = """\
+[DEFAULT]
+{default_options}
+[simulation_0]
+path = {cam0_path}
+camera_position = 0 0 0.5
+{sim_0_options}
+[led_arrays]
+0 = 0:0
+"""
+
+
+def load_stacked_config(tmp_path, cam0_path, default_options='', sim_0_options=''):
+    """Write a config_stacked.ini for one camera and load it."""
+    text = STACKED_CONFIG.format(default_options=default_options, cam0_path=cam0_path,
+                                 sim_0_options=sim_0_options)
+    path = tmp_path / ConfigDataStacked.DEFAULT_FILENAME
+    path.write_text(text, encoding='utf-8')
+    return ConfigDataStacked(filename=str(path))
+
+
+class StackedSolverStub:
+    """Only the configuration is of interest here, so the real method is used on its own."""
+
+    _ref_img_indices_of_sim = StackedExtinctionCoefficients._ref_img_indices_of_sim
+
+    def __init__(self, config):
+        self.config = config
+
+
+class ExperimentStub:
+    def __init__(self, path):
+        self.path = path
+
+
+class TestStackedFallbackToTheCameraConfig:
+    """A camera that names its reference images in config.ini must not name them twice."""
+
+    def camera_dir(self, tmp_path, monkeypatch, ref_img_experiment_ids='5 6'):
+        camera_dir = tmp_path / 'cam0'
+        camera_dir.mkdir()
+        write_config_file(camera_dir, ref_img_experiment_ids)
+        # num_skip_imgs = 2 left the images 1, 4 and 7, the reference images 5 and 6 were added
+        write_image_infos(camera_dir, [1, 4, 5, 6, 7])
+        monkeypatch.chdir(tmp_path)
+        return camera_dir
+
+    def test_the_camera_config_is_used_without_a_stacked_setting(self, tmp_path, monkeypatch):
+        camera_dir = self.camera_dir(tmp_path, monkeypatch)
+        solver = StackedSolverStub(load_stacked_config(tmp_path, camera_dir))
+        assert solver._ref_img_indices_of_sim(ExperimentStub(camera_dir), 0) == [3, 4]
+
+    def test_the_stacked_setting_wins(self, tmp_path, monkeypatch):
+        camera_dir = self.camera_dir(tmp_path, monkeypatch)
+        solver = StackedSolverStub(
+            load_stacked_config(tmp_path, camera_dir, sim_0_options='ref_img_indices = 1 2\n'))
+        assert solver._ref_img_indices_of_sim(ExperimentStub(camera_dir), 0) == [1, 2]
+
+    def test_a_camera_naming_no_images_keeps_num_ref_images(self, tmp_path, monkeypatch):
+        camera_dir = self.camera_dir(tmp_path, monkeypatch, ref_img_experiment_ids='None')
+        solver = StackedSolverStub(load_stacked_config(tmp_path, camera_dir))
+        assert solver._ref_img_indices_of_sim(ExperimentStub(camera_dir), 0) is None

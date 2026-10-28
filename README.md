@@ -125,17 +125,8 @@ lie directly in `analysis/extinction_coefficients/<solver>/` and are left where 
 ### Reference images of the normalization
 
 The extinction coefficients are computed from the relative intensities I/I0, so the images I0 is
-averaged over decide what the analysis takes for clear air. Three options name them, and the
-first one that is set wins:
-
-| Option | File | Names the images by |
-| --- | --- | --- |
-| `ref_img_indices` | `config_analysis.ini` | analysis ID |
-| `ref_img_experiment_ids` | `config.ini` | experiment ID, the number the file name is built from |
-| `num_ref_images` | `config_analysis.ini` | the number of images at the beginning of the experiment |
-
-`ref_img_experiment_ids` is the only one the data extraction reads, so it is the one to use
-whenever `num_skip_imgs` or `average_images` is set:
+averaged over decide what the analysis takes for clear air. Name them in `config.ini`, by the
+experiment ID their file name is built from, and nowhere else:
 
 ```ini
 [analyse_photo]
@@ -143,11 +134,21 @@ num_skip_imgs = 9
 ref_img_experiment_ids = 385 386 387 388 389 390
 ```
 
-The images it names are analysed whatever `num_skip_imgs` leaves out, so the reference window
-keeps the time span it is meant to have instead of being pulled apart by the increment, and
-`average_images` keeps every one of them as it is instead of summarizing it with its neighbours.
-They have to lie between the first and the last analysed image, and they have to be named
-before step 3, since an image that was never analysed holds no intensities.
+The data extraction reads them from there, so the images it names are analysed whatever
+`num_skip_imgs` leaves out: the reference window keeps the time span it is meant to have instead
+of being pulled apart by the increment, and `average_images` keeps every one of them as it is
+instead of summarizing it with its neighbours. The analysis translates them into its own image
+IDs itself, `config_analysis.ini` and `config_stacked.ini` need no entry of their own. They have
+to lie between the first and the last analysed image, and they have to be named before step 3,
+since an image that was never analysed holds no intensities.
+
+Two options remain for the cases `ref_img_experiment_ids` does not cover. `num_ref_images` of
+`config_analysis.ini` takes the first images of the experiment, which is the default and enough
+as long as no image is skipped or summarized. `ref_img_indices` names the images by the analysis
+ID instead and overrides `ref_img_experiment_ids` where it is set, in `config_analysis.ini` for
+one camera and per `[simulation_N]` of `config_stacked.ini` for the stacked analysis. Since the
+analysis IDs only come into being with the extraction, it cannot keep its images out of
+`num_skip_imgs`.
 
 The analysis prints the image IDs I0 was really computed from, while the header of the result
 file names the reference images as the configuration gave them. With `average_images` the two
@@ -169,9 +170,11 @@ python -m ledsa -as
 array ID to the array IDs of the individual runs.
 
 Image IDs are counted within each run, so the same ID is a different point in time in
-each camera. `num_ref_images` and `ref_img_indices` therefore override `[DEFAULT]` when
-set in a `[simulation_N]` section, and `ref_img_indices = None` switches that camera back
-to `num_ref_images`:
+each camera, and every camera needs reference images of its own. A camera that names them
+in `ref_img_experiment_ids` of its own `config.ini` needs no entry here, since the
+stacked analysis reads them from there. `num_ref_images` and `ref_img_indices` override
+`[DEFAULT]` when set in a `[simulation_N]` section, and `ref_img_indices` overrides the
+`config.ini` of that camera as well:
 
 ```ini
 [simulation_1]

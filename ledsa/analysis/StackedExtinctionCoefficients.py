@@ -30,7 +30,9 @@ from ledsa.analysis.Experiment import Camera, Experiment, Layers
 from ledsa.analysis.ExtinctionCoefficientsLinear import ExtinctionCoefficientsLinear
 from ledsa.analysis.ExtinctionCoefficientsNonLinear import ExtinctionCoefficientsNonLinear
 from ledsa.analysis.temperature_correction import TemperatureCorrection
+from ledsa.core.ConfigData import ConfigData
 from ledsa.core.file_handling import get_extinction_coefficients_file_path, read_experiment_times
+from ledsa.core.image_handling import get_analysis_img_ids
 from importlib.metadata import version
 
 
@@ -135,6 +137,32 @@ class StackedExtinctionCoefficients:
     # Sub-solver factory
     # ------------------------------------------------------------------
 
+    def _ref_img_indices_of_sim(self, experiment: Experiment, sim_idx: int) -> Optional[List[int]]:
+        """Reference image IDs of one camera, as its analysis IDs.
+
+        A camera that names its reference images in ``ref_img_experiment_ids`` of its own
+        config.ini has them analysed whatever num_skip_imgs leaves out, so naming them a second
+        time in config_stacked.ini would only repeat what the extraction already knows. They are
+        read from there whenever ``[simulation_N]`` names no ``ref_img_indices``, which stays the
+        way to override them per camera.
+
+        :param experiment: Experiment of the simulation, which holds its directory.
+        :type experiment: Experiment
+        :param sim_idx: Index of that simulation.
+        :type sim_idx: int
+        :return: Analysis IDs of the reference images, or None if neither file names any.
+        :rtype: Optional[List[int]]
+        """
+        ref_img_indices = self.config.get_ref_img_indices(sim_idx)
+        if ref_img_indices is not None:
+            return ref_img_indices
+        config = ConfigData(path=experiment.path)
+        experiment_img_ids = config.get_ref_img_experiment_ids()
+        if experiment_img_ids is None:
+            return None
+        return get_analysis_img_ids(experiment_img_ids, config['DEFAULT']['img_name_string'],
+                                    path=experiment.path)
+
     def _build_sub_solver(self, experiment: Experiment, sim_idx: int):
         """Create a single-experiment solver instance for *experiment*.
 
@@ -144,12 +172,13 @@ class StackedExtinctionCoefficients:
         :type sim_idx: int
         """
         cfg = self.config
+        ref_img_indices = self._ref_img_indices_of_sim(experiment, sim_idx)
         if cfg.solver == 'linear':
             return ExtinctionCoefficientsLinear(
                 experiment=experiment,
                 reference_property=self.reference_property,
                 num_ref_imgs=cfg.get_num_ref_images(sim_idx),
-                ref_img_indices=cfg.get_ref_img_indices(sim_idx),
+                ref_img_indices=ref_img_indices,
                 average_images=cfg.average_images,
                 n_summarize=cfg.n_summarize,
                 lambda_reg=cfg.lambda_reg,
@@ -160,7 +189,7 @@ class StackedExtinctionCoefficients:
                 experiment=experiment,
                 reference_property=self.reference_property,
                 num_ref_imgs=cfg.get_num_ref_images(sim_idx),
-                ref_img_indices=cfg.get_ref_img_indices(sim_idx),
+                ref_img_indices=ref_img_indices,
                 average_images=cfg.average_images,
                 n_summarize=cfg.n_summarize,
                 weighting_preference=cfg.weighting_preference,
