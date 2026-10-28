@@ -2,6 +2,7 @@ import configparser as cp
 from pathlib import Path
 from typing import Dict, List, Optional
 
+from ledsa.analysis.ConfigDataAnalysis import DEFAULT_REFERENCE_PROPERTY, parse_reference_properties
 from ledsa.core.config_file import save_config
 
 
@@ -24,7 +25,7 @@ class ConfigDataStacked(cp.ConfigParser):
         camera_channels   = 0 1 2
         num_layers        = 20
         domain_bounds     = 0.0 3.0
-        reference_property = sum_col_val
+        reference_property = sum_col_val bgsub_sum_col_val
         num_ref_images    = 10
         ref_img_indices   = None
         average_images    = False
@@ -217,9 +218,15 @@ class ConfigDataStacked(cp.ConfigParser):
         return int(self.get('DEFAULT', 'num_iterations', fallback='1000'))
 
     @property
+    def reference_properties(self) -> List[str]:
+        """Column names used as the LED intensity measure, one stacked analysis each."""
+        return parse_reference_properties(
+            self.get('DEFAULT', 'reference_property', fallback=DEFAULT_REFERENCE_PROPERTY))
+
+    @property
     def reference_property(self) -> str:
-        """Column name used as the LED intensity measure."""
-        return self.get('DEFAULT', 'reference_property', fallback='sum_col_val')
+        """First of :attr:`reference_properties`, the quantity of a single analysis."""
+        return self.reference_properties[0]
 
     @property
     def num_ref_images(self) -> int:
@@ -296,6 +303,7 @@ class ConfigDataStacked(cp.ConfigParser):
         cfg['DEFAULT']['weighting_curvature'] = '1e-2'
         cfg['DEFAULT']['num_iterations'] = '1000'
         cfg.set('DEFAULT', '# ── Image / reference ──────────────────────────────────────────────')
+        cfg.set('DEFAULT', '# Quantities the extinction coefficients are computed from, separated by spaces')
         cfg['DEFAULT']['reference_property'] = 'sum_col_val'
         cfg['DEFAULT']['num_ref_images'] = '10'
         cfg.set('DEFAULT', "# Explicit reference image indices (overrides num_ref_images); 'None' to disable")

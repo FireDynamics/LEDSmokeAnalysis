@@ -90,6 +90,38 @@ For a complete list of options, run:
 python -m ledsa --help
 ```
 
+### Analysed quantities and result files
+
+`reference_property` in `config_analysis.ini` names the quantity of step 3 the extinction
+coefficients are computed from (see [Background correction](#background-correction-optional) for
+the available ones). Several quantities, separated by spaces, are analysed one after another in a
+single run:
+
+```ini
+[DEFAULT]
+reference_property = sum_col_val bgsub_sum_col_val sidebg_sum_col_val
+```
+
+Every solver and every quantity writes into a directory of its own, so that the results of one
+run stay apart from each other:
+
+```
+analysis/
+└── extinction_coefficients/
+    ├── linear/
+    │   ├── sum_col_val/
+    │   │   └── extinction_coefficients_linear_channel_0_sum_col_val_led_array_0.csv
+    │   └── bgsub_sum_col_val/
+    │       └── extinction_coefficients_linear_channel_0_bgsub_sum_col_val_led_array_0.csv
+    └── nonlinear/
+        └── sum_col_val/
+            └── extinction_coefficients_nonlinear_channel_0_sum_col_val_led_array_0.csv
+```
+
+The stacked analysis reads its quantities from `reference_property` in `config_stacked.ini` and
+writes them into the same layout below its `output_path`. Result files of earlier LEDSA versions
+lie directly in `analysis/extinction_coefficients/<solver>/` and are left where they are.
+
 ### Stacked multi-camera analysis
 
 Several cameras that watch the same LED arrays can be inverted jointly, so that the rays
@@ -169,7 +201,8 @@ an image read in another orientation.
 
 By default the extinction coefficients are computed from `sum_col_val`, the plain sum of
 the pixel values in the search area of each LED. Step 3 additionally writes
-background-corrected sums, which `reference_property` in `config_analysis.ini` selects:
+background-corrected sums, which `reference_property` in `config_analysis.ini` selects, one
+or several of them per run:
 
 | `reference_property` | Background estimate |
 |---|---|
