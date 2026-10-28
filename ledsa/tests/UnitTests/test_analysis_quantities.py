@@ -62,8 +62,8 @@ class TestConfigDataAnalysis:
     def test_single_quantity_of_an_older_config_is_read(self, tmp_path, monkeypatch):
         # configs written before several quantities could be given hold a single name
         monkeypatch.chdir(tmp_path)
-        (tmp_path / 'config_analysis.ini').write_text('[DEFAULT]\nreference_property = sum_col_val\n',
-                                                      encoding='utf-8')
+        config_text = '[DEFAULT]\nreference_property = sum_col_val\n'
+        (tmp_path / 'config_analysis.ini').write_text(config_text, encoding='utf-8')
         assert ConfigDataAnalysis().get_reference_properties() == ['sum_col_val']
 
     def test_missing_option_falls_back_to_the_default_quantity(self, tmp_path, monkeypatch):
