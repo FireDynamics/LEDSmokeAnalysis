@@ -36,6 +36,8 @@ class ExperimentData:
     :type num_ref_images: int
     :ivar ref_img_indices: Indices of reference images to use. If None, use num_ref_imgs.
     :type ref_img_indices: list[int] or None
+    :ivar average_images: Intensities are computed as an average from consecutive images.
+    :type average_images: bool
     :ivar reference_properties: Reference properties to be analysed, one analysis each.
     :type reference_properties: List[str]
     :ivar merge_led_arrays: Merge LED arrays option.
@@ -56,6 +58,7 @@ class ExperimentData:
         self.num_iterations = None
         self.num_ref_images = None
         self.ref_img_indices = None
+        self.average_images = False
         self.lambda_reg = None
         self.reference_properties = None
         self.merge_led_arrays = None
@@ -73,6 +76,7 @@ class ExperimentData:
         self.ref_img_indices = config_analysis.get_list_of_values('DEFAULT', 'ref_img_indices')
         if self.ref_img_indices is None:
             self.num_ref_images = int(config_analysis['DEFAULT']['num_ref_images'])
+        self.average_images = config_analysis.getboolean('DEFAULT', 'average_images', fallback=False)
         self.solver = config_analysis['DEFAULT']['solver']
         if self.solver == 'nonlinear':
             self.weighting_preference = float(config_analysis['DEFAULT']['weighting_preference'])

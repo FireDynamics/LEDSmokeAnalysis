@@ -7,6 +7,7 @@ from subprocess import Popen, PIPE
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import exiv2
 from PIL import Image
 from robot.api.deco import keyword, library
@@ -24,6 +25,10 @@ from ledsa.postprocessing.simulation import SimData
 # accept, so drawing it afresh every run made them pass or fail by chance. A fixed seed keeps
 # the test data, and with it the reconstruction error, the same on every run and platform.
 NOISE_SEED = 20181127
+
+# Number of consecutive images LEDSA summarizes into one when average_images is set. Spelled out
+# here instead of taken from ledsa, so that the test checks the documented behaviour.
+NUM_IMGS_PER_AVERAGE = 2
 
 
 @library
@@ -411,12 +416,17 @@ class LedsaATestLibrary:
         conf.save()
 
     @keyword
-    def create_and_fill_config_analysis(self, solver, reference_property='sum_col_val', num_ref_images=1):
-        """Write config_analysis.ini. num_ref_images lets a test take the reference from another image than the first."""
+    def create_and_fill_config_analysis(self, solver, reference_property='sum_col_val', num_ref_images=1,
+                                        average_images=False):
+        """Write config_analysis.ini. num_ref_images lets a test take the reference from another image than the first.
+
+        :param average_images: Summarize the images after the reference images two by two.
+        """
+        average_images = str(average_images).lower() == 'true'
         conf = ConfigDataAnalysis(load_config_file=False, camera_position=None, num_layers=20, domain_bounds=None,
                                   led_array_indices=0, num_ref_images=int(num_ref_images), camera_channels=0,
                                   num_cores=1, reference_property=reference_property,
-                                  average_images=False, solver=solver, weighting_preference=-6e-3,
+                                  average_images=average_images, solver=solver, weighting_preference=-6e-3,
                                   weighting_curvature=1e-2,
                                   num_iterations=1000, lambda_reg=1e-3)
         conf.set('experiment_geometry', '   camera_position', '0 0 2')
@@ -571,6 +581,55 @@ class LedsaATestLibrary:
         expected = sorted(round(t, 6) for name, t in times_of_img.items() if name != img_name)
         if times != expected:
             raise AssertionError(f'Experiment times in {filename} are {times}, expected {expected}')
+        if np.isnan(data[:, 1:]).any():
+            raise AssertionError(f'{filename} contains NaN extinction coefficients')
+
+    @keyword
+    def averaged_analysis_should_summarize_the_images(self, num_ref_images=1, solver='linear', channel=0,
+                                                      led_array=0, reference_property='sum_col_val'):
+        """Fail unless the analysis with average_images set computed coefficients of the averaged images.
+
+        The reference images at the beginning are kept as they are, the images after them are
+        summarized two by two. The averaged intensities go into a binary of their own, the averaged
+        images are numbered from 1 again, and every coefficient is put on the mean experiment time
+        of the images it was averaged from.
+
+        :param num_ref_images: Number of reference images config_analysis.ini was written with.
+        """
+        num_ref_images = int(num_ref_images)
+        times = list(read_experiment_times_of_images(
+            os.path.join('analysis', 'image_infos_analysis.csv')).values())
+        tail = times[num_ref_images:]
+        expected_times = [round(t, 6) for t in times[:num_ref_images]]
+        expected_times += [round(float(np.mean(tail[n:n + NUM_IMGS_PER_AVERAGE])), 6)
+                           for n in range(0, len(tail), NUM_IMGS_PER_AVERAGE)]
+
+        binary_path = os.path.join('analysis', f'channel{channel}', 'all_parameters_avg.h5')
+        if not os.path.exists(binary_path):
+            raise AssertionError(f'{binary_path} of the averaged intensities was not written')
+        binary_img_ids = [int(img_id) for img_id in
+                          sorted(pd.read_hdf(binary_path, key='channel_values')['img_id'].unique())]
+
+        infos_path = os.path.join('analysis', 'image_infos_analysis_avg.csv')
+        if not os.path.exists(infos_path):
+            raise AssertionError(f'{infos_path} of the averaged images was not written')
+        infos = pd.read_csv(infos_path)
+        infos_img_ids = [int(img_id) for img_id in infos['#ID']]
+        if infos_img_ids != binary_img_ids:
+            raise AssertionError(f'{infos_path} holds the image IDs {infos_img_ids}, while the averaged '
+                                 f'binary holds {binary_img_ids}')
+        infos_times = [round(float(t), 6) for t in infos['Experiment_Time[s]']]
+        if infos_times != expected_times:
+            raise AssertionError(f'Experiment times in {infos_path} are {infos_times}, '
+                                 f'expected {expected_times}')
+
+        file_path = extinction_coefficients_path(solver, channel, led_array, reference_property)
+        filename = os.path.basename(file_path)
+        data = np.atleast_2d(np.genfromtxt(file_path, delimiter=',', comments='#'))
+        result_times = [round(float(t), 6) for t in data[:, 0]]
+        if result_times != expected_times:
+            raise AssertionError(f'Experiment times in {filename} are {result_times}, '
+                                 f'expected {expected_times}')
         if np.isnan(data[:, 1:]).any():
             raise AssertionError(f'{filename} contains NaN extinction coefficients')
 
