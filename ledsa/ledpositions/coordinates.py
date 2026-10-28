@@ -93,17 +93,17 @@ def _calculate_3d_coordinates() -> np.ndarray:
         led_array_indices = read_table(file_path)
 
         # get the edge leds of an array to calculate from them the conversion matrix for this array
-        # Use the first LED in the LED array indices file as the top edge LED
+        # The LED array indices file holds the array in the reverse order of led_array_edge_indices,
+        # so its last entry is the LED whose coordinates come first in led_array_edge_coordinates.
         idx = np.where(search_areas[:, 0] == led_array_indices[-1])[0]
         pos = led_coordinates[ledarray][0:3]
         pix_pos = np.array([search_areas[idx, 1], search_areas[idx, 2]])
-        top_led = LED(led_array_indices[0], pos, pix_pos)
+        top_led = LED(led_array_indices[-1], pos, pix_pos)
 
-        # Use the last LED in the LED array indices file as the bottom edge LED
         idx = np.where(search_areas[:, 0] == led_array_indices[0])[0]
         pos = led_coordinates[ledarray, 3:6]
         pix_pos = np.array([search_areas[idx, 1], search_areas[idx, 2]])
-        bot_led = LED(led_array_indices[-1], pos, pix_pos)
+        bot_led = LED(led_array_indices[0], pos, pix_pos)
 
         x = top_led.conversion_matrix(bot_led)
         led_array = top_led.get_led_array(bot_led)
