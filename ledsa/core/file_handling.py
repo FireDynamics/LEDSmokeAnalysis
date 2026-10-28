@@ -295,7 +295,10 @@ def create_binary_data(channel: int, path: str = '.') -> None:
         else:
             max_id = 10 ** 7
         number_of_images = (max_id + last_img_id - first_img_id) % max_id + 1
-        number_of_images //= int(config['analyse_photo']['num_skip_imgs']) + 1
+        img_increment = int(config['analyse_photo']['num_skip_imgs']) + 1
+        # rounded up, because the first image is always analysed: the IDs 1 to 11 with every second
+        # image skipped are the six images 1, 3, 5, 7, 9 and 11, not five
+        number_of_images = (number_of_images + img_increment - 1) // img_increment
         print('Loading fit parameters...')
         skipped_img_ids = []
         for image_id in range(1, number_of_images + 1):
