@@ -301,8 +301,6 @@ def read_hdf_avg(channel: int, path='.', n_summarize: int = NUM_IMGS_PER_AVERAGE
     :type num_ref_imgs: int
     :return: DataFrame with multi-index 'img_id' and 'led_id'.
     :rtype: pd.DataFrame
-
-    :raises FileNotFoundError: If the HDF file is not found.
     """
     file_path = get_binary_file_path(channel, path=path, averaged=True)
     if not os.path.exists(file_path):
@@ -323,7 +321,15 @@ def read_hdf_avg(channel: int, path='.', n_summarize: int = NUM_IMGS_PER_AVERAGE
             for source in sources)
     if outdated:
         average_all_fitpar(channel, n_summarize=n_summarize, num_ref_imgs=num_ref_imgs, path=path)
-    fit_parameters = pd.read_hdf(file_path, key='channel_values')
+    try:
+        fit_parameters = pd.read_hdf(file_path, key='channel_values')
+    except KeyError:
+        # An averaged binary written before the key was named carries 'table', the key read_hdf
+        # still allows for the binary of the single images. Only a checkout between 787fd26 and
+        # ff1843e wrote one, since v0.9.0 already carried the path that never reached this file, so
+        # this is the same courtesy read_hdf extends and not a case anyone is likely to hit.
+        average_all_fitpar(channel, n_summarize=n_summarize, num_ref_imgs=num_ref_imgs, path=path)
+        fit_parameters = pd.read_hdf(file_path, key='channel_values')
     fit_parameters.set_index(['img_id', 'led_id'], inplace=True)
     return fit_parameters
 
@@ -365,10 +371,9 @@ def average_all_fitpar(channel, n_summarize: int = NUM_IMGS_PER_AVERAGE,
         avg_dataset_list.append(combined_dataset)
     all_fitpar = pd.concat(avg_dataset_list)
     all_fitpar[["led_array_id", "sum_col_val"]] = all_fitpar[["led_array_id", "sum_col_val"]].astype(int)
-    try: # TODO: Resolve
-        all_fitpar[["sum_col_val_cc"]] = all_fitpar[["sum_col_val_cc"]].astype(int)
-    except:
-        pass
+    # sum_col_val_cc is only present in binaries of versions that wrote a colour corrected intensity
+    if "sum_col_val_cc" in all_fitpar.columns:
+        all_fitpar["sum_col_val_cc"] = all_fitpar["sum_col_val_cc"].astype(int)
     all_fitpar.reset_index(inplace=True)
     out_file_path = get_binary_file_path(channel, path=path, averaged=True)
     if os.path.exists(out_file_path):

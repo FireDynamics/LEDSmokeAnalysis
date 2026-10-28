@@ -299,6 +299,36 @@ class TestAveragedBinaryOverTheResultFiles(BinaryDataFiles):
         assert 'is replaced' not in capsys.readouterr().out
 
 
+class TestAveragedBinaryOfAnEarlierVersion:
+    """Cases the averaged binary can be in that the comparison of the modification times misses."""
+
+    def test_a_binary_written_under_the_old_key_is_recomputed(self, tmp_path):
+        # Until the key was named, the averaged binary was written under 'table', the key read_hdf
+        # still accepts for the binary of the single images. Asking for 'channel_values' ended the
+        # whole analysis with a KeyError instead of computing the averages again.
+        binary_path = write_binary_data(tmp_path)
+        averaged_path = get_binary_file_path(0, path=tmp_path, averaged=True)
+        pd.DataFrame({'img_id': [1], 'led_id': [0]}).to_hdf(averaged_path, key='table',
+                                                            format='table')
+        # a file older than the binary would be rebuilt for being stale, which is not the case here
+        legacy_mtime = os.path.getmtime(binary_path) + 10
+        os.utime(averaged_path, (legacy_mtime, legacy_mtime))
+        assert len(read_averaged(tmp_path)) == NUM_AVG_IMGS * NUM_LEDS
+
+    def test_a_binary_rebuilt_on_its_own_is_picked_up(self, tmp_path):
+        # A run with average_images = False rebuilds the binary of the single images and leaves the
+        # averaged one alone, so the averages have to follow it without a new extraction run.
+        write_binary_data(tmp_path)
+        values_of_the_first_run = read_averaged(tmp_path)['sum_col_val'].tolist()
+        binary_path = write_binary_data(tmp_path, intensity_offset=100)
+        averaged_path = get_binary_file_path(0, path=tmp_path, averaged=True)
+        # the two writes can land in the same clock tick, so the age is set explicitly
+        rebuilt_mtime = os.path.getmtime(averaged_path) + 10
+        os.utime(binary_path, (rebuilt_mtime, rebuilt_mtime))
+        assert read_averaged(tmp_path)['sum_col_val'].tolist() == [value + 100 for value
+                                                                   in values_of_the_first_run]
+
+
 def write_configs(**analysis_options):
     """Write a config.ini and a config_analysis.ini that ExperimentData can be loaded from.
 
