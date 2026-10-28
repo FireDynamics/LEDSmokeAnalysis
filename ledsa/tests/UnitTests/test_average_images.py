@@ -141,8 +141,8 @@ class TestAveragedImageInfos:
     def test_the_file_has_the_columns_of_the_single_images(self, tmp_path):
         write_image_infos(tmp_path)
         create_analysis_infos_avg(n_summarize=N_SUMMARIZE, num_ref_imgs=NUM_REF_IMGS, path=tmp_path)
-        header = (tmp_path / 'analysis' / 'image_infos_analysis_avg.csv').read_text(
-            encoding='utf-8').splitlines()[0]
+        infos_path = tmp_path / 'analysis' / 'image_infos_analysis_avg.csv'
+        header = infos_path.read_text(encoding='utf-8').splitlines()[0]
         assert header == '#ID,Name,Experiment_Time[s]'
 
 
