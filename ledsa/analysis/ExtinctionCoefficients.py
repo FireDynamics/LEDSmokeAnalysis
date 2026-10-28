@@ -135,8 +135,18 @@ class ExtinctionCoefficients(ABC):
             contains NaN values.
         """
         if self.average_images:
-            img_data = read_hdf_avg(self.experiment.channel, path=self.experiment.path)
-            create_analysis_infos_avg()
+            # The averaged images are numbered from 1 again, so indices that name single images
+            # would point at different images after the averaging.
+            if self.ref_img_indices is not None:
+                raise ValueError('average_images and ref_img_indices cannot be combined: averaging '
+                                 'summarizes the images and numbers them from 1 again, so the '
+                                 'indices would name other images than intended. Use num_ref_images '
+                                 'instead, which names the images that are left unaveraged.')
+            # the binary and the image infos of the averaged images are built from the same number
+            # of reference images, so that they hold the same image IDs
+            img_data = read_hdf_avg(self.experiment.channel, path=self.experiment.path,
+                                    num_ref_imgs=self.num_ref_imgs)
+            create_analysis_infos_avg(num_ref_imgs=self.num_ref_imgs, path=self.experiment.path)
         else:
             img_data = read_hdf(self.experiment.channel, path=self.experiment.path)
         if self.reference_property not in img_data.columns:
