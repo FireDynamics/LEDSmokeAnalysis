@@ -30,15 +30,15 @@ class TestWhichReferencePropertiesCanBeWeighted:
     def test_a_property_without_a_noise_column_is_refused(self):
         experiment = SimpleNamespace(channel=0, path='.', led_array=0)
         with pytest.raises(ValueError, match=r'snr_full_weight needs a reference property with a noise '
-                                             r'column.*sidebg_sum_col_val has none.*ob_sum_col_val'):
+                                             r'column.*sidebg_sum_col_val has none.*sum_col_val'):
             ExtinctionCoefficientsLinear(experiment, reference_property='sidebg_sum_col_val',
                                    snr_full_weight=SNR_FULL_WEIGHT)
 
     def test_the_unclipped_sum_brings_its_noise_column(self):
         experiment = SimpleNamespace(channel=0, path='.', led_array=0)
-        coefficients = ExtinctionCoefficientsLinear(experiment, reference_property='ob_sum_col_val',
+        coefficients = ExtinctionCoefficientsLinear(experiment, reference_property='sum_col_val',
                                               snr_full_weight=SNR_FULL_WEIGHT)
-        assert coefficients.noise_property == 'ob_noise_sum_col_val'
+        assert coefficients.noise_property == 'noise_sum_col_val'
 
     def test_without_the_option_no_noise_column_is_needed(self):
         experiment = SimpleNamespace(channel=0, path='.', led_array=0)
@@ -111,14 +111,14 @@ class TestMovingAverage:
 
     def make_coefficients(self, values, noise=None):
         coefficients = ExtinctionCoefficientsLinear.__new__(ExtinctionCoefficientsLinear)
-        coefficients.reference_property = 'ob_sum_col_val'
-        coefficients.noise_property = 'ob_noise_sum_col_val' if noise is not None else None
+        coefficients.reference_property = 'sum_col_val'
+        coefficients.noise_property = 'noise_sum_col_val' if noise is not None else None
         coefficients.num_moving_avg_images = 3
         index = pd.MultiIndex.from_product([range(1, self.NUM_IMAGES + 1), range(self.NUM_LEDS)],
                                            names=['img_id', 'led_id'])
-        data = {'led_array_id': 0, 'ob_sum_col_val': values}
+        data = {'led_array_id': 0, 'sum_col_val': values}
         if noise is not None:
-            data['ob_noise_sum_col_val'] = noise
+            data['noise_sum_col_val'] = noise
         coefficients.calculated_img_data = pd.DataFrame(data, index=index)
         return coefficients
 
@@ -133,19 +133,19 @@ class TestMovingAverage:
         values[2 * self.NUM_LEDS] = 30.0  # led 0 of the middle image
         coefficients = self.make_coefficients(values)
         coefficients.apply_moving_average()
-        smoothed = coefficients.calculated_img_data['ob_sum_col_val'].unstack('led_id')[0].to_numpy()
+        smoothed = coefficients.calculated_img_data['sum_col_val'].unstack('led_id')[0].to_numpy()
         np.testing.assert_allclose(smoothed, [0.0, 10.0, 10.0, 10.0, 0.0])
 
     def test_the_ends_average_over_fewer_images(self):
         coefficients = self.make_coefficients(np.ones(self.NUM_IMAGES * self.NUM_LEDS))
         coefficients.apply_moving_average()
-        assert coefficients.calculated_img_data['ob_sum_col_val'].to_numpy() == pytest.approx(1.0)
+        assert coefficients.calculated_img_data['sum_col_val'].to_numpy() == pytest.approx(1.0)
 
     def test_the_noise_becomes_the_one_of_the_mean(self):
         coefficients = self.make_coefficients(np.ones(self.NUM_IMAGES * self.NUM_LEDS),
                                               noise=np.full(self.NUM_IMAGES * self.NUM_LEDS, 3.0))
         coefficients.apply_moving_average()
-        noise = coefficients.calculated_img_data['ob_noise_sum_col_val'].unstack('led_id')[0].to_numpy()
+        noise = coefficients.calculated_img_data['noise_sum_col_val'].unstack('led_id')[0].to_numpy()
         # three images in the middle, two at the ends: sqrt(n * sigma^2) / n = sigma / sqrt(n)
         np.testing.assert_allclose(noise, [3 / np.sqrt(2), 3 / np.sqrt(3), 3 / np.sqrt(3),
                                            3 / np.sqrt(3), 3 / np.sqrt(2)])

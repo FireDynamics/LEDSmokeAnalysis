@@ -13,7 +13,7 @@ from PIL import Image, ImageOps
 from ledsa.core import image_reading
 from ledsa.core.image_reading import (ORIENTATION_TRANSFORMATIONS, _apply_orientation, _orientation_from_rotation,
                                       get_bayer_channel_mask,
-                                      read_channel_data_mask_and_optical_black_from_img,
+                                      read_channel_data_mask_and_noise_from_img,
                                       read_channel_data_from_img, read_img_array_from_img)
 from ledsa.data_extraction.step_1_functions import find_search_areas
 
@@ -119,8 +119,7 @@ class TestImgFileOrientation:
     def test_channel_mask_fits_the_upright_array(self, tmp_path):
         stored = np.rot90(led_strip_img_array())
         path = write_img(tmp_path / 'sideways.png', stored, orientation=SIDEWAYS)
-        channel_array, channel_mask, _, _ = \
-            read_channel_data_mask_and_optical_black_from_img(path, channel=0)
+        channel_array, channel_mask, _ = read_channel_data_mask_and_noise_from_img(path, channel=0)
         assert channel_mask.shape == channel_array.shape and channel_mask.all()
 
     def test_rotation_option_overrides_the_metadata(self, tmp_path):
@@ -195,8 +194,8 @@ class TestRawFileOrientation:
     def test_bayer_pattern_is_turned_with_the_pixels(self, monkeypatch, stored):
         """The mask has to keep naming the color of every pixel, or the sums mix the channels."""
         self.fake_imread(monkeypatch, stored, flip=6)
-        channel_array, channel_mask, _, _ = \
-            read_channel_data_mask_and_optical_black_from_img('img.CR3', channel=1)
+        channel_array, channel_mask, _ = \
+            read_channel_data_mask_and_noise_from_img('img.CR3', channel=1)
         np.testing.assert_array_equal(channel_mask, np.rot90(get_bayer_channel_mask(self.FILTER_ARRAY, 1), -1))
         np.testing.assert_array_equal(channel_array, np.where(channel_mask, np.rot90(stored, -1), 0))
 

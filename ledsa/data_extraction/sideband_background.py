@@ -23,6 +23,10 @@ from typing import List, Optional, Sequence, Tuple
 import numpy as np
 
 DEFAULT_SIDEBAND_DISTANCES = (25, 60)
+# The lower limit stays the default of v0.11.0. background_floor = None switches it off, which is what
+# unclipped data want: the limit fabricates a positive sum where the signal of the LED has vanished, and
+# the solver can no longer tell that apart from a measurement. Whether it should be off by default is a
+# decision of its own, see the pull request of the unclipped data.
 DEFAULT_BACKGROUND_FLOOR = 0.05
 NUM_DIRECTION_NEIGHBOURS = 4
 
@@ -189,4 +193,6 @@ def subtract_pedestal(sum_color_value: float, pedestal: float, floor: float = DE
     :return: Pedestal corrected box sum, NaN if the pedestal is NaN.
     :rtype: float
     """
+    if floor is None:
+        return float(sum_color_value - pedestal)
     return float(np.maximum(sum_color_value - pedestal, floor * sum_color_value))

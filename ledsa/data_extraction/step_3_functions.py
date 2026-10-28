@@ -10,7 +10,7 @@ import scipy.optimize
 from ledsa.core.ConfigData import ConfigData
 from ledsa.core.file_handling import read_table
 from ledsa.core.image_handling import get_img_name
-from ledsa.core.image_reading import read_channel_data_mask_and_optical_black_from_img
+from ledsa.core.image_reading import read_channel_data_mask_and_noise_from_img
 from ledsa.data_extraction.LEDAnalysisData import LEDAnalysisData
 from ledsa.data_extraction.model import target_function
 from ledsa.data_extraction.sideband_background import (DEFAULT_SIDEBAND_DISTANCES, DEFAULT_BACKGROUND_FLOOR,
@@ -43,7 +43,7 @@ def generate_analysis_data(img_filename: str, channel: int, search_areas: np.nda
     :rtype: List[LEDAnalysisData]
     """
     file_path = os.path.join(conf['DEFAULT']['img_directory'], img_filename)
-    data, channel_mask, ob_data, ob_noise = read_channel_data_mask_and_optical_black_from_img(
+    data, channel_mask, pixel_noise = read_channel_data_mask_and_noise_from_img(
         file_path, channel=channel, rotation=conf.get('DEFAULT', 'img_rotation'))
     search_area_radius = int(conf['find_search_areas']['search_area_radius'])
     img_analysis_data = []
@@ -64,7 +64,7 @@ def generate_analysis_data(img_filename: str, channel: int, search_areas: np.nda
                 led_analysis_data = _generate_led_analysis_data(conf, channel, data, debug, iled, img_filename,
                                                                 led_array_idx, search_areas, search_area_radius, fit_leds,
                                                                 channel_mask=channel_mask,
-                                                                ob_data=ob_data, ob_noise=ob_noise,
+                                                                pixel_noise=pixel_noise,
                                                                 sideband_pixels=sideband_pixels[iled],
                                                                 background_floor=background_floor)
                 img_analysis_data.append(led_analysis_data)
@@ -176,8 +176,7 @@ def find_and_save_not_analysed_imgs(channel: int) -> None:
 
 def _generate_led_analysis_data(conf: ConfigData, channel: int, data: np.ndarray, debug: bool, iled: int, img_filename: str, led_array_idx: int, search_areas: np.ndarray, search_area_radius: int, fit_leds: bool = True,
                                 channel_mask: Optional[np.ndarray] = None,
-                                ob_data: Optional[np.ndarray] = None,
-                                ob_noise: Optional[np.ndarray] = None,
+                                pixel_noise: Optional[np.ndarray] = None,
                                 sideband_pixels: Optional[Tuple[np.ndarray, np.ndarray]] = None,
                                 background_floor: float = DEFAULT_BACKGROUND_FLOOR) -> LEDAnalysisData:
     """
@@ -203,11 +202,9 @@ def _generate_led_analysis_data(conf: ConfigData, channel: int, data: np.ndarray
     :type search_area_radius: int
     :param fit_leds: If True, the LED is fitted to a model function.
     :type fit_leds: bool
-    :param ob_data: Channel data without the clipping at zero, None if the image has none. If None, the
-        optical black values of the LED stay NaN.
-    :type ob_data: np.ndarray or None
-    :param ob_noise: Read noise of every pixel of ob_data.
-    :type ob_noise: np.ndarray or None
+    :param pixel_noise: Read noise of every pixel, None if the image has no optical black margin. If
+        None, the noise of the sum stays NaN.
+    :type pixel_noise: np.ndarray or None
     :param channel_mask: Boolean mask of the pixels belonging to the color channel (Bayer pattern for raw files).
         None if all pixels belong to the channel.
     :type channel_mask: np.ndarray or None
@@ -242,17 +239,21 @@ def _generate_led_analysis_data(conf: ConfigData, channel: int, data: np.ndarray
     led_data.mean_color_value = np.mean(data[search_area])
     led_data.sum_color_value = np.sum(data[search_area])
     led_data.max_color_value = np.amax(data[search_area])
-    background = _estimate_local_background(data[search_area])
-    led_data.bgsub_sum_color_value = float(np.sum(np.clip(data[search_area].astype(np.float64) - background,
-                                                          0.0, None)))
+    box_mask = None if channel_mask is None else channel_mask[search_area]
 
-    if ob_data is not None:
-        # both arrays are 0 outside the channel, so the sum and its variance need no mask
-        led_data.ob_sum_color_value = float(np.sum(ob_data[search_area], dtype=np.float64))
-        led_data.ob_noise_sum_color_value = float(np.sqrt(np.sum(ob_noise[search_area].astype(np.float64) ** 2)))
+    # The median of the border ring, subtracted from every channel pixel of the box. It used to be
+    # clipped at zero pixel by pixel, which puts back the offset that the unclipped data remove.
+    background = _estimate_local_background(data[search_area], box_mask)
+    pedestal_per_pixel = background if box_mask is None else background * box_mask
+    led_data.bgsub_sum_color_value = float(np.sum(data[search_area].astype(np.float64)
+                                                  - pedestal_per_pixel))
+
+    if pixel_noise is not None:
+        # the noise is 0 outside the channel, so the variance of the sum needs no mask
+        led_data.noise_sum_color_value = float(
+            np.sqrt(np.sum(pixel_noise[search_area].astype(np.float64) ** 2)))
 
     # the pedestals below are subtracted as N * b with N the number of channel pixels in the box
-    box_mask = None if channel_mask is None else channel_mask[search_area]
     num_channel_pixels = data[search_area].size if box_mask is None else int(np.count_nonzero(box_mask))
 
     # border ring as for bgsub, but with the estimator of the side bands: mean over the channel pixels including 0;
@@ -270,17 +271,21 @@ def _generate_led_analysis_data(conf: ConfigData, channel: int, data: np.ndarray
     return led_data
 
 
-def _estimate_local_background(search_area_data: np.ndarray, border_width: int = 2) -> float:
+def _estimate_local_background(search_area_data: np.ndarray, channel_mask: Optional[np.ndarray] = None,
+                               border_width: int = 2) -> float:
     """
     Estimate the local background of a search area from the median of its border pixels.
 
-    The LED sits at the center of the search area, so the outer border ring samples the
-    scene background (stray light, smoke path radiance). Pixels with value 0 are excluded
-    because raw Bayer arrays mask all pixels of foreign color channels with 0 and the
-    black level subtraction clips at 0.
+    The LED sits at the center of the search area, so the outer border ring samples the scene background
+    (stray light, smoke path radiance). Pixels of foreign Bayer colors are excluded through the channel
+    mask and no longer by their value: the data are not clipped at zero any more, so a pixel of the
+    channel may well be 0 or negative, and dropping those would raise the median.
 
     :param search_area_data: Part of the image where the LED is located.
     :type search_area_data: np.ndarray
+    :param channel_mask: Boolean mask of the channel pixels in the search area, None if all pixels belong
+        to the channel.
+    :type channel_mask: np.ndarray or None
     :param border_width: Width of the border ring in pixels.
     :type border_width: int
     :return: Estimated background value per pixel. 0 if no valid border pixels exist.
@@ -290,8 +295,9 @@ def _estimate_local_background(search_area_data: np.ndarray, border_width: int =
         return 0.0
     border_mask = np.ones(search_area_data.shape, dtype=bool)
     border_mask[border_width:-border_width, border_width:-border_width] = False
+    if channel_mask is not None:
+        border_mask &= channel_mask
     border_pixels = search_area_data[border_mask]
-    border_pixels = border_pixels[border_pixels > 0]
     if border_pixels.size == 0:
         return 0.0
     return float(np.median(border_pixels))
@@ -472,7 +478,7 @@ def _create_header(channel: int, img_id: str, img_filename: str, img_infos: np.n
     out_str += f"LEDSA {version('ledsa')}\n"
     out_str += "# id,line,sum_col_value,average_col_value,max_col_value,bgsub_sum_col_value"
     out_str += ",sidebg_sum_col_value,sidebg_pedestal,bgsub2_sum_col_value"
-    out_str += ",ob_sum_col_value,ob_noise_sum_col_value"
+    out_str += ",noise_sum_col_value"
     if fit_leds:
         out_str += ",led_center_x, led_center_y"
         out_str += ",x,y,dx,dy,A,alpha,wx,wy,fit_success,fit_fun,fit_nfev,fit_time"

@@ -31,10 +31,16 @@ def pure_led_integral(img_with_zero_background):
                                            LED_CENTER[1] - radius:LED_CENTER[1] + radius])
 
 
-def extract_led_data(img):
+def bayer_channel_mask(shape=(60, 60)):
+    """The mask make_synthetic_image(bayer_mask=True) leaves the channel pixels in."""
+    x, y = np.meshgrid(np.arange(shape[0]), np.arange(shape[1]), indexing='ij')
+    return (x % 2 == 0) & (y % 2 == 0)
+
+
+def extract_led_data(img, channel_mask=None):
     search_areas = np.array([[0, LED_CENTER[0], LED_CENTER[1]]])
     return _generate_led_analysis_data(None, 0, img, False, 0, 'test_img', 0, search_areas,
-                                       SEARCH_AREA_RADIUS, fit_leds=False)
+                                       SEARCH_AREA_RADIUS, fit_leds=False, channel_mask=channel_mask)
 
 
 class TestEstimateLocalBackground:
@@ -42,11 +48,19 @@ class TestEstimateLocalBackground:
         img = np.full((20, 20), 7.5)
         assert _estimate_local_background(img) == pytest.approx(7.5)
 
-    def test_masked_zero_pixels_are_ignored(self):
+    def test_foreign_pixels_are_excluded_by_the_mask_and_not_by_their_value(self):
+        # the data are no longer clipped at zero, so a channel pixel may be 0 or negative and only the
+        # Bayer mask can say which pixels belong to the channel
         img = np.full((20, 20), 7.5)
-        img[::2, :] = 0.0
-        img[:, ::2] = 0.0
-        assert _estimate_local_background(img) == pytest.approx(7.5)
+        channel_mask = np.zeros(img.shape, dtype=bool)
+        channel_mask[::2, ::2] = True
+        img[~channel_mask] = 0.0
+        assert _estimate_local_background(img, channel_mask) == pytest.approx(7.5)
+        assert _estimate_local_background(img) == pytest.approx(0.0)  # without the mask they all count
+
+    def test_channel_pixels_at_or_below_zero_are_kept(self):
+        img = np.full((20, 20), -1.5)
+        assert _estimate_local_background(img) == pytest.approx(-1.5)
 
     def test_all_zero_border_returns_zero(self):
         img = np.zeros((20, 20))
@@ -74,9 +88,11 @@ class TestBackgroundSubtractedSum:
             assert led_data.sum_color_value == pytest.approx(led_integral + background * num_pixels, rel=1e-6)
 
     def test_bgsub_sum_with_bayer_masked_pixels(self):
+        channel_mask = bayer_channel_mask()
         led_integral = pure_led_integral(make_synthetic_image(background=0.0, bayer_mask=True))
         for background in [5.0, 20.0]:
-            led_data = extract_led_data(make_synthetic_image(background=background, bayer_mask=True))
+            led_data = extract_led_data(make_synthetic_image(background=background, bayer_mask=True),
+                                        channel_mask)
             assert led_data.bgsub_sum_color_value == pytest.approx(led_integral, rel=1e-3)
 
     def test_sum_col_value_is_unchanged_by_new_quantity(self):

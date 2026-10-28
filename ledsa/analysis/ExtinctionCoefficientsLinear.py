@@ -63,6 +63,10 @@ class ExtinctionCoefficientsLinear(ExtinctionCoefficients):
         This method solves the linear system derived from the Beer-Lambert law using
         non-negative least squares with Tikhonov regularization.
 
+        LEDs whose relative intensity is at or below zero are left out: their signal has vanished in the
+        noise of the sensor, so they carry no information on the extinction. If fewer than one LED with
+        full weight is left, the image yields NaN.
+
         If snr is given, every LED is weighted with min(1, snr / snr_full_weight). The standard deviation
         of the optical depth -ln(I_e/I_0) is about 1/snr, so the weight is the inverse standard deviation,
         capped so that well measured LEDs keep the weight 1 and the meaning of lambda_reg does not change.
@@ -90,14 +94,19 @@ class ExtinctionCoefficientsLinear(ExtinctionCoefficients):
         # Get dimensions of the problem
         n_leds, n_layers = self.distances_per_led_and_layer.shape
 
+        # A relative intensity at or below zero is not a measurement: the LED has vanished in the noise,
+        # and the clamp above turns it into an optical depth of about 23, which would dominate the solve.
+        # Such an LED is discarded by its weight instead, the same way a vanishing SNR discards it.
+        measured = np.isfinite(rel_intensities) & (np.asarray(rel_intensities) > 0.0)
+
         # Weights of the LEDs: the inverse standard deviation of the optical depth, capped at 1
         if snr is None:
-            weights = np.ones(n_leds)
+            weights = measured.astype(float)
         else:
             weights = np.clip(np.nan_to_num(np.asarray(snr, dtype=float) / self.snr_full_weight, nan=0.0),
-                              0.0, 1.0)
-            if weights.sum() < 1.0:
-                return np.full(n_layers, np.nan)
+                              0.0, 1.0) * measured
+        if weights.sum() < 1.0:
+            return np.full(n_layers, np.nan)
 
         # Build finite-difference matrix L for second derivative (curvature penalty)
         # This matrix approximates the second derivative and is used for regularization
