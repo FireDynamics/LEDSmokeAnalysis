@@ -404,8 +404,8 @@ class TestTheConfigOption:
     def test_a_config_written_before_the_correction_asks_for_none(self, tmp_path, monkeypatch):
         # the section is missing entirely in a config file of an older LEDSA version
         monkeypatch.chdir(tmp_path)
-        (tmp_path / 'config_analysis.ini').write_text(
-            '[DEFAULT]\nreference_property = sum_col_val\n', encoding='utf-8')
+        config_file = tmp_path / 'config_analysis.ini'
+        config_file.write_text('[DEFAULT]\nreference_property = sum_col_val\n', encoding='utf-8')
 
         config = ConfigDataAnalysis()
 
