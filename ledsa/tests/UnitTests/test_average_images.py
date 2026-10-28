@@ -338,7 +338,7 @@ class TestNSummarizeOption:
         monkeypatch.chdir(tmp_path)
         write_configs(average_images=True)
         config_path = tmp_path / 'config_analysis.ini'
-        config_path.write_text(
-            '\n'.join(line for line in config_path.read_text(encoding='utf-8').splitlines()
-                      if 'n_summarize' not in line) + '\n', encoding='utf-8')
+        lines = [line for line in config_path.read_text(encoding='utf-8').splitlines()
+                 if 'n_summarize' not in line]
+        config_path.write_text('\n'.join(lines) + '\n', encoding='utf-8')
         assert ExperimentData().n_summarize == 2
