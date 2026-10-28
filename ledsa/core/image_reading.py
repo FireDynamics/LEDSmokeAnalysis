@@ -72,15 +72,21 @@ def read_channel_data_from_img(filename: str, channel: int, rotation: str = AUTO
     return _read_or_raise(filename, reader, channel, orientation)
 
 
-def read_channel_data_and_mask_from_img(filename: str, channel: int,
-                                        rotation: str = AUTO_ROTATION) -> Tuple[np.ndarray, np.ndarray]:
+def read_channel_data_mask_and_optical_black_from_img(
+        filename: str, channel: int,
+        rotation: str = AUTO_ROTATION) -> Tuple[np.ndarray, np.ndarray, Optional[np.ndarray],
+                                                Optional[np.ndarray]]:
     """
     Returns the same 2D channel array as read_channel_data_from_img together with a boolean mask of the
-    pixels that belong to the selected color channel.
+    pixels that belong to the selected color channel and, for RAW images with an optical black margin, the
+    same data without the clipping at zero and the read noise of every pixel.
 
     For RAW files the mask is taken from the Bayer filter pattern (raw_colors_visible) and not from the pixel
     values, because pixels of the selected channel can be 0 as well (noise clipped at 0 after the black level
     subtraction). For JPG/PNG files every pixel belongs to the channel.
+
+    The unclipped data and the noise carry 0 outside the channel, like the channel array itself, so that a
+    sum over a search area and the noise of that sum need the mask no further.
 
     :param filename: The path of the image file to read.
     :type filename: str
@@ -89,19 +95,25 @@ def read_channel_data_and_mask_from_img(filename: str, channel: int,
     :param rotation: Degrees the stored array is turned clockwise to be upright, 'auto' to take the rotation
                      from the metadata of the image.
     :type rotation: str or int
-    :return: The channel array and the boolean channel mask of the same shape.
-    :rtype: tuple[np.ndarray, np.ndarray]
+    :return: The channel array, the boolean channel mask, the unclipped channel array and the read noise of
+        every pixel, all of the same shape. The last two are None for JPG and PNG images and for sensors
+        without an optical black margin.
+    :rtype: tuple[np.ndarray, np.ndarray, np.ndarray or None, np.ndarray or None]
     :raises CorruptedImageError: If the image cannot be read or has an unsupported file extension.
     :raises ValueError: If rotation is neither 'auto' nor one of 0, 90, 180 and 270.
     """
     def read_img_file(img_filename, img_channel, img_orientation=None):
         channel_array = _read_channel_data_from_img_file(img_filename, img_channel, img_orientation)
-        return channel_array, np.ones(channel_array.shape, dtype=bool)
+        return channel_array, np.ones(channel_array.shape, dtype=bool), None, None
 
     def read_raw_file(raw_filename, raw_channel, raw_orientation=None):
-        img_array, filter_array = _read_img_array_from_raw_file(raw_filename, raw_channel, raw_orientation)
+        img_array, filter_array, unclipped, noise = _read_img_array_and_optical_black_from_raw_file(
+            raw_filename, raw_channel, raw_orientation)
         channel_mask = get_bayer_channel_mask(filter_array, raw_channel)
-        return np.where(channel_mask, img_array, 0), channel_mask
+        if unclipped is None:
+            return np.where(channel_mask, img_array, 0), channel_mask, None, None
+        return (np.where(channel_mask, img_array, 0), channel_mask,
+                np.where(channel_mask, unclipped, 0.0), np.where(channel_mask, noise, 0.0))
 
     orientation = _orientation_from_rotation(rotation)
     reader = _get_reader(filename, read_img_file, read_raw_file)

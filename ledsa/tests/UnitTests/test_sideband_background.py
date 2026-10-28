@@ -286,9 +286,13 @@ class TestChannelMask:
 
     def test_raw_mask_keeps_channel_pixels_with_value_zero(self, monkeypatch):
         data = np.where(self.FILTER_ARRAY == 1, 0, 7)  # the first green channel is clipped at 0
-        monkeypatch.setattr(image_reading, '_read_img_array_from_raw_file',
-                            lambda filename, channel, orientation=None: (data, self.FILTER_ARRAY))
-        channel_array, mask = image_reading.read_channel_data_and_mask_from_img('img.CR3', 1)
+        # mocked at the one pass over the RAW file, so that every reader derived from it stays consistent.
+        # A black level of 0 and a white level of 255 leave the stored values as they are.
+        raw = image_reading.RawImage(data, self.FILTER_ARRAY, 0.0, 255,
+                                     image_reading.UPRIGHT_ORIENTATION, None, None)
+        monkeypatch.setattr(image_reading, '_read_raw_image', lambda filename, channel: raw)
+        channel_array, mask, _, _ = \
+            image_reading.read_channel_data_mask_and_optical_black_from_img('img.CR3', 1)
         np.testing.assert_array_equal(mask, np.isin(self.FILTER_ARRAY, [1, 3]))
         np.testing.assert_array_equal(channel_array, np.where(mask, data, 0))
         np.testing.assert_array_equal(channel_array, image_reading._read_channel_data_from_raw_file('img.CR3', 1))
@@ -297,11 +301,13 @@ class TestChannelMask:
         import matplotlib.pyplot as plt
         path = tmp_path / 'img.png'
         plt.imsave(path, np.random.default_rng(0).random((6, 8, 3)))
-        channel_array, mask = image_reading.read_channel_data_and_mask_from_img(str(path), 1)
+        channel_array, mask, ob_data, ob_noise = \
+            image_reading.read_channel_data_mask_and_optical_black_from_img(str(path), 1)
+        assert ob_data is None and ob_noise is None  # a PNG has no optical black
         np.testing.assert_array_equal(channel_array, image_reading.read_channel_data_from_img(str(path), 1))
         assert mask.shape == channel_array.shape and mask.all()
 
     def test_unsupported_format_raises(self):
         from ledsa.core.image_integrity import CorruptedImageError
         with pytest.raises(CorruptedImageError, match='unsupported file extension'):
-            image_reading.read_channel_data_and_mask_from_img('img.xyz', 0)
+            image_reading.read_channel_data_mask_and_optical_black_from_img('img.xyz', 0)

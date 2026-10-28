@@ -517,6 +517,7 @@ def create_binary_data(channel: int, path: str = '.') -> None:
 BASE_COLUMNS = ["img_id", "led_id", "led_array_id", "sum_col_val", "mean_col_val", "max_col_val"]
 BGSUB_COLUMNS = ["bgsub_sum_col_val"]
 SIDEBG_COLUMNS = ["sidebg_sum_col_val", "sidebg_pedestal", "bgsub2_sum_col_val"]
+OB_COLUMNS = ["ob_sum_col_val", "ob_noise_sum_col_val"]
 LED_CENTER_COLUMNS = ["led_center_x", "led_center_y"]
 FIT_COLUMNS = ["x", "y", "dx", "dy", "A", "alpha", "wx", "wy", "fit_success", "fit_fun", "fit_nfev", "fit_time"]
 
@@ -528,8 +529,16 @@ COLUMN_LAYOUTS = {
     len(BASE_COLUMNS + BGSUB_COLUMNS + LED_CENTER_COLUMNS + FIT_COLUMNS):
         BASE_COLUMNS + BGSUB_COLUMNS + LED_CENTER_COLUMNS + FIT_COLUMNS,  # -s3 with fit, before the side band pedestal
     len(BASE_COLUMNS + BGSUB_COLUMNS + SIDEBG_COLUMNS + LED_CENTER_COLUMNS + FIT_COLUMNS):
-        BASE_COLUMNS + BGSUB_COLUMNS + SIDEBG_COLUMNS + LED_CENTER_COLUMNS + FIT_COLUMNS,  # -s3 with fit
+        BASE_COLUMNS + BGSUB_COLUMNS + SIDEBG_COLUMNS + LED_CENTER_COLUMNS + FIT_COLUMNS,
+        # -s3 with fit, before the optical black
+    len(BASE_COLUMNS + BGSUB_COLUMNS + SIDEBG_COLUMNS + OB_COLUMNS):
+        BASE_COLUMNS + BGSUB_COLUMNS + SIDEBG_COLUMNS + OB_COLUMNS,  # -s3_fast
+    len(BASE_COLUMNS + BGSUB_COLUMNS + SIDEBG_COLUMNS + OB_COLUMNS + LED_CENTER_COLUMNS + FIT_COLUMNS):
+        BASE_COLUMNS + BGSUB_COLUMNS + SIDEBG_COLUMNS + OB_COLUMNS + LED_CENTER_COLUMNS + FIT_COLUMNS,
+        # -s3 with fit
 }
+# noise column of a reference property, used to weight the LEDs in the linear solver
+NOISE_COLUMNS = {"ob_sum_col_val": "ob_noise_sum_col_val"}
 # Fitted files written before the delimiter between the main and the fit part was added: max_col_value and
 # led_center_x are glued into one field, so the file has one column less and the names are shifted from there on.
 LEGACY_FIT_COLUMNS = BASE_COLUMNS + LED_CENTER_COLUMNS + FIT_COLUMNS[:-1]

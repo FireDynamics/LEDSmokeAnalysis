@@ -155,3 +155,59 @@ class TestUnclippedData:
         turned = _read_img_array_and_optical_black_from_raw_file('img.CR3', self.CHANNEL, 6)
         for upright_array, turned_array in zip(upright, turned):
             np.testing.assert_array_equal(turned_array, np.rot90(upright_array, -1))
+
+
+class TestOpticalBlackSumsOfAnLed:
+    """The two columns step 3 writes from the unclipped data."""
+
+    SEARCH_AREA_RADIUS = 6
+    CENTER = (20, 20)
+
+    def _extract(self, data, ob_data=None, ob_noise=None):
+        from ledsa.data_extraction.step_3_functions import _generate_led_analysis_data
+        search_areas = np.array([[0, self.CENTER[0], self.CENTER[1]]])
+        return _generate_led_analysis_data(None, 0, data, False, 0, 'img', 0, search_areas,
+                                           self.SEARCH_AREA_RADIUS, fit_leds=False,
+                                           ob_data=ob_data, ob_noise=ob_noise)
+
+    @property
+    def _box(self):
+        radius = self.SEARCH_AREA_RADIUS
+        return np.index_exp[self.CENTER[0] - radius:self.CENTER[0] + radius,
+                            self.CENTER[1] - radius:self.CENTER[1] + radius]
+
+    def test_without_optical_black_the_columns_stay_nan(self):
+        led_data = self._extract(np.full((40, 40), 5.0))
+        assert np.isnan(led_data.ob_sum_color_value)
+        assert np.isnan(led_data.ob_noise_sum_color_value)
+
+    def test_the_sum_runs_over_the_search_area(self):
+        data = np.full((40, 40), 5.0)
+        ob_data = np.zeros((40, 40), dtype=np.float32)
+        ob_data[self._box] = 3.0
+        led_data = self._extract(data, ob_data, np.zeros((40, 40), dtype=np.float32))
+        assert led_data.ob_sum_color_value == pytest.approx(3.0 * ob_data[self._box].size)
+
+    def test_negative_values_are_kept_in_the_sum(self):
+        # this is the whole point: the clipped sum cannot go below the pedestal it carries
+        data = np.zeros((40, 40))
+        ob_data = np.full((40, 40), -2.0, dtype=np.float32)
+        led_data = self._extract(data, ob_data, np.zeros((40, 40), dtype=np.float32))
+        assert led_data.ob_sum_color_value == pytest.approx(-2.0 * ob_data[self._box].size)
+
+    def test_the_noise_adds_up_quadratically(self):
+        data = np.zeros((40, 40))
+        noise = np.zeros((40, 40), dtype=np.float32)
+        noise[self._box] = 2.0
+        led_data = self._extract(data, np.zeros((40, 40), dtype=np.float32), noise)
+        num_pixels = noise[self._box].size
+        assert led_data.ob_noise_sum_color_value == pytest.approx(2.0 * np.sqrt(num_pixels))
+
+    def test_pixels_outside_the_channel_carry_no_noise(self):
+        # the reader zeroes both arrays outside the channel, so a Bayer image sums only its own pixels
+        data = np.zeros((40, 40))
+        noise = np.zeros((40, 40), dtype=np.float32)
+        noise[::2, ::2] = 2.0
+        led_data = self._extract(data, np.zeros((40, 40), dtype=np.float32), noise)
+        num_channel_pixels = np.count_nonzero(noise[self._box])
+        assert led_data.ob_noise_sum_color_value == pytest.approx(2.0 * np.sqrt(num_channel_pixels))
