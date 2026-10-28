@@ -219,3 +219,42 @@ class TestPostprocessingFileDiscovery:
 
         with pytest.raises(FileNotFoundError, match='bgsub_sum_col_val'):
             sim_data._get_extco_df_from_path()
+
+
+class TestMissingReferenceProperty:
+    """A quantity that is not in the binary data has to be named instead of raising a bare KeyError.
+
+    The color corrected quantities are the realistic case: the analysis writes sum_col_val_cc into the
+    binary data itself, so rebuilding them from the step 3 result files drops the column again.
+    """
+
+    @pytest.fixture
+    def coefficients(self, monkeypatch, tmp_path):
+        import pandas as pd
+
+        import ledsa.analysis.ExtinctionCoefficients as extinction_coefficients
+        index = pd.MultiIndex.from_product([[1, 2], [0, 1]], names=['img_id', 'led_id'])
+        img_data = pd.DataFrame({'led_array_id': 0, 'sum_col_val': 100.0}, index=index)
+        monkeypatch.setattr(extinction_coefficients, 'read_hdf', lambda channel, path: img_data)
+        return SolverStub(ExperimentStub(tmp_path))
+
+    def test_a_color_corrected_quantity_points_at_the_cc_flag(self, coefficients):
+        coefficients.reference_property = 'sum_col_val_cc'
+        with pytest.raises(ValueError, match=r'sum_col_val_cc is not among the columns .*--cc'):
+            coefficients.load_img_data()
+
+    def test_an_unknown_quantity_points_at_the_option(self, coefficients):
+        coefficients.reference_property = 'sum_col_va'
+        with pytest.raises(ValueError, match=r'sum_col_va is not among the columns .*reference_property'):
+            coefficients.load_img_data()
+
+    def test_the_columns_that_are_there_are_named(self, coefficients):
+        # the quantity may simply have been written by a newer step 3 than the one that ran
+        coefficients.reference_property = 'bgsub_sum_col_val'
+        with pytest.raises(ValueError, match=r'led_array_id, sum_col_val'):
+            coefficients.load_img_data()
+
+    def test_a_quantity_that_is_there_is_loaded(self, coefficients):
+        coefficients.reference_property = 'sum_col_val'
+        coefficients.load_img_data()
+        assert coefficients.analysed_img_ids == [1, 2]

@@ -199,9 +199,53 @@ def read_table(filename: str, delim=' ', dtype='float', atleast_2d=False, silent
     return np.atleast_1d(data)
 
 
+def _binary_data_is_outdated(binary_file_path: str, channel: int, path: str = '.') -> bool:
+    """
+    Tell whether the binary data of a channel are older than one of the files they are built from.
+
+    The binary data hold the step 3 result files of a channel together with the LED coordinates, cut to
+    the image range of config.ini, so all three are sources. A source that is newer than the binary data
+    means they were built before it and no longer describe it.
+
+    Only the modification times are compared. A source rewritten within the same clock tick as the binary
+    data is therefore not recognised, and a change to config.ini that does not concern the image range
+    causes a rebuild that was not needed. The rebuild costs the loading time of the result files, while a
+    missed source would be answered with the values of the earlier run.
+
+    :param binary_file_path: Path of the binary HDF file of the channel.
+    :type binary_file_path: str
+    :param channel: Channel number whose result files are compared.
+    :type channel: int
+    :param path: Root directory of the LEDSA simulation. Defaults to the current directory.
+    :type path: str
+    :return: True if the binary data exist and one of their sources is newer.
+    :rtype: bool
+    """
+    if not os.path.exists(binary_file_path):
+        # Nothing to compare against. The caller builds the binary data because they are missing.
+        return False
+    binary_mtime = os.path.getmtime(binary_file_path)
+    source_paths = [os.path.join(path, 'config.ini'),
+                    os.path.join(path, 'analysis', 'led_search_areas_with_coordinates.csv')]
+    result_dir_path = os.path.join(path, 'analysis', f'channel{channel}')
+    if os.path.isdir(result_dir_path):
+        source_paths.extend(os.path.join(result_dir_path, file_name)
+                            for file_name in os.listdir(result_dir_path)
+                            if re.search(r"\d+_led_positions\.csv", file_name) is not None)
+    for source_path in source_paths:
+        try:
+            if os.path.getmtime(source_path) > binary_mtime:
+                return True
+        except OSError:
+            # A source that is not there cannot have outdated the binary data.
+            continue
+    return False
+
+
 def read_hdf(channel: int, path='.') -> pd.DataFrame:
     """
-    Reads data from an HDF file for a given channel. If the binary does not exist, it is created.
+    Reads data from an HDF file for a given channel. If the binary does not exist or is older than the
+    files it is built from, it is created.
 
     :param channel: Channel number for which data is to be read.
     :type channel: int
@@ -213,6 +257,12 @@ def read_hdf(channel: int, path='.') -> pd.DataFrame:
     :raises FileNotFoundError: If the HDF file is not found.
     """
     file_path = get_binary_file_path(channel, path=path)
+    if _binary_data_is_outdated(file_path, channel, path=path):
+        # The binary data are only a cache of the step 3 result files. Without this they were read as
+        # they were, so an analysis after the data extraction had run again silently reported the
+        # extinction coefficients of the values of the earlier run.
+        print(f'{file_path} is older than the files it is built from and is rebuilt.')
+        create_binary_data(channel, path=path)
     try:
         # Try reading with 'channel_values' key first
         fit_parameters = pd.read_hdf(file_path, key='channel_values')
@@ -236,9 +286,9 @@ def read_hdf_avg(channel: int, path='.', n_summarize: int = NUM_IMGS_PER_AVERAGE
     date, it is created from the binary of the single images.
 
     The averaged binary has a file name of its own, so that the averaged data are returned
-    whenever they are asked for. It is rebuilt whenever it is missing or older than the binary of
-    the single images it is computed from, so that an analysis never reads the averaged data of an
-    earlier extraction run.
+    whenever they are asked for. It is rebuilt whenever it is missing, older than the binary of the
+    single images it is computed from, or older than the step 3 result files those are built from,
+    so that an analysis never reads the averaged data of an earlier extraction run.
 
     :param channel: Channel number for which data is to be read.
     :type channel: int
@@ -258,8 +308,13 @@ def read_hdf_avg(channel: int, path='.', n_summarize: int = NUM_IMGS_PER_AVERAGE
     if not os.path.exists(file_path):
         outdated = True
     else:
-        outdated = (os.path.exists(single_img_file_path) and
-                    os.path.getmtime(file_path) < os.path.getmtime(single_img_file_path))
+        # The averaged data are built from the binary of the single images, which is itself only a
+        # cache of the step 3 result files, so both are sources. Comparing the averaged data with
+        # the single image binary alone would miss a data extraction run that has not been read
+        # back yet, since that binary is rebuilt only when it is read.
+        outdated = _binary_data_is_outdated(file_path, channel, path=path) or (
+            os.path.exists(single_img_file_path) and
+            os.path.getmtime(file_path) < os.path.getmtime(single_img_file_path))
     if outdated:
         average_all_fitpar(channel, n_summarize=n_summarize, num_ref_imgs=num_ref_imgs, path=path)
     fit_parameters = pd.read_hdf(file_path, key='channel_values')
