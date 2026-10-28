@@ -131,13 +131,24 @@ class ExtinctionCoefficients(ABC):
         """
         Load processed image data from binary file
 
-        :raises ValueError: If the reference property contains NaN values.
+        :raises ValueError: If the reference property is not among the columns of the binary data or
+            contains NaN values.
         """
         if self.average_images:
             img_data = read_hdf_avg(self.experiment.channel, path=self.experiment.path)
             create_analysis_infos_avg()
         else:
             img_data = read_hdf(self.experiment.channel, path=self.experiment.path)
+        if self.reference_property not in img_data.columns:
+            # The color corrected columns are not part of the step 3 result files, the analysis adds them
+            # to the binary data itself, so they are gone as soon as the binary data are rebuilt.
+            hint = ('Run the analysis with --cc to compute it again, it is added to the binary data by the '
+                    'analysis itself and is lost whenever they are rebuilt from the step 3 result files.'
+                    if self.reference_property.endswith('_cc') else
+                    'Check the reference_property option of the analysis configuration.')
+            raise ValueError(f'{self.reference_property} is not among the columns of the binary data of '
+                             f'channel {self.experiment.channel} '
+                             f'({", ".join(map(str, img_data.columns))}). {hint}')
         img_data_cropped = img_data[['led_array_id', self.reference_property]]
         self.calculated_img_data = img_data_cropped[img_data_cropped['led_array_id'] == self.experiment.led_array]
         if self.calculated_img_data.empty:
