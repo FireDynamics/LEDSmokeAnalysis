@@ -86,6 +86,7 @@ def _create_config_files(path):
         num_cores=4,
         reference_property='sum_col_val',
         average_images=False,
+        n_summarize=2,
         solver='linear',
         weighting_preference=-6e-3,
         weighting_curvature=1e-2,

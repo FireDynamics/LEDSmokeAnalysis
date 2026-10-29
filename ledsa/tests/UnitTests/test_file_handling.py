@@ -57,7 +57,9 @@ class TestColumnNamesWithoutTheFirstImage:
 
 
 
-class TestCreateBinaryData:
+class BinaryDataFiles:
+    """Fixtures and helpers shared by the tests that build the binary data of a channel."""
+
     # led_id, led_array_id, sum_col_val, mean_col_val, max_col_val, bgsub_sum_col_val
     NUM_COLUMNS = 6
     # the same file written by v0.11.0, which adds sidebg_sum_col_val, sidebg_pedestal and bgsub2_sum_col_val
@@ -91,15 +93,36 @@ class TestCreateBinaryData:
         monkeypatch.chdir(tmp_path)
         return tmp_path
 
-    def _write_result_file(self, tmp_path, img_id, num_columns):
-        rows = '\n'.join(','.join(str(float(led_id * 10 + column)) for column in range(num_columns))
+    def _write_result_file(self, tmp_path, img_id, num_columns, offset=0):
+        rows = '\n'.join(','.join(str(float(led_id * 10 + column + offset)) for column in range(num_columns))
                           for led_id in range(self.NUM_LEDS))
         path = tmp_path / 'analysis' / 'channel0' / f'{img_id}_led_positions.csv'
         path.write_text(f'# header\n{rows}\n', encoding='utf-8')
+        return path
 
     def _load(self, tmp_path):
         import pandas as pd
         return pd.read_hdf(tmp_path / 'analysis' / 'channel0' / 'all_parameters.h5', key='channel_values')
+
+    def _binary_path(self, tmp_path):
+        return tmp_path / 'analysis' / 'channel0' / 'all_parameters.h5'
+
+    def _set_age_against_the_binary(self, tmp_path, path, seconds):
+        """Give a source file a modification time relative to the one of the binary data.
+
+        The modification times of two files written one after the other can land in the same clock tick,
+        which would make the age of the source depend on the file system. They are set explicitly instead.
+        """
+        binary_mtime = os.path.getmtime(self._binary_path(tmp_path))
+        os.utime(path, (binary_mtime + seconds, binary_mtime + seconds))
+
+    def _make_all_sources_older(self, tmp_path):
+        for path in [tmp_path / 'analysis' / 'led_search_areas_with_coordinates.csv',
+                     *(tmp_path / 'analysis' / 'channel0').glob('*_led_positions.csv')]:
+            self._set_age_against_the_binary(tmp_path, path, -10)
+
+
+class TestCreateBinaryData(BinaryDataFiles):
 
     def test_every_led_of_every_image_is_loaded(self, analysis_dir):
         from ledsa.core.file_handling import create_binary_data
@@ -152,9 +175,131 @@ class TestCreateBinaryData:
                                              r'1_led_positions\.csv has 9 columns'):
             create_binary_data(0)
 
+    def _patch_config(self, monkeypatch, first_img_id, last_img_id, num_skip_imgs):
+        from ledsa.core import file_handling
+        monkeypatch.setattr(file_handling, 'ConfigData',
+                            lambda: {'DEFAULT': {'num_img_overflow': 'None'},
+                                     'analyse_photo': {'first_img_analysis_id': str(first_img_id),
+                                                       'last_img_analysis_id': str(last_img_id),
+                                                       'num_skip_imgs': str(num_skip_imgs)}})
+
+    def test_the_last_image_of_a_run_with_skipped_images_is_loaded(self, analysis_dir, monkeypatch):
+        # the IDs 1 to 11 with every second image skipped are the six images 1, 3, 5, 7, 9 and 11,
+        # whose results step 3 numbers 1 to 6. Rounding the count down left out the last of them,
+        # without listing it among the images that hold no results.
+        from ledsa.core.file_handling import create_binary_data
+        self._patch_config(monkeypatch, first_img_id=1, last_img_id=11, num_skip_imgs=1)
+        for img_id in range(1, 7):
+            self._write_result_file(analysis_dir, img_id, self.NUM_COLUMNS)
+        create_binary_data(0)
+        assert sorted(self._load(analysis_dir)['img_id'].unique()) == [1, 2, 3, 4, 5, 6]
+
+    def test_no_image_beyond_the_last_analysed_one_is_looked_for(self, analysis_dir, monkeypatch,
+                                                                 capsys):
+        # the IDs 1 to 10 with every second image skipped are the five images 1, 3, 5, 7 and 9
+        from ledsa.core.file_handling import create_binary_data
+        self._patch_config(monkeypatch, first_img_id=1, last_img_id=10, num_skip_imgs=1)
+        for img_id in range(1, 6):
+            self._write_result_file(analysis_dir, img_id, self.NUM_COLUMNS)
+        create_binary_data(0)
+        assert sorted(self._load(analysis_dir)['img_id'].unique()) == [1, 2, 3, 4, 5]
+        assert 'No analysis results' not in capsys.readouterr().out
+
     def test_an_image_without_results_is_still_skipped(self, analysis_dir):
         # image 1 could not be read, so it has no result file and the names come from image 2
         from ledsa.core.file_handling import create_binary_data
         self._write_result_file(analysis_dir, 2, self.NUM_COLUMNS)
         create_binary_data(0)
         assert sorted(self._load(analysis_dir)['img_id'].unique()) == [2]
+
+
+class TestOutdatedBinaryData(BinaryDataFiles):
+    """The binary data are a cache of the step 3 result files, so they must not outlive them.
+
+    read_hdf used to answer with whatever all_parameters.h5 held and only built it when it was missing. An
+    analysis run after the data extraction had run again therefore reported the extinction coefficients of
+    the values of the earlier run, without a word.
+    """
+
+    def _write_both_result_files(self, tmp_path, offset=0):
+        for img_id in (1, 2):
+            self._write_result_file(tmp_path, img_id, self.NUM_COLUMNS, offset=offset)
+
+    def test_a_rerun_of_step_3_is_picked_up(self, analysis_dir):
+        from ledsa.core.file_handling import read_hdf
+        self._write_both_result_files(analysis_dir)
+        values_of_the_first_run = read_hdf(0)['sum_col_val'].tolist()
+        self._write_both_result_files(analysis_dir, offset=100)
+        for img_id in (1, 2):
+            self._set_age_against_the_binary(
+                analysis_dir, analysis_dir / 'analysis' / 'channel0' / f'{img_id}_led_positions.csv', 10)
+        assert read_hdf(0)['sum_col_val'].tolist() == [value + 100 for value in values_of_the_first_run]
+
+    def test_the_rebuild_is_reported(self, analysis_dir, capsys):
+        # the loading time of the result files is paid again, so the run says why
+        from ledsa.core.file_handling import read_hdf
+        self._write_both_result_files(analysis_dir)
+        read_hdf(0)
+        self._write_both_result_files(analysis_dir, offset=100)
+        for img_id in (1, 2):
+            self._set_age_against_the_binary(
+                analysis_dir, analysis_dir / 'analysis' / 'channel0' / f'{img_id}_led_positions.csv', 10)
+        capsys.readouterr()
+        read_hdf(0)
+        assert 'is rebuilt' in capsys.readouterr().out
+
+    def test_an_untouched_binary_file_is_not_rebuilt(self, analysis_dir, capsys):
+        # the result files of a real experiment take minutes to load, so an unchanged channel is read as it is
+        from ledsa.core.file_handling import read_hdf
+        self._write_both_result_files(analysis_dir)
+        read_hdf(0)
+        self._make_all_sources_older(analysis_dir)
+        capsys.readouterr()
+        read_hdf(0)
+        assert 'is rebuilt' not in capsys.readouterr().out
+
+    def test_new_led_coordinates_rebuild_the_binary_data(self, analysis_dir, capsys):
+        # the coordinates are appended to every row of the binary data, so step 1 run again outdates them
+        from ledsa.core.file_handling import read_hdf
+        self._write_both_result_files(analysis_dir)
+        read_hdf(0)
+        self._make_all_sources_older(analysis_dir)
+        coordinates_path = analysis_dir / 'analysis' / 'led_search_areas_with_coordinates.csv'
+        self._set_age_against_the_binary(analysis_dir, coordinates_path, 10)
+        capsys.readouterr()
+        read_hdf(0)
+        assert 'is rebuilt' in capsys.readouterr().out
+
+    def test_a_changed_config_rebuilds_the_binary_data(self, analysis_dir, capsys):
+        # the image range of config.ini decides which result files end up in the binary data, so a
+        # narrowed range outdates them even though no result file was touched
+        from ledsa.core.file_handling import read_hdf
+        self._write_both_result_files(analysis_dir)
+        read_hdf(0)
+        self._make_all_sources_older(analysis_dir)
+        config_path = analysis_dir / 'config.ini'
+        config_path.write_text('[DEFAULT]\n', encoding='utf-8')
+        self._set_age_against_the_binary(analysis_dir, config_path, 10)
+        capsys.readouterr()
+        read_hdf(0)
+        assert 'is rebuilt' in capsys.readouterr().out
+
+    def test_the_color_corrected_columns_do_not_rebuild_the_binary_data(self, analysis_dir, capsys):
+        # the analysis writes sum_col_val_cc into the binary data itself, which must not look like a
+        # change of a source and drop the column again on the next read
+        from ledsa.core.file_handling import extend_hdf, read_hdf
+        self._write_both_result_files(analysis_dir)
+        num_rows = len(read_hdf(0))
+        extend_hdf(0, 'sum_col_val_cc', list(range(num_rows)))
+        self._make_all_sources_older(analysis_dir)
+        capsys.readouterr()
+        fit_parameters = read_hdf(0)
+        assert 'is rebuilt' not in capsys.readouterr().out
+        assert 'sum_col_val_cc' in fit_parameters.columns
+
+    def test_a_missing_binary_file_is_still_built(self, analysis_dir):
+        # the comparison must not stand in the way of the first run of a channel
+        from ledsa.core.file_handling import read_hdf
+        self._write_both_result_files(analysis_dir)
+        assert not self._binary_path(analysis_dir).exists()
+        assert len(read_hdf(0)) == 2 * self.NUM_LEDS

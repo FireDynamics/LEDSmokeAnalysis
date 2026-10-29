@@ -5,11 +5,14 @@ Force Tags  analysis  background_subtraction  sideband
 
 *** Variables ***
 ${BINARY}            analysis${/}channel0${/}all_parameters.h5
+# Every analysed quantity gets a directory of its own below the one of the solver
 ${EXTINCTION_DIR}    analysis${/}extinction_coefficients${/}linear
-${SUM_RESULT}        ${EXTINCTION_DIR}${/}extinction_coefficients_linear_channel_0_sum_col_val_led_array_0.csv
-${SUM_REFERENCE}     ${EXTINCTION_DIR}${/}extinction_coefficients_linear_channel_0_sum_col_val_led_array_0_sidebg_ref.csv
-${BGSUB_RESULT}      ${EXTINCTION_DIR}${/}extinction_coefficients_linear_channel_0_bgsub_sum_col_val_led_array_0.csv
-${BGSUB_REFERENCE}   ${EXTINCTION_DIR}${/}extinction_coefficients_linear_channel_0_bgsub_sum_col_val_led_array_0_sidebg_ref.csv
+${SUM_DIR}           ${EXTINCTION_DIR}${/}sum_col_val
+${BGSUB_DIR}         ${EXTINCTION_DIR}${/}bgsub_sum_col_val
+${SUM_RESULT}        ${SUM_DIR}${/}extinction_coefficients_linear_channel_0_sum_col_val_led_array_0.csv
+${SUM_REFERENCE}     ${SUM_DIR}${/}extinction_coefficients_linear_channel_0_sum_col_val_led_array_0_sidebg_ref.csv
+${BGSUB_RESULT}      ${BGSUB_DIR}${/}extinction_coefficients_linear_channel_0_bgsub_sum_col_val_led_array_0.csv
+${BGSUB_REFERENCE}   ${BGSUB_DIR}${/}extinction_coefficients_linear_channel_0_bgsub_sum_col_val_led_array_0_sidebg_ref.csv
 
 *** Test Cases ***
 Default Results Are Not Changed By The Sideband Columns

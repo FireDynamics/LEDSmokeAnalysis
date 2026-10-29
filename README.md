@@ -91,6 +91,70 @@ For a complete list of options, run:
 python -m ledsa --help
 ```
 
+### Analysed quantities and result files
+
+`reference_property` in `config_analysis.ini` names the quantity of step 3 the extinction
+coefficients are computed from (see [Background correction](#background-correction-optional) for
+the available ones). Several quantities, separated by spaces, are analysed one after another in a
+single run:
+
+```ini
+[DEFAULT]
+reference_property = sum_col_val bgsub_sum_col_val sidebg_sum_col_val
+```
+
+Every solver and every quantity writes into a directory of its own, so that the results of one
+run stay apart from each other:
+
+```
+analysis/
+└── extinction_coefficients/
+    ├── linear/
+    │   ├── sum_col_val/
+    │   │   └── extinction_coefficients_linear_channel_0_sum_col_val_led_array_0.csv
+    │   └── bgsub_sum_col_val/
+    │       └── extinction_coefficients_linear_channel_0_bgsub_sum_col_val_led_array_0.csv
+    └── nonlinear/
+        └── sum_col_val/
+            └── extinction_coefficients_nonlinear_channel_0_sum_col_val_led_array_0.csv
+```
+
+The stacked analysis reads its quantities from `reference_property` in `config_stacked.ini` and
+writes them into the same layout below its `output_path`. Result files of earlier LEDSA versions
+lie directly in `analysis/extinction_coefficients/<solver>/` and are left where they are.
+
+### Reference images of the normalization
+
+The extinction coefficients are computed from the relative intensities I/I0, so the images I0 is
+averaged over decide what the analysis takes for clear air. Three options name them, and the
+first one that is set wins:
+
+| Option | File | Names the images by |
+| --- | --- | --- |
+| `ref_img_indices` | `config_analysis.ini` | analysis ID |
+| `ref_img_experiment_ids` | `config.ini` | experiment ID, the number the file name is built from |
+| `num_ref_images` | `config_analysis.ini` | the number of images at the beginning of the experiment |
+
+`ref_img_experiment_ids` is the only one the data extraction reads, so it is the one to use
+whenever `num_skip_imgs` or `average_images` is set:
+
+```ini
+[analyse_photo]
+num_skip_imgs = 9
+ref_img_experiment_ids = 385 386 387 388 389 390
+```
+
+The images it names are analysed whatever `num_skip_imgs` leaves out, so the reference window
+keeps the time span it is meant to have instead of being pulled apart by the increment, and
+`average_images` keeps every one of them as it is instead of summarizing it with its neighbours.
+They have to lie between the first and the last analysed image, and they have to be named
+before step 3, since an image that was never analysed holds no intensities.
+
+The analysis prints the image IDs I0 was really computed from, while the header of the result
+file names the reference images as the configuration gave them. With `average_images` the two
+differ by the renumbering, since the averaged images are counted from 1 again. The stacked
+analysis names the reference images of every camera in `config_stacked.ini`, see below.
+
 ### Stacked multi-camera analysis
 
 Several cameras that watch the same LED arrays can be inverted jointly, so that the rays
@@ -170,7 +234,8 @@ an image read in another orientation.
 
 By default the extinction coefficients are computed from `sum_col_val`, the plain sum of
 the pixel values in the search area of each LED. Step 3 additionally writes
-background-corrected sums, which `reference_property` in `config_analysis.ini` selects:
+background-corrected sums, which `reference_property` in `config_analysis.ini` selects, one
+or several of them per run:
 
 | `reference_property` | Background estimate |
 |---|---|
@@ -195,6 +260,78 @@ visible halo if the light of a neighbouring strip still reaches the bands.
 extinction. `sidebg_sum_col_val` is NaN if the strip direction cannot be estimated (an LED
 array with a single LED) or if the side bands contain no pixel, and the analysis stops
 with an error naming these LEDs if the selected `reference_property` contains NaN.
+
+### Temperature correction (optional)
+
+An LED loses radiant power as it heats up, so the LEDs in the hot gas layer dim over the
+course of an experiment even where no smoke is between them and the camera. Left
+uncorrected, that drift enters the relative intensities as an extinction that is not there.
+
+The factors the intensities are reduced by are determined outside LEDSA and handed to the
+analysis as one file per camera channel, named in `config_analysis.ini`:
+
+```ini
+[temperature_correction]
+   reduction_file_channel_0 = reduction_factors_red.csv
+   reduction_file_channel_1 = None
+   reduction_file_channel_2 = None
+```
+
+A channel with a file is corrected with it, a channel left at `None` is analysed as its
+intensities were extracted. A `config_analysis.ini` written before the correction existed has
+no such section and corrects nothing, so an older analysis is reproduced unchanged.
+
+The file is read in either of two layouts. As a table, the first column holds the time in
+seconds, the header of the other columns the height in metres, and every cell the factor the
+intensity of that time and height is reduced by:
+
+```
+Time / s,3.3,3.2,3.1,2.9,2.6
+0,1.0,1.0,1.0,1.0,1.0
+60,0.991,0.993,0.994,0.996,0.998
+```
+
+As a list, the file has the three columns `height`, `time` and `reduction_factor` in any
+order and one row per pair of a height and a time, which LEDSA pivots into the same table:
+
+```
+height,time,reduction_factor
+0.0,0.0,1.0
+0.0,100.0,0.85
+1.0,0.0,1.0
+1.0,100.0,0.85
+```
+
+The time is the experiment time in seconds, counted from `start_time` of `config.ini`. That is the
+same reference as `Experiment_Time[s]` of `analysis/image_infos_analysis.csv`, the times the factors
+are interpolated to, so a file written against the clock has to be shifted by `start_time` before it
+is handed to LEDSA.
+
+Neither layout has to be sorted, so the heights may be written in the order of the LEDs of
+the array. LEDSA interpolates the table bilinearly to the experiment time of every image and the
+height of every LED and divides the intensities by the result. The correction runs before the
+reference intensities are averaged, so that I0 is a corrected intensity as well and the
+factors of the reference images cancel out of the relative intensities.
+
+The interpolation stays between the tabulated times and heights. An image or an LED outside them
+keeps the intensity it was extracted with, because the table states where the reduction of the LEDs
+was determined and there is nothing outside it to extrapolate from. A warning names the range the
+table covers and how many values lie outside it, so a table that spans only part of the LED array
+or only the first minutes of the experiment corrects only that part of the data.
+
+The header of every result file states whether its channel was corrected and with which
+factors:
+
+```
+# Reference_property: sum_col_val, ..., Temperature_correction: channel 0 from reduction_factors_red.csv (0.0 s to 1200.0 s, 2.60 m to 3.30 m), LEDSA 0.11.0
+```
+
+The name of the result file does not change, so a corrected run replaces the uncorrected
+result of the same channel, reference property and solver, as a changed solver parameter does.
+
+The factors belong to the LEDs rather than to a camera, so `config_stacked.ini` takes the
+same section and every camera of a stacked inversion is corrected with the file of its
+channel.
 
 ## Demo
 

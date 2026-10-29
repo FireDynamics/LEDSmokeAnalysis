@@ -1,6 +1,7 @@
 import configparser as cp
 import os.path
 from datetime import datetime, timedelta
+from typing import List, Optional
 
 import numpy as np
 
@@ -19,8 +20,9 @@ class ConfigData(cp.ConfigParser):
                  img_rotation=AUTO_ROTATION,
                  first_img_experiment_id=None, last_img_experiment_id=None, ref_img_id=None, ignore_led_indices=None,
                  led_array_edge_indices=None, led_array_edge_coordinates=None, first_img_analysis_id=None,
-                 last_img_analysis_id=None, num_skip_imgs=0, num_skip_leds=0, merge_led_array_indices=None,
-                 sideband_distances='25 60', background_floor=0.05, sideband_exclusion_margin=None):  # TODO: merge LED arrays
+                 last_img_analysis_id=None, num_skip_imgs=0, ref_img_experiment_ids=None, num_skip_leds=0,
+                 merge_led_array_indices=None,
+                 sideband_distances='25 60', background_floor=None, sideband_exclusion_margin=None):  # TODO: merge LED arrays
         """
         :param load_config_file: Determines whether to load the config file on initialization. Defaults to True.
         :type load_config_file: bool
@@ -76,6 +78,9 @@ class ConfigData(cp.ConfigParser):
         :type last_img_analysis_id: int or None
         :param num_skip_imgs: Number of images to skip during analysis. Defaults to 0.
         :type num_skip_imgs: int
+        :param ref_img_experiment_ids: Experiment IDs of the images the LED intensities are normalized with.
+            Defaults to None.
+        :type ref_img_experiment_ids: str or None
         :param num_skip_leds: Only consider LEDs with ID divisible by skip_leds + 1. Defaults to 0.
         :type num_skip_leds: int
         :param merge_led_array_indices: Flag to merge LED arrays for analysis. Defaults to None. TODO: not a flag but list of arrays to merge?
@@ -83,9 +88,11 @@ class ConfigData(cp.ConfigParser):
         :param sideband_distances: Inner and outer distance in pixels across the LED strip of the side bands used to
             estimate the pedestal for sidebg_sum_col_val. Defaults to '25 60'.
         :type sideband_distances: str
-        :param background_floor: Lower limit of sidebg_sum_col_val and bgsub2_sum_col_val as fraction of sum_col_val.
-            Defaults to 0.05.
-        :type background_floor: float
+        :param background_floor: Lower limit of sidebg_sum_col_val and bgsub2_sum_col_val as fraction of
+            sum_col_val. None, the default, applies no limit: a corrected sum at or below zero says that
+            the signal of the LED has vanished, and the solver discards such an LED by its weight.
+            Defaults to None.
+        :type background_floor: float or None
         :param sideband_exclusion_margin: Side band pixels within search_area_radius + margin of any other search area
             are excluded. Defaults to None, i.e. margin = search_area_radius.
         :type sideband_exclusion_margin: int or None
@@ -165,12 +172,19 @@ class ConfigData(cp.ConfigParser):
             self['analyse_photo']['   last_img_analysis_id'] = str(last_img_analysis_id)
             self.set('analyse_photo', '   # In the analysis, only images are considered with id dividable by skip_imgs + 1.')
             self['analyse_photo']['   num_skip_imgs'] = str(num_skip_imgs)
+            self.set('analyse_photo', '   # Experiment IDs of the images the LED intensities are normalized with,')
+            self.set('analyse_photo', '   # separated by spaces. They are analysed whatever num_skip_imgs leaves out')
+            self.set('analyse_photo', '   # and are never summarized by average_images, so that the reference window')
+            self.set('analyse_photo', '   # keeps the time span it is meant to have. None: the analysis takes its reference images')
+            self.set('analyse_photo', '   # from num_ref_images or ref_img_indices of config_analysis.ini.')
+            self['analyse_photo']['   ref_img_experiment_ids'] = str(ref_img_experiment_ids)
             self.set('analyse_photo', '   # In the analysis, only LEDs are considered with id dividable by skip_leds + 1.')
             self['analyse_photo']['   num_skip_leds'] = str(num_skip_leds)
             self.set('analyse_photo', '   # Pedestal estimation in side bands parallel to the LED strip (sidebg_sum_col_val):')
             self.set('analyse_photo', '   # inner and outer distance of the side bands across the strip in pixels,')
             self['analyse_photo']['   sideband_distances'] = str(sideband_distances)
-            self.set('analyse_photo', '   # lower limit of the corrected sums sidebg_sum_col_val and bgsub2_sum_col_val as fraction of the plain sum,')
+            self.set('analyse_photo', '   # lower limit of the corrected sums sidebg_sum_col_val and bgsub2_sum_col_val as fraction of the plain sum.')
+            self.set('analyse_photo', '   # None applies no limit, so that an LED whose signal has vanished stays recognisable by its weight,')
             self['analyse_photo']['   background_floor'] = str(background_floor)
             self.set('analyse_photo', '   # pixels within search_area_radius + margin of other search areas are excluded, None: margin = radius.')
             self.set('analyse_photo', '   # Raise the margin above the halo of the LEDs if the strips are close, otherwise their light enters the side bands.')
@@ -216,6 +230,28 @@ class ConfigData(cp.ConfigParser):
         """
         save_config(self, 'config.ini')
         print('config.ini saved')
+
+    def get_ref_img_experiment_ids(self) -> Optional[List[int]]:
+        """
+        Experiment IDs of the images the LED intensities are normalized with.
+
+        The IDs are the ones the image names are built from, as first_img_experiment_id and
+        ref_img_id are, and not the analysis IDs that config_analysis.ini names. A configuration
+        written before the option existed holds none, which is read as None.
+
+        :return: The configured experiment IDs, or None if none are named.
+        :rtype: Optional[List[int]]
+        :raises ValueError: If the option holds something other than whitespace separated integers.
+        """
+        raw = self.get('analyse_photo', 'ref_img_experiment_ids').strip()
+        if raw.lower() == 'none' or raw == '':
+            return None
+        try:
+            return [int(img_id) for img_id in raw.split()]
+        except ValueError:
+            raise ValueError(f"ref_img_experiment_ids of config.ini holds '{raw}', while it takes the "
+                             f"experiment IDs of the images used for normalization, separated by "
+                             f"spaces, or None.")
 
     def get2dnparray(self, section, option, num_col=2, dtype=int) -> np.ndarray:
         """

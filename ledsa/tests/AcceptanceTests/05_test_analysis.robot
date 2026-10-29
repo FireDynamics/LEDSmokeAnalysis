@@ -25,6 +25,15 @@ Extinction Coefficients Of An Earlier Run Are Reported
     Extco Time Axis Should Be Accepted
     Extco Time Axis Mismatch Should Be Reported
 
+Step Analysis With Averaged Images
+    [Documentation]     With average_images set, the images after the reference images are
+    ...                 summarized two by two. The averaged intensities go into a binary of their
+    ...                 own and the extinction coefficients are computed for the averaged images,
+    ...                 which have to agree with the averaged image infos.
+    Create Config Analysis    linear    average_images=True
+    Start Step Analysis
+    Averaged Analysis Should Summarize The Images
+
 
 *** Keywords ***
 Start Step Analysis

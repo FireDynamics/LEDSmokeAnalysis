@@ -207,22 +207,25 @@ class TestSidebandSum:
         assert led_data.sum_color_value == reference.sum_color_value
         assert led_data.mean_color_value == reference.mean_color_value
         assert led_data.max_color_value == reference.max_color_value
-        assert led_data.bgsub_sum_color_value == reference.bgsub_sum_color_value
+        # bgsub now takes its border ring from the channel mask, so it differs from a run without one
+        assert led_data.bgsub_sum_color_value != reference.bgsub_sum_color_value
         fields = led_data.get_main_data_string().split(',')
-        assert ','.join(fields[:6]) == ','.join(reference.get_main_data_string().split(',')[:6])
+        # the fields up to max_col_value; bgsub follows and depends on the channel mask
+        assert ','.join(fields[:5]) == ','.join(reference.get_main_data_string().split(',')[:5])
         assert float(fields[6]) == pytest.approx(led_data.sidebg_sum_color_value, rel=1e-4)
         assert float(fields[7]) == pytest.approx(led_data.sidebg_pedestal, rel=1e-4)
 
 
 class TestSidebandParameters:
     def test_defaults_without_config(self):
-        assert get_sideband_parameters(None) == ((25, 60), 0.05, None)
+        assert get_sideband_parameters(None) == ((25, 60), None, None)
 
     def test_defaults_for_old_config(self, tmp_path, monkeypatch):
         from ledsa.core.ConfigData import ConfigData
         monkeypatch.chdir(tmp_path)
         (tmp_path / 'config.ini').write_text('[DEFAULT]\nimg_directory = x\n[analyse_photo]\nnum_skip_leds = 0\n', encoding='utf-8')
-        assert get_sideband_parameters(ConfigData()) == ((25, 60), 0.05, None)
+        # a configuration written before the option existed gets no limit either
+        assert get_sideband_parameters(ConfigData()) == ((25, 60), None, None)
 
     def test_values_from_config(self, tmp_path, monkeypatch):
         from ledsa.core.ConfigData import ConfigData
@@ -261,6 +264,9 @@ class TestNanReferenceProperty:
         coefficients = ExtinctionCoefficientsLinear.__new__(ExtinctionCoefficientsLinear)
         coefficients.experiment = SimpleNamespace(channel=0, path='.', led_array=0)
         coefficients.average_images = False
+        # set in __init__: the property analysed here has no noise column and is not smoothed
+        coefficients.noise_property = None
+        coefficients.num_moving_avg_images = 1
         return coefficients
 
     def test_nan_values_stop_the_analysis(self, coefficients):
@@ -286,9 +292,13 @@ class TestChannelMask:
 
     def test_raw_mask_keeps_channel_pixels_with_value_zero(self, monkeypatch):
         data = np.where(self.FILTER_ARRAY == 1, 0, 7)  # the first green channel is clipped at 0
-        monkeypatch.setattr(image_reading, '_read_img_array_from_raw_file',
-                            lambda filename, channel, orientation=None: (data, self.FILTER_ARRAY))
-        channel_array, mask = image_reading.read_channel_data_and_mask_from_img('img.CR3', 1)
+        # mocked at the one pass over the RAW file, so that every reader derived from it stays consistent.
+        # A black level of 0 and a white level of 255 leave the stored values as they are.
+        raw = image_reading.RawImage(data, self.FILTER_ARRAY, np.zeros(4), 255.0,
+                                     image_reading.UPRIGHT_ORIENTATION, None)
+        monkeypatch.setattr(image_reading, '_read_raw_image', lambda filename: raw)
+        channel_array, mask, _ = \
+            image_reading.read_channel_data_mask_and_noise_from_img('img.CR3', 1)
         np.testing.assert_array_equal(mask, np.isin(self.FILTER_ARRAY, [1, 3]))
         np.testing.assert_array_equal(channel_array, np.where(mask, data, 0))
         np.testing.assert_array_equal(channel_array, image_reading._read_channel_data_from_raw_file('img.CR3', 1))
@@ -297,11 +307,13 @@ class TestChannelMask:
         import matplotlib.pyplot as plt
         path = tmp_path / 'img.png'
         plt.imsave(path, np.random.default_rng(0).random((6, 8, 3)))
-        channel_array, mask = image_reading.read_channel_data_and_mask_from_img(str(path), 1)
+        channel_array, mask, pixel_noise = \
+            image_reading.read_channel_data_mask_and_noise_from_img(str(path), 1)
+        assert pixel_noise is None  # a PNG has no optical black
         np.testing.assert_array_equal(channel_array, image_reading.read_channel_data_from_img(str(path), 1))
         assert mask.shape == channel_array.shape and mask.all()
 
     def test_unsupported_format_raises(self):
         from ledsa.core.image_integrity import CorruptedImageError
         with pytest.raises(CorruptedImageError, match='unsupported file extension'):
-            image_reading.read_channel_data_and_mask_from_img('img.xyz', 0)
+            image_reading.read_channel_data_mask_and_noise_from_img('img.xyz', 0)

@@ -21,10 +21,10 @@ def make_image(transmission=1.0, pedestal=0.0, noise_sigma=0.0, clip=False, baye
     return np.where(mask, img, 0.0), mask
 
 
-def analyse(img, mask):
+def analyse(img, mask, floor=None):
     search_areas = np.array([[0, CENTER[0], CENTER[1]]])
     return _generate_led_analysis_data(None, 1, img, False, 0, 'test_img', 0, search_areas, SEARCH_AREA_RADIUS,
-                                       fit_leds=False, channel_mask=mask)
+                                       fit_leds=False, channel_mask=mask, background_floor=floor)
 
 
 def box(array):
@@ -46,7 +46,8 @@ class TestRingBackgroundMean:
         ring = np.ones((16, 16), dtype=bool)
         ring[2:-2, 2:-2] = False
         assert _estimate_local_background_mean(data) == pytest.approx(data[ring].mean())
-        assert _estimate_local_background(data) == pytest.approx(4.0)  # old estimator ignores the zeros
+        # both estimators keep the zeros now; only the Bayer mask decides which pixels count
+        assert _estimate_local_background(data) == pytest.approx(data[ring].mean())
 
     def test_too_small_or_empty_gives_nan(self):
         assert np.isnan(_estimate_local_background_mean(np.ones((4, 4))))
@@ -62,14 +63,27 @@ class TestBgsub2Sum:
         expected = box(img).sum() - num_channel_pixels * _estimate_local_background_mean(box(img), box(mask))
         assert led_data.bgsub2_sum_color_value == pytest.approx(expected)
 
-    def test_floor_limits_the_corrected_sum(self):
+    def _box_sum_below_zero(self):
         # LED shifted to the corner of the box: its light falls into the ring and N * b exceeds the box sum
         img, mask = make_image(amplitude=0.0)
         row, col = CENTER[0] - SEARCH_AREA_RADIUS + 1, CENTER[1] - SEARCH_AREA_RADIUS + 1
         img[row - 1:row + 2, col - 1:col + 2] = 1000.0
-        led_data = analyse(img, mask)
         num_channel_pixels = np.count_nonzero(box(mask))
-        assert box(img).sum() - num_channel_pixels * _estimate_local_background_mean(box(img), box(mask)) < 0
+        corrected = box(img).sum() - num_channel_pixels * _estimate_local_background_mean(box(img),
+                                                                                           box(mask))
+        assert corrected < 0
+        return img, mask, corrected
+
+    def test_without_a_floor_the_corrected_sum_stays_negative(self):
+        # a corrected sum at or below zero says that the signal has vanished, which the solver discards
+        # by its weight; a limit would turn it into a positive value the solver trusts
+        img, mask, corrected = self._box_sum_below_zero()
+        led_data = analyse(img, mask)
+        assert led_data.bgsub2_sum_color_value == pytest.approx(corrected)
+
+    def test_an_explicit_floor_still_limits_the_corrected_sum(self):
+        img, mask, _ = self._box_sum_below_zero()
+        led_data = analyse(img, mask, floor=0.05)
         assert led_data.bgsub2_sum_color_value == pytest.approx(0.05 * box(img).sum())
 
     def test_existing_values_are_unchanged(self):
@@ -78,9 +92,11 @@ class TestBgsub2Sum:
         reference = _generate_led_analysis_data(None, 1, img, False, 0, 'test_img', 0, np.array([[0, *CENTER]]),
                                                 SEARCH_AREA_RADIUS, fit_leds=False)
         assert led_data.sum_color_value == reference.sum_color_value
-        assert led_data.bgsub_sum_color_value == reference.bgsub_sum_color_value
+        # bgsub now takes its border ring from the channel mask, so it differs from a run without one
+        assert led_data.bgsub_sum_color_value != reference.bgsub_sum_color_value
         fields = led_data.get_main_data_string().split(',')
-        assert ','.join(fields[:6]) == ','.join(reference.get_main_data_string().split(',')[:6])
+        # the fields up to max_col_value; bgsub follows and depends on the channel mask
+        assert ','.join(fields[:5]) == ','.join(reference.get_main_data_string().split(',')[:5])
         assert float(fields[8]) == pytest.approx(led_data.bgsub2_sum_color_value, rel=1e-4)
 
     def test_optical_depth_bias_with_clipped_noise(self):
@@ -98,5 +114,6 @@ class TestBgsub2Sum:
             depth['bgsub2'].append(-np.log(img.bgsub2_sum_color_value / ref.bgsub2_sum_color_value))
         bias = {key: np.mean(values) / true_depth - 1 for key, values in depth.items()}
         assert abs(bias['bgsub2']) < 0.02
-        assert bias['bgsub'] < -0.02
+        # bgsub used to be biased as well, because it dropped the pixels at 0 and clipped pixel by pixel
+        assert abs(bias['bgsub']) < 0.02
         assert bias['sum'] < -0.1

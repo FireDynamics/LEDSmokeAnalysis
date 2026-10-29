@@ -7,11 +7,22 @@ import numpy as np
 import pandas as pd
 
 from ledsa.analysis.Experiment import Experiment, Layers, Camera
-from ledsa.core.file_handling import read_hdf, read_hdf_avg, extend_hdf, create_analysis_infos_avg
+from ledsa.analysis.temperature_correction import TemperatureCorrection
+from ledsa.core.file_handling import (NOISE_COLUMNS, NUM_IMGS_PER_AVERAGE, avg_img_ids_of_ref_imgs,
+                                      create_analysis_infos_avg, extend_hdf,
+                                      get_extinction_coefficients_file_path, read_analysis_img_ids,
+                                      read_experiment_times,
+                                      read_hdf, read_hdf_avg)
 from ledsa.data_extraction.data_integrity import check_intensity_normalization
 
 from importlib.metadata import version
 
+
+# Signal-to-noise ratio from which on an LED gets the full weight. Measured on the Warsaw tests V008 and
+# V009: at the fog stages that still carry signal the weighting changes the extinction coefficients by
+# less than a percent, and where the transmission approaches the read noise it is the only thing that
+# separates "no signal" from "small signal".
+DEFAULT_SNR_FULL_WEIGHT = 10.0
 
 class ExtinctionCoefficients(ABC):
     """
@@ -27,6 +38,10 @@ class ExtinctionCoefficients(ABC):
     :vartype num_ref_imgs: int
     :ivar ref_img_indices: Indices of reference images to use. If None, use num_ref_imgs.
     :vartype ref_img_indices: list[int] or None
+    :ivar ref_img_ids_of_loaded_data: Indices the reference images carry in the loaded image data.
+        They differ from ref_img_indices when the averaged data are loaded, which are numbered
+        from 1 again.
+    :vartype ref_img_ids_of_loaded_data: list[int] or None
     :ivar calculated_img_data: DataFrame containing calculated image data.
     :vartype calculated_img_data: pd.DataFrame
     :ivar distances_per_led_and_layer: Array of distances traversed between camera and LEDs in each layer.
@@ -37,12 +52,21 @@ class ExtinctionCoefficients(ABC):
     :vartype cc_matrix: np.ndarray or None
     :ivar average_images: Flag to determine if intensities are computed as an average from two consecutive images.
     :vartype average_images: bool
+    :ivar n_summarize: Number of consecutive images summarized into one when averaging.
+    :vartype n_summarize: int
+    :ivar temperature_correction: Reduction factors of the LED intensities over time and height, None for
+        an analysis without the temperature correction.
+    :vartype temperature_correction: TemperatureCorrection or None
+    :ivar temperature_corrected: Whether the reduction factors have been divided out of the loaded data.
+    :vartype temperature_corrected: bool
     :ivar solver: Indication whether the calculation is to be carried out numerically or analytically.
     :vartype type: str
     """
 
     def __init__(self, experiment, reference_property='sum_col_val', num_ref_imgs=10, ref_img_indices=None,
-                 average_images=False):
+                 average_images=False, n_summarize=NUM_IMGS_PER_AVERAGE,
+                 temperature_correction=None, snr_full_weight=DEFAULT_SNR_FULL_WEIGHT,
+                 num_moving_avg_images=1):
         """
         :param experiment: Object representing the experimental setup.
         :type experiment: Experiment
@@ -54,25 +78,74 @@ class ExtinctionCoefficients(ABC):
         :type ref_img_indices: list[int] or None
         :param average_images: Flag to determine if intensities are computed as an average from two consecutive images.
         :type average_images: bool
+        :param n_summarize: Number of consecutive images summarized into one when averaging.
+        :type n_summarize: int
+        :param temperature_correction: Reduction factors of the LED intensities of the channel. None
+            leaves the intensities as they were extracted.
+        :type temperature_correction: TemperatureCorrection or None
+        :param snr_full_weight: Signal-to-noise ratio from which on an LED gets the full weight in the
+            solver. Below it the weight falls linearly to zero at a signal of zero. None weights all LEDs
+            equally. The weighting needs a reference property with a noise column and noise values in the
+            data; where either is missing it is switched off with a note, so that the default does not
+            stop an analysis of data that cannot carry it.
+        :type snr_full_weight: float or None
+        :param num_moving_avg_images: Number of consecutive images over which the reference property is
+            smoothed by a centred moving average before the normalisation. 1 leaves it as it is. Unlike
+            average_images this keeps every image with its own time and does not renumber the images.
+        :type num_moving_avg_images: int
+        :raises ValueError: If snr_full_weight is given for a reference property without a noise column, or
+            if average_images and num_moving_avg_images are combined.
         """
+        if average_images and int(num_moving_avg_images) > 1:
+            raise ValueError('average_images and num_moving_avg_images cannot be combined. '
+                             'average_images summarizes n_summarize images into one and numbers the '
+                             'result from 1 again, while num_moving_avg_images smooths the reference '
+                             'property over neighbouring images and keeps every image with its own '
+                             'time. Pick the one that suits the time resolution you need.')
         self.coefficients_per_image_and_layer = []
         self.experiment = experiment
         self.reference_property = reference_property
         self.num_ref_imgs = num_ref_imgs
         self.ref_img_indices = ref_img_indices
+        self.ref_img_ids_of_loaded_data = ref_img_indices
         self.calculated_img_data = pd.DataFrame()
         self.analysed_img_ids = []
         self.distances_per_led_and_layer = np.array([])
         self.ref_intensities = np.array([])
         self.cc_matrix = None
         self.average_images = average_images
+        self.n_summarize = n_summarize
+        self.temperature_correction = temperature_correction
+        self.temperature_corrected = False
         self.solver = None
         self.lambda_reg = None
+        self.snr_full_weight = snr_full_weight
+        self.num_moving_avg_images = int(num_moving_avg_images)
+        self.noise_property = None
+        if snr_full_weight is not None:
+            if reference_property in NOISE_COLUMNS:
+                self.noise_property = NOISE_COLUMNS[reference_property]
+            else:
+                print(f'The LEDs are weighted equally: {reference_property} has no noise column, so the '
+                      f'signal-to-noise ratio of an LED is unknown. Columns with one: '
+                      f'{", ".join(sorted(NOISE_COLUMNS))}.')
 
     def __str__(self):
         out = str(self.experiment) + \
-              f'Reference_property: {self.reference_property}, Ref_img_indices: {self.ref_img_indices}, Solver: {self.solver}, Lambda_reg: {self.lambda_reg}, LEDSA {version("ledsa")}\n'
+              f'Reference_property: {self.reference_property}, Ref_img_indices: {self.ref_img_indices}, Snr_full_weight: {self.snr_full_weight}, Noise_property: {self.noise_property}, Min_layer_weight: {getattr(self, "min_layer_weight", None) if self.noise_property is not None else None}, Num_moving_avg_images: {self.num_moving_avg_images}, Solver: {self.solver}, Lambda_reg: {self.lambda_reg}, Temperature_correction: {self.temperature_correction_info()}, LEDSA {version("ledsa")}\n'
         return out
+
+    def temperature_correction_info(self) -> str:
+        """
+        Note for the result file stating whether the channel of this run is temperature corrected.
+
+        :return: The channel and the reduction factors it was corrected with, 'None' if the
+            intensities were analysed as they were extracted.
+        :rtype: str
+        """
+        if self.temperature_correction is None:
+            return 'None'
+        return f'channel {self.experiment.channel} from {self.temperature_correction}'
 
     def calc_and_set_coefficients(self) -> None:
         """
@@ -86,7 +159,11 @@ class ExtinctionCoefficients(ABC):
             rel_intensities = single_img_array / self.ref_intensities
 
             # Calculate the extinction coefficients depending on child class used
-            sigmas = self.calc_coefficients_of_img(rel_intensities)
+            if self.noise_property is None:
+                sigmas = self.calc_coefficients_of_img(rel_intensities)
+            else:
+                snr = single_img_array / single_img_data[self.noise_property].to_numpy()
+                sigmas = self.calc_coefficients_of_img(rel_intensities, snr)
             self.coefficients_per_image_and_layer.append(sigmas)
 
     def calc_and_set_coefficients_mp(self, cores=4) -> None:
@@ -103,7 +180,12 @@ class ExtinctionCoefficients(ABC):
 
         # Calculate the extinction coefficients depending on child class used
         pool = Pool(processes=cores)
-        sigmas = pool.map(self.calc_coefficients_of_img, rel_intensities)
+        if self.noise_property is None:
+            sigmas = pool.map(self.calc_coefficients_of_img, rel_intensities)
+        else:
+            snr = img_property_array / multiindex_series_to_nparray(
+                self.calculated_img_data[self.noise_property])
+            sigmas = pool.starmap(self.calc_coefficients_of_img, zip(rel_intensities, snr))
         pool.close()
         self.coefficients_per_image_and_layer = sigmas
 
@@ -123,6 +205,8 @@ class ExtinctionCoefficients(ABC):
                 np.savetxt(file_name, self.distances_per_led_and_layer)
         if self.calculated_img_data.empty:
             self.load_img_data()
+        # before the reference intensities are averaged, whether or not the data were loaded here
+        self.apply_temperature_correction()
         if self.ref_intensities.shape[0] == 0:
             self.calc_and_set_ref_intensities()
 
@@ -130,14 +214,46 @@ class ExtinctionCoefficients(ABC):
         """
         Load processed image data from binary file
 
-        :raises ValueError: If the reference property contains NaN values.
+        :raises ValueError: If the reference property is not among the columns of the binary data or
+            contains NaN values.
         """
         if self.average_images:
-            img_data = read_hdf_avg(self.experiment.channel, path=self.experiment.path)
-            create_analysis_infos_avg()
+            # the binary and the image infos of the averaged images are built from the same
+            # counts and reference images, so that they hold the same image IDs
+            img_data = read_hdf_avg(self.experiment.channel, path=self.experiment.path,
+                                    n_summarize=self.n_summarize, num_ref_imgs=self.num_ref_imgs,
+                                    ref_img_ids=self.ref_img_indices)
+            create_analysis_infos_avg(n_summarize=self.n_summarize, num_ref_imgs=self.num_ref_imgs,
+                                      ref_img_ids=self.ref_img_indices, path=self.experiment.path)
+            if self.ref_img_indices is not None:
+                # The reference images are kept unaveraged, so each of them is still an image of
+                # its own, but the averaged images are numbered from 1 again and the configured
+                # indices would name other images in them.
+                self.ref_img_ids_of_loaded_data = avg_img_ids_of_ref_imgs(
+                    self.ref_img_indices, read_analysis_img_ids(self.experiment.path),
+                    n_summarize=self.n_summarize)
         else:
             img_data = read_hdf(self.experiment.channel, path=self.experiment.path)
-        img_data_cropped = img_data[['led_array_id', self.reference_property]]
+        if self.reference_property not in img_data.columns:
+            # The color corrected columns are not part of the step 3 result files, the analysis adds them
+            # to the binary data itself, so they are gone as soon as the binary data are rebuilt.
+            hint = ('Run the analysis with --cc to compute it again, it is added to the binary data by the '
+                    'analysis itself and is lost whenever they are rebuilt from the step 3 result files.'
+                    if self.reference_property.endswith('_cc') else
+                    'Check the reference_property option of the analysis configuration.')
+            raise ValueError(f'{self.reference_property} is not among the columns of the binary data of '
+                             f'channel {self.experiment.channel} '
+                             f'({", ".join(map(str, img_data.columns))}). {hint}')
+        columns = ['led_array_id', self.reference_property]
+        if self.noise_property is not None:
+            if self.noise_property not in img_data.columns:
+                print(f'The LEDs are weighted equally: {self.noise_property} is not among the columns of '
+                      f'the binary data of channel {self.experiment.channel}. Run step 3 again with a '
+                      f'LEDSA version that writes it to weight them by their signal-to-noise ratio.')
+                self.noise_property = None
+            else:
+                columns.append(self.noise_property)
+        img_data_cropped = img_data[columns]
         self.calculated_img_data = img_data_cropped[img_data_cropped['led_array_id'] == self.experiment.led_array]
         if self.calculated_img_data.empty:
             exit(f"Apparently there are no intensity values for led array {self.experiment.led_array}!")
@@ -151,20 +267,126 @@ class ExtinctionCoefficients(ABC):
                              f'{self.experiment.led_array} are NaN (led ids {led_ids_text}). For sidebg_sum_col_val '
                              f'this means that no side band pixels were found for these LEDs, see sideband_distances '
                              f'in config.ini.')
+        if self.noise_property is not None and self.calculated_img_data[self.noise_property].isna().all():
+            # JPG and PNG images and sensors without an optical black margin have no read noise
+            print(f'The LEDs are weighted equally: {self.noise_property} is NaN for every LED of led '
+                  f'array {self.experiment.led_array}, so the images carry no read noise.')
+            self.calculated_img_data = self.calculated_img_data.drop(columns=[self.noise_property])
+            self.noise_property = None
+
         # Images without analysis results are missing from the binary data, so the IDs are not necessarily a
         # gapless range. They are kept to pair every computed coefficient with the time of its own image.
         self.analysed_img_ids = sorted(
             self.calculated_img_data.index.get_level_values('img_id').unique().tolist())
+        if self.num_moving_avg_images > 1:
+            self.apply_moving_average()
+
+    def apply_moving_average(self) -> None:
+        """
+        Replace the reference property of every LED by its centred moving average over
+        num_moving_avg_images consecutive analysed images, fewer at the start and the end of the series.
+        The noise, where it is used, becomes the standard deviation of that mean, so the root of the summed
+        variances divided by the number of images.
+
+        Every image keeps its own time and its own row, so the series is smoothed rather than decimated:
+        the time resolution becomes num_moving_avg_images times the image interval while the number of
+        extinction coefficients stays the same. average_images with n_summarize is the other way round.
+        """
+        n = self.num_moving_avg_images
+        columns = [self.reference_property] + ([self.noise_property] if self.noise_property else [])
+        averaged = {}
+        for column in columns:
+            wide = self.calculated_img_data[column].unstack('led_id')
+            if column == self.noise_property:
+                count = wide.notna().astype(float).rolling(n, center=True, min_periods=1).sum()
+                wide = np.sqrt((wide ** 2).rolling(n, center=True, min_periods=1).sum()) / count
+            else:
+                wide = wide.rolling(n, center=True, min_periods=1).mean()
+            averaged[column] = wide.stack()
+        data = self.calculated_img_data.copy()
+        for column, values in averaged.items():
+            data[column] = values.reindex(data.index).to_numpy()
+        self.calculated_img_data = data
+        print(f'Reference property smoothed over {n} consecutive images (centred moving average).')
+
+    def apply_temperature_correction(self) -> None:
+        """
+        Divide the reference property by the reduction factor of the time and height of every value.
+
+        Does nothing if the channel has no reduction factors configured or if they were divided out
+        already, so that the factors enter the intensities exactly once however often this is called.
+
+        The correction runs before the reference intensities are averaged, so that I0 is a corrected
+        intensity as well and the reduction of the reference images cancels out of the relative
+        intensities. The factors are looked up on the (img_id, led_id) index of the loaded data rather
+        than on a positional array, because the LED axis of the intensities is ordered by LED ID while
+        the distance matrix follows the reversed LEDs of the experiment.
+
+        :raises ValueError: If an image or an LED of the loaded data has no time or height.
+        """
+        if self.temperature_correction is None or self.temperature_corrected:
+            return
+        index = self.calculated_img_data.index
+        times = self._experiment_times_of(index.get_level_values('img_id').to_numpy())
+        heights = self._heights_of(index.get_level_values('led_id').to_numpy())
+        factors = self.temperature_correction.factors_at(times, heights)
+        corrected_intensities = self.calculated_img_data[self.reference_property] / factors
+        self.calculated_img_data = self.calculated_img_data.assign(
+            **{self.reference_property: corrected_intensities})
+        self.temperature_corrected = True
+        print(f'Temperature correction applied to {self.reference_property} of channel '
+              f'{self.experiment.channel}, LED array {self.experiment.led_array}, with the reduction '
+              f'factors of {self.temperature_correction}.')
+
+    def _experiment_times_of(self, img_ids: np.ndarray) -> np.ndarray:
+        """
+        Experiment time of every given image, read from the image infos of the experiment.
+
+        :param img_ids: IDs of the images to look up, with repetitions.
+        :type img_ids: np.ndarray
+        :return: Experiment time [s] of every given image, in the order of the argument.
+        :rtype: np.ndarray
+        :raises ValueError: If one of the images is missing from the image infos.
+        """
+        times_per_img_id = read_experiment_times(self.experiment.path, self.average_images)
+        missing = sorted(set(img_ids.tolist()) - set(times_per_img_id))
+        if missing:
+            raise ValueError(f'The images {missing} of channel {self.experiment.channel} hold intensity '
+                             f'values but no experiment time, so the reduction factors of the '
+                             f'temperature correction cannot be interpolated to them. The image infos '
+                             f'and the analysis results in {self.experiment.path} are out of sync.')
+        return np.array([times_per_img_id[img_id] for img_id in img_ids], dtype=float)
+
+    def _heights_of(self, led_ids: np.ndarray) -> np.ndarray:
+        """
+        Height of every given LED, taken from the coordinates of the LED array.
+
+        :param led_ids: IDs of the LEDs to look up, with repetitions.
+        :type led_ids: np.ndarray
+        :return: Height [m] of every given LED, in the order of the argument.
+        :rtype: np.ndarray
+        :raises ValueError: If one of the LEDs has no coordinates.
+        """
+        height_per_led_id = {led.id: led.pos_z for led in self.experiment.leds}
+        missing = sorted(set(led_ids.tolist()) - set(height_per_led_id))
+        if missing:
+            raise ValueError(f'The LEDs {missing} of LED array {self.experiment.led_array} have no '
+                             f'coordinates, so the reduction factors of the temperature correction '
+                             f'cannot be interpolated to their height. Run the computation of the LED '
+                             f'coordinates (-coord) in {self.experiment.path} before the analysis.')
+        return np.array([height_per_led_id[led_id] for led_id in led_ids], dtype=float)
 
     def save(self) -> None:
         """
         Save the computed extinction coefficients to a file.
 
+        The file goes into a directory of its solver and its analysed quantity, so that the
+        results of the quantities of one analysis run do not overwrite each other.
         """
-        path = self.experiment.path / 'analysis' / 'extinction_coefficients' / self.solver
-        if not path.exists():
-            path.mkdir(parents=True)
-        path = path / f'extinction_coefficients_{self.solver}_channel_{self.experiment.channel}_{self.reference_property}_led_array_{self.experiment.led_array}.csv'
+        path = get_extinction_coefficients_file_path(self.solver, self.experiment.channel,
+                                                     self.reference_property, self.experiment.led_array,
+                                                     root=self.experiment.path)
+        path.parent.mkdir(parents=True, exist_ok=True)
         header = str(self)
         header += 'Layer_bottom_height[m],'
         header += ','.join(map(str, self.experiment.layers.borders[:-1])) + '\n'
@@ -209,9 +431,9 @@ class ExtinctionCoefficients(ABC):
 
          :raises ValueError: if none of the reference images holds LED data.
          """
-        if self.ref_img_indices is not None:
-            requested_img_ids = list(self.ref_img_indices)
-            ref_img_data = self.calculated_img_data.query(f'img_id == {self.ref_img_indices}')
+        if self.ref_img_ids_of_loaded_data is not None:
+            requested_img_ids = list(self.ref_img_ids_of_loaded_data)
+            ref_img_data = self.calculated_img_data.query(f'img_id == {requested_img_ids}')
         else:
             # The reference window is the first num_ref_imgs images, whether or not they were analysed,
             # so a skipped image among them is missing from the average and has to be reported
@@ -273,8 +495,8 @@ class ExtinctionCoefficients(ABC):
             fit_parameters = read_hdf(channel)[quanity]
             fit_params_list.append(fit_parameters)
         raw_val_array = pd.concat(fit_params_list, axis=1)
+        # The corrected values stay floats, see ledsa.analysis.data_preparation.apply_color_correction
         cc_val_array = np.dot(cc_matrix_inv, raw_val_array.T).T
-        cc_val_array = cc_val_array.astype(np.int16)
         for channel in range(nchannels):
             extend_hdf(channel, quanity + '_cc', cc_val_array[:, channel])
         print(f"Color correction applied on {nchannels} Channels!")

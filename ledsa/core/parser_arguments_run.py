@@ -1,5 +1,4 @@
 import argparse
-import os
 
 from ledsa.analysis import ExtinctionCoefficientsNonLinear as ECN
 from ledsa.analysis import ExtinctionCoefficientsLinear as ECA
@@ -9,10 +8,12 @@ from ledsa.analysis.ConfigDataStacked import ConfigDataStacked
 from ledsa.analysis.Experiment import Experiment
 from ledsa.analysis.ExperimentData import ExperimentData
 from ledsa.analysis.StackedExtinctionCoefficients import StackedExtinctionCoefficients
+from ledsa.analysis.temperature_correction import load_temperature_corrections
 from ledsa.analysis.data_preparation import apply_color_correction
 import numpy as np
 
 from ledsa.core.ConfigData import ConfigData
+from ledsa.core.file_handling import get_extinction_coefficients_file_path
 from ledsa.data_extraction.DataExtractor import DataExtractor
 
 
@@ -130,9 +131,9 @@ def run_demo_arguments(args: argparse.Namespace, parser: argparse.ArgumentParser
 
 def apply_cc_on_ref_property(ex_data, cc_channels=None) -> None:
     """
-    Apply color correction on the reference property and save it in the binary as column {ref_property}_cc.
+    Apply color correction on every analysed quantity and save it in the binary as column {quantity}_cc.
 
-    :param ex_data: Experiment data containing the reference property
+    :param ex_data: Experiment data containing the reference properties
     :type ex_data: ExperimentData
     :param cc_channels: Channels to apply color correction on, defaults to None
     :type cc_channels: list, optional
@@ -142,7 +143,8 @@ def apply_cc_on_ref_property(ex_data, cc_channels=None) -> None:
     except FileNotFoundError:
         print('File: mean_all_cc_matrix_integral.csv containing the color correction matrix not found')
         exit(1)
-    apply_color_correction(cc_matrix, on=ex_data.reference_property, channels=cc_channels)
+    for reference_property in ex_data.reference_properties:
+        apply_color_correction(cc_matrix, on=reference_property, channels=cc_channels)
 
 
 def run_analysis_arguments(args) -> None:
@@ -199,22 +201,25 @@ def run_stacked_analysis(args) -> None:
 
     labels = cfg.get_led_array_ids()
     channels = cfg.camera_channels
+    reference_properties = cfg.reference_properties
     print(
         f'Stacked analysis: {len(labels)} LED array(s) x '
-        f'{len(channels)} channel(s), solver={cfg.solver!r}'
+        f'{len(channels)} channel(s) x {len(reference_properties)} quantity(s), '
+        f'solver={cfg.solver!r}'
     )
 
-    for led_array_id in labels:
-        for channel in channels:
-            print(f'\n-- array={led_array_id}  channel={channel} --')
-            sec = StackedExtinctionCoefficients(cfg, led_array_id, channel)
-            print(sec)
-            if cfg.num_cores > 1:
-                print(f'Running on {cfg.num_cores} cores.')
-                sec.calc_and_set_coefficients_mp(cfg.num_cores)
-            else:
-                sec.calc_and_set_coefficients()
-            sec.save()
+    for reference_property in reference_properties:
+        for led_array_id in labels:
+            for channel in channels:
+                print(f'\n-- quantity={reference_property}  array={led_array_id}  channel={channel} --')
+                sec = StackedExtinctionCoefficients(cfg, led_array_id, channel, reference_property)
+                print(sec)
+                if cfg.num_cores > 1:
+                    print(f'Running on {cfg.num_cores} cores.')
+                    sec.calc_and_set_coefficients_mp(cfg.num_cores)
+                else:
+                    sec.calc_and_set_coefficients()
+                sec.save()
 
 
 def run_analysis_arguments_with_extinction_coefficient(args) -> None:
@@ -237,6 +242,8 @@ def extionction_coefficient_calculation(args) -> None:
     """
     ex_data = ExperimentData()
     ex_data.request_config_parameters()
+    # read before the first coefficient is computed, so that an unreadable file stops the run here
+    temperature_corrections = load_temperature_corrections(ex_data.reduction_files)
 
     # Determine which solver to use based on config
     solver = ex_data.solver.lower()
@@ -253,26 +260,35 @@ def extionction_coefficient_calculation(args) -> None:
         print("Note: weighting_preference and weighting_curvature parameters are ignored when using the linear solver.")
         solver = 'linear'
 
-    for array in ex_data.led_arrays:
-        for channel in ex_data.channels:
-            out_file = os.path.join(os.getcwd(), '../analysis', 'extinction_coefficients',
-                                    f'extinction_coefficients_{solver}_channel_{channel}_{ex_data.reference_property}_led_array_{array}.csv')
-            if not os.path.exists(out_file):
+    print(f'Quantities to analyse: {" ".join(ex_data.reference_properties)}')
+    for reference_property in ex_data.reference_properties:
+        for array in ex_data.led_arrays:
+            for channel in ex_data.channels:
+                print(f'\n-- quantity={reference_property}  array={array}  channel={channel} --')
                 ex = Experiment(layers=ex_data.layers, led_array=array, camera=ex_data.camera, channel=channel,
                                 merge_led_arrays=ex_data.merge_led_arrays)
 
                 if solver == 'nonlinear':
-                    eca = ECN.ExtinctionCoefficientsNonLinear(ex, reference_property=ex_data.reference_property,
+                    eca = ECN.ExtinctionCoefficientsNonLinear(ex, reference_property=reference_property,
                                                               num_ref_imgs=ex_data.num_ref_images,
                                                               ref_img_indices=ex_data.ref_img_indices,
+                                                              average_images=ex_data.average_images,
+                                                              n_summarize=ex_data.n_summarize,
+                                                              temperature_correction=temperature_corrections.get(channel),
                                                               weighting_curvature=ex_data.weighting_curvature,
                                                               weighting_preference=ex_data.weighting_preference,
                                                               num_iterations=ex_data.num_iterations)
                 elif solver == 'linear':
-                    eca = ECA.ExtinctionCoefficientsLinear(ex, reference_property=ex_data.reference_property,
+                    eca = ECA.ExtinctionCoefficientsLinear(ex, reference_property=reference_property,
                                                            num_ref_imgs=ex_data.num_ref_images,
                                                            ref_img_indices=ex_data.ref_img_indices,
-                                                           lambda_reg=ex_data.lambda_reg)
+                                                           average_images=ex_data.average_images,
+                                                           n_summarize=ex_data.n_summarize,
+                                                           temperature_correction=temperature_corrections.get(channel),
+                                                           lambda_reg=ex_data.lambda_reg,
+                                                           snr_full_weight=ex_data.snr_full_weight,
+                                                           min_layer_weight=ex_data.min_layer_weight,
+                                                           num_moving_avg_images=ex_data.num_moving_avg_images)
                 else:
                     raise ValueError(f"Invalid solver type '{solver}'. Must be 'linear' or 'nonlinear'.")
                 if ex_data.n_cpus > 1:
@@ -282,6 +298,5 @@ def extionction_coefficient_calculation(args) -> None:
                     print("Calculation of extinction coefficients runs on a single cpu!")
                     eca.calc_and_set_coefficients()
                 eca.save()
+                out_file = get_extinction_coefficients_file_path(solver, channel, reference_property, array)
                 print(f"{out_file} created!")
-            else:
-                print(f"{out_file} already exists!")
