@@ -21,10 +21,10 @@ def make_image(transmission=1.0, pedestal=0.0, noise_sigma=0.0, clip=False, baye
     return np.where(mask, img, 0.0), mask
 
 
-def analyse(img, mask):
+def analyse(img, mask, floor=None):
     search_areas = np.array([[0, CENTER[0], CENTER[1]]])
     return _generate_led_analysis_data(None, 1, img, False, 0, 'test_img', 0, search_areas, SEARCH_AREA_RADIUS,
-                                       fit_leds=False, channel_mask=mask)
+                                       fit_leds=False, channel_mask=mask, background_floor=floor)
 
 
 def box(array):
@@ -63,14 +63,27 @@ class TestBgsub2Sum:
         expected = box(img).sum() - num_channel_pixels * _estimate_local_background_mean(box(img), box(mask))
         assert led_data.bgsub2_sum_color_value == pytest.approx(expected)
 
-    def test_floor_limits_the_corrected_sum(self):
+    def _box_sum_below_zero(self):
         # LED shifted to the corner of the box: its light falls into the ring and N * b exceeds the box sum
         img, mask = make_image(amplitude=0.0)
         row, col = CENTER[0] - SEARCH_AREA_RADIUS + 1, CENTER[1] - SEARCH_AREA_RADIUS + 1
         img[row - 1:row + 2, col - 1:col + 2] = 1000.0
-        led_data = analyse(img, mask)
         num_channel_pixels = np.count_nonzero(box(mask))
-        assert box(img).sum() - num_channel_pixels * _estimate_local_background_mean(box(img), box(mask)) < 0
+        corrected = box(img).sum() - num_channel_pixels * _estimate_local_background_mean(box(img),
+                                                                                           box(mask))
+        assert corrected < 0
+        return img, mask, corrected
+
+    def test_without_a_floor_the_corrected_sum_stays_negative(self):
+        # a corrected sum at or below zero says that the signal has vanished, which the solver discards
+        # by its weight; a limit would turn it into a positive value the solver trusts
+        img, mask, corrected = self._box_sum_below_zero()
+        led_data = analyse(img, mask)
+        assert led_data.bgsub2_sum_color_value == pytest.approx(corrected)
+
+    def test_an_explicit_floor_still_limits_the_corrected_sum(self):
+        img, mask, _ = self._box_sum_below_zero()
+        led_data = analyse(img, mask, floor=0.05)
         assert led_data.bgsub2_sum_color_value == pytest.approx(0.05 * box(img).sum())
 
     def test_existing_values_are_unchanged(self):

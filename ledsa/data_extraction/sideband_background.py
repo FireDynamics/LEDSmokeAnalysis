@@ -23,11 +23,13 @@ from typing import List, Optional, Sequence, Tuple
 import numpy as np
 
 DEFAULT_SIDEBAND_DISTANCES = (25, 60)
-# The lower limit stays the default of v0.11.0. background_floor = None switches it off, which is what
-# unclipped data want: the limit fabricates a positive sum where the signal of the LED has vanished, and
-# the solver can no longer tell that apart from a measurement. Whether it should be off by default is a
-# decision of its own, see the pull request of the unclipped data.
-DEFAULT_BACKGROUND_FLOOR = 0.05
+# No lower limit by default. It was introduced because the clipping at zero made the pedestal of a
+# vanished LED unavoidable, so that the optical depth ran away where the LED disappeared in it. With
+# unclipped data the limit does the opposite of what is wanted: it fabricates a positive sum exactly
+# where the signal of the LED has vanished, and the solver then weights it like a measurement instead of
+# discarding it by its signal-to-noise ratio. A fraction of the plain sum is still accepted for the
+# behaviour of v0.11.0.
+DEFAULT_BACKGROUND_FLOOR = None
 NUM_DIRECTION_NEIGHBOURS = 4
 
 # geometry of the side bands, cached per process because it only depends on the LED positions
@@ -179,7 +181,8 @@ def estimate_sideband_background(data: np.ndarray, channel_mask: Optional[np.nda
 
 def subtract_pedestal(sum_color_value: float, pedestal: float, floor: float = DEFAULT_BACKGROUND_FLOOR) -> float:
     """
-    Subtract the pedestal N * B from the box sum S with a lower limit: max(S - N * B, floor * S).
+    Subtract the pedestal N * B from the box sum S, with the optional lower limit max(S - N * B,
+    floor * S).
 
     Without the lower limit the optical depth would be unbounded where the LED signal vanishes in the pedestal;
     values where the limit applies carry no information on the extinction and should be treated as invalid.

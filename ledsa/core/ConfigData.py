@@ -22,7 +22,7 @@ class ConfigData(cp.ConfigParser):
                  led_array_edge_indices=None, led_array_edge_coordinates=None, first_img_analysis_id=None,
                  last_img_analysis_id=None, num_skip_imgs=0, ref_img_experiment_ids=None, num_skip_leds=0,
                  merge_led_array_indices=None,
-                 sideband_distances='25 60', background_floor=0.05, sideband_exclusion_margin=None):  # TODO: merge LED arrays
+                 sideband_distances='25 60', background_floor=None, sideband_exclusion_margin=None):  # TODO: merge LED arrays
         """
         :param load_config_file: Determines whether to load the config file on initialization. Defaults to True.
         :type load_config_file: bool
@@ -88,9 +88,11 @@ class ConfigData(cp.ConfigParser):
         :param sideband_distances: Inner and outer distance in pixels across the LED strip of the side bands used to
             estimate the pedestal for sidebg_sum_col_val. Defaults to '25 60'.
         :type sideband_distances: str
-        :param background_floor: Lower limit of sidebg_sum_col_val and bgsub2_sum_col_val as fraction of sum_col_val.
-            Defaults to 0.05.
-        :type background_floor: float
+        :param background_floor: Lower limit of sidebg_sum_col_val and bgsub2_sum_col_val as fraction of
+            sum_col_val. None, the default, applies no limit: a corrected sum at or below zero says that
+            the signal of the LED has vanished, and the solver discards such an LED by its weight.
+            Defaults to None.
+        :type background_floor: float or None
         :param sideband_exclusion_margin: Side band pixels within search_area_radius + margin of any other search area
             are excluded. Defaults to None, i.e. margin = search_area_radius.
         :type sideband_exclusion_margin: int or None
@@ -181,7 +183,8 @@ class ConfigData(cp.ConfigParser):
             self.set('analyse_photo', '   # Pedestal estimation in side bands parallel to the LED strip (sidebg_sum_col_val):')
             self.set('analyse_photo', '   # inner and outer distance of the side bands across the strip in pixels,')
             self['analyse_photo']['   sideband_distances'] = str(sideband_distances)
-            self.set('analyse_photo', '   # lower limit of the corrected sums sidebg_sum_col_val and bgsub2_sum_col_val as fraction of the plain sum,')
+            self.set('analyse_photo', '   # lower limit of the corrected sums sidebg_sum_col_val and bgsub2_sum_col_val as fraction of the plain sum.')
+            self.set('analyse_photo', '   # None applies no limit, so that an LED whose signal has vanished stays recognisable by its weight,')
             self['analyse_photo']['   background_floor'] = str(background_floor)
             self.set('analyse_photo', '   # pixels within search_area_radius + margin of other search areas are excluded, None: margin = radius.')
             self.set('analyse_photo', '   # Raise the margin above the halo of the LEDs if the strips are close, otherwise their light enters the side bands.')
