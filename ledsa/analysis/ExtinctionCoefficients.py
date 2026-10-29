@@ -18,6 +18,12 @@ from ledsa.data_extraction.data_integrity import check_intensity_normalization
 from importlib.metadata import version
 
 
+# Signal-to-noise ratio from which on an LED gets the full weight. Measured on the Warsaw tests V008 and
+# V009: at the fog stages that still carry signal the weighting changes the extinction coefficients by
+# less than a percent, and where the transmission approaches the read noise it is the only thing that
+# separates "no signal" from "small signal".
+DEFAULT_SNR_FULL_WEIGHT = 10.0
+
 class ExtinctionCoefficients(ABC):
     """
     Parent class for the calculation of the Extinction Coefficients.
@@ -59,7 +65,8 @@ class ExtinctionCoefficients(ABC):
 
     def __init__(self, experiment, reference_property='sum_col_val', num_ref_imgs=10, ref_img_indices=None,
                  average_images=False, n_summarize=NUM_IMGS_PER_AVERAGE,
-                 temperature_correction=None, snr_full_weight=None, num_moving_avg_images=1):
+                 temperature_correction=None, snr_full_weight=DEFAULT_SNR_FULL_WEIGHT,
+                 num_moving_avg_images=1):
         """
         :param experiment: Object representing the experimental setup.
         :type experiment: Experiment
@@ -77,8 +84,10 @@ class ExtinctionCoefficients(ABC):
             leaves the intensities as they were extracted.
         :type temperature_correction: TemperatureCorrection or None
         :param snr_full_weight: Signal-to-noise ratio from which on an LED gets the full weight in the
-            solver. Below it the weight falls linearly to zero at a signal of zero. Needs a reference
-            property with a noise column. If None, all LEDs are weighted equally.
+            solver. Below it the weight falls linearly to zero at a signal of zero. None weights all LEDs
+            equally. The weighting needs a reference property with a noise column and noise values in the
+            data; where either is missing it is switched off with a note, so that the default does not
+            stop an analysis of data that cannot carry it.
         :type snr_full_weight: float or None
         :param num_moving_avg_images: Number of consecutive images over which the reference property is
             smoothed by a centred moving average before the normalisation. 1 leaves it as it is. Unlike
@@ -114,15 +123,16 @@ class ExtinctionCoefficients(ABC):
         self.num_moving_avg_images = int(num_moving_avg_images)
         self.noise_property = None
         if snr_full_weight is not None:
-            if reference_property not in NOISE_COLUMNS:
-                raise ValueError(f'snr_full_weight needs a reference property with a noise column, but '
-                                 f'{reference_property} has none. Columns with one: '
-                                 f'{", ".join(sorted(NOISE_COLUMNS))}.')
-            self.noise_property = NOISE_COLUMNS[reference_property]
+            if reference_property in NOISE_COLUMNS:
+                self.noise_property = NOISE_COLUMNS[reference_property]
+            else:
+                print(f'The LEDs are weighted equally: {reference_property} has no noise column, so the '
+                      f'signal-to-noise ratio of an LED is unknown. Columns with one: '
+                      f'{", ".join(sorted(NOISE_COLUMNS))}.')
 
     def __str__(self):
         out = str(self.experiment) + \
-              f'Reference_property: {self.reference_property}, Ref_img_indices: {self.ref_img_indices}, Snr_full_weight: {self.snr_full_weight}, Min_layer_weight: {getattr(self, "min_layer_weight", None) if self.snr_full_weight is not None else None}, Num_moving_avg_images: {self.num_moving_avg_images}, Solver: {self.solver}, Lambda_reg: {self.lambda_reg}, Temperature_correction: {self.temperature_correction_info()}, LEDSA {version("ledsa")}\n'
+              f'Reference_property: {self.reference_property}, Ref_img_indices: {self.ref_img_indices}, Snr_full_weight: {self.snr_full_weight}, Noise_property: {self.noise_property}, Min_layer_weight: {getattr(self, "min_layer_weight", None) if self.noise_property is not None else None}, Num_moving_avg_images: {self.num_moving_avg_images}, Solver: {self.solver}, Lambda_reg: {self.lambda_reg}, Temperature_correction: {self.temperature_correction_info()}, LEDSA {version("ledsa")}\n'
         return out
 
     def temperature_correction_info(self) -> str:
@@ -237,10 +247,12 @@ class ExtinctionCoefficients(ABC):
         columns = ['led_array_id', self.reference_property]
         if self.noise_property is not None:
             if self.noise_property not in img_data.columns:
-                raise ValueError(f'{self.noise_property} is needed for snr_full_weight but is not among '
-                                 f'the columns of the binary data of channel {self.experiment.channel}. '
-                                 f'Run step 3 again with a LEDSA version that writes it.')
-            columns.append(self.noise_property)
+                print(f'The LEDs are weighted equally: {self.noise_property} is not among the columns of '
+                      f'the binary data of channel {self.experiment.channel}. Run step 3 again with a '
+                      f'LEDSA version that writes it to weight them by their signal-to-noise ratio.')
+                self.noise_property = None
+            else:
+                columns.append(self.noise_property)
         img_data_cropped = img_data[columns]
         self.calculated_img_data = img_data_cropped[img_data_cropped['led_array_id'] == self.experiment.led_array]
         if self.calculated_img_data.empty:
@@ -255,6 +267,13 @@ class ExtinctionCoefficients(ABC):
                              f'{self.experiment.led_array} are NaN (led ids {led_ids_text}). For sidebg_sum_col_val '
                              f'this means that no side band pixels were found for these LEDs, see sideband_distances '
                              f'in config.ini.')
+        if self.noise_property is not None and self.calculated_img_data[self.noise_property].isna().all():
+            # JPG and PNG images and sensors without an optical black margin have no read noise
+            print(f'The LEDs are weighted equally: {self.noise_property} is NaN for every LED of led '
+                  f'array {self.experiment.led_array}, so the images carry no read noise.')
+            self.calculated_img_data = self.calculated_img_data.drop(columns=[self.noise_property])
+            self.noise_property = None
+
         # Images without analysis results are missing from the binary data, so the IDs are not necessarily a
         # gapless range. They are kept to pair every computed coefficient with the time of its own image.
         self.analysed_img_ids = sorted(

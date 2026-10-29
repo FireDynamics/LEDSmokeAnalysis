@@ -2,7 +2,7 @@ import numpy as np
 from scipy.optimize import nnls
 
 from ledsa.analysis.Experiment import Experiment, Layers, Camera
-from ledsa.analysis.ExtinctionCoefficients import ExtinctionCoefficients
+from ledsa.analysis.ExtinctionCoefficients import DEFAULT_SNR_FULL_WEIGHT, ExtinctionCoefficients
 
 class ExtinctionCoefficientsLinear(ExtinctionCoefficients):
     """
@@ -20,7 +20,8 @@ class ExtinctionCoefficientsLinear(ExtinctionCoefficients):
     """
 
     def __init__(self, experiment, reference_property='sum_col_val', num_ref_imgs=10, average_images=False, ref_img_indices=None, lambda_reg=1e-3, n_summarize=2, temperature_correction=None,
-                 snr_full_weight=None, min_layer_weight=0.5, num_moving_avg_images=1):
+                 snr_full_weight=DEFAULT_SNR_FULL_WEIGHT, min_layer_weight=0.5,
+                 num_moving_avg_images=1):
         """
         Initialize the ExtinctionCoefficientsLinear object.
 
@@ -65,7 +66,8 @@ class ExtinctionCoefficientsLinear(ExtinctionCoefficients):
 
         LEDs whose relative intensity is at or below zero are left out: their signal has vanished in the
         noise of the sensor, so they carry no information on the extinction. If fewer than one LED with
-        full weight is left, the image yields NaN.
+        full weight is left, the image yields NaN. An LED whose noise is unknown keeps the full weight,
+        because a missing noise estimate is no reason to drop a measured intensity.
 
         If snr is given, every LED is weighted with min(1, snr / snr_full_weight). The standard deviation
         of the optical depth -ln(I_e/I_0) is about 1/snr, so the weight is the inverse standard deviation,
@@ -103,8 +105,11 @@ class ExtinctionCoefficientsLinear(ExtinctionCoefficients):
         if snr is None:
             weights = measured.astype(float)
         else:
-            weights = np.clip(np.nan_to_num(np.asarray(snr, dtype=float) / self.snr_full_weight, nan=0.0),
-                              0.0, 1.0) * measured
+            ratio = np.asarray(snr, dtype=float) / self.snr_full_weight
+            weights = np.clip(ratio, 0.0, 1.0)
+            # an LED without a noise estimate is not downweighted, only one with a known small SNR is
+            weights[~np.isfinite(ratio)] = 1.0
+            weights = weights * measured
         if weights.sum() < 1.0:
             return np.full(n_layers, np.nan)
 

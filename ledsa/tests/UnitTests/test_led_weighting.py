@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from ledsa.analysis.ExtinctionCoefficients import DEFAULT_SNR_FULL_WEIGHT
 from ledsa.analysis.ExtinctionCoefficientsLinear import ExtinctionCoefficientsLinear
 
 # 4 LEDs over 3 layers: the first three cross one layer each, the fourth crosses all of them
@@ -26,23 +27,37 @@ def make_solver(min_layer_weight=None) -> ExtinctionCoefficientsLinear:
     return solver
 
 
-class TestWhichReferencePropertiesCanBeWeighted:
-    def test_a_property_without_a_noise_column_is_refused(self):
-        experiment = SimpleNamespace(channel=0, path='.', led_array=0)
-        with pytest.raises(ValueError, match=r'snr_full_weight needs a reference property with a noise '
-                                             r'column.*sidebg_sum_col_val has none.*sum_col_val'):
-            ExtinctionCoefficientsLinear(experiment, reference_property='sidebg_sum_col_val',
-                                   snr_full_weight=SNR_FULL_WEIGHT)
+class TestWhenTheWeightingIsUsed:
+    """The weighting is on by default and switched off wherever the data cannot carry it."""
 
-    def test_the_unclipped_sum_brings_its_noise_column(self):
-        experiment = SimpleNamespace(channel=0, path='.', led_array=0)
-        coefficients = ExtinctionCoefficientsLinear(experiment, reference_property='sum_col_val',
-                                              snr_full_weight=SNR_FULL_WEIGHT)
+    @staticmethod
+    def experiment():
+        return SimpleNamespace(channel=0, path='.', led_array=0)
+
+    def test_the_default_weights_the_unclipped_sum_by_its_noise(self):
+        coefficients = ExtinctionCoefficientsLinear(self.experiment(), reference_property='sum_col_val')
+        assert coefficients.snr_full_weight == DEFAULT_SNR_FULL_WEIGHT
         assert coefficients.noise_property == 'noise_sum_col_val'
 
-    def test_without_the_option_no_noise_column_is_needed(self):
-        experiment = SimpleNamespace(channel=0, path='.', led_array=0)
-        assert ExtinctionCoefficientsLinear(experiment, reference_property='sum_col_val').noise_property is None
+    def test_a_property_without_a_noise_column_is_weighted_equally(self, capsys):
+        # the default must not stop an analysis of a property that cannot carry the weighting
+        coefficients = ExtinctionCoefficientsLinear(self.experiment(),
+                                                    reference_property='sidebg_sum_col_val')
+        assert coefficients.noise_property is None
+        assert 'weighted equally' in capsys.readouterr().out
+
+    def test_the_option_can_be_switched_off(self):
+        coefficients = ExtinctionCoefficientsLinear(self.experiment(), reference_property='sum_col_val',
+                                                    snr_full_weight=None)
+        assert coefficients.noise_property is None
+
+    def test_the_header_says_whether_the_weighting_was_used(self):
+        weighted = ExtinctionCoefficientsLinear(self.experiment(), reference_property='sum_col_val')
+        unweighted = ExtinctionCoefficientsLinear(self.experiment(), reference_property='sum_col_val',
+                                                  snr_full_weight=None)
+        assert 'Noise_property: noise_sum_col_val' in str(weighted)
+        assert 'Noise_property: None' in str(unweighted)
+        assert 'Min_layer_weight: None' in str(unweighted)
 
 
 class TestSmoothingVersusAveraging:
@@ -78,10 +93,23 @@ class TestLedWeights:
         np.testing.assert_allclose(solver.calc_coefficients_of_img(first, snr),
                                    solver.calc_coefficients_of_img(second, snr), atol=1e-9)
 
-    def test_a_nan_signal_to_noise_ratio_becomes_weight_zero(self):
+    def test_an_unknown_noise_keeps_the_full_weight(self):
+        # a missing noise estimate is no reason to drop a measured intensity; only a known small SNR is
         solver = make_solver()
         snr = np.array([np.nan, 5 * SNR_FULL_WEIGHT, 5 * SNR_FULL_WEIGHT, 5 * SNR_FULL_WEIGHT])
-        assert np.isfinite(solver.calc_coefficients_of_img(REL_INTENSITIES, snr)).all()
+        np.testing.assert_allclose(solver.calc_coefficients_of_img(REL_INTENSITIES, snr),
+                                   solver.calc_coefficients_of_img(REL_INTENSITIES), atol=1e-9)
+
+    def test_an_led_with_a_known_small_ratio_is_downweighted(self):
+        solver = make_solver()
+        weak = np.array([0.1 * SNR_FULL_WEIGHT] + [5 * SNR_FULL_WEIGHT] * 3)
+        corrupted = REL_INTENSITIES.copy()
+        corrupted[0] = 0.5
+        # the corrupted LED moves the result less than it would with the full weight
+        weighted = solver.calc_coefficients_of_img(corrupted, weak)
+        unweighted = solver.calc_coefficients_of_img(corrupted)
+        clean = solver.calc_coefficients_of_img(REL_INTENSITIES)
+        assert np.abs(weighted - clean).max() < np.abs(unweighted - clean).max()
 
     def test_too_little_signal_in_the_whole_image_gives_nan(self):
         # the weights add up to less than one LED with full weight, so nothing can be computed
@@ -149,3 +177,50 @@ class TestMovingAverage:
         # three images in the middle, two at the ends: sqrt(n * sigma^2) / n = sigma / sqrt(n)
         np.testing.assert_allclose(noise, [3 / np.sqrt(2), 3 / np.sqrt(3), 3 / np.sqrt(3),
                                            3 / np.sqrt(3), 3 / np.sqrt(2)])
+
+
+class TestTheWeightingFallsBackAtLoadTime:
+    """Data without a usable noise column switch the weighting off instead of stopping the analysis."""
+
+    @pytest.fixture
+    def coefficients_for(self, monkeypatch):
+        import ledsa.analysis.ExtinctionCoefficients as extinction_coefficients
+
+        def build(noise):
+            index = pd.MultiIndex.from_product([[1, 2], [0, 1]], names=['img_id', 'led_id'])
+            data = {'led_array_id': 0, 'sum_col_val': 100.0}
+            if noise is not None:
+                data['noise_sum_col_val'] = noise
+            img_data = pd.DataFrame(data, index=index)
+            monkeypatch.setattr(extinction_coefficients, 'read_hdf', lambda channel, path: img_data)
+            coefficients = ExtinctionCoefficientsLinear.__new__(ExtinctionCoefficientsLinear)
+            coefficients.experiment = SimpleNamespace(channel=0, path='.', led_array=0)
+            coefficients.average_images = False
+            coefficients.reference_property = 'sum_col_val'
+            coefficients.noise_property = 'noise_sum_col_val'
+            coefficients.num_moving_avg_images = 1
+            coefficients.ref_img_ids_of_loaded_data = None
+            coefficients.temperature_correction = None
+            coefficients.temperature_corrected = False
+            return coefficients
+        return build
+
+    def test_a_binary_without_the_noise_column_is_weighted_equally(self, coefficients_for, capsys):
+        coefficients = coefficients_for(None)
+        coefficients.load_img_data()
+        assert coefficients.noise_property is None
+        out = capsys.readouterr().out
+        assert 'weighted equally' in out and 'Run step 3 again' in out
+
+    def test_a_noise_column_of_only_nan_is_weighted_equally(self, coefficients_for, capsys):
+        # JPG and PNG images and sensors without an optical black margin carry no read noise
+        coefficients = coefficients_for(float('nan'))
+        coefficients.load_img_data()
+        assert coefficients.noise_property is None
+        assert 'carry no read noise' in capsys.readouterr().out
+
+    def test_a_usable_noise_column_is_kept(self, coefficients_for):
+        coefficients = coefficients_for(2.0)
+        coefficients.load_img_data()
+        assert coefficients.noise_property == 'noise_sum_col_val'
+        assert 'noise_sum_col_val' in coefficients.calculated_img_data.columns

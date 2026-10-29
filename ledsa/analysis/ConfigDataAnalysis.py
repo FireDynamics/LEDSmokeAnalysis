@@ -3,6 +3,7 @@ from typing import Iterable, List, Optional, Union
 
 from ledsa.analysis.temperature_correction import TEMPERATURE_CORRECTION_CHANNELS
 from ledsa.core.config_file import save_config
+from ledsa.analysis.ExtinctionCoefficients import DEFAULT_SNR_FULL_WEIGHT
 
 DEFAULT_REFERENCE_PROPERTY = 'sum_col_val'
 
@@ -58,7 +59,8 @@ class ConfigDataAnalysis(cp.ConfigParser):
                  reference_property='sum_col_val',
                  average_images=False, n_summarize=2, solver='linear', weighting_preference=-6e-3,
                  weighting_curvature=1e-2,
-                 num_iterations=1000, lambda_reg=1e-3, snr_full_weight=None, min_layer_weight=0.5,
+                 num_iterations=1000, lambda_reg=1e-3, snr_full_weight=DEFAULT_SNR_FULL_WEIGHT,
+                 min_layer_weight=0.5,
                  num_moving_avg_images=1, reduction_files=None):
         """
         :param load_config_file: Determines whether to load the config file on initialization. Defaults to True.
@@ -101,9 +103,10 @@ class ConfigDataAnalysis(cp.ConfigParser):
         :param lambda_reg: Regularization parameter for the linear solver. Defaults to 1e-3.
         :type lambda_reg: float
         :param snr_full_weight: Linear solver only: signal-to-noise ratio from which on an LED gets the
-            full weight. Below it the weight falls linearly to zero at a signal of zero. Needs a reference
-            property with a noise column, which only ob_sum_col_val has. None weights all LEDs equally and
-            is the default.
+            full weight. Below it the weight falls linearly to zero at a signal of zero. None weights all
+            LEDs equally. The weighting needs a reference property with a noise column, which only
+            sum_col_val has, and noise values in the data; where either is missing it is switched off with
+            a note.
         :type snr_full_weight: float or None
         :param min_layer_weight: Linear solver with snr_full_weight only: a layer whose path length
             weighted mean LED weight stays below this value is set to NaN. Defaults to 0.5.
@@ -147,7 +150,8 @@ class ConfigDataAnalysis(cp.ConfigParser):
             self.set('DEFAULT', '   # Options for linear solver (ignored when nonlinear solver is used) ')
             self['DEFAULT']['   lambda_reg'] = str(lambda_reg)
             self.set('DEFAULT', '   # SNR from which on an LED gets the full weight, None for equal weights.')
-            self.set('DEFAULT', '   # Needs a reference property with a noise column (ob_sum_col_val).')
+            self.set('DEFAULT', '   # Needs a reference property with a noise column (sum_col_val) and')
+            self.set('DEFAULT', '   # noise values in the data, otherwise the LEDs are weighted equally.')
             self['DEFAULT']['   snr_full_weight'] = str(snr_full_weight)
             self.set('DEFAULT', '   # Layers whose mean LED weight stays below this value become NaN')
             self['DEFAULT']['   min_layer_weight'] = str(min_layer_weight)
