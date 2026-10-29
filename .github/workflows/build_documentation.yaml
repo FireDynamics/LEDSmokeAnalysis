@@ -1,10 +1,15 @@
 # GitHub Actions workflow to build and deploy Sphinx documentation to GitHub Pages
 name: Docs
 
-# Trigger the workflow on pushes, pull requests, or manual dispatch events
+# Trigger the workflow on pushes, pull requests, or manual dispatch events,
+# except when only README.md changes (the docs do not include it)
 on:
   push:              # 1. Rebuild docs on every push to any branch
+    paths-ignore:
+      - 'README.md'
   pull_request:      # 2. Also run on every pull request
+    paths-ignore:
+      - 'README.md'
   workflow_dispatch: # 3. Allow manual triggers from the GitHub UI
 
 permissions:
