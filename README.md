@@ -2,8 +2,9 @@
 
 LEDSA (LEDSmokeAnalysis) is a Python-based software package for the computation of spatially and temporally resolved light extinction coefficients from photometric measurements. The method relies on capturing the change in intensity of individual light sources due to fire-induced smoke. Images can be acquired within laboratory experiments using commercially available digital cameras.
 
+[![PyPI](https://img.shields.io/pypi/v/ledsa)](https://pypi.org/project/ledsa/)
 [![Documentation](https://github.com/FireDynamics/LEDSmokeAnalysis/actions/workflows/build_documentation.yaml/badge.svg)](https://github.com/FireDynamics/LEDSmokeAnalysis/actions/workflows/build_documentation.yaml)
-[![PyPI](https://github.com/FireDynamics/LEDSmokeAnalysis/actions/workflows/publish_pypi.yml/badge.svg)](https://github.com/FireDynamics/LEDSmokeAnalysis/actions/workflows/python-publish.yml)
+[![Upload Python Package](https://github.com/FireDynamics/LEDSmokeAnalysis/actions/workflows/python-publish.yml/badge.svg)](https://github.com/FireDynamics/LEDSmokeAnalysis/actions/workflows/python-publish.yml)
 
 ## Installation
 
