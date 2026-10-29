@@ -537,10 +537,7 @@ def average_all_fitpar(channel, n_summarize: int = NUM_IMGS_PER_AVERAGE,
         avg_dataset.set_index(['img_id', 'led_id'], inplace=True)
         avg_dataset_list.append(avg_dataset)
     all_fitpar = pd.concat(avg_dataset_list)
-    all_fitpar[["led_array_id", "sum_col_val"]] = all_fitpar[["led_array_id", "sum_col_val"]].astype(int)
-    # sum_col_val_cc is only present in binaries of versions that wrote a colour corrected intensity
-    if "sum_col_val_cc" in all_fitpar.columns:
-        all_fitpar["sum_col_val_cc"] = all_fitpar["sum_col_val_cc"].astype(int)
+    all_fitpar["led_array_id"] = all_fitpar["led_array_id"].astype(int)
     all_fitpar.reset_index(inplace=True)
     out_file_path = get_binary_file_path(channel, path=path, averaged=True)
     if os.path.exists(out_file_path):
@@ -670,8 +667,8 @@ def create_binary_data(channel: int, path: str = '.') -> None:
         fit_params['img_id'] = fit_params['img_id'].astype(int)
         fit_params['led_id'] = fit_params['led_id'].astype(int)
         fit_params['led_array_id'] = fit_params['led_array_id'].astype(int)
-        fit_params['max_col_val'] = fit_params['max_col_val'].astype(int)
-        fit_params['sum_col_val'] = fit_params['sum_col_val'].astype(int)
+        # max_col_val and sum_col_val stay float: the black level is a fraction of a count and the
+        # values are negative where an LED is darker than the black level of the sensor
         out_file_path = get_binary_file_path(channel)
         if os.path.exists(out_file_path):
             # The binary data are derived from the step 3 files, so they are rewritten from scratch.
@@ -688,6 +685,7 @@ def create_binary_data(channel: int, path: str = '.') -> None:
 BASE_COLUMNS = ["img_id", "led_id", "led_array_id", "sum_col_val", "mean_col_val", "max_col_val"]
 BGSUB_COLUMNS = ["bgsub_sum_col_val"]
 SIDEBG_COLUMNS = ["sidebg_sum_col_val", "sidebg_pedestal", "bgsub2_sum_col_val"]
+NOISE_SUM_COLUMNS = ["noise_sum_col_val"]
 LED_CENTER_COLUMNS = ["led_center_x", "led_center_y"]
 FIT_COLUMNS = ["x", "y", "dx", "dy", "A", "alpha", "wx", "wy", "fit_success", "fit_fun", "fit_nfev", "fit_time"]
 
@@ -699,8 +697,17 @@ COLUMN_LAYOUTS = {
     len(BASE_COLUMNS + BGSUB_COLUMNS + LED_CENTER_COLUMNS + FIT_COLUMNS):
         BASE_COLUMNS + BGSUB_COLUMNS + LED_CENTER_COLUMNS + FIT_COLUMNS,  # -s3 with fit, before the side band pedestal
     len(BASE_COLUMNS + BGSUB_COLUMNS + SIDEBG_COLUMNS + LED_CENTER_COLUMNS + FIT_COLUMNS):
-        BASE_COLUMNS + BGSUB_COLUMNS + SIDEBG_COLUMNS + LED_CENTER_COLUMNS + FIT_COLUMNS,  # -s3 with fit
+        BASE_COLUMNS + BGSUB_COLUMNS + SIDEBG_COLUMNS + LED_CENTER_COLUMNS + FIT_COLUMNS,
+        # -s3 with fit, before the optical black
+    len(BASE_COLUMNS + BGSUB_COLUMNS + SIDEBG_COLUMNS + NOISE_SUM_COLUMNS):
+        BASE_COLUMNS + BGSUB_COLUMNS + SIDEBG_COLUMNS + NOISE_SUM_COLUMNS,  # -s3_fast
+    len(BASE_COLUMNS + BGSUB_COLUMNS + SIDEBG_COLUMNS + NOISE_SUM_COLUMNS + LED_CENTER_COLUMNS
+        + FIT_COLUMNS):
+        BASE_COLUMNS + BGSUB_COLUMNS + SIDEBG_COLUMNS + NOISE_SUM_COLUMNS + LED_CENTER_COLUMNS
+        + FIT_COLUMNS,  # -s3 with fit
 }
+# noise column of a reference property, used to weight the LEDs in the linear solver
+NOISE_COLUMNS = {"sum_col_val": "noise_sum_col_val"}
 # Fitted files written before the delimiter between the main and the fit part was added: max_col_value and
 # led_center_x are glued into one field, so the file has one column less and the names are shifted from there on.
 LEGACY_FIT_COLUMNS = BASE_COLUMNS + LED_CENTER_COLUMNS + FIT_COLUMNS[:-1]

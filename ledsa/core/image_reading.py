@@ -1,6 +1,6 @@
 import os
 from datetime import datetime, timedelta
-from typing import Callable, Optional, Tuple
+from typing import Callable, NamedTuple, Optional, Tuple
 
 import exiv2
 import numpy as np
@@ -72,15 +72,20 @@ def read_channel_data_from_img(filename: str, channel: int, rotation: str = AUTO
     return _read_or_raise(filename, reader, channel, orientation)
 
 
-def read_channel_data_and_mask_from_img(filename: str, channel: int,
-                                        rotation: str = AUTO_ROTATION) -> Tuple[np.ndarray, np.ndarray]:
+def read_channel_data_mask_and_noise_from_img(
+        filename: str, channel: int,
+        rotation: str = AUTO_ROTATION) -> Tuple[np.ndarray, np.ndarray, Optional[np.ndarray]]:
     """
     Returns the same 2D channel array as read_channel_data_from_img together with a boolean mask of the
-    pixels that belong to the selected color channel.
+    pixels that belong to the selected color channel and, for RAW images with an optical black margin, the
+    read noise of every pixel.
 
     For RAW files the mask is taken from the Bayer filter pattern (raw_colors_visible) and not from the pixel
     values, because pixels of the selected channel can be 0 as well (noise clipped at 0 after the black level
     subtraction). For JPG/PNG files every pixel belongs to the channel.
+
+    The noise carries 0 outside the channel, like the channel array itself, so that a sum over a search
+    area and the noise of that sum need the mask no further.
 
     :param filename: The path of the image file to read.
     :type filename: str
@@ -89,19 +94,23 @@ def read_channel_data_and_mask_from_img(filename: str, channel: int,
     :param rotation: Degrees the stored array is turned clockwise to be upright, 'auto' to take the rotation
                      from the metadata of the image.
     :type rotation: str or int
-    :return: The channel array and the boolean channel mask of the same shape.
-    :rtype: tuple[np.ndarray, np.ndarray]
+    :return: The channel array, the boolean channel mask and the read noise of every pixel, all of the
+        same shape. The noise is None for JPG and PNG images and for sensors without an optical black
+        margin.
+    :rtype: tuple[np.ndarray, np.ndarray, np.ndarray or None]
     :raises CorruptedImageError: If the image cannot be read or has an unsupported file extension.
     :raises ValueError: If rotation is neither 'auto' nor one of 0, 90, 180 and 270.
     """
     def read_img_file(img_filename, img_channel, img_orientation=None):
         channel_array = _read_channel_data_from_img_file(img_filename, img_channel, img_orientation)
-        return channel_array, np.ones(channel_array.shape, dtype=bool)
+        return channel_array, np.ones(channel_array.shape, dtype=bool), None
 
     def read_raw_file(raw_filename, raw_channel, raw_orientation=None):
-        img_array, filter_array = _read_img_array_from_raw_file(raw_filename, raw_channel, raw_orientation)
+        img_array, filter_array, noise = _read_img_array_and_noise_from_raw_file(
+            raw_filename, raw_channel, raw_orientation)
         channel_mask = get_bayer_channel_mask(filter_array, raw_channel)
-        return np.where(channel_mask, img_array, 0), channel_mask
+        return (np.where(channel_mask, img_array, 0), channel_mask,
+                None if noise is None else np.where(channel_mask, noise, 0.0))
 
     orientation = _orientation_from_rotation(rotation)
     reader = _get_reader(filename, read_img_file, read_raw_file)
@@ -248,65 +257,114 @@ def _read_channel_data_from_raw_file(filename: str, channel: int, orientation: O
 MIN_OPTICAL_BLACK_WIDTH = 8
 
 
-def _optical_black_mean(raw) -> Optional[np.ndarray]:
+def _optical_black_statistics(raw) -> Tuple[Optional[np.ndarray], Optional[np.ndarray]]:
     """
-    Mean of the optical black pixels of a RAW image for every color of the Bayer pattern (index as in
-    raw_colors). The optical black pixels are the masked pixels at the left margin of the sensor, which is
-    read out with the image itself.
+    Mean and standard deviation of the optical black pixels of a RAW image for every color of the Bayer
+    pattern (index as in raw_colors). The optical black pixels are the masked pixels at the left margin of
+    the sensor, which is read out with the image itself, so the mean is the black level of this image and
+    the standard deviation is the read noise of a single pixel.
 
     :param raw: The opened RAW image (rawpy).
-    :return: Mean per Bayer color, None if the sensor has no optical black margin of at least
-        MIN_OPTICAL_BLACK_WIDTH pixels.
-    :rtype: np.ndarray or None
+    :return: Mean and standard deviation per Bayer color, (None, None) if the sensor has no optical black
+        margin of at least MIN_OPTICAL_BLACK_WIDTH pixels.
+    :rtype: tuple[np.ndarray or None, np.ndarray or None]
     """
     sizes = raw.sizes
     if sizes.left_margin < MIN_OPTICAL_BLACK_WIDTH:
-        return None
+        return None, None
     rows = np.s_[sizes.top_margin:sizes.top_margin + sizes.height]
     margin = raw.raw_image[rows, :sizes.left_margin].astype(np.float64)
     colors = raw.raw_colors[rows, :sizes.left_margin]
     num_colors = int(raw.raw_colors_visible.max()) + 1
-    return np.array([margin[colors == color].mean() for color in range(num_colors)])
+    per_color = [margin[colors == color] for color in range(num_colors)]
+    return (np.array([values.mean() for values in per_color]),
+            np.array([values.std() for values in per_color]))
 
 
-def _black_level(raw, channel: int) -> float:
+class RawImage(NamedTuple):
+    """What LEDSA reads from a RAW file, in one pass and before the orientation is applied."""
+
+    data: np.ndarray                    # the visible sensor values as they are stored
+    filter_array: np.ndarray            # the Bayer color of every pixel
+    black_levels: np.ndarray            # per Bayer color
+    white_level: float
+    orientation: int                    # the one the camera recorded in its maker notes
+    read_noise: Optional[np.ndarray]    # per Bayer color, None without an optical black margin
+
+    @property
+    def scales(self) -> np.ndarray:
+        """Per Bayer color, the factor that maps the range above its black level onto the full range."""
+        return self.white_level / (self.white_level - self.black_levels)
+
+
+def _read_raw_image(filename: str) -> RawImage:
     """
-    Black level of a color channel, taken from the optical black pixels of the image itself.
+    Read a RAW file once and keep the arrays and the scalars every version of its data is built from.
 
-    The black level of the RAW metadata is a nominal value of the camera model and is used only as a
-    fallback, for sensors without an optical black margin. The two differ by a fraction of a count, and the
-    integration over the search area of an LED turns that difference into a constant offset of its
-    intensity, which does not vanish when the LED dims in smoke. The mean of the optical black pixels also
-    follows the drift of the black level with the sensor temperature.
-
-    :param raw: The opened RAW image (rawpy).
-    :param channel: The color channel to process.
-    :type channel: int
-    :return: Black level of the channel.
-    :rtype: float
+    Every color of the Bayer pattern gets its own black level, from its optical black pixels or, for
+    sensors without an optical black margin, from the RAW metadata. Both sources hold one value per color.
     """
-    optical_black_mean = _optical_black_mean(raw)
-    if optical_black_mean is None:
-        return float(raw.black_level_per_channel[channel])
-    return float(optical_black_mean[channel])
+    with rawpy.imread(filename) as raw:
+        optical_black_mean, read_noise = _optical_black_statistics(raw)
+        black_levels = (np.asarray(raw.black_level_per_channel, dtype=np.float64)
+                        if optical_black_mean is None else optical_black_mean)
+        return RawImage(raw.raw_image_visible.copy(), raw.raw_colors_visible.copy(), black_levels,
+                        float(raw.white_level),
+                        RAW_FLIP_ORIENTATIONS.get(raw.sizes.flip, UPRIGHT_ORIENTATION), read_noise)
+
+
+def _channel_data(raw: RawImage) -> np.ndarray:
+    """
+    The sensor values with the black level of their own Bayer color subtracted and scaled to the white
+    level, with no lower limit.
+
+    Clipping the values at zero would turn the negative half of the read noise into a positive offset of
+    the integrated intensity of every LED. That offset stays while the LED dims in smoke, so it saturates
+    the extinction coefficients in dense smoke, where it was 0.3 to 0.7 % of I0 in the Warsaw tests.
+    Values below the black level therefore stay negative. The array is float because the black level is a
+    fraction of a count, which is the size of the effect.
+    """
+    levels = raw.black_levels.astype(np.float32)[raw.filter_array]
+    scales = raw.scales.astype(np.float32)[raw.filter_array]
+    return (raw.data.astype(np.float32) - levels) * scales
+
+
+def _pixel_read_noise(raw: RawImage) -> Optional[np.ndarray]:
+    """
+    The read noise of every single pixel, taken from the optical black pixels of its own Bayer color and
+    scaled like the data. None for sensors without an optical black margin.
+    """
+    if raw.read_noise is None:
+        return None
+    return (raw.read_noise.astype(np.float32) * raw.scales.astype(np.float32))[raw.filter_array]
 
 
 def _read_img_array_from_raw_file(filename: str, channel: int,
                                   orientation: Optional[int] = None) -> Tuple[np.ndarray, np.ndarray]:
-    # TODO: channel is only relevant for black level, consider individually!
-    with rawpy.imread(filename) as raw:
-        data = raw.raw_image_visible.copy()
-        filter_array = raw.raw_colors_visible
-        black_level = _black_level(raw, channel)
-        white_level = raw.white_level
-        raw_orientation = RAW_FLIP_ORIENTATIONS.get(raw.sizes.flip, UPRIGHT_ORIENTATION)
-    img_array = data.astype(np.int16) - black_level
-    img_array = (img_array * (white_level / (white_level - black_level))).astype(np.int16)
-    img_array = np.clip(img_array, 0, white_level)
+    # channel is kept for the signature of the readers; the black level is taken per Bayer color
+    raw = _read_raw_image(filename)
     if orientation is None:
-        orientation = raw_orientation
+        orientation = raw.orientation
     # The Bayer pattern is turned with the pixels, so the filter array keeps naming the color of every pixel
-    return _apply_orientation(img_array, orientation), _apply_orientation(filter_array, orientation)
+    return (_apply_orientation(_channel_data(raw), orientation),
+            _apply_orientation(raw.filter_array, orientation))
+
+
+def _read_img_array_and_noise_from_raw_file(
+        filename: str, channel: int,
+        orientation: Optional[int] = None) -> Tuple[np.ndarray, np.ndarray, Optional[np.ndarray]]:
+    """
+    As _read_img_array_from_raw_file, plus the read noise of every single pixel. The file is read once for
+    both.
+    """
+    raw = _read_raw_image(filename)
+    if orientation is None:
+        orientation = raw.orientation
+    noise = _pixel_read_noise(raw)
+    return (_apply_orientation(_channel_data(raw), orientation),
+            _apply_orientation(raw.filter_array, orientation),
+            None if noise is None else _apply_orientation(noise, orientation))
+
 
 def _read_img_array_from_img_file(filename: str, orientation: Optional[int] = None) -> np.ndarray:
     img_array = plt.imread(filename)
