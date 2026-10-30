@@ -101,20 +101,64 @@ def read_channel_data_mask_and_noise_from_img(
     :raises CorruptedImageError: If the image cannot be read or has an unsupported file extension.
     :raises ValueError: If rotation is neither 'auto' nor one of 0, 90, 180 and 270.
     """
-    def read_img_file(img_filename, img_channel, img_orientation=None):
-        channel_array = _read_channel_data_from_img_file(img_filename, img_channel, img_orientation)
-        return channel_array, np.ones(channel_array.shape, dtype=bool), None
+    return ImageChannels(filename, rotation).channel_data_mask_and_noise(channel)
 
-    def read_raw_file(raw_filename, raw_channel, raw_orientation=None):
-        img_array, filter_array, noise = _read_img_array_and_noise_from_raw_file(
-            raw_filename, raw_channel, raw_orientation)
-        channel_mask = get_bayer_channel_mask(filter_array, raw_channel)
-        return (np.where(channel_mask, img_array, 0), channel_mask,
-                None if noise is None else np.where(channel_mask, noise, 0.0))
 
-    orientation = _orientation_from_rotation(rotation)
-    reader = _get_reader(filename, read_img_file, read_raw_file)
-    return _read_or_raise(filename, reader, channel, orientation)
+class ImageChannels:
+    """
+    An image read once for the analysis of several color channels.
+
+    Decoding a RAW file takes most of the time of reading it, and nothing the decoding yields depends on the
+    channel, because the black level and the read noise are taken per Bayer color. The file is therefore read
+    when the object is created, and channel_data_mask_and_noise builds the arrays of a channel from it. They
+    are built for one channel at a time, so that besides the decoded image only the channel in work is held in
+    memory.
+    """
+
+    def __init__(self, filename: str, rotation: str = AUTO_ROTATION):
+        """
+        :param filename: The path of the image file to read.
+        :type filename: str
+        :param rotation: Degrees the stored array is turned clockwise to be upright, 'auto' to take the rotation
+                         from the metadata of the image.
+        :type rotation: str or int
+        :raises CorruptedImageError: If the image cannot be read or has an unsupported file extension.
+        :raises ValueError: If rotation is neither 'auto' nor one of 0, 90, 180 and 270.
+        """
+        def read_img_file(img_filename, _, img_orientation=None):
+            # every pixel of a JPG or PNG belongs to every channel, and there is no optical black to take the
+            # read noise from
+            return _read_img_array_from_img_file(img_filename, img_orientation), None, None
+
+        self.filename = filename
+        orientation = _orientation_from_rotation(rotation)
+        reader = _get_reader(filename, read_img_file, _read_img_array_and_noise_from_raw_file)
+        # no channel is passed, the read is the same for all of them
+        self._img_array, self._filter_array, self._pixel_noise = _read_or_raise(filename, reader, None,
+                                                                                orientation)
+
+    def channel_data_mask_and_noise(self, channel: int) -> Tuple[np.ndarray, np.ndarray, Optional[np.ndarray]]:
+        """
+        The channel array, the boolean channel mask and the read noise of every pixel of one color channel, as
+        read_channel_data_mask_and_noise_from_img returns them.
+
+        :param channel: The color channel to process.
+        :type channel: int
+        :return: The channel array, the boolean channel mask and the read noise of every pixel, all of the
+            same shape. The noise is None for JPG and PNG images and for sensors without an optical black
+            margin.
+        :rtype: tuple[np.ndarray, np.ndarray, np.ndarray or None]
+        :raises CorruptedImageError: If the image does not have the channel.
+        """
+        try:
+            if self._filter_array is None:
+                channel_array = self._img_array[:, :, channel]
+                return channel_array, np.ones(channel_array.shape, dtype=bool), None
+            channel_mask = get_bayer_channel_mask(self._filter_array, channel)
+            return (np.where(channel_mask, self._img_array, 0), channel_mask,
+                    None if self._pixel_noise is None else np.where(channel_mask, self._pixel_noise, 0.0))
+        except Exception as error:
+            raise CorruptedImageError(self.filename, error) from error
 
 
 def get_bayer_channel_mask(filter_array: np.ndarray, channel: int) -> np.ndarray:
