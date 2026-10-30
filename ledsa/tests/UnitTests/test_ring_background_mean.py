@@ -1,11 +1,22 @@
 import numpy as np
 import pytest
 
-from ledsa.data_extraction.step_3_functions import (_estimate_local_background, _estimate_local_background_mean,
-                                                    _generate_led_analysis_data)
+from ledsa.data_extraction.step_3_functions import _estimate_ring_backgrounds, _generate_led_analysis_data
 
 SEARCH_AREA_RADIUS = 8
 CENTER = (40, 40)
+
+
+def ring_median(search_area, channel_mask=None):
+    """The median of the border ring of a single search area."""
+    medians, _ = _estimate_ring_backgrounds(search_area[None], None if channel_mask is None else channel_mask[None])
+    return medians[0]
+
+
+def ring_mean(search_area, channel_mask=None):
+    """The mean of the border ring of a single search area."""
+    _, means = _estimate_ring_backgrounds(search_area[None], None if channel_mask is None else channel_mask[None])
+    return means[0]
 
 
 def make_image(transmission=1.0, pedestal=0.0, noise_sigma=0.0, clip=False, bayer_mask=False, seed=0,
@@ -34,24 +45,41 @@ def box(array):
 
 class TestRingBackgroundMean:
     def test_constant_image(self):
-        assert _estimate_local_background_mean(np.full((16, 16), 7.5)) == pytest.approx(7.5)
+        assert ring_mean(np.full((16, 16), 7.5)) == pytest.approx(7.5)
 
     def test_foreign_channel_pixels_are_excluded_by_mask(self):
         img, mask = make_image(pedestal=7.5, bayer_mask=True, amplitude=0.0)
-        assert _estimate_local_background_mean(box(img), box(mask)) == pytest.approx(7.5)
+        assert ring_mean(box(img), box(mask)) == pytest.approx(7.5)
 
     def test_channel_pixels_with_value_zero_are_included(self):
         data = np.full((16, 16), 4.0)
         data[::2, :] = 0.0  # channel pixels clipped at 0
         ring = np.ones((16, 16), dtype=bool)
         ring[2:-2, 2:-2] = False
-        assert _estimate_local_background_mean(data) == pytest.approx(data[ring].mean())
+        assert ring_mean(data) == pytest.approx(data[ring].mean())
         # both estimators keep the zeros now; only the Bayer mask decides which pixels count
-        assert _estimate_local_background(data) == pytest.approx(data[ring].mean())
+        assert ring_median(data) == pytest.approx(data[ring].mean())
 
     def test_too_small_or_empty_gives_nan(self):
-        assert np.isnan(_estimate_local_background_mean(np.ones((4, 4))))
-        assert np.isnan(_estimate_local_background_mean(np.ones((16, 16)), np.zeros((16, 16), dtype=bool)))
+        assert np.isnan(ring_mean(np.ones((4, 4))))
+        assert np.isnan(ring_mean(np.ones((16, 16)), np.zeros((16, 16), dtype=bool)))
+
+
+class TestRingBackgroundsOfAStack:
+    def test_search_areas_with_different_numbers_of_ring_pixels(self):
+        rng = np.random.default_rng(2)
+        boxes = rng.normal(5.0, 2.0, (6, 12, 12)).astype(np.float32)
+        masks = rng.random(boxes.shape) < 0.5
+        masks[4] = False  # no channel pixel at all
+        ring = np.ones((12, 12), dtype=bool)
+        ring[2:-2, 2:-2] = False
+        medians, means = _estimate_ring_backgrounds(boxes, masks)
+        for search_area, mask, median, mean in zip(boxes, masks, medians, means):
+            ring_pixels = search_area[ring & mask]
+            assert median == (np.median(ring_pixels) if ring_pixels.size else 0.0)
+            assert mean == pytest.approx(np.mean(ring_pixels, dtype=np.float64) if ring_pixels.size else np.nan,
+                                         nan_ok=True)
+        assert medians[4] == 0.0 and np.isnan(means[4])
 
 
 class TestBgsub2Sum:
@@ -60,7 +88,7 @@ class TestBgsub2Sum:
         img, mask = make_image(pedestal=3.0, noise_sigma=2.0, clip=True, bayer_mask=bayer_mask)
         led_data = analyse(img, mask)
         num_channel_pixels = np.count_nonzero(box(mask))
-        expected = box(img).sum() - num_channel_pixels * _estimate_local_background_mean(box(img), box(mask))
+        expected = box(img).sum() - num_channel_pixels * ring_mean(box(img), box(mask))
         assert led_data.bgsub2_sum_color_value == pytest.approx(expected)
 
     def _box_sum_below_zero(self):
@@ -69,8 +97,7 @@ class TestBgsub2Sum:
         row, col = CENTER[0] - SEARCH_AREA_RADIUS + 1, CENTER[1] - SEARCH_AREA_RADIUS + 1
         img[row - 1:row + 2, col - 1:col + 2] = 1000.0
         num_channel_pixels = np.count_nonzero(box(mask))
-        corrected = box(img).sum() - num_channel_pixels * _estimate_local_background_mean(box(img),
-                                                                                           box(mask))
+        corrected = box(img).sum() - num_channel_pixels * ring_mean(box(img), box(mask))
         assert corrected < 0
         return img, mask, corrected
 

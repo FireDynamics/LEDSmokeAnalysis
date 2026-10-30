@@ -169,14 +169,40 @@ def estimate_sideband_background(data: np.ndarray, channel_mask: Optional[np.nda
     :return: Mean pedestal per channel pixel, NaN if the side bands contain no channel pixel.
     :rtype: float
     """
-    if sideband_pixels is None or sideband_pixels[0].size == 0:
+    if sideband_pixels is None:
         return np.nan
     values = data[sideband_pixels]
-    if channel_mask is not None:
-        values = values[channel_mask[sideband_pixels]]
-    if values.size == 0:
-        return np.nan
-    return float(np.mean(values, dtype=np.float64))
+    in_channel = np.ones(values.shape, dtype=bool) if channel_mask is None else channel_mask[sideband_pixels]
+    return float(estimate_sideband_backgrounds(values, in_channel, [values.size])[0])
+
+
+def estimate_sideband_backgrounds(values: np.ndarray, channel_mask: np.ndarray,
+                                  num_pixels: Sequence[int]) -> np.ndarray:
+    """
+    estimate_sideband_background for many LEDs at once, from the side band pixels of all of them.
+
+    :param values: Channel values of the side band pixels of all LEDs, the pixels of one LED after those of the
+        previous one.
+    :type values: np.ndarray
+    :param channel_mask: Whether each of these pixels belongs to the channel.
+    :type channel_mask: np.ndarray
+    :param num_pixels: Number of side band pixels of every LED.
+    :type num_pixels: Sequence[int]
+    :return: Mean pedestal per channel pixel of every LED, NaN for an LED whose side bands contain no channel pixel.
+    :rtype: np.ndarray
+    """
+    num_pixels = np.asarray(num_pixels, dtype=np.intp)
+    backgrounds = np.full(num_pixels.size, np.nan)
+    # reduceat cannot sum an empty segment, and the segments left are contiguous without the empty ones
+    has_pixels = num_pixels > 0
+    if not has_pixels.any():
+        return backgrounds
+    starts = (np.cumsum(num_pixels) - num_pixels)[has_pixels]
+    sums = np.add.reduceat(np.where(channel_mask, values, 0), starts, dtype=np.float64)
+    counts = np.add.reduceat(channel_mask, starts, dtype=np.intp)
+    with np.errstate(invalid='ignore'):
+        backgrounds[has_pixels] = sums / counts  # 0 / 0 is NaN
+    return backgrounds
 
 
 def subtract_pedestal(sum_color_value: float, pedestal: float, floor: float = DEFAULT_BACKGROUND_FLOOR) -> float:
