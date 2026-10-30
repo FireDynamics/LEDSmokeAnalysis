@@ -279,12 +279,20 @@ class DataExtractor:
         :rtype: Optional[CorruptedImageError]
         """
         img_id = ledsa.core.image_handling.get_img_id(img_filename)
+        in_file_path = os.path.join(self.config['DEFAULT']['img_directory'], img_filename)
+        try:
+            # read once for all channels, decoding a RAW file takes most of the time of reading it
+            img_channels = ledsa.core.image_reading.ImageChannels(in_file_path,
+                                                                  rotation=self.config.get('DEFAULT', 'img_rotation'))
+        except CorruptedImageError as error:
+            return error
         for channel in self.channels:
             try:
                 img_data = ledsa.data_extraction.step_3_functions.generate_analysis_data(img_filename, channel,
                                                                                          self.search_areas,
                                                                                          self.line_indices,
-                                                                                         self.config, self.fit_leds)
+                                                                                         self.config, self.fit_leds,
+                                                                                         img_channels=img_channels)
             except CorruptedImageError as error:
                 return error
             ledsa.data_extraction.step_3_functions.create_fit_result_file(img_data, img_id, channel)
