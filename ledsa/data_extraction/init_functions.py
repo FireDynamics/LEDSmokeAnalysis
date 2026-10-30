@@ -127,10 +127,10 @@ def _calc_experiment_and_real_time(build_type: str, config: ConfigData, tag: str
                             config['DEFAULT']['img_name_string'].format(int(img_number)))
     date_time_img = get_exif_datetime(img_path, tag)
 
-    experiment_time = date_time_img - config.get_datetime()
-    experiment_time = experiment_time.total_seconds()
     time_diff = config.getfloat(build_type, 'exif_time_infront_real_time')
     time = date_time_img - timedelta(seconds=time_diff)
+    # start_time is on the real clock, so the experiment time is measured from the corrected image time
+    experiment_time = (time - config.get_datetime()).total_seconds()
     return experiment_time, time
 
 
