@@ -1,12 +1,18 @@
 import numpy as np
 import pytest
 
-from ledsa.data_extraction.step_3_functions import _estimate_local_background, _generate_led_analysis_data
+from ledsa.data_extraction.step_3_functions import _estimate_ring_backgrounds, _generate_led_analysis_data
 
 SEARCH_AREA_RADIUS = 10
 LED_CENTER = (30, 30)
 LED_AMPLITUDE = 200.0
 LED_SIGMA = 2.0
+
+
+def ring_median(search_area, channel_mask=None):
+    """The median of the border ring of a single search area."""
+    medians, _ = _estimate_ring_backgrounds(search_area[None], None if channel_mask is None else channel_mask[None])
+    return medians[0]
 
 
 def make_synthetic_image(background=0.0, bayer_mask=False):
@@ -43,10 +49,10 @@ def extract_led_data(img, channel_mask=None):
                                        SEARCH_AREA_RADIUS, fit_leds=False, channel_mask=channel_mask)
 
 
-class TestEstimateLocalBackground:
+class TestRingMedian:
     def test_constant_image_returns_background(self):
         img = np.full((20, 20), 7.5)
-        assert _estimate_local_background(img) == pytest.approx(7.5)
+        assert ring_median(img) == pytest.approx(7.5)
 
     def test_foreign_pixels_are_excluded_by_the_mask_and_not_by_their_value(self):
         # the data are no longer clipped at zero, so a channel pixel may be 0 or negative and only the
@@ -55,21 +61,21 @@ class TestEstimateLocalBackground:
         channel_mask = np.zeros(img.shape, dtype=bool)
         channel_mask[::2, ::2] = True
         img[~channel_mask] = 0.0
-        assert _estimate_local_background(img, channel_mask) == pytest.approx(7.5)
-        assert _estimate_local_background(img) == pytest.approx(0.0)  # without the mask they all count
+        assert ring_median(img, channel_mask) == pytest.approx(7.5)
+        assert ring_median(img) == pytest.approx(0.0)  # without the mask they all count
 
     def test_channel_pixels_at_or_below_zero_are_kept(self):
         img = np.full((20, 20), -1.5)
-        assert _estimate_local_background(img) == pytest.approx(-1.5)
+        assert ring_median(img) == pytest.approx(-1.5)
 
     def test_all_zero_border_returns_zero(self):
         img = np.zeros((20, 20))
         img[10, 10] = 100.0
-        assert _estimate_local_background(img) == 0.0
+        assert ring_median(img) == 0.0
 
     def test_too_small_search_area_returns_zero(self):
         img = np.full((4, 4), 7.5)
-        assert _estimate_local_background(img) == 0.0
+        assert ring_median(img) == 0.0
 
 
 class TestBackgroundSubtractedSum:

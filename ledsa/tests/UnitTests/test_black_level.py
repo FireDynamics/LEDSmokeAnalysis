@@ -4,9 +4,8 @@ import numpy as np
 import pytest
 
 import ledsa.core.image_reading as image_reading
-from ledsa.core.image_reading import (MIN_OPTICAL_BLACK_WIDTH, UPRIGHT_ORIENTATION, _channel_data,
-                                      _optical_black_statistics, _pixel_read_noise,
-                                      _read_img_array_and_noise_from_raw_file, _read_raw_image)
+from ledsa.core.image_reading import (MIN_OPTICAL_BLACK_WIDTH, ImageChannels, _channel_data,
+                                      _optical_black_statistics, _pixel_read_noise, _read_raw_image)
 
 # RGGB pattern as in rawpy raw_colors: 0 red, 1 and 3 green, 2 blue
 BAYER_TILE = np.array([[0, 1], [3, 2]])
@@ -141,16 +140,16 @@ class TestPixelReadNoise:
 class TestTheReaderStepThreeUses:
     def test_the_orientation_reaches_the_data_the_filter_and_the_noise(self, fake_imread):
         fake_imread(make_raw(MIN_OPTICAL_BLACK_WIDTH, noise=4.0, visible=5000.0))
-        upright = _read_img_array_and_noise_from_raw_file('img.CR3', 0, UPRIGHT_ORIENTATION)
-        turned = _read_img_array_and_noise_from_raw_file('img.CR3', 0, 6)
+        upright = ImageChannels('img.CR3', rotation=0).channel_data_mask_and_noise(0)
+        turned = ImageChannels('img.CR3', rotation=90).channel_data_mask_and_noise(0)
         for upright_array, turned_array in zip(upright, turned):
             np.testing.assert_array_equal(turned_array, np.rot90(upright_array, -1))
 
     def test_without_a_margin_only_the_noise_is_missing(self, fake_imread):
         fake_imread(make_raw(MIN_OPTICAL_BLACK_WIDTH - 1, visible=5000.0))
-        data, filter_array, noise = _read_img_array_and_noise_from_raw_file('img.CR3', 0)
+        data, channel_mask, noise = ImageChannels('img.CR3').channel_data_mask_and_noise(0)
         assert noise is None
-        assert data.shape == filter_array.shape and np.isfinite(data).all()
+        assert data.shape == channel_mask.shape and np.isfinite(data).all()
 
 
 class TestSumsOfAnLed:

@@ -2,8 +2,8 @@ import numpy as np
 import pytest
 
 from ledsa.data_extraction.sideband_background import (build_sideband_pixels, estimate_sideband_background,
-                                                       estimate_strip_directions, get_sideband_pixels,
-                                                       subtract_pedestal)
+                                                       estimate_sideband_backgrounds, estimate_strip_directions,
+                                                       get_sideband_pixels, subtract_pedestal)
 import ledsa.core.image_reading as image_reading
 from ledsa.core.image_reading import get_bayer_channel_mask
 from ledsa.data_extraction.step_3_functions import (_generate_led_analysis_data, _get_unmerged_led_arrays,
@@ -159,6 +159,38 @@ class TestSidebandBackground:
         assert np.isnan(estimate_sideband_background(img, None, (np.array([], dtype=int), np.array([], dtype=int))))
         mask = np.zeros((10, 10), dtype=bool)
         assert np.isnan(estimate_sideband_background(img, mask, (np.array([1]), np.array([1]))))
+
+
+class TestSidebandBackgroundsOfManyLeds:
+    def test_every_led_gets_the_mean_of_its_own_channel_pixels(self):
+        # the second and the last LED have no side band pixels, the third none of the channel
+        num_pixels = [5, 0, 3, 4, 0]
+        rng = np.random.default_rng(1)
+        values = rng.normal(10.0, 3.0, sum(num_pixels)).astype(np.float32)
+        mask = rng.random(values.size) < 0.6
+        mask[[0, 8]] = True
+        mask[5:8] = False
+        backgrounds = estimate_sideband_backgrounds(values, mask, num_pixels)
+        starts = np.cumsum(num_pixels) - num_pixels
+        for background, start, num in zip(backgrounds, starts, num_pixels):
+            led_values, led_mask = values[start:start + num], mask[start:start + num]
+            expected = np.mean(led_values[led_mask], dtype=np.float64) if led_mask.any() else np.nan
+            assert background == pytest.approx(expected, nan_ok=True)
+        assert np.isnan(backgrounds[[1, 2, 4]]).all()
+
+    def test_no_side_band_pixels_at_all(self):
+        assert np.isnan(estimate_sideband_backgrounds(np.zeros(0), np.zeros(0, dtype=bool), [0, 0])).all()
+
+    def test_one_led_is_estimate_sideband_background(self):
+        search_areas = make_strip(30.0)
+        img, mask, _ = make_image(search_areas, pedestal=3.0, noise_sigma=1.0, bayer_mask=True)
+        pixels = get_sideband_pixels(search_areas, [search_areas[:, 0]], img.shape, SEARCH_AREA_RADIUS,
+                                     SIDEBAND_DISTANCES)
+        backgrounds = estimate_sideband_backgrounds(np.concatenate([img[led_pixels] for led_pixels in pixels]),
+                                                    np.concatenate([mask[led_pixels] for led_pixels in pixels]),
+                                                    [led_pixels[0].size for led_pixels in pixels])
+        assert backgrounds == pytest.approx([estimate_sideband_background(img, mask, led_pixels)
+                                             for led_pixels in pixels])
 
 
 class TestSidebandSum:

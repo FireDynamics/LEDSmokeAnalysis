@@ -103,6 +103,51 @@ class TestImageChannels:
             ImageChannels('img.xyz')
 
 
+class TestSelectedPixels:
+    @pytest.mark.parametrize('orientation', [image_reading.UPRIGHT_ORIENTATION, SIDEWAYS])
+    def test_raw_pixels_are_those_of_the_whole_image(self, raw_reads, orientation):
+        raw_reads(orientation)
+        img_channels = ImageChannels('img.CR3')
+        pixels = (np.array([0, 3, 1, 1]), np.array([2, 0, 3, 3]))  # in the upright image, one of them twice
+        for channel in CHANNEL_COLORS:
+            for selected, whole in zip(img_channels.channel_data_mask_and_noise(channel, pixels),
+                                       img_channels.channel_data_mask_and_noise(channel)):
+                np.testing.assert_array_equal(selected, whole[pixels])
+
+    def test_png_pixels_are_those_of_the_color_planes(self, tmp_path):
+        path = str(tmp_path / 'img.png')
+        plt.imsave(path, np.random.default_rng(0).random((6, 8, 3)))
+        img_channels = ImageChannels(path)
+        pixels = (np.array([[0, 5], [2, 2]]), np.array([[7, 0], [3, 4]]))  # index arrays of any shape
+        for channel in CHANNEL_COLORS:
+            channel_array, channel_mask, pixel_noise = img_channels.channel_data_mask_and_noise(channel, pixels)
+            np.testing.assert_array_equal(channel_array, img_channels.channel_data_mask_and_noise(channel)[0][pixels])
+            assert channel_mask.shape == channel_array.shape == (2, 2) and channel_mask.all()
+            assert pixel_noise is None
+
+    def test_the_calibration_is_kept_for_the_same_selection_only(self, raw_reads, monkeypatch):
+        raw_reads()
+        calibrated = []
+        channel_data = image_reading._channel_data
+        monkeypatch.setattr(image_reading, '_channel_data',
+                            lambda raw: calibrated.append(raw.data.shape) or channel_data(raw))
+        img_channels = ImageChannels('img.CR3')
+        pixels = (np.array([0, 1]), np.array([2, 3]))
+        for channel in CHANNEL_COLORS:
+            img_channels.channel_data_mask_and_noise(channel, pixels)
+        assert calibrated == [(2,)]
+        # another selection, even of the same pixels, and the whole image are calibrated anew
+        img_channels.channel_data_mask_and_noise(0, (pixels[0].copy(), pixels[1].copy()))
+        img_channels.channel_data_mask_and_noise(0)
+        img_channels.channel_data_mask_and_noise(1)
+        assert calibrated == [(2,), (2,), FILTER_ARRAY.shape]
+
+    def test_shape_is_that_of_the_upright_image(self, raw_reads):
+        raw_reads(SIDEWAYS)
+        assert ImageChannels('img.CR3').shape == FILTER_ARRAY.shape[::-1]
+        assert ImageChannels('img.CR3', rotation=0).shape == FILTER_ARRAY.shape
+
+
 class TestStep3ReadsEveryImageOnce:
     @pytest.fixture
     def extractor(self, tmp_path, monkeypatch):
