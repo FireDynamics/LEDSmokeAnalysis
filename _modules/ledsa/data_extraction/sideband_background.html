@@ -1,0 +1,354 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ledsa.data_extraction.sideband_background &mdash; LEDSmokeAnalysis 0.12.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/tables.css?v=aab0db92" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=61ccb1f1"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            LEDSmokeAnalysis
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">LEDSA:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../description.html">Description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_documentation.html">CLI Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ledsa.html">LEDSA Module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">Demo</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">LEDSmokeAnalysis</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ledsa.data_extraction.sideband_background</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ledsa.data_extraction.sideband_background</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""</span>
+<span class="sd">Pedestal (additive background) of the LED search areas, estimated in side bands next to the LED strips.</span>
+
+<span class="sd">The search area of an LED contains, besides the LED itself, an additive pedestal: stray light, light emitted or</span>
+<span class="sd">scattered by the smoke and noise clipped at 0 after the black level subtraction of raw images. Under dense smoke the</span>
+<span class="sd">LED dims while the pedestal remains, so the plain box sum (sum_col_val) overestimates the transmission. The border</span>
+<span class="sd">ring of the search area (bgsub_sum_col_val) is not suited to measure the pedestal because it lies in the halo of the</span>
+<span class="sd">LED itself. The side bands used here run parallel to the strip, at a distance of typically 25 to 60 px across the</span>
+<span class="sd">strip and over +-R along the strip (R = search_area_radius), so they sample the scene next to the LED but not the LED.</span>
+
+<span class="sd">The strip direction is estimated locally for each LED from its nearest neighbours in the same LED array, so vertical,</span>
+<span class="sd">horizontal and oblique strips are supported. Pixels close to any other search area are excluded from the bands, so</span>
+<span class="sd">neighbouring strips do not enter the estimate.</span>
+
+<span class="sd">The exclusion is purely geometric and does not know the halo of the LEDs, so for strips closer than the outer band</span>
+<span class="sd">distance and for wide halos the light of a neighbouring strip can still reach the bands and raise the estimated</span>
+<span class="sd">pedestal. Most of that light cancels in the ratio to the reference image, because it is LED light and dims with the</span>
+<span class="sd">same transmission as the LED itself; what remains is a bias only if the two strips lie at different depths in the</span>
+<span class="sd">smoke, which is removed by raising sideband_exclusion_margin above the visible halo.</span>
+<span class="sd">"""</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">Tuple</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="n">DEFAULT_SIDEBAND_DISTANCES</span> <span class="o">=</span> <span class="p">(</span><span class="mi">25</span><span class="p">,</span> <span class="mi">60</span><span class="p">)</span>
+<span class="c1"># No lower limit by default. It was introduced because the clipping at zero made the pedestal of a</span>
+<span class="c1"># vanished LED unavoidable, so that the optical depth ran away where the LED disappeared in it. With</span>
+<span class="c1"># unclipped data the limit does the opposite of what is wanted: it fabricates a positive sum exactly</span>
+<span class="c1"># where the signal of the LED has vanished, and the solver then weights it like a measurement instead of</span>
+<span class="c1"># discarding it by its signal-to-noise ratio. A fraction of the plain sum is still accepted for the</span>
+<span class="c1"># behaviour of v0.11.0.</span>
+<span class="n">DEFAULT_BACKGROUND_FLOOR</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="n">NUM_DIRECTION_NEIGHBOURS</span> <span class="o">=</span> <span class="mi">4</span>
+
+<span class="c1"># geometry of the side bands, cached per process because it only depends on the LED positions</span>
+<span class="n">_sideband_cache</span> <span class="o">=</span> <span class="p">{}</span>
+
+
+<div class="viewcode-block" id="estimate_strip_directions">
+<a class="viewcode-back" href="../../../data_extraction.html#ledsa.data_extraction.sideband_background.estimate_strip_directions">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">estimate_strip_directions</span><span class="p">(</span><span class="n">search_areas</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">led_arrays</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]],</span>
+                              <span class="n">num_neighbours</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">NUM_DIRECTION_NEIGHBOURS</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Estimate the local direction of the LED strip at each LED from its nearest neighbours in the same LED array.</span>
+
+<span class="sd">    The direction is the principal axis of the positions of the LED and its num_neighbours nearest neighbours of the</span>
+<span class="sd">    same array. It is oriented such that the row component is positive (or, for horizontal strips, the column</span>
+<span class="sd">    component).</span>
+
+<span class="sd">    :param search_areas: Array with rows (LED id, pixel row, pixel column), the row index equals the LED id.</span>
+<span class="sd">    :type search_areas: np.ndarray</span>
+<span class="sd">    :param led_arrays: LED ids of each LED array.</span>
+<span class="sd">    :type led_arrays: Sequence[Sequence[int]]</span>
+<span class="sd">    :param num_neighbours: Number of neighbours used to estimate the direction.</span>
+<span class="sd">    :type num_neighbours: int</span>
+<span class="sd">    :return: Array of shape (number of LEDs, 2) with the unit vector (row, column) along the strip, NaN for LEDs</span>
+<span class="sd">        that are not part of an array with at least two LEDs.</span>
+<span class="sd">    :rtype: np.ndarray</span>
+<span class="sd">    """</span>
+    <span class="n">directions</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="n">search_areas</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">2</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">led_ids</span> <span class="ow">in</span> <span class="n">led_arrays</span><span class="p">:</span>
+        <span class="n">led_ids</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">atleast_1d</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">led_ids</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">led_ids</span><span class="o">.</span><span class="n">size</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">positions</span> <span class="o">=</span> <span class="n">search_areas</span><span class="p">[</span><span class="n">led_ids</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span><span class="mi">3</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="n">num_points</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">num_neighbours</span><span class="p">,</span> <span class="n">led_ids</span><span class="o">.</span><span class="n">size</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">led_id</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">led_ids</span><span class="p">):</span>
+            <span class="n">distances</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hypot</span><span class="p">(</span><span class="o">*</span><span class="p">(</span><span class="n">positions</span> <span class="o">-</span> <span class="n">positions</span><span class="p">[</span><span class="n">i</span><span class="p">])</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+            <span class="n">nearest</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">distances</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s1">'stable'</span><span class="p">)[:</span><span class="n">num_points</span><span class="p">]</span>
+            <span class="n">points</span> <span class="o">=</span> <span class="n">positions</span><span class="p">[</span><span class="n">nearest</span><span class="p">]</span> <span class="o">-</span> <span class="n">positions</span><span class="p">[</span><span class="n">nearest</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+            <span class="n">direction</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">svd</span><span class="p">(</span><span class="n">points</span><span class="p">,</span> <span class="n">full_matrices</span><span class="o">=</span><span class="kc">False</span><span class="p">)[</span><span class="mi">2</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">direction</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="p">(</span><span class="n">direction</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">direction</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">):</span>
+                <span class="n">direction</span> <span class="o">=</span> <span class="o">-</span><span class="n">direction</span>
+            <span class="n">directions</span><span class="p">[</span><span class="n">led_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">direction</span>
+    <span class="k">return</span> <span class="n">directions</span></div>
+
+
+
+<div class="viewcode-block" id="build_sideband_pixels">
+<a class="viewcode-back" href="../../../data_extraction.html#ledsa.data_extraction.sideband_background.build_sideband_pixels">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">build_sideband_pixels</span><span class="p">(</span><span class="n">search_areas</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">directions</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">img_shape</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span>
+                          <span class="n">search_area_radius</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">distances</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="n">DEFAULT_SIDEBAND_DISTANCES</span><span class="p">,</span>
+                          <span class="n">exclusion_margin</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]]:</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Determine the pixels of the two side bands of each LED.</span>
+
+<span class="sd">    With t the coordinate along the strip and s the coordinate across the strip, both relative to the center of the</span>
+<span class="sd">    search area, a pixel belongs to the side bands if ``-R &lt;= t &lt; R`` and ``lo &lt;= abs(s) &lt; hi`` (with the same</span>
+<span class="sd">    half-open convention as the search area, i.e. ``lo &lt;= s &lt; hi`` or ``-hi &lt;= s &lt; -lo``). For a vertical strip this is</span>
+<span class="sd">    rows r-R..r+R-1 and columns c+lo..c+hi-1 and c-hi..c-lo-1. Pixels outside the image and pixels within</span>
+<span class="sd">    R + exclusion_margin (Chebyshev distance) of the center of any other search area are excluded.</span>
+
+<span class="sd">    :param search_areas: Array with rows (LED id, pixel row, pixel column), the row index equals the LED id.</span>
+<span class="sd">    :type search_areas: np.ndarray</span>
+<span class="sd">    :param directions: Unit vectors along the strip per LED, see estimate_strip_directions.</span>
+<span class="sd">    :type directions: np.ndarray</span>
+<span class="sd">    :param img_shape: Shape of the image.</span>
+<span class="sd">    :type img_shape: tuple[int, int]</span>
+<span class="sd">    :param search_area_radius: Radius R of the search areas.</span>
+<span class="sd">    :type search_area_radius: int</span>
+<span class="sd">    :param distances: Inner and outer distance (lo, hi) of the side bands across the strip in pixels.</span>
+<span class="sd">    :type distances: tuple[float, float]</span>
+<span class="sd">    :param exclusion_margin: Margin added to R for the exclusion of other search areas. Defaults to R.</span>
+<span class="sd">    :type exclusion_margin: int or None</span>
+<span class="sd">    :return: Per LED id a tuple of row and column indices of the side band pixels, None if the strip direction of</span>
+<span class="sd">        the LED is unknown.</span>
+<span class="sd">    :rtype: list[tuple[np.ndarray, np.ndarray] or None]</span>
+<span class="sd">    """</span>
+    <span class="n">radius</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">search_area_radius</span><span class="p">)</span>
+    <span class="n">inner</span><span class="p">,</span> <span class="n">outer</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">distances</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">distances</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="k">if</span> <span class="n">exclusion_margin</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">exclusion_margin</span> <span class="o">=</span> <span class="n">radius</span>
+    <span class="n">exclusion</span> <span class="o">=</span> <span class="n">radius</span> <span class="o">+</span> <span class="nb">int</span><span class="p">(</span><span class="n">exclusion_margin</span><span class="p">)</span>
+    <span class="n">reach</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">hypot</span><span class="p">(</span><span class="n">outer</span><span class="p">,</span> <span class="n">radius</span><span class="p">)))</span> <span class="o">+</span> <span class="mi">1</span>
+    <span class="n">d_row</span><span class="p">,</span> <span class="n">d_col</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mgrid</span><span class="p">[</span><span class="o">-</span><span class="n">reach</span><span class="p">:</span><span class="n">reach</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="n">reach</span><span class="p">:</span><span class="n">reach</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+    <span class="n">centers</span> <span class="o">=</span> <span class="n">search_areas</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">:</span><span class="mi">3</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">)</span>
+    <span class="n">sideband_pixels</span> <span class="o">=</span> <span class="p">[</span><span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">search_areas</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">led_id</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">search_areas</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+        <span class="n">along</span> <span class="o">=</span> <span class="n">directions</span><span class="p">[</span><span class="n">led_id</span><span class="p">]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">along</span><span class="p">)):</span>
+            <span class="k">continue</span>
+        <span class="n">across</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="o">-</span><span class="n">along</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">along</span><span class="p">[</span><span class="mi">0</span><span class="p">]])</span>
+        <span class="c1"># rounding avoids that pixels exactly on a band border flip due to floating point errors</span>
+        <span class="n">t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">d_row</span> <span class="o">*</span> <span class="n">along</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">d_col</span> <span class="o">*</span> <span class="n">along</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mi">6</span><span class="p">)</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">d_row</span> <span class="o">*</span> <span class="n">across</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">d_col</span> <span class="o">*</span> <span class="n">across</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mi">6</span><span class="p">)</span>
+        <span class="n">in_band</span> <span class="o">=</span> <span class="p">(</span><span class="n">t</span> <span class="o">&gt;=</span> <span class="o">-</span><span class="n">radius</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">t</span> <span class="o">&lt;</span> <span class="n">radius</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(((</span><span class="n">s</span> <span class="o">&gt;=</span> <span class="n">inner</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">s</span> <span class="o">&lt;</span> <span class="n">outer</span><span class="p">))</span> <span class="o">|</span> <span class="p">((</span><span class="n">s</span> <span class="o">&gt;=</span> <span class="o">-</span><span class="n">outer</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">s</span> <span class="o">&lt;</span> <span class="o">-</span><span class="n">inner</span><span class="p">)))</span>
+        <span class="n">rows</span> <span class="o">=</span> <span class="n">centers</span><span class="p">[</span><span class="n">led_id</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">d_row</span><span class="p">[</span><span class="n">in_band</span><span class="p">]</span>
+        <span class="n">cols</span> <span class="o">=</span> <span class="n">centers</span><span class="p">[</span><span class="n">led_id</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">d_col</span><span class="p">[</span><span class="n">in_band</span><span class="p">]</span>
+        <span class="n">keep</span> <span class="o">=</span> <span class="p">(</span><span class="n">rows</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">rows</span> <span class="o">&lt;</span> <span class="n">img_shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">cols</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">cols</span> <span class="o">&lt;</span> <span class="n">img_shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">nearby</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">centers</span> <span class="o">-</span> <span class="n">centers</span><span class="p">[</span><span class="n">led_id</span><span class="p">])</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">reach</span> <span class="o">+</span> <span class="n">exclusion</span>
+        <span class="n">nearby</span><span class="p">[</span><span class="n">led_id</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">for</span> <span class="n">row_other</span><span class="p">,</span> <span class="n">col_other</span> <span class="ow">in</span> <span class="n">centers</span><span class="p">[</span><span class="n">nearby</span><span class="p">]:</span>
+            <span class="n">keep</span> <span class="o">&amp;=</span> <span class="o">~</span><span class="p">((</span><span class="n">rows</span> <span class="o">&gt;=</span> <span class="n">row_other</span> <span class="o">-</span> <span class="n">exclusion</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">rows</span> <span class="o">&lt;</span> <span class="n">row_other</span> <span class="o">+</span> <span class="n">exclusion</span><span class="p">)</span> <span class="o">&amp;</span>
+                      <span class="p">(</span><span class="n">cols</span> <span class="o">&gt;=</span> <span class="n">col_other</span> <span class="o">-</span> <span class="n">exclusion</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">cols</span> <span class="o">&lt;</span> <span class="n">col_other</span> <span class="o">+</span> <span class="n">exclusion</span><span class="p">))</span>
+        <span class="n">sideband_pixels</span><span class="p">[</span><span class="n">led_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">rows</span><span class="p">[</span><span class="n">keep</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span><span class="p">),</span> <span class="n">cols</span><span class="p">[</span><span class="n">keep</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">sideband_pixels</span></div>
+
+
+
+<div class="viewcode-block" id="get_sideband_pixels">
+<a class="viewcode-back" href="../../../data_extraction.html#ledsa.data_extraction.sideband_background.get_sideband_pixels">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_sideband_pixels</span><span class="p">(</span><span class="n">search_areas</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">led_arrays</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]],</span> <span class="n">img_shape</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span>
+                        <span class="n">search_area_radius</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">distances</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="n">DEFAULT_SIDEBAND_DISTANCES</span><span class="p">,</span>
+                        <span class="n">exclusion_margin</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]]:</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Cached combination of estimate_strip_directions and build_sideband_pixels. The geometry only depends on the</span>
+<span class="sd">    LED positions and is therefore computed once per process and reused for all images.</span>
+
+<span class="sd">    :return: See build_sideband_pixels.</span>
+<span class="sd">    """</span>
+    <span class="n">key</span> <span class="o">=</span> <span class="p">(</span><span class="n">search_areas</span><span class="o">.</span><span class="n">tobytes</span><span class="p">(),</span> <span class="n">search_areas</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span>
+           <span class="nb">tuple</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">atleast_1d</span><span class="p">(</span><span class="n">led_ids</span><span class="p">))</span> <span class="k">for</span> <span class="n">led_ids</span> <span class="ow">in</span> <span class="n">led_arrays</span><span class="p">),</span>
+           <span class="nb">tuple</span><span class="p">(</span><span class="n">img_shape</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">search_area_radius</span><span class="p">),</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">distances</span><span class="p">),</span> <span class="n">exclusion_margin</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_sideband_cache</span><span class="p">:</span>
+        <span class="n">_sideband_cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="n">directions</span> <span class="o">=</span> <span class="n">estimate_strip_directions</span><span class="p">(</span><span class="n">search_areas</span><span class="p">,</span> <span class="n">led_arrays</span><span class="p">)</span>
+        <span class="n">_sideband_cache</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">build_sideband_pixels</span><span class="p">(</span><span class="n">search_areas</span><span class="p">,</span> <span class="n">directions</span><span class="p">,</span> <span class="n">img_shape</span><span class="p">,</span> <span class="n">search_area_radius</span><span class="p">,</span>
+                                                     <span class="n">distances</span><span class="p">,</span> <span class="n">exclusion_margin</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">_sideband_cache</span><span class="p">[</span><span class="n">key</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="estimate_sideband_background">
+<a class="viewcode-back" href="../../../data_extraction.html#ledsa.data_extraction.sideband_background.estimate_sideband_background">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">estimate_sideband_background</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">channel_mask</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
+                                 <span class="n">sideband_pixels</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Estimate the pedestal per channel pixel as the mean over the channel pixels in the side bands.</span>
+
+<span class="sd">    Pixels of the channel with value 0 are included: the black level subtraction clips noise at 0 and the box sum</span>
+<span class="sd">    contains these clipped pixels in the same way, so the mean is the matching estimator for the pedestal in the box.</span>
+<span class="sd">    Foreign Bayer channels are excluded via the channel mask, not via the pixel value.</span>
+
+<span class="sd">    :param data: Channel array of the image.</span>
+<span class="sd">    :type data: np.ndarray</span>
+<span class="sd">    :param channel_mask: Boolean mask of the channel pixels, None if all pixels belong to the channel.</span>
+<span class="sd">    :type channel_mask: np.ndarray or None</span>
+<span class="sd">    :param sideband_pixels: Row and column indices of the side band pixels of the LED.</span>
+<span class="sd">    :type sideband_pixels: tuple[np.ndarray, np.ndarray] or None</span>
+<span class="sd">    :return: Mean pedestal per channel pixel, NaN if the side bands contain no channel pixel.</span>
+<span class="sd">    :rtype: float</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">sideband_pixels</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+    <span class="n">values</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">sideband_pixels</span><span class="p">]</span>
+    <span class="n">in_channel</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">values</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span> <span class="k">if</span> <span class="n">channel_mask</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">channel_mask</span><span class="p">[</span><span class="n">sideband_pixels</span><span class="p">]</span>
+    <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">estimate_sideband_backgrounds</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">in_channel</span><span class="p">,</span> <span class="p">[</span><span class="n">values</span><span class="o">.</span><span class="n">size</span><span class="p">])[</span><span class="mi">0</span><span class="p">])</span></div>
+
+
+
+<div class="viewcode-block" id="estimate_sideband_backgrounds">
+<a class="viewcode-back" href="../../../data_extraction.html#ledsa.data_extraction.sideband_background.estimate_sideband_backgrounds">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">estimate_sideband_backgrounds</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">channel_mask</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+                                  <span class="n">num_pixels</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    estimate_sideband_background for many LEDs at once, from the side band pixels of all of them.</span>
+
+<span class="sd">    :param values: Channel values of the side band pixels of all LEDs, the pixels of one LED after those of the</span>
+<span class="sd">        previous one.</span>
+<span class="sd">    :type values: np.ndarray</span>
+<span class="sd">    :param channel_mask: Whether each of these pixels belongs to the channel.</span>
+<span class="sd">    :type channel_mask: np.ndarray</span>
+<span class="sd">    :param num_pixels: Number of side band pixels of every LED.</span>
+<span class="sd">    :type num_pixels: Sequence[int]</span>
+<span class="sd">    :return: Mean pedestal per channel pixel of every LED, NaN for an LED whose side bands contain no channel pixel.</span>
+<span class="sd">    :rtype: np.ndarray</span>
+<span class="sd">    """</span>
+    <span class="n">num_pixels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">num_pixels</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span><span class="p">)</span>
+    <span class="n">backgrounds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">num_pixels</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+    <span class="c1"># reduceat cannot sum an empty segment, and the segments left are contiguous without the empty ones</span>
+    <span class="n">has_pixels</span> <span class="o">=</span> <span class="n">num_pixels</span> <span class="o">&gt;</span> <span class="mi">0</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">has_pixels</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+        <span class="k">return</span> <span class="n">backgrounds</span>
+    <span class="n">starts</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">num_pixels</span><span class="p">)</span> <span class="o">-</span> <span class="n">num_pixels</span><span class="p">)[</span><span class="n">has_pixels</span><span class="p">]</span>
+    <span class="n">sums</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">add</span><span class="o">.</span><span class="n">reduceat</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">channel_mask</span><span class="p">,</span> <span class="n">values</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">starts</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">add</span><span class="o">.</span><span class="n">reduceat</span><span class="p">(</span><span class="n">channel_mask</span><span class="p">,</span> <span class="n">starts</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">np</span><span class="o">.</span><span class="n">errstate</span><span class="p">(</span><span class="n">invalid</span><span class="o">=</span><span class="s1">'ignore'</span><span class="p">):</span>
+        <span class="n">backgrounds</span><span class="p">[</span><span class="n">has_pixels</span><span class="p">]</span> <span class="o">=</span> <span class="n">sums</span> <span class="o">/</span> <span class="n">counts</span>  <span class="c1"># 0 / 0 is NaN</span>
+    <span class="k">return</span> <span class="n">backgrounds</span></div>
+
+
+
+<div class="viewcode-block" id="subtract_pedestal">
+<a class="viewcode-back" href="../../../data_extraction.html#ledsa.data_extraction.sideband_background.subtract_pedestal">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">subtract_pedestal</span><span class="p">(</span><span class="n">sum_color_value</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">pedestal</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">floor</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">DEFAULT_BACKGROUND_FLOOR</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Subtract the pedestal N * B from the box sum S, with the optional lower limit max(S - N * B,</span>
+<span class="sd">    floor * S).</span>
+
+<span class="sd">    Without the lower limit the optical depth would be unbounded where the LED signal vanishes in the pedestal;</span>
+<span class="sd">    values where the limit applies carry no information on the extinction and should be treated as invalid.</span>
+
+<span class="sd">    :param sum_color_value: Box sum S.</span>
+<span class="sd">    :type sum_color_value: float</span>
+<span class="sd">    :param pedestal: Pedestal N * B of the box.</span>
+<span class="sd">    :type pedestal: float</span>
+<span class="sd">    :param floor: Lower limit as fraction of S.</span>
+<span class="sd">    :type floor: float</span>
+<span class="sd">    :return: Pedestal corrected box sum, NaN if the pedestal is NaN.</span>
+<span class="sd">    :rtype: float</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">floor</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">sum_color_value</span> <span class="o">-</span> <span class="n">pedestal</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">sum_color_value</span> <span class="o">-</span> <span class="n">pedestal</span><span class="p">,</span> <span class="n">floor</span> <span class="o">*</span> <span class="n">sum_color_value</span><span class="p">))</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, CCE.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

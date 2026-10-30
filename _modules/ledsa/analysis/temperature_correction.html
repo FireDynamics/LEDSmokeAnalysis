@@ -1,0 +1,435 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ledsa.analysis.temperature_correction &mdash; LEDSmokeAnalysis 0.12.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/tables.css?v=aab0db92" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=61ccb1f1"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            LEDSmokeAnalysis
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">LEDSA:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../description.html">Description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_documentation.html">CLI Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ledsa.html">LEDSA Module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">Demo</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">LEDSmokeAnalysis</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ledsa.analysis.temperature_correction</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ledsa.analysis.temperature_correction</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""</span>
+<span class="sd">Correction of the LED intensities for the temperature of the LEDs.</span>
+
+<span class="sd">An LED loses radiant power as it heats up, so the LEDs in the hot gas layer dim over the course of</span>
+<span class="sd">an experiment without any smoke between them and the camera. Left uncorrected, that drift enters the</span>
+<span class="sd">relative intensities as an extinction that is not there.</span>
+
+<span class="sd">The factors the intensities are reduced by are measured or modelled outside LEDSA and read from one</span>
+<span class="sd">file per camera channel, as a table of the reduction factor over the experiment time and the height</span>
+<span class="sd">of the LED. LEDSA interpolates that table bilinearly to the time of every image and the height of</span>
+<span class="sd">every LED and divides the intensities by it, so that an uncorrected analysis is what it was before.</span>
+
+<span class="sd">The interpolation stays between the tabulated times and heights. The table states where the</span>
+<span class="sd">reduction of the LEDs was determined, so an image or an LED outside it is left exactly as it was</span>
+<span class="sd">extracted rather than corrected with a factor the measurement does not cover.</span>
+<span class="sd">"""</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.interpolate</span><span class="w"> </span><span class="kn">import</span> <span class="n">RegularGridInterpolator</span>
+
+<span class="c1"># Both axes of the table are interpolated linearly, which takes at least two points per axis</span>
+<span class="n">MIN_POINTS_PER_AXIS</span> <span class="o">=</span> <span class="mi">2</span>
+
+<span class="c1"># Camera channels a reduction factor file can be configured for, one per channel of a RGB camera</span>
+<span class="n">TEMPERATURE_CORRECTION_CHANNELS</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+
+<span class="c1"># Column names that mark a file holding one row per height and time instead of a table</span>
+<span class="n">LONG_FORMAT_COLUMNS</span> <span class="o">=</span> <span class="p">(</span><span class="s1">'height'</span><span class="p">,</span> <span class="s1">'time'</span><span class="p">,</span> <span class="s1">'reduction_factor'</span><span class="p">)</span>
+
+<span class="c1"># Factor of a time or a height the table does not cover, which leaves the intensity untouched</span>
+<span class="n">UNCORRECTED_FACTOR</span> <span class="o">=</span> <span class="mf">1.0</span>
+
+
+<div class="viewcode-block" id="TemperatureCorrection">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.temperature_correction.TemperatureCorrection">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TemperatureCorrection</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Reduction factors of the LED intensities over the experiment time and the height of the LED.</span>
+
+<span class="sd">    :ivar times: Experiment times [s] of the table, ascending.</span>
+<span class="sd">    :vartype times: np.ndarray</span>
+<span class="sd">    :ivar heights: LED heights [m] of the table, ascending.</span>
+<span class="sd">    :vartype heights: np.ndarray</span>
+<span class="sd">    :ivar factors: Reduction factor of every time and height, indexed as [time, height].</span>
+<span class="sd">    :vartype factors: np.ndarray</span>
+<span class="sd">    :ivar source: Name of the file the factors were read from, for the result file header.</span>
+<span class="sd">    :vartype source: str</span>
+<span class="sd">    """</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">times</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">heights</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">factors</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">source</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">''</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        :param times: Experiment times [s] of the table, ascending and without duplicates.</span>
+<span class="sd">        :type times: np.ndarray</span>
+<span class="sd">        :param heights: LED heights [m] of the table, ascending and without duplicates.</span>
+<span class="sd">        :type heights: np.ndarray</span>
+<span class="sd">        :param factors: Reduction factor of every time and height, shaped (len(times), len(heights)).</span>
+<span class="sd">        :type factors: np.ndarray</span>
+<span class="sd">        :param source: Name of the file the factors were read from.</span>
+<span class="sd">        :type source: str</span>
+<span class="sd">        """</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">times</span> <span class="o">=</span> <span class="n">times</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">heights</span> <span class="o">=</span> <span class="n">heights</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">factors</span> <span class="o">=</span> <span class="n">factors</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">source</span> <span class="o">=</span> <span class="n">source</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_interpolate</span> <span class="o">=</span> <span class="n">RegularGridInterpolator</span><span class="p">((</span><span class="n">times</span><span class="p">,</span> <span class="n">heights</span><span class="p">),</span> <span class="n">factors</span><span class="p">,</span> <span class="n">bounds_error</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                                                    <span class="n">fill_value</span><span class="o">=</span><span class="n">UNCORRECTED_FACTOR</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span><span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">source</span><span class="si">}</span><span class="s1"> (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">times</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">:</span><span class="s1">.1f</span><span class="si">}</span><span class="s1"> s to </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">times</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="si">:</span><span class="s1">.1f</span><span class="si">}</span><span class="s1"> s, '</span>
+                <span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">heights</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">:</span><span class="s1">.2f</span><span class="si">}</span><span class="s1"> m to </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">heights</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="si">:</span><span class="s1">.2f</span><span class="si">}</span><span class="s1"> m)'</span><span class="p">)</span>
+
+<div class="viewcode-block" id="TemperatureCorrection.from_file">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.temperature_correction.TemperatureCorrection.from_file">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_file</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">file_path</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="s1">'TemperatureCorrection'</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Read the reduction factors from a CSV file, in either of two layouts.</span>
+
+<span class="sd">        As a table, the first column holds the experiment time [s], the header of the other columns</span>
+<span class="sd">        the height [m] of the LEDs the factors apply to, and every cell the factor the intensity of</span>
+<span class="sd">        its time and height is reduced by. The name of the first column is not read, so any label can</span>
+<span class="sd">        be used for it.</span>
+
+<span class="sd">        As a list, the file has the three columns named in LONG_FORMAT_COLUMNS in any order and one</span>
+<span class="sd">        row per pair of a height and a time, which is pivoted into the same table.</span>
+
+<span class="sd">        Neither layout has to be sorted in either of its axes.</span>
+
+<span class="sd">        :param file_path: Path of the reduction factor file.</span>
+<span class="sd">        :type file_path: str or Path</span>
+<span class="sd">        :return: The reduction factors, ready to be interpolated.</span>
+<span class="sd">        :rtype: TemperatureCorrection</span>
+<span class="sd">        :raises FileNotFoundError: If the file does not exist.</span>
+<span class="sd">        :raises ValueError: If the file is not a table of numbers with at least two times and two</span>
+<span class="sd">            heights, or if it holds a factor that is not positive.</span>
+<span class="sd">        """</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s1">'The reduction factor file </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s1"> of the temperature correction does not exist. '</span>
+                <span class="sa">f</span><span class="s1">'Give the path of an existing file in the [temperature_correction] section of '</span>
+                <span class="sa">f</span><span class="s1">'config_analysis.ini, or set the option to None to analyse the channel without the '</span>
+                <span class="sa">f</span><span class="s1">'correction.'</span><span class="p">)</span>
+        <span class="bp">cls</span><span class="o">.</span><span class="n">_check_field_counts</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="n">contents</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_is_a_list_of_factors</span><span class="p">(</span><span class="n">contents</span><span class="p">):</span>
+            <span class="n">table</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_table_from_list</span><span class="p">(</span><span class="n">contents</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">table</span> <span class="o">=</span> <span class="n">contents</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="n">contents</span><span class="o">.</span><span class="n">columns</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="c1"># A delimiter at the end of the header leaves an empty column behind, an empty last line an</span>
+        <span class="c1"># empty row, and neither is a point of the table</span>
+        <span class="n">table</span> <span class="o">=</span> <span class="n">table</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s1">'all'</span><span class="p">)</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s1">'all'</span><span class="p">)</span>
+        <span class="n">times</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_axis</span><span class="p">(</span><span class="n">table</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(),</span> <span class="s1">'time'</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>
+        <span class="n">heights</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_axis</span><span class="p">(</span><span class="n">table</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(),</span> <span class="s1">'height'</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>
+        <span class="n">factors</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_factors</span><span class="p">(</span><span class="n">table</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>
+        <span class="c1"># The axes are sorted here instead of in the file, so that the heights can be written in the</span>
+        <span class="c1"># order of the LEDs of the array, which runs from the top down</span>
+        <span class="n">factors</span> <span class="o">=</span> <span class="n">factors</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ix_</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">times</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">heights</span><span class="p">))]</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">times</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">heights</span><span class="p">),</span> <span class="n">factors</span><span class="p">,</span> <span class="n">source</span><span class="o">=</span><span class="n">path</span><span class="o">.</span><span class="n">name</span><span class="p">)</span></div>
+
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_field_counts</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Check that no line holds more values than the header names.</span>
+
+<span class="sd">        A decimal comma writes one factor as two fields. Pandas absorbs the extra field by moving the</span>
+<span class="sd">        first column into the index, which shifts every factor of the line into the column of its</span>
+<span class="sd">        neighbour instead of failing, so the file has to be checked before it is parsed.</span>
+
+<span class="sd">        :param path: Path of the reduction factor file.</span>
+<span class="sd">        :type path: Path</span>
+<span class="sd">        :raises ValueError: If the file is empty or a line holds more values than the header.</span>
+<span class="sd">        """</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">'utf-8-sig'</span><span class="p">)</span> <span class="k">as</span> <span class="n">factor_file</span><span class="p">:</span>
+            <span class="n">lines</span> <span class="o">=</span> <span class="p">[(</span><span class="n">number</span><span class="p">,</span> <span class="n">line</span><span class="p">)</span> <span class="k">for</span> <span class="n">number</span><span class="p">,</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">factor_file</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+                     <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">lines</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">'The reduction factor file </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s1"> holds no lines.'</span><span class="p">)</span>
+        <span class="n">fields_in_header</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">lines</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s1">'</span><span class="se">\n</span><span class="s1">'</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">','</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">number</span><span class="p">,</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
+            <span class="n">fields</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s1">'</span><span class="se">\n</span><span class="s1">'</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">','</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">fields</span> <span class="o">&gt;</span> <span class="n">fields_in_header</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s1">'Line </span><span class="si">{</span><span class="n">number</span><span class="si">}</span><span class="s1"> of the reduction factor file </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s1"> holds </span><span class="si">{</span><span class="n">fields</span><span class="si">}</span><span class="s1"> values while '</span>
+                    <span class="sa">f</span><span class="s1">'its header names </span><span class="si">{</span><span class="n">fields_in_header</span><span class="si">}</span><span class="s1">. A factor written with a decimal comma '</span>
+                    <span class="sa">f</span><span class="s1">'instead of a decimal point counts as two values and shifts the rest of the '</span>
+                    <span class="sa">f</span><span class="s1">'line into the columns of the neighbouring heights.'</span><span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_is_a_list_of_factors</span><span class="p">(</span><span class="n">contents</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Whether a file holds one row per height and time instead of a table.</span>
+
+<span class="sd">        :param contents: The file as it was read.</span>
+<span class="sd">        :type contents: pd.DataFrame</span>
+<span class="sd">        :return: True if the columns are the ones of the list layout.</span>
+<span class="sd">        :rtype: bool</span>
+<span class="sd">        """</span>
+        <span class="n">names</span> <span class="o">=</span> <span class="p">{</span><span class="nb">str</span><span class="p">(</span><span class="n">name</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">contents</span><span class="o">.</span><span class="n">columns</span><span class="p">}</span>
+        <span class="k">return</span> <span class="n">names</span> <span class="o">==</span> <span class="nb">set</span><span class="p">(</span><span class="n">LONG_FORMAT_COLUMNS</span><span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_table_from_list</span><span class="p">(</span><span class="n">contents</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Turn a list of one factor per height and time into a table of the factors over time.</span>
+
+<span class="sd">        :param contents: The file as it was read, with the columns of LONG_FORMAT_COLUMNS.</span>
+<span class="sd">        :type contents: pd.DataFrame</span>
+<span class="sd">        :param path: Path of the file, for the error messages.</span>
+<span class="sd">        :type path: Path</span>
+<span class="sd">        :return: The factors as a table, time over height.</span>
+<span class="sd">        :rtype: pd.DataFrame</span>
+<span class="sd">        :raises ValueError: If a height and time occurs in more than one row.</span>
+<span class="sd">        """</span>
+        <span class="n">height</span><span class="p">,</span> <span class="n">time</span><span class="p">,</span> <span class="n">factor</span> <span class="o">=</span> <span class="n">LONG_FORMAT_COLUMNS</span>
+        <span class="n">contents</span> <span class="o">=</span> <span class="n">contents</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">name</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+                                            <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">contents</span><span class="o">.</span><span class="n">columns</span><span class="p">})</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">contents</span><span class="o">.</span><span class="n">pivot</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">time</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="n">height</span><span class="p">,</span> <span class="n">values</span><span class="o">=</span><span class="n">factor</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">error</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">'The reduction factor file </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s1"> holds more than one factor for the '</span>
+                             <span class="sa">f</span><span class="s1">'same height and time (</span><span class="si">{</span><span class="n">error</span><span class="si">}</span><span class="s1">). Every pair of a height and a time '</span>
+                             <span class="sa">f</span><span class="s1">'takes exactly one row.'</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">error</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_axis</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Read one axis of the table and check that it can be interpolated.</span>
+
+<span class="sd">        :param values: Labels of the axis, as they stand in the file.</span>
+<span class="sd">        :type values: np.ndarray</span>
+<span class="sd">        :param name: Name of the axis, for the error messages.</span>
+<span class="sd">        :type name: str</span>
+<span class="sd">        :param path: Path of the file, for the error messages.</span>
+<span class="sd">        :type path: Path</span>
+<span class="sd">        :return: The axis as numbers.</span>
+<span class="sd">        :rtype: np.ndarray</span>
+<span class="sd">        :raises ValueError: If the labels are not numbers, if there are fewer than</span>
+<span class="sd">            MIN_POINTS_PER_AXIS of them or if one of them occurs twice.</span>
+<span class="sd">        """</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">axis</span> <span class="o">=</span> <span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">)</span> <span class="k">as</span> <span class="n">error</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s1">'The </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s1"> values of the reduction factor file </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s1"> are not numbers (</span><span class="si">{</span><span class="n">error</span><span class="si">}</span><span class="s1">). '</span>
+                <span class="sa">f</span><span class="s1">'The file holds the experiment time [s] in its first column and the LED height [m] '</span>
+                <span class="sa">f</span><span class="s1">'in its header.'</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">error</span>
+        <span class="k">if</span> <span class="n">axis</span><span class="o">.</span><span class="n">size</span> <span class="o">&lt;</span> <span class="n">MIN_POINTS_PER_AXIS</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s1">'The reduction factor file </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s1"> holds </span><span class="si">{</span><span class="n">axis</span><span class="o">.</span><span class="n">size</span><span class="si">}</span><span class="s1"> </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s1"> value(s), while the '</span>
+                <span class="sa">f</span><span class="s1">'factors are interpolated between at least </span><span class="si">{</span><span class="n">MIN_POINTS_PER_AXIS</span><span class="si">}</span><span class="s1">. Repeat the factors '</span>
+                <span class="sa">f</span><span class="s1">'at a second </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s1"> to apply them independently of the </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s1">.'</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">axis</span><span class="p">)</span><span class="o">.</span><span class="n">size</span> <span class="o">!=</span> <span class="n">axis</span><span class="o">.</span><span class="n">size</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">'The reduction factor file </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s1"> holds the same </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s1"> value twice, so '</span>
+                             <span class="sa">f</span><span class="s1">'the factors of that </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s1"> are ambiguous.'</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">axis</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_factors</span><span class="p">(</span><span class="n">table</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Read the cells of the table and check that the intensities can be divided by them.</span>
+
+<span class="sd">        :param table: The table as it was read, time over height.</span>
+<span class="sd">        :type table: pd.DataFrame</span>
+<span class="sd">        :param path: Path of the file, for the error messages.</span>
+<span class="sd">        :type path: Path</span>
+<span class="sd">        :return: The reduction factors, indexed as [time, height].</span>
+<span class="sd">        :rtype: np.ndarray</span>
+<span class="sd">        :raises ValueError: If a cell is not a number or holds a factor that is not positive.</span>
+<span class="sd">        """</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">factors</span> <span class="o">=</span> <span class="n">table</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">)</span> <span class="k">as</span> <span class="n">error</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">'The reduction factors in </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s1"> are not all numbers (</span><span class="si">{</span><span class="n">error</span><span class="si">}</span><span class="s1">). Every '</span>
+                             <span class="sa">f</span><span class="s1">'cell holds the factor of the time of its row and the height of its '</span>
+                             <span class="sa">f</span><span class="s1">'column.'</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">error</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">factors</span><span class="p">)):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">factors</span><span class="p">)))</span><span class="si">}</span><span class="s1"> of the reduction factors '</span>
+                             <span class="sa">f</span><span class="s1">'in </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s1"> are empty or not finite. The table has to be filled for every '</span>
+                             <span class="sa">f</span><span class="s1">'combination of its times and heights.'</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">factors</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="n">factors</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mi">0</span><span class="p">))</span><span class="si">}</span><span class="s1"> of the reduction factors in </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s1"> '</span>
+                             <span class="sa">f</span><span class="s1">'are not positive. The LED intensities are divided by the factors, which '</span>
+                             <span class="sa">f</span><span class="s1">'a factor of zero or less does not allow.'</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">factors</span>
+
+<div class="viewcode-block" id="TemperatureCorrection.factors_at">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.temperature_correction.TemperatureCorrection.factors_at">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">factors_at</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">times</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">heights</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Reduction factor of every pair of a time and a height, interpolated bilinearly.</span>
+
+<span class="sd">        The factors are interpolated between the tabulated times and heights only. A time or a</span>
+<span class="sd">        height the table does not cover gets UNCORRECTED_FACTOR, which leaves the intensity as it</span>
+<span class="sd">        was extracted, because the table states where the reduction of the LEDs was determined and</span>
+<span class="sd">        there is nothing outside it to extrapolate from.</span>
+
+<span class="sd">        :param times: Experiment time [s] of every value to correct, counted from start_time of</span>
+<span class="sd">            config.ini like the Experiment_Time[s] of the image infos file the times are read from.</span>
+<span class="sd">        :type times: np.ndarray</span>
+<span class="sd">        :param heights: Height [m] of the LED of every value to correct.</span>
+<span class="sd">        :type heights: np.ndarray</span>
+<span class="sd">        :return: The reduction factor of every value, in the order of the arguments.</span>
+<span class="sd">        :rtype: np.ndarray</span>
+<span class="sd">        """</span>
+        <span class="n">times</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+        <span class="n">heights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">heights</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_warn_about_values_outside_the_table</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">heights</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_interpolate</span><span class="p">((</span><span class="n">times</span><span class="p">,</span> <span class="n">heights</span><span class="p">))</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_warn_about_values_outside_the_table</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">times</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">heights</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Report the times and heights the table does not cover, which are left uncorrected.</span>
+
+<span class="sd">        :param times: Requested experiment times [s].</span>
+<span class="sd">        :type times: np.ndarray</span>
+<span class="sd">        :param heights: Requested LED heights [m].</span>
+<span class="sd">        :type heights: np.ndarray</span>
+<span class="sd">        """</span>
+        <span class="n">outside</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">times_outside</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">((</span><span class="n">times</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">times</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">|</span> <span class="p">(</span><span class="n">times</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">times</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span>
+        <span class="n">heights_outside</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">((</span><span class="n">heights</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">heights</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">|</span> <span class="p">(</span><span class="n">heights</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">heights</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span>
+        <span class="k">if</span> <span class="n">times_outside</span><span class="p">:</span>
+            <span class="n">outside</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="n">times_outside</span><span class="si">}</span><span class="s1"> of </span><span class="si">{</span><span class="n">times</span><span class="o">.</span><span class="n">size</span><span class="si">}</span><span class="s1"> image times lie outside '</span>
+                           <span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">times</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">:</span><span class="s1">.1f</span><span class="si">}</span><span class="s1"> s to </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">times</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="si">:</span><span class="s1">.1f</span><span class="si">}</span><span class="s1"> s'</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">heights_outside</span><span class="p">:</span>
+            <span class="n">outside</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="n">heights_outside</span><span class="si">}</span><span class="s1"> of </span><span class="si">{</span><span class="n">heights</span><span class="o">.</span><span class="n">size</span><span class="si">}</span><span class="s1"> LED heights lie outside '</span>
+                           <span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">heights</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">:</span><span class="s1">.2f</span><span class="si">}</span><span class="s1"> m to </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">heights</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="si">:</span><span class="s1">.2f</span><span class="si">}</span><span class="s1"> m'</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">outside</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s1">'The reduction factors of </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">source</span><span class="si">}</span><span class="s1"> do not cover the analysed data: '</span>
+                          <span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="s2">" and "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outside</span><span class="p">)</span><span class="si">}</span><span class="s1">. These intensities are left uncorrected.'</span><span class="p">,</span>
+                          <span class="n">category</span><span class="o">=</span><span class="ne">UserWarning</span><span class="p">,</span> <span class="n">stacklevel</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="load_temperature_corrections">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.temperature_correction.load_temperature_corrections">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">load_temperature_corrections</span><span class="p">(</span>
+        <span class="n">file_paths_per_channel</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TemperatureCorrection</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Read the reduction factor file of every channel that has one configured.</span>
+
+<span class="sd">    The files are read before the first coefficient is computed, so that an unreadable one stops the</span>
+<span class="sd">    run right away instead of in the middle of it.</span>
+
+<span class="sd">    :param file_paths_per_channel: Path of the reduction factor file of every channel, None for the</span>
+<span class="sd">        channels to analyse without the correction.</span>
+<span class="sd">    :type file_paths_per_channel: dict[int, str or None]</span>
+<span class="sd">    :return: The reduction factors of the channels that are corrected.</span>
+<span class="sd">    :rtype: dict[int, TemperatureCorrection]</span>
+<span class="sd">    """</span>
+    <span class="n">corrections</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">channel</span><span class="p">,</span> <span class="n">file_path</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">file_paths_per_channel</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
+        <span class="k">if</span> <span class="n">file_path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">corrections</span><span class="p">[</span><span class="n">channel</span><span class="p">]</span> <span class="o">=</span> <span class="n">TemperatureCorrection</span><span class="o">.</span><span class="n">from_file</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'Temperature correction of channel </span><span class="si">{</span><span class="n">channel</span><span class="si">}</span><span class="s1">: reduction factors from '</span>
+              <span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="n">corrections</span><span class="p">[</span><span class="n">channel</span><span class="p">]</span><span class="si">}</span><span class="s1">.'</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">corrections</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, CCE.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

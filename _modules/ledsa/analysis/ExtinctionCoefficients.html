@@ -1,0 +1,704 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ledsa.analysis.ExtinctionCoefficients &mdash; LEDSmokeAnalysis 0.12.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/tables.css?v=aab0db92" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=61ccb1f1"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            LEDSmokeAnalysis
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">LEDSA:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../description.html">Description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_documentation.html">CLI Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ledsa.html">LEDSA Module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">Demo</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">LEDSmokeAnalysis</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ledsa.analysis.ExtinctionCoefficients</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ledsa.analysis.ExtinctionCoefficients</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">multiprocessing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Pool</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ledsa.analysis.Experiment</span><span class="w"> </span><span class="kn">import</span> <span class="n">Experiment</span><span class="p">,</span> <span class="n">Layers</span><span class="p">,</span> <span class="n">Camera</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ledsa.analysis.temperature_correction</span><span class="w"> </span><span class="kn">import</span> <span class="n">TemperatureCorrection</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ledsa.core.file_handling</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span><span class="n">NOISE_COLUMNS</span><span class="p">,</span> <span class="n">NUM_IMGS_PER_AVERAGE</span><span class="p">,</span> <span class="n">avg_img_ids_of_ref_imgs</span><span class="p">,</span>
+                                      <span class="n">create_analysis_infos_avg</span><span class="p">,</span> <span class="n">extend_hdf</span><span class="p">,</span>
+                                      <span class="n">get_extinction_coefficients_file_path</span><span class="p">,</span> <span class="n">read_analysis_img_ids</span><span class="p">,</span>
+                                      <span class="n">read_experiment_times</span><span class="p">,</span>
+                                      <span class="n">read_hdf</span><span class="p">,</span> <span class="n">read_hdf_avg</span><span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ledsa.data_extraction.data_integrity</span><span class="w"> </span><span class="kn">import</span> <span class="n">check_intensity_normalization</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">importlib.metadata</span><span class="w"> </span><span class="kn">import</span> <span class="n">version</span>
+
+
+<span class="c1"># Signal-to-noise ratio from which on an LED gets the full weight. Measured on the Warsaw tests V008 and</span>
+<span class="c1"># V009: at the fog stages that still carry signal the weighting changes the extinction coefficients by</span>
+<span class="c1"># less than a percent, and where the transmission approaches the read noise it is the only thing that</span>
+<span class="c1"># separates "no signal" from "small signal".</span>
+<span class="n">DEFAULT_SNR_FULL_WEIGHT</span> <span class="o">=</span> <span class="mf">10.0</span>
+
+<div class="viewcode-block" id="ExtinctionCoefficients">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.ExtinctionCoefficients.ExtinctionCoefficients">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ExtinctionCoefficients</span><span class="p">(</span><span class="n">ABC</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Parent class for the calculation of the Extinction Coefficients.</span>
+
+<span class="sd">    :ivar coefficients_per_image_and_layer: List of coefficients for each image and layer.</span>
+<span class="sd">    :vartype coefficients_per_image_and_layer: list[np.ndarray]</span>
+<span class="sd">    :ivar experiment: Object representing the experimental setup.</span>
+<span class="sd">    :vartype experiment: Experiment</span>
+<span class="sd">    :ivar reference_property: Reference property to be analysed.</span>
+<span class="sd">    :vartype reference_property: str</span>
+<span class="sd">    :ivar num_ref_imgs: Number of reference images. # TODO: create test for this</span>
+<span class="sd">    :vartype num_ref_imgs: int</span>
+<span class="sd">    :ivar ref_img_indices: Indices of reference images to use. If None, use num_ref_imgs.</span>
+<span class="sd">    :vartype ref_img_indices: list[int] or None</span>
+<span class="sd">    :ivar ref_img_ids_of_loaded_data: Indices the reference images carry in the loaded image data.</span>
+<span class="sd">        They differ from ref_img_indices when the averaged data are loaded, which are numbered</span>
+<span class="sd">        from 1 again.</span>
+<span class="sd">    :vartype ref_img_ids_of_loaded_data: list[int] or None</span>
+<span class="sd">    :ivar calculated_img_data: DataFrame containing calculated image data.</span>
+<span class="sd">    :vartype calculated_img_data: pd.DataFrame</span>
+<span class="sd">    :ivar distances_per_led_and_layer: Array of distances traversed between camera and LEDs in each layer.</span>
+<span class="sd">    :vartype distances_per_led_and_layer: np.ndarray</span>
+<span class="sd">    :ivar ref_intensities: Array of reference intensities for all LEDs.</span>
+<span class="sd">    :vartype ref_intensities: np.ndarray</span>
+<span class="sd">    :ivar cc_matrix: Color correction matrix.</span>
+<span class="sd">    :vartype cc_matrix: np.ndarray or None</span>
+<span class="sd">    :ivar average_images: Flag to determine if intensities are computed as an average from two consecutive images.</span>
+<span class="sd">    :vartype average_images: bool</span>
+<span class="sd">    :ivar n_summarize: Number of consecutive images summarized into one when averaging.</span>
+<span class="sd">    :vartype n_summarize: int</span>
+<span class="sd">    :ivar temperature_correction: Reduction factors of the LED intensities over time and height, None for</span>
+<span class="sd">        an analysis without the temperature correction.</span>
+<span class="sd">    :vartype temperature_correction: TemperatureCorrection or None</span>
+<span class="sd">    :ivar temperature_corrected: Whether the reduction factors have been divided out of the loaded data.</span>
+<span class="sd">    :vartype temperature_corrected: bool</span>
+<span class="sd">    :ivar solver: Indication whether the calculation is to be carried out numerically or analytically.</span>
+<span class="sd">    :vartype type: str</span>
+<span class="sd">    """</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">experiment</span><span class="p">,</span> <span class="n">reference_property</span><span class="o">=</span><span class="s1">'sum_col_val'</span><span class="p">,</span> <span class="n">num_ref_imgs</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">ref_img_indices</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">average_images</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">n_summarize</span><span class="o">=</span><span class="n">NUM_IMGS_PER_AVERAGE</span><span class="p">,</span>
+                 <span class="n">temperature_correction</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">snr_full_weight</span><span class="o">=</span><span class="n">DEFAULT_SNR_FULL_WEIGHT</span><span class="p">,</span>
+                 <span class="n">num_moving_avg_images</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        :param experiment: Object representing the experimental setup.</span>
+<span class="sd">        :type experiment: Experiment</span>
+<span class="sd">        :param reference_property: Reference property to be analysed.</span>
+<span class="sd">        :type reference_property: str</span>
+<span class="sd">        :param num_ref_imgs: Number of reference images.</span>
+<span class="sd">        :type num_ref_imgs: int</span>
+<span class="sd">        :param ref_img_indices: Indices of reference images to use. If None, use num_ref_imgs.</span>
+<span class="sd">        :type ref_img_indices: list[int] or None</span>
+<span class="sd">        :param average_images: Flag to determine if intensities are computed as an average from two consecutive images.</span>
+<span class="sd">        :type average_images: bool</span>
+<span class="sd">        :param n_summarize: Number of consecutive images summarized into one when averaging.</span>
+<span class="sd">        :type n_summarize: int</span>
+<span class="sd">        :param temperature_correction: Reduction factors of the LED intensities of the channel. None</span>
+<span class="sd">            leaves the intensities as they were extracted.</span>
+<span class="sd">        :type temperature_correction: TemperatureCorrection or None</span>
+<span class="sd">        :param snr_full_weight: Signal-to-noise ratio from which on an LED gets the full weight in the</span>
+<span class="sd">            solver. Below it the weight falls linearly to zero at a signal of zero. None weights all LEDs</span>
+<span class="sd">            equally. The weighting needs a reference property with a noise column and noise values in the</span>
+<span class="sd">            data; where either is missing it is switched off with a note, so that the default does not</span>
+<span class="sd">            stop an analysis of data that cannot carry it.</span>
+<span class="sd">        :type snr_full_weight: float or None</span>
+<span class="sd">        :param num_moving_avg_images: Number of consecutive images over which the reference property is</span>
+<span class="sd">            smoothed by a centred moving average before the normalisation. 1 leaves it as it is. Unlike</span>
+<span class="sd">            average_images this keeps every image with its own time and does not renumber the images.</span>
+<span class="sd">        :type num_moving_avg_images: int</span>
+<span class="sd">        :raises ValueError: If snr_full_weight is given for a reference property without a noise column, or</span>
+<span class="sd">            if average_images and num_moving_avg_images are combined.</span>
+<span class="sd">        """</span>
+        <span class="k">if</span> <span class="n">average_images</span> <span class="ow">and</span> <span class="nb">int</span><span class="p">(</span><span class="n">num_moving_avg_images</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">'average_images and num_moving_avg_images cannot be combined. '</span>
+                             <span class="s1">'average_images summarizes n_summarize images into one and numbers the '</span>
+                             <span class="s1">'result from 1 again, while num_moving_avg_images smooths the reference '</span>
+                             <span class="s1">'property over neighbouring images and keeps every image with its own '</span>
+                             <span class="s1">'time. Pick the one that suits the time resolution you need.'</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">coefficients_per_image_and_layer</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">experiment</span> <span class="o">=</span> <span class="n">experiment</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reference_property</span> <span class="o">=</span> <span class="n">reference_property</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_ref_imgs</span> <span class="o">=</span> <span class="n">num_ref_imgs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ref_img_indices</span> <span class="o">=</span> <span class="n">ref_img_indices</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ref_img_ids_of_loaded_data</span> <span class="o">=</span> <span class="n">ref_img_indices</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">calculated_img_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">analysed_img_ids</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">distances_per_led_and_layer</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ref_intensities</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cc_matrix</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">average_images</span> <span class="o">=</span> <span class="n">average_images</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_summarize</span> <span class="o">=</span> <span class="n">n_summarize</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">temperature_correction</span> <span class="o">=</span> <span class="n">temperature_correction</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">temperature_corrected</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">solver</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lambda_reg</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">snr_full_weight</span> <span class="o">=</span> <span class="n">snr_full_weight</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_moving_avg_images</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">num_moving_avg_images</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">noise_property</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">snr_full_weight</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">reference_property</span> <span class="ow">in</span> <span class="n">NOISE_COLUMNS</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">noise_property</span> <span class="o">=</span> <span class="n">NOISE_COLUMNS</span><span class="p">[</span><span class="n">reference_property</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'The LEDs are weighted equally: </span><span class="si">{</span><span class="n">reference_property</span><span class="si">}</span><span class="s1"> has no noise column, so the '</span>
+                      <span class="sa">f</span><span class="s1">'signal-to-noise ratio of an LED is unknown. Columns with one: '</span>
+                      <span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="s2">", "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">NOISE_COLUMNS</span><span class="p">))</span><span class="si">}</span><span class="s1">.'</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">experiment</span><span class="p">)</span> <span class="o">+</span> \
+              <span class="sa">f</span><span class="s1">'Reference_property: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">reference_property</span><span class="si">}</span><span class="s1">, Ref_img_indices: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">ref_img_indices</span><span class="si">}</span><span class="s1">, Snr_full_weight: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">snr_full_weight</span><span class="si">}</span><span class="s1">, Noise_property: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">noise_property</span><span class="si">}</span><span class="s1">, Min_layer_weight: </span><span class="si">{</span><span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="w"> </span><span class="s2">"min_layer_weight"</span><span class="p">,</span><span class="w"> </span><span class="kc">None</span><span class="p">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="bp">self</span><span class="o">.</span><span class="n">noise_property</span><span class="w"> </span><span class="ow">is</span><span class="w"> </span><span class="ow">not</span><span class="w"> </span><span class="kc">None</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="kc">None</span><span class="si">}</span><span class="s1">, Num_moving_avg_images: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">num_moving_avg_images</span><span class="si">}</span><span class="s1">, Solver: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">solver</span><span class="si">}</span><span class="s1">, Lambda_reg: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">lambda_reg</span><span class="si">}</span><span class="s1">, Temperature_correction: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">temperature_correction_info</span><span class="p">()</span><span class="si">}</span><span class="s1">, LEDSA </span><span class="si">{</span><span class="n">version</span><span class="p">(</span><span class="s2">"ledsa"</span><span class="p">)</span><span class="si">}</span><span class="se">\n</span><span class="s1">'</span>
+        <span class="k">return</span> <span class="n">out</span>
+
+<div class="viewcode-block" id="ExtinctionCoefficients.temperature_correction_info">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.ExtinctionCoefficients.ExtinctionCoefficients.temperature_correction_info">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">temperature_correction_info</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Note for the result file stating whether the channel of this run is temperature corrected.</span>
+
+<span class="sd">        :return: The channel and the reduction factors it was corrected with, 'None' if the</span>
+<span class="sd">            intensities were analysed as they were extracted.</span>
+<span class="sd">        :rtype: str</span>
+<span class="sd">        """</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">temperature_correction</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s1">'None'</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s1">'channel </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">experiment</span><span class="o">.</span><span class="n">channel</span><span class="si">}</span><span class="s1"> from </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">temperature_correction</span><span class="si">}</span><span class="s1">'</span></div>
+
+
+<div class="viewcode-block" id="ExtinctionCoefficients.calc_and_set_coefficients">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.ExtinctionCoefficients.ExtinctionCoefficients.calc_and_set_coefficients">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">calc_and_set_coefficients</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Serial calculation of extinction coefficients for every image</span>
+
+<span class="sd">        """</span>
+        <span class="c1"># Load and calculate all needed variables</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_all_member_variables</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">img_id</span><span class="p">,</span> <span class="n">single_img_data</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculated_img_data</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+            <span class="n">single_img_array</span> <span class="o">=</span> <span class="n">single_img_data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">reference_property</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+            <span class="n">rel_intensities</span> <span class="o">=</span> <span class="n">single_img_array</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">ref_intensities</span>
+
+            <span class="c1"># Calculate the extinction coefficients depending on child class used</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">noise_property</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">sigmas</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calc_coefficients_of_img</span><span class="p">(</span><span class="n">rel_intensities</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">snr</span> <span class="o">=</span> <span class="n">single_img_array</span> <span class="o">/</span> <span class="n">single_img_data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">noise_property</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+                <span class="n">sigmas</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calc_coefficients_of_img</span><span class="p">(</span><span class="n">rel_intensities</span><span class="p">,</span> <span class="n">snr</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">coefficients_per_image_and_layer</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sigmas</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ExtinctionCoefficients.calc_and_set_coefficients_mp">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.ExtinctionCoefficients.ExtinctionCoefficients.calc_and_set_coefficients_mp">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">calc_and_set_coefficients_mp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cores</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Uses multiprocessing to calculate and set extinction coefficients.</span>
+
+<span class="sd">        :param cores: Number of cores to use.</span>
+<span class="sd">        :type cores: int</span>
+<span class="sd">        """</span>
+        <span class="c1"># Load and calculate all needed variables</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_all_member_variables</span><span class="p">()</span>
+        <span class="n">img_property_array</span> <span class="o">=</span> <span class="n">multiindex_series_to_nparray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">calculated_img_data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">reference_property</span><span class="p">])</span>
+        <span class="n">rel_intensities</span> <span class="o">=</span> <span class="n">img_property_array</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">ref_intensities</span>
+
+        <span class="c1"># Calculate the extinction coefficients depending on child class used</span>
+        <span class="n">pool</span> <span class="o">=</span> <span class="n">Pool</span><span class="p">(</span><span class="n">processes</span><span class="o">=</span><span class="n">cores</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">noise_property</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">sigmas</span> <span class="o">=</span> <span class="n">pool</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">calc_coefficients_of_img</span><span class="p">,</span> <span class="n">rel_intensities</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">snr</span> <span class="o">=</span> <span class="n">img_property_array</span> <span class="o">/</span> <span class="n">multiindex_series_to_nparray</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">calculated_img_data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">noise_property</span><span class="p">])</span>
+            <span class="n">sigmas</span> <span class="o">=</span> <span class="n">pool</span><span class="o">.</span><span class="n">starmap</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">calc_coefficients_of_img</span><span class="p">,</span> <span class="nb">zip</span><span class="p">(</span><span class="n">rel_intensities</span><span class="p">,</span> <span class="n">snr</span><span class="p">))</span>
+        <span class="n">pool</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">coefficients_per_image_and_layer</span> <span class="o">=</span> <span class="n">sigmas</span></div>
+
+
+<div class="viewcode-block" id="ExtinctionCoefficients.set_all_member_variables">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.ExtinctionCoefficients.ExtinctionCoefficients.set_all_member_variables">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">set_all_member_variables</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">save_distances</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Calculate distance traveled per layer, for every led, load image data from binary file and calculate reference intensities for each LED</span>
+
+<span class="sd">        :param save_distances: If True, write the distance matrix to a text file</span>
+<span class="sd">            in the current working directory.  Pass False when calling from a</span>
+<span class="sd">            stacked context that manages its own distance file.</span>
+<span class="sd">        :type save_distances: bool</span>
+<span class="sd">        """</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">distances_per_led_and_layer</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">distances_per_led_and_layer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calc_distance_array</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">save_distances</span><span class="p">:</span>
+                <span class="n">file_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">'led_array_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">experiment</span><span class="o">.</span><span class="n">led_array</span><span class="si">}</span><span class="s1">_distances_per_layer.txt'</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">distances_per_led_and_layer</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculated_img_data</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">load_img_data</span><span class="p">()</span>
+        <span class="c1"># before the reference intensities are averaged, whether or not the data were loaded here</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">apply_temperature_correction</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ref_intensities</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">calc_and_set_ref_intensities</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="ExtinctionCoefficients.load_img_data">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.ExtinctionCoefficients.ExtinctionCoefficients.load_img_data">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">load_img_data</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Load processed image data from binary file</span>
+
+<span class="sd">        :raises ValueError: If the reference property is not among the columns of the binary data or</span>
+<span class="sd">            contains NaN values.</span>
+<span class="sd">        """</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">average_images</span><span class="p">:</span>
+            <span class="c1"># the binary and the image infos of the averaged images are built from the same</span>
+            <span class="c1"># counts and reference images, so that they hold the same image IDs</span>
+            <span class="n">img_data</span> <span class="o">=</span> <span class="n">read_hdf_avg</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">experiment</span><span class="o">.</span><span class="n">channel</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">experiment</span><span class="o">.</span><span class="n">path</span><span class="p">,</span>
+                                    <span class="n">n_summarize</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">n_summarize</span><span class="p">,</span> <span class="n">num_ref_imgs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">num_ref_imgs</span><span class="p">,</span>
+                                    <span class="n">ref_img_ids</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ref_img_indices</span><span class="p">)</span>
+            <span class="n">create_analysis_infos_avg</span><span class="p">(</span><span class="n">n_summarize</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">n_summarize</span><span class="p">,</span> <span class="n">num_ref_imgs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">num_ref_imgs</span><span class="p">,</span>
+                                      <span class="n">ref_img_ids</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ref_img_indices</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">experiment</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ref_img_indices</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="c1"># The reference images are kept unaveraged, so each of them is still an image of</span>
+                <span class="c1"># its own, but the averaged images are numbered from 1 again and the configured</span>
+                <span class="c1"># indices would name other images in them.</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">ref_img_ids_of_loaded_data</span> <span class="o">=</span> <span class="n">avg_img_ids_of_ref_imgs</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">ref_img_indices</span><span class="p">,</span> <span class="n">read_analysis_img_ids</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">experiment</span><span class="o">.</span><span class="n">path</span><span class="p">),</span>
+                    <span class="n">n_summarize</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">n_summarize</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">img_data</span> <span class="o">=</span> <span class="n">read_hdf</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">experiment</span><span class="o">.</span><span class="n">channel</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">experiment</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">reference_property</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">img_data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="c1"># The color corrected columns are not part of the step 3 result files, the analysis adds them</span>
+            <span class="c1"># to the binary data itself, so they are gone as soon as the binary data are rebuilt.</span>
+            <span class="n">hint</span> <span class="o">=</span> <span class="p">(</span><span class="s1">'Run the analysis with --cc to compute it again, it is added to the binary data by the '</span>
+                    <span class="s1">'analysis itself and is lost whenever they are rebuilt from the step 3 result files.'</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">reference_property</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">'_cc'</span><span class="p">)</span> <span class="k">else</span>
+                    <span class="s1">'Check the reference_property option of the analysis configuration.'</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">reference_property</span><span class="si">}</span><span class="s1"> is not among the columns of the binary data of '</span>
+                             <span class="sa">f</span><span class="s1">'channel </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">experiment</span><span class="o">.</span><span class="n">channel</span><span class="si">}</span><span class="s1"> '</span>
+                             <span class="sa">f</span><span class="s1">'(</span><span class="si">{</span><span class="s2">", "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span><span class="w"> </span><span class="n">img_data</span><span class="o">.</span><span class="n">columns</span><span class="p">))</span><span class="si">}</span><span class="s1">). </span><span class="si">{</span><span class="n">hint</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+        <span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="s1">'led_array_id'</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">reference_property</span><span class="p">]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">noise_property</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">noise_property</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">img_data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'The LEDs are weighted equally: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">noise_property</span><span class="si">}</span><span class="s1"> is not among the columns of '</span>
+                      <span class="sa">f</span><span class="s1">'the binary data of channel </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">experiment</span><span class="o">.</span><span class="n">channel</span><span class="si">}</span><span class="s1">. Run step 3 again with a '</span>
+                      <span class="sa">f</span><span class="s1">'LEDSA version that writes it to weight them by their signal-to-noise ratio.'</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">noise_property</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">columns</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">noise_property</span><span class="p">)</span>
+        <span class="n">img_data_cropped</span> <span class="o">=</span> <span class="n">img_data</span><span class="p">[</span><span class="n">columns</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">calculated_img_data</span> <span class="o">=</span> <span class="n">img_data_cropped</span><span class="p">[</span><span class="n">img_data_cropped</span><span class="p">[</span><span class="s1">'led_array_id'</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">experiment</span><span class="o">.</span><span class="n">led_array</span><span class="p">]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculated_img_data</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+            <span class="n">exit</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Apparently there are no intensity values for led array </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">experiment</span><span class="o">.</span><span class="n">led_array</span><span class="si">}</span><span class="s2">!"</span><span class="p">)</span>
+        <span class="c1"># The solvers cannot handle NaN: the linear one stops with an unspecific error, the nonlinear one returns</span>
+        <span class="c1"># zeros without a warning. sidebg_sum_col_val is NaN for LEDs without side band pixels, for example.</span>
+        <span class="n">nan_values</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculated_img_data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">reference_property</span><span class="p">]</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">nan_values</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+            <span class="n">nan_led_ids</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">calculated_img_data</span><span class="p">[</span><span class="n">nan_values</span><span class="p">]</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">get_level_values</span><span class="p">(</span><span class="s1">'led_id'</span><span class="p">)</span><span class="o">.</span><span class="n">unique</span><span class="p">())</span>
+            <span class="n">led_ids_text</span> <span class="o">=</span> <span class="s1">', '</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">nan_led_ids</span><span class="p">[:</span><span class="mi">10</span><span class="p">]))</span> <span class="o">+</span> <span class="p">(</span><span class="s1">', ...'</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">nan_led_ids</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">10</span> <span class="k">else</span> <span class="s1">''</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">nan_values</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span><span class="si">}</span><span class="s1"> values of </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">reference_property</span><span class="si">}</span><span class="s1"> of led array '</span>
+                             <span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">experiment</span><span class="o">.</span><span class="n">led_array</span><span class="si">}</span><span class="s1"> are NaN (led ids </span><span class="si">{</span><span class="n">led_ids_text</span><span class="si">}</span><span class="s1">). For sidebg_sum_col_val '</span>
+                             <span class="sa">f</span><span class="s1">'this means that no side band pixels were found for these LEDs, see sideband_distances '</span>
+                             <span class="sa">f</span><span class="s1">'in config.ini.'</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">noise_property</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculated_img_data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">noise_property</span><span class="p">]</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+            <span class="c1"># JPG and PNG images and sensors without an optical black margin have no read noise</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'The LEDs are weighted equally: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">noise_property</span><span class="si">}</span><span class="s1"> is NaN for every LED of led '</span>
+                  <span class="sa">f</span><span class="s1">'array </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">experiment</span><span class="o">.</span><span class="n">led_array</span><span class="si">}</span><span class="s1">, so the images carry no read noise.'</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">calculated_img_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculated_img_data</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">noise_property</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">noise_property</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># Images without analysis results are missing from the binary data, so the IDs are not necessarily a</span>
+        <span class="c1"># gapless range. They are kept to pair every computed coefficient with the time of its own image.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">analysed_img_ids</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">calculated_img_data</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">get_level_values</span><span class="p">(</span><span class="s1">'img_id'</span><span class="p">)</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_moving_avg_images</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">apply_moving_average</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="ExtinctionCoefficients.apply_moving_average">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.ExtinctionCoefficients.ExtinctionCoefficients.apply_moving_average">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">apply_moving_average</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Replace the reference property of every LED by its centred moving average over</span>
+<span class="sd">        num_moving_avg_images consecutive analysed images, fewer at the start and the end of the series.</span>
+<span class="sd">        The noise, where it is used, becomes the standard deviation of that mean, so the root of the summed</span>
+<span class="sd">        variances divided by the number of images.</span>
+
+<span class="sd">        Every image keeps its own time and its own row, so the series is smoothed rather than decimated:</span>
+<span class="sd">        the time resolution becomes num_moving_avg_images times the image interval while the number of</span>
+<span class="sd">        extinction coefficients stays the same. average_images with n_summarize is the other way round.</span>
+<span class="sd">        """</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_moving_avg_images</span>
+        <span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">reference_property</span><span class="p">]</span> <span class="o">+</span> <span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">noise_property</span><span class="p">]</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">noise_property</span> <span class="k">else</span> <span class="p">[])</span>
+        <span class="n">averaged</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">columns</span><span class="p">:</span>
+            <span class="n">wide</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculated_img_data</span><span class="p">[</span><span class="n">column</span><span class="p">]</span><span class="o">.</span><span class="n">unstack</span><span class="p">(</span><span class="s1">'led_id'</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">column</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">noise_property</span><span class="p">:</span>
+                <span class="n">count</span> <span class="o">=</span> <span class="n">wide</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">center</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">min_periods</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+                <span class="n">wide</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">wide</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">center</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">min_periods</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span> <span class="o">/</span> <span class="n">count</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">wide</span> <span class="o">=</span> <span class="n">wide</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">center</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">min_periods</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+            <span class="n">averaged</span><span class="p">[</span><span class="n">column</span><span class="p">]</span> <span class="o">=</span> <span class="n">wide</span><span class="o">.</span><span class="n">stack</span><span class="p">()</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculated_img_data</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">column</span><span class="p">,</span> <span class="n">values</span> <span class="ow">in</span> <span class="n">averaged</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">data</span><span class="p">[</span><span class="n">column</span><span class="p">]</span> <span class="o">=</span> <span class="n">values</span><span class="o">.</span><span class="n">reindex</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="p">)</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">calculated_img_data</span> <span class="o">=</span> <span class="n">data</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'Reference property smoothed over </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s1"> consecutive images (centred moving average).'</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ExtinctionCoefficients.apply_temperature_correction">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.ExtinctionCoefficients.ExtinctionCoefficients.apply_temperature_correction">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">apply_temperature_correction</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Divide the reference property by the reduction factor of the time and height of every value.</span>
+
+<span class="sd">        Does nothing if the channel has no reduction factors configured or if they were divided out</span>
+<span class="sd">        already, so that the factors enter the intensities exactly once however often this is called.</span>
+
+<span class="sd">        The correction runs before the reference intensities are averaged, so that I0 is a corrected</span>
+<span class="sd">        intensity as well and the reduction of the reference images cancels out of the relative</span>
+<span class="sd">        intensities. The factors are looked up on the (img_id, led_id) index of the loaded data rather</span>
+<span class="sd">        than on a positional array, because the LED axis of the intensities is ordered by LED ID while</span>
+<span class="sd">        the distance matrix follows the reversed LEDs of the experiment.</span>
+
+<span class="sd">        :raises ValueError: If an image or an LED of the loaded data has no time or height.</span>
+<span class="sd">        """</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">temperature_correction</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">temperature_corrected</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="n">index</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculated_img_data</span><span class="o">.</span><span class="n">index</span>
+        <span class="n">times</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_experiment_times_of</span><span class="p">(</span><span class="n">index</span><span class="o">.</span><span class="n">get_level_values</span><span class="p">(</span><span class="s1">'img_id'</span><span class="p">)</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">())</span>
+        <span class="n">heights</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_heights_of</span><span class="p">(</span><span class="n">index</span><span class="o">.</span><span class="n">get_level_values</span><span class="p">(</span><span class="s1">'led_id'</span><span class="p">)</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">())</span>
+        <span class="n">factors</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">temperature_correction</span><span class="o">.</span><span class="n">factors_at</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">heights</span><span class="p">)</span>
+        <span class="n">corrected_intensities</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculated_img_data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">reference_property</span><span class="p">]</span> <span class="o">/</span> <span class="n">factors</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">calculated_img_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculated_img_data</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span>
+            <span class="o">**</span><span class="p">{</span><span class="bp">self</span><span class="o">.</span><span class="n">reference_property</span><span class="p">:</span> <span class="n">corrected_intensities</span><span class="p">})</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">temperature_corrected</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'Temperature correction applied to </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">reference_property</span><span class="si">}</span><span class="s1"> of channel '</span>
+              <span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">experiment</span><span class="o">.</span><span class="n">channel</span><span class="si">}</span><span class="s1">, LED array </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">experiment</span><span class="o">.</span><span class="n">led_array</span><span class="si">}</span><span class="s1">, with the reduction '</span>
+              <span class="sa">f</span><span class="s1">'factors of </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">temperature_correction</span><span class="si">}</span><span class="s1">.'</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_experiment_times_of</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">img_ids</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Experiment time of every given image, read from the image infos of the experiment.</span>
+
+<span class="sd">        :param img_ids: IDs of the images to look up, with repetitions.</span>
+<span class="sd">        :type img_ids: np.ndarray</span>
+<span class="sd">        :return: Experiment time [s] of every given image, in the order of the argument.</span>
+<span class="sd">        :rtype: np.ndarray</span>
+<span class="sd">        :raises ValueError: If one of the images is missing from the image infos.</span>
+<span class="sd">        """</span>
+        <span class="n">times_per_img_id</span> <span class="o">=</span> <span class="n">read_experiment_times</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">experiment</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">average_images</span><span class="p">)</span>
+        <span class="n">missing</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">img_ids</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">times_per_img_id</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">missing</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">'The images </span><span class="si">{</span><span class="n">missing</span><span class="si">}</span><span class="s1"> of channel </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">experiment</span><span class="o">.</span><span class="n">channel</span><span class="si">}</span><span class="s1"> hold intensity '</span>
+                             <span class="sa">f</span><span class="s1">'values but no experiment time, so the reduction factors of the '</span>
+                             <span class="sa">f</span><span class="s1">'temperature correction cannot be interpolated to them. The image infos '</span>
+                             <span class="sa">f</span><span class="s1">'and the analysis results in </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">experiment</span><span class="o">.</span><span class="n">path</span><span class="si">}</span><span class="s1"> are out of sync.'</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">times_per_img_id</span><span class="p">[</span><span class="n">img_id</span><span class="p">]</span> <span class="k">for</span> <span class="n">img_id</span> <span class="ow">in</span> <span class="n">img_ids</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_heights_of</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">led_ids</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Height of every given LED, taken from the coordinates of the LED array.</span>
+
+<span class="sd">        :param led_ids: IDs of the LEDs to look up, with repetitions.</span>
+<span class="sd">        :type led_ids: np.ndarray</span>
+<span class="sd">        :return: Height [m] of every given LED, in the order of the argument.</span>
+<span class="sd">        :rtype: np.ndarray</span>
+<span class="sd">        :raises ValueError: If one of the LEDs has no coordinates.</span>
+<span class="sd">        """</span>
+        <span class="n">height_per_led_id</span> <span class="o">=</span> <span class="p">{</span><span class="n">led</span><span class="o">.</span><span class="n">id</span><span class="p">:</span> <span class="n">led</span><span class="o">.</span><span class="n">pos_z</span> <span class="k">for</span> <span class="n">led</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">experiment</span><span class="o">.</span><span class="n">leds</span><span class="p">}</span>
+        <span class="n">missing</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">led_ids</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">height_per_led_id</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">missing</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">'The LEDs </span><span class="si">{</span><span class="n">missing</span><span class="si">}</span><span class="s1"> of LED array </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">experiment</span><span class="o">.</span><span class="n">led_array</span><span class="si">}</span><span class="s1"> have no '</span>
+                             <span class="sa">f</span><span class="s1">'coordinates, so the reduction factors of the temperature correction '</span>
+                             <span class="sa">f</span><span class="s1">'cannot be interpolated to their height. Run the computation of the LED '</span>
+                             <span class="sa">f</span><span class="s1">'coordinates (-coord) in </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">experiment</span><span class="o">.</span><span class="n">path</span><span class="si">}</span><span class="s1"> before the analysis.'</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">height_per_led_id</span><span class="p">[</span><span class="n">led_id</span><span class="p">]</span> <span class="k">for</span> <span class="n">led_id</span> <span class="ow">in</span> <span class="n">led_ids</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ExtinctionCoefficients.save">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.ExtinctionCoefficients.ExtinctionCoefficients.save">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Save the computed extinction coefficients to a file.</span>
+
+<span class="sd">        The file goes into a directory of its solver and its analysed quantity, so that the</span>
+<span class="sd">        results of the quantities of one analysis run do not overwrite each other.</span>
+<span class="sd">        """</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">get_extinction_coefficients_file_path</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">solver</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">experiment</span><span class="o">.</span><span class="n">channel</span><span class="p">,</span>
+                                                     <span class="bp">self</span><span class="o">.</span><span class="n">reference_property</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">experiment</span><span class="o">.</span><span class="n">led_array</span><span class="p">,</span>
+                                                     <span class="n">root</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">experiment</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
+        <span class="n">path</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">header</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">header</span> <span class="o">+=</span> <span class="s1">'Layer_bottom_height[m],'</span>
+        <span class="n">header</span> <span class="o">+=</span> <span class="s1">','</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">experiment</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">borders</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span> <span class="o">+</span> <span class="s1">'</span><span class="se">\n</span><span class="s1">'</span>
+        <span class="n">header</span> <span class="o">+=</span> <span class="s1">'Layer_top_height[m],'</span>
+        <span class="n">header</span> <span class="o">+=</span> <span class="s1">','</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">experiment</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">borders</span><span class="p">[</span><span class="mi">1</span><span class="p">:]))</span> <span class="o">+</span> <span class="s1">'</span><span class="se">\n</span><span class="s1">'</span>
+        <span class="n">header</span> <span class="o">+=</span> <span class="s1">'Layer_center_height[m],'</span>
+        <span class="n">header</span> <span class="o">+=</span> <span class="s1">','</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">x</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">experiment</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">borders</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">experiment</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">borders</span><span class="p">[</span><span class="mi">1</span><span class="p">:]))</span> <span class="o">/</span> <span class="mi">2</span><span class="p">))</span> <span class="o">+</span> <span class="s1">'</span><span class="se">\n</span><span class="s1">'</span>
+        <span class="n">header</span> <span class="o">+=</span> <span class="s1">'Experiment_Time[s],'</span>
+        <span class="n">header</span> <span class="o">+=</span> <span class="s1">'layer0'</span>
+        <span class="n">header</span> <span class="o">+=</span> <span class="s1">''</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="sa">f</span><span class="s1">',layer</span><span class="si">{</span><span class="n">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s1">'</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">experiment</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">amount</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span>
+
+        <span class="n">experiment_times</span> <span class="o">=</span> <span class="n">_get_experiment_times_from_image_infos_file</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">average_images</span><span class="p">,</span>
+                                                                       <span class="bp">self</span><span class="o">.</span><span class="n">analysed_img_ids</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">experiment_times</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">coefficients_per_image_and_layer</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">'Got </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">experiment_times</span><span class="p">)</span><span class="si">}</span><span class="s1"> experiment times for '</span>
+                             <span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">coefficients_per_image_and_layer</span><span class="p">)</span><span class="si">}</span><span class="s1"> computed images. The image infos '</span>
+                             <span class="sa">f</span><span class="s1">'file and the analysis results of the channel are out of sync.'</span><span class="p">)</span>
+        <span class="n">coefficients_per_time_and_layer</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">column_stack</span><span class="p">(</span>
+            <span class="p">(</span><span class="n">experiment_times</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">coefficients_per_image_and_layer</span><span class="p">))</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">coefficients_per_time_and_layer</span><span class="p">,</span> <span class="n">delimiter</span><span class="o">=</span><span class="s1">','</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="n">header</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ExtinctionCoefficients.calc_distance_array">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.ExtinctionCoefficients.ExtinctionCoefficients.calc_distance_array">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">calc_distance_array</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Calculate the distances traversed between camera and LEDs in each layer.</span>
+
+<span class="sd">        :return: Array of distances traversed between camera and LEDs in each layer.</span>
+<span class="sd">        :rtype: np.ndarray</span>
+<span class="sd">        """</span>
+        <span class="n">distances</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">experiment</span><span class="o">.</span><span class="n">num_leds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">experiment</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">amount</span><span class="p">))</span>
+        <span class="n">count</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="c1"># self.experiment.leds need to be reversed to build the distance array the right way</span>
+        <span class="k">for</span> <span class="n">led</span> <span class="ow">in</span> <span class="nb">reversed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">experiment</span><span class="o">.</span><span class="n">leds</span><span class="p">):</span>
+            <span class="n">d</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">experiment</span><span class="o">.</span><span class="n">calc_traversed_dist_per_layer</span><span class="p">(</span><span class="n">led</span><span class="p">)</span>
+            <span class="n">distances</span><span class="p">[</span><span class="n">count</span><span class="p">]</span> <span class="o">=</span> <span class="n">d</span>
+            <span class="n">count</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="n">distances</span></div>
+
+
+<div class="viewcode-block" id="ExtinctionCoefficients.calc_and_set_ref_intensities">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.ExtinctionCoefficients.ExtinctionCoefficients.calc_and_set_ref_intensities">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">calc_and_set_ref_intensities</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">         Calculate and set the reference intensities for all LEDs based on the reference images.</span>
+
+<span class="sd">         :raises ValueError: if none of the reference images holds LED data.</span>
+<span class="sd">         """</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ref_img_ids_of_loaded_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">requested_img_ids</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ref_img_ids_of_loaded_data</span><span class="p">)</span>
+            <span class="n">ref_img_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculated_img_data</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="sa">f</span><span class="s1">'img_id == </span><span class="si">{</span><span class="n">requested_img_ids</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># The reference window is the first num_ref_imgs images, whether or not they were analysed,</span>
+            <span class="c1"># so a skipped image among them is missing from the average and has to be reported</span>
+            <span class="n">requested_img_ids</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_ref_imgs</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
+            <span class="n">ref_img_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculated_img_data</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="sa">f</span><span class="s1">'img_id &lt;= </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">num_ref_imgs</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_requested_ref_imgs_available</span><span class="p">(</span><span class="n">ref_img_data</span><span class="p">,</span> <span class="n">requested_img_ids</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"Images with indices </span><span class="si">{</span><span class="n">ref_img_data</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">get_level_values</span><span class="p">(</span><span class="s1">'img_id'</span><span class="p">)</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">values</span><span class="si">}</span><span class="s2"> were used for calculating reference intensities."</span><span class="p">)</span>
+
+        <span class="n">ref_intensities</span> <span class="o">=</span> <span class="n">ref_img_data</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="s1">'led_id'</span><span class="p">)[</span><span class="bp">self</span><span class="o">.</span><span class="n">reference_property</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+        <span class="n">check_intensity_normalization</span><span class="p">(</span><span class="n">ref_img_data</span><span class="p">,</span> <span class="n">ref_intensities</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">reference_property</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ref_intensities</span> <span class="o">=</span> <span class="n">ref_intensities</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_requested_ref_imgs_available</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ref_img_data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+                                            <span class="n">requested_img_ids</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Report the requested reference images that hold no LED data.</span>
+
+<span class="sd">        Images skipped during the intensity extraction keep their ID in the image infos but</span>
+<span class="sd">        produce no intensities, so a reference image ID naming one of them would silently</span>
+<span class="sd">        drop out of the average instead of being noticed. This holds for the images named by</span>
+<span class="sd">        :attr:`ref_img_indices` and for the first :attr:`num_ref_imgs` images alike.</span>
+
+<span class="sd">        :param ref_img_data: Intensity data of the requested reference images.</span>
+<span class="sd">        :type ref_img_data: pd.DataFrame</span>
+<span class="sd">        :param requested_img_ids: IDs of the reference images the configuration asks for.</span>
+<span class="sd">        :type requested_img_ids: List[int]</span>
+<span class="sd">        :raises ValueError: if none of the requested reference images holds LED data.</span>
+<span class="sd">        """</span>
+        <span class="n">available</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">ref_img_data</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">get_level_values</span><span class="p">(</span><span class="s1">'img_id'</span><span class="p">)</span><span class="o">.</span><span class="n">unique</span><span class="p">())</span>
+        <span class="n">missing</span> <span class="o">=</span> <span class="p">[</span><span class="n">img_id</span> <span class="k">for</span> <span class="n">img_id</span> <span class="ow">in</span> <span class="n">requested_img_ids</span> <span class="k">if</span> <span class="n">img_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">available</span><span class="p">]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">missing</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span><span class="sa">f</span><span class="s1">'The reference images </span><span class="si">{</span><span class="n">missing</span><span class="si">}</span><span class="s1"> of LED array </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">experiment</span><span class="o">.</span><span class="n">led_array</span><span class="si">}</span><span class="s1"> in '</span>
+               <span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">experiment</span><span class="o">.</span><span class="n">path</span><span class="si">}</span><span class="s1"> hold no intensity values. They were either skipped during '</span>
+               <span class="sa">f</span><span class="s1">'the extraction of the LED intensities or they lie outside the analysed images.'</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">available</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="n">msg</span><span class="si">}</span><span class="s1"> No reference intensities can be calculated. Set num_ref_images or '</span>
+                             <span class="sa">f</span><span class="s1">'ref_img_indices in config_analysis.ini to images that hold results.'</span><span class="p">)</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="n">msg</span><span class="si">}</span><span class="s1"> The reference intensities are averaged over the remaining images '</span>
+                      <span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">available</span><span class="p">)</span><span class="si">}</span><span class="s1">.'</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="ne">UserWarning</span><span class="p">,</span> <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ExtinctionCoefficients.apply_color_correction">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.ExtinctionCoefficients.ExtinctionCoefficients.apply_color_correction">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">apply_color_correction</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cc_matrix</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="s1">'sum_col_val'</span><span class="p">,</span>
+                               <span class="n">nchannels</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># TODO: remove hardcoding of nchannels</span>
+<span class="w">        </span><span class="sd">""" Apply color correction on channel values based on color correction matrix.</span>
+
+<span class="sd">        :param cc_matrix: Color correction matrix.</span>
+<span class="sd">        :type cc_matrix: np.ndarray</span>
+<span class="sd">        :param on: Reference property to apply the color correction on.</span>
+<span class="sd">        :type on: str</span>
+<span class="sd">        :param nchannels: Number of channels.</span>
+<span class="sd">        :type nchannels: int</span>
+<span class="sd">        """</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cc_matrix</span> <span class="o">=</span> <span class="n">cc_matrix</span>
+        <span class="n">cc_matrix_inv</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cc_matrix</span><span class="p">)</span>
+        <span class="n">quanity</span> <span class="o">=</span> <span class="n">on</span>
+        <span class="n">fit_params_list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">channel</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nchannels</span><span class="p">):</span>
+            <span class="n">fit_parameters</span> <span class="o">=</span> <span class="n">read_hdf</span><span class="p">(</span><span class="n">channel</span><span class="p">)[</span><span class="n">quanity</span><span class="p">]</span>
+            <span class="n">fit_params_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fit_parameters</span><span class="p">)</span>
+        <span class="n">raw_val_array</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">fit_params_list</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="c1"># The corrected values stay floats, see ledsa.analysis.data_preparation.apply_color_correction</span>
+        <span class="n">cc_val_array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">cc_matrix_inv</span><span class="p">,</span> <span class="n">raw_val_array</span><span class="o">.</span><span class="n">T</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+        <span class="k">for</span> <span class="n">channel</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nchannels</span><span class="p">):</span>
+            <span class="n">extend_hdf</span><span class="p">(</span><span class="n">channel</span><span class="p">,</span> <span class="n">quanity</span> <span class="o">+</span> <span class="s1">'_cc'</span><span class="p">,</span> <span class="n">cc_val_array</span><span class="p">[:,</span> <span class="n">channel</span><span class="p">])</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Color correction applied on </span><span class="si">{</span><span class="n">nchannels</span><span class="si">}</span><span class="s2"> Channels!"</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ExtinctionCoefficients.calc_coefficients_of_img">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.ExtinctionCoefficients.ExtinctionCoefficients.calc_coefficients_of_img">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">calc_coefficients_of_img</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rel_intensities</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Calculate the extinction coefficients for a single image.</span>
+<span class="sd">        Needs to be implemented by the child class.</span>
+
+<span class="sd">        :param rel_intensities: Array of relative change in intensity of every LED.</span>
+<span class="sd">        :return: Array of the computed extinction coefficients</span>
+<span class="sd">        :rtype: np.ndarray</span>
+<span class="sd">        """</span>
+        <span class="k">pass</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="multiindex_series_to_nparray">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.ExtinctionCoefficients.multiindex_series_to_nparray">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">multiindex_series_to_nparray</span><span class="p">(</span><span class="n">multi_series</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Convert a multi-index series to a NumPy array.</span>
+
+<span class="sd">    :param multi_series: Series with multi-index to convert.</span>
+<span class="sd">    :type multi_series: pd.Series</span>
+<span class="sd">    :return: Converted array.</span>
+<span class="sd">    :rtype: np.ndarray</span>
+<span class="sd">    """</span>
+    <span class="n">num_leds</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">multi_series</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">size</span><span class="p">())</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="c1"># Images without analysis results are missing, so the IDs are not necessarily a gapless range</span>
+    <span class="n">img_ids</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">multi_series</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">get_level_values</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
+    <span class="n">array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">img_ids</span><span class="p">),</span> <span class="n">num_leds</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">img_id</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">img_ids</span><span class="p">):</span>
+        <span class="n">array</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">multi_series</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">img_id</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">array</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_get_experiment_times_from_image_infos_file</span><span class="p">(</span><span class="n">average_images</span><span class="p">,</span> <span class="n">img_ids</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Read the experiment times of the analysed images.</span>
+
+<span class="sd">    :param average_images: Whether the averaged image infos file is used.</span>
+<span class="sd">    :type average_images: bool</span>
+<span class="sd">    :param img_ids: IDs of the images to return the times of. All times are returned if None.</span>
+<span class="sd">    :type img_ids: list[int] or None</span>
+<span class="sd">    :return: Experiment time of every requested image, ordered by image ID.</span>
+<span class="sd">    :rtype: np.ndarray</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">average_images</span> <span class="o">==</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="n">image_infos_file</span> <span class="o">=</span> <span class="s1">'analysis/image_infos_analysis_avg.csv'</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">image_infos_file</span> <span class="o">=</span> <span class="s1">'analysis/image_infos_analysis.csv'</span>
+    <span class="n">image_info_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">image_infos_file</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">img_ids</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">image_info_df</span> <span class="o">=</span> <span class="n">image_info_df</span><span class="p">[</span><span class="n">image_info_df</span><span class="p">[</span><span class="s1">'#ID'</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">img_ids</span><span class="p">)]</span>
+    <span class="k">return</span> <span class="n">image_info_df</span><span class="p">[</span><span class="s1">'Experiment_Time[s]'</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, CCE.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
