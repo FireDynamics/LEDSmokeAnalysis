@@ -10,7 +10,7 @@ import scipy.optimize
 from ledsa.core.ConfigData import ConfigData
 from ledsa.core.file_handling import read_table
 from ledsa.core.image_handling import get_img_name
-from ledsa.core.image_reading import read_channel_data_mask_and_noise_from_img
+from ledsa.core.image_reading import ImageChannels
 from ledsa.data_extraction.LEDAnalysisData import LEDAnalysisData
 from ledsa.data_extraction.model import target_function
 from ledsa.data_extraction.sideband_background import (DEFAULT_SIDEBAND_DISTANCES, DEFAULT_BACKGROUND_FLOOR,
@@ -19,7 +19,8 @@ from ledsa.data_extraction.sideband_background import (DEFAULT_SIDEBAND_DISTANCE
 
 
 def generate_analysis_data(img_filename: str, channel: int, search_areas: np.ndarray, line_indices: List[List[int]],
-                           conf: ConfigData, fit_leds=True, debug=False, debug_led=None) -> List[LEDAnalysisData]:
+                           conf: ConfigData, fit_leds=True, debug=False, debug_led=None,
+                           img_channels: Optional[ImageChannels] = None) -> List[LEDAnalysisData]:
     """
     Generate LED analysis data for the given image.
 
@@ -39,12 +40,16 @@ def generate_analysis_data(img_filename: str, channel: int, search_areas: np.nda
     :type debug: bool
     :param debug_led: The specific LED to debug. Default is None.
     :type debug_led: Optional[int]
+    :param img_channels: The image, already read for the analysis of several channels. If None, the image is
+        read from the image directory of the config.
+    :type img_channels: Optional[ImageChannels]
     :return: A list of LEDAnalysisData objects containing analysis results.
     :rtype: List[LEDAnalysisData]
     """
-    file_path = os.path.join(conf['DEFAULT']['img_directory'], img_filename)
-    data, channel_mask, pixel_noise = read_channel_data_mask_and_noise_from_img(
-        file_path, channel=channel, rotation=conf.get('DEFAULT', 'img_rotation'))
+    if img_channels is None:
+        file_path = os.path.join(conf['DEFAULT']['img_directory'], img_filename)
+        img_channels = ImageChannels(file_path, rotation=conf.get('DEFAULT', 'img_rotation'))
+    data, channel_mask, pixel_noise = img_channels.channel_data_mask_and_noise(channel)
     search_area_radius = int(conf['find_search_areas']['search_area_radius'])
     img_analysis_data = []
 
