@@ -10,7 +10,7 @@ LEDSA (LEDSmokeAnalysis) is a Python-based software package for the computation 
 
 ### Requirements
 
-- Python 3.8
+- Python 3.9 to 3.12
 - pip (Python package installer)
 
 ### Installation from PyPI
@@ -161,6 +161,24 @@ The time counts from `start_time` of `config.ini`, like `Experiment_Time[s]` in
 `analysis/image_infos_analysis.csv`. The intensities are divided by the bilinearly interpolated
 factors before I0 is computed; images and LEDs outside the table stay uncorrected, with a
 warning. The header of each result file states the correction applied.
+
+### Dense smoke and the read noise of the sensor
+
+The intensities are not clipped at zero after the black level of the sensor is subtracted, so an
+LED that has vanished in dense smoke can give a relative intensity at or below zero. The linear
+solver leaves such LEDs out. Where the transmission reaches the read noise of the sensor, the LEDs
+that remain are those whose noise happened to be positive, and the extinction coefficients come
+out too low: in fog tests by 14 to 31 % at 1.24 and 1.64 1/m, where the transmission of the red
+LEDs was 0.1 to 0.2 % of I0.
+
+### Features in validation
+
+The background-corrected sums of step 3 (`bgsub_sum_col_val`, `bgsub2_sum_col_val`,
+`sidebg_sum_col_val`), the weighting of the LEDs by their signal-to-noise ratio and the moving
+average of the reference property, which v0.12.0 had, are left out of the releases until they are
+validated. They are kept on the
+[develop](https://github.com/FireDynamics/LEDSmokeAnalysis/tree/develop) branch. A config file that
+still sets one of their options gets a note that the option is ignored.
 
 ## Demo
 
