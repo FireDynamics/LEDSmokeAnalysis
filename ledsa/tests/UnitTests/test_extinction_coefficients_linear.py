@@ -37,6 +37,15 @@ class TestLinearSolver:
             np.testing.assert_allclose(make_solver().calc_coefficients_of_img(rel_intensities), without_the_led,
                                        atol=1e-9)
 
+    def test_an_led_without_a_finite_value_is_left_out(self):
+        # an LED whose reference intensity is 0 gives NaN or an infinite relative intensity
+        without_the_led = make_solver(DISTANCES[1:]).calc_coefficients_of_img(REL_INTENSITIES[1:])
+        for value in [np.nan, np.inf, -np.inf]:
+            rel_intensities = REL_INTENSITIES.copy()
+            rel_intensities[0] = value
+            np.testing.assert_allclose(make_solver().calc_coefficients_of_img(rel_intensities), without_the_led,
+                                       atol=1e-9)
+
     def test_an_image_without_any_measured_led_gives_nan(self):
-        rel_intensities = np.array([0.0, -0.1, 0.0, -2.0])
+        rel_intensities = np.array([0.0, -0.1, np.nan, -2.0])
         assert np.isnan(make_solver().calc_coefficients_of_img(rel_intensities)).all()

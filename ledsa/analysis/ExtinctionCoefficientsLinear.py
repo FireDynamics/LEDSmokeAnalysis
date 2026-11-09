@@ -105,8 +105,9 @@ class ExtinctionCoefficientsLinear(ExtinctionCoefficients):
         # A_aug = [A; sqrt(lambda)*L], where A is the distance matrix
         A_aug = np.vstack((self.distances_per_led_and_layer * weights[:, None], sqrt_lambda * L))
 
-        # Augment the right-hand side: b_aug = [b; 0]
-        b_aug = np.hstack((optical_depths * weights, np.zeros(L.shape[0])))
+        # Augment the right-hand side: b_aug = [b; 0]. The optical depth of a left out LED is set to 0 rather
+        # than multiplied by its weight: that of an LED without a finite value is NaN, and NaN * 0 is NaN.
+        b_aug = np.hstack((np.where(measured, optical_depths, 0.0), np.zeros(L.shape[0])))
 
         # Solve the non-negative least squares problem: min ||A_aug*x - b_aug||^2 subject to x >= 0
         sigmas, residuals = nnls(A_aug, b_aug)
