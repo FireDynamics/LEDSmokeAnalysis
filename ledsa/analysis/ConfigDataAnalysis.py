@@ -44,7 +44,7 @@ def parse_reference_properties(value: str) -> List[str]:
             properties.append(name)
     if not properties:
         raise ValueError(f"The reference_property option names no quantity ({value!r}). Give one or "
-                         f"more quantities separated by spaces, e.g. 'sum_col_val bgsub_sum_col_val'.")
+                         f"more quantities separated by spaces, e.g. 'sum_col_val mean_col_val'.")
     return properties
 
 
@@ -93,10 +93,8 @@ class ConfigDataAnalysis(cp.ConfigParser):
         :param num_cores: Number of CPU cores for (multicore) processing. If greater than 1, multicore processing is applied. Defaults to 1.
         :type num_cores: int
         :param reference_property: Quantity or quantities the extinction coefficients are computed
-            from. Defaults to 'sum_col_val'. Use 'bgsub_sum_col_val' to base the analysis on
-            intensities with the local background subtracted, estimated from the border of each LED
-            search area. Several quantities, given as a list or separated by spaces, are analysed one
-            after another, each into a directory of its own.
+            from. Defaults to 'sum_col_val'. Several quantities, given as a list or separated by
+            spaces, are analysed one after another, each into a directory of its own.
         :type reference_property: Union[str, Iterable[str]]
         :param average_images: Determines if intensities are computed as an average from two consecutive images. Defaults to False.
         :type average_images: bool

@@ -107,8 +107,8 @@ class ImageChannels:
     at a time, so that besides the decoded image only the channel in work is held in memory.
 
     The stored values of a RAW image are kept as they are, and the black level and the white level are
-    applied to the pixels that are asked for. Step 3 asks only for its search areas and side bands, a few
-    percent of the sensor, which saves applying them to the whole image.
+    applied to the pixels that are asked for. Step 3 asks only for its search areas, a few percent of the
+    sensor, which saves applying them to the whole image.
     """
 
     def __init__(self, filename: str, rotation: str = AUTO_ROTATION):

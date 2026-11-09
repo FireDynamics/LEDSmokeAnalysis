@@ -13,7 +13,7 @@ from PIL import Image
 
 from ledsa.core import image_handling, image_reading
 from ledsa.core.image_integrity import CorruptedImageError
-from ledsa.core.image_reading import ImageChannels, RawImage
+from ledsa.core.image_reading import ImageChannels, RawImage, get_bayer_channel_mask
 from ledsa.data_extraction import step_3_functions
 from ledsa.data_extraction.DataExtractor import DataExtractor
 
@@ -182,3 +182,36 @@ class TestStep3ReadsEveryImageOnce:
         error = extractor.process_img_file('V001_Cam01_0042.CR3')  # there is no such file
         assert isinstance(error, CorruptedImageError)
         assert written == []
+
+
+class TestChannelMask:
+    # RGGB pattern as in rawpy raw_colors_visible: 0 red, 1 and 3 green, 2 blue
+    FILTER_ARRAY = np.tile(np.array([[0, 1], [3, 2]]), (2, 2))
+
+    @pytest.mark.parametrize('channel, colors', [(0, [0]), (1, [1, 3]), (2, [2])])
+    def test_bayer_channel_mask(self, channel, colors):
+        mask = get_bayer_channel_mask(self.FILTER_ARRAY, channel)
+        np.testing.assert_array_equal(mask, np.isin(self.FILTER_ARRAY, colors))
+
+    def test_raw_mask_keeps_channel_pixels_with_value_zero(self, monkeypatch):
+        # a pixel of the channel may be 0 or below: the values are not clipped after the black level
+        data = np.where(self.FILTER_ARRAY == 1, 0, 7)
+        # mocked at the one pass over the RAW file, so that every reader derived from it stays consistent.
+        # A black level of 0 and a white level of 255 leave the stored values as they are.
+        raw = RawImage(data, self.FILTER_ARRAY, np.zeros(4), 255.0, image_reading.UPRIGHT_ORIENTATION)
+        monkeypatch.setattr(image_reading, '_read_raw_image', lambda filename: raw)
+        channel_array, mask = image_reading.read_channel_data_and_mask_from_img('img.CR3', 1)
+        np.testing.assert_array_equal(mask, np.isin(self.FILTER_ARRAY, [1, 3]))
+        np.testing.assert_array_equal(channel_array, np.where(mask, data, 0))
+        np.testing.assert_array_equal(channel_array, image_reading._read_channel_data_from_raw_file('img.CR3', 1))
+
+    def test_all_pixels_of_a_png_belong_to_the_channel(self, tmp_path):
+        path = tmp_path / 'img.png'
+        plt.imsave(path, np.random.default_rng(0).random((6, 8, 3)))
+        channel_array, mask = image_reading.read_channel_data_and_mask_from_img(str(path), 1)
+        np.testing.assert_array_equal(channel_array, image_reading.read_channel_data_from_img(str(path), 1))
+        assert mask.shape == channel_array.shape and mask.all()
+
+    def test_unsupported_format_raises(self):
+        with pytest.raises(CorruptedImageError, match='unsupported file extension'):
+            image_reading.read_channel_data_and_mask_from_img('img.xyz', 0)

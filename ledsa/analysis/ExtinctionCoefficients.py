@@ -204,16 +204,15 @@ class ExtinctionCoefficients(ABC):
         self.calculated_img_data = img_data_cropped[img_data_cropped['led_array_id'] == self.experiment.led_array]
         if self.calculated_img_data.empty:
             exit(f"Apparently there are no intensity values for led array {self.experiment.led_array}!")
-        # The solvers cannot handle NaN: the linear one stops with an unspecific error, the nonlinear one returns
-        # zeros without a warning. sidebg_sum_col_val is NaN for LEDs without side band pixels, for example.
+        # A NaN is no measurement, and the solvers would hide it: the nonlinear one returns zeros without a
+        # warning, the linear one leaves the LED out without a word.
         nan_values = self.calculated_img_data[self.reference_property].isna()
         if nan_values.any():
             nan_led_ids = sorted(self.calculated_img_data[nan_values].index.get_level_values('led_id').unique())
             led_ids_text = ', '.join(map(str, nan_led_ids[:10])) + (', ...' if len(nan_led_ids) > 10 else '')
             raise ValueError(f'{int(nan_values.sum())} values of {self.reference_property} of led array '
-                             f'{self.experiment.led_array} are NaN (led ids {led_ids_text}). For sidebg_sum_col_val '
-                             f'this means that no side band pixels were found for these LEDs, see sideband_distances '
-                             f'in config.ini.')
+                             f'{self.experiment.led_array} are NaN (led ids {led_ids_text}). Check the step 3 '
+                             f'results of these LEDs or analyse another quantity.')
 
         # Images without analysis results are missing from the binary data, so the IDs are not necessarily a
         # gapless range. They are kept to pair every computed coefficient with the time of its own image.

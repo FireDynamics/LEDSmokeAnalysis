@@ -99,7 +99,7 @@ another, each solver and quantity writing into a directory of its own:
 
 ```ini
 [DEFAULT]
-reference_property = sum_col_val bgsub_sum_col_val
+reference_property = sum_col_val mean_col_val
 ```
 
 ```
@@ -134,21 +134,6 @@ section per camera and a `[led_arrays]` section mapping virtual array IDs to the
 individual runs. Since image IDs are counted per run, `num_ref_images` and `ref_img_indices` can
 be set per `[simulation_N]` section; pick the reference images of all cameras from the same time
 window before the fire.
-
-### Background correction (optional)
-
-Besides the plain sum `sum_col_val`, step 3 writes background-corrected sums that can be selected
-as `reference_property`:
-
-| `reference_property` | Background estimate |
-|---|---|
-| `sum_col_val` (default) | none |
-| `bgsub_sum_col_val` | median of a 2 px border ring of the search area, subtracted pixel-wise |
-| `bgsub2_sum_col_val` | mean of the same border ring, subtracted per pixel of the search area |
-| `sidebg_sum_col_val` | mean of side bands next to the LED strip, subtracted per pixel of the search area |
-
-The side bands lie `sideband_distances` (default 25 to 60 px) across the strip in `config.ini`;
-raise `sideband_exclusion_margin` if light of a neighbouring strip reaches them.
 
 ### Temperature correction (optional)
 
