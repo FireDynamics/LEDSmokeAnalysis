@@ -67,9 +67,8 @@ class ExtinctionCoefficientsNonLinear(ExtinctionCoefficients):
         :type temperature_correction: TemperatureCorrection or None
         """
 
-        # the nonlinear solver has no weighting, so it is switched off whatever the default is
         super().__init__(experiment, reference_property, num_ref_imgs, ref_img_indices, average_images,
-                         n_summarize, temperature_correction, snr_full_weight=None)
+                         n_summarize, temperature_correction)
         self.bounds = [(0, 10) for _ in range(self.experiment.layers.amount)]
         self.weighting_preference = weighting_preference
         self.weighting_curvature = weighting_curvature

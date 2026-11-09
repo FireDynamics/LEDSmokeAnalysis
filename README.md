@@ -10,7 +10,7 @@ LEDSA (LEDSmokeAnalysis) is a Python-based software package for the computation 
 
 ### Requirements
 
-- Python 3.8
+- Python 3.9 to 3.12
 - pip (Python package installer)
 
 ### Installation from PyPI
@@ -99,7 +99,7 @@ another, each solver and quantity writing into a directory of its own:
 
 ```ini
 [DEFAULT]
-reference_property = sum_col_val bgsub_sum_col_val
+reference_property = sum_col_val mean_col_val
 ```
 
 ```
@@ -135,21 +135,6 @@ individual runs. Since image IDs are counted per run, `num_ref_images` and `ref_
 be set per `[simulation_N]` section; pick the reference images of all cameras from the same time
 window before the fire.
 
-### Background correction (optional)
-
-Besides the plain sum `sum_col_val`, step 3 writes background-corrected sums that can be selected
-as `reference_property`:
-
-| `reference_property` | Background estimate |
-|---|---|
-| `sum_col_val` (default) | none |
-| `bgsub_sum_col_val` | median of a 2 px border ring of the search area, subtracted pixel-wise |
-| `bgsub2_sum_col_val` | mean of the same border ring, subtracted per pixel of the search area |
-| `sidebg_sum_col_val` | mean of side bands next to the LED strip, subtracted per pixel of the search area |
-
-The side bands lie `sideband_distances` (default 25 to 60 px) across the strip in `config.ini`;
-raise `sideband_exclusion_margin` if light of a neighbouring strip reaches them.
-
 ### Temperature correction (optional)
 
 LEDs lose radiant power as they heat up, which would otherwise be read as extinction. Reduction
@@ -176,6 +161,24 @@ The time counts from `start_time` of `config.ini`, like `Experiment_Time[s]` in
 `analysis/image_infos_analysis.csv`. The intensities are divided by the bilinearly interpolated
 factors before I0 is computed; images and LEDs outside the table stay uncorrected, with a
 warning. The header of each result file states the correction applied.
+
+### Dense smoke and the read noise of the sensor
+
+The intensities are not clipped at zero after the black level of the sensor is subtracted, so an
+LED that has vanished in dense smoke can give a relative intensity at or below zero. The linear
+solver leaves such LEDs out. Where the transmission reaches the read noise of the sensor, the LEDs
+that remain are those whose noise happened to be positive, and the extinction coefficients come
+out too low: in fog tests by 14 to 31 % at 1.24 and 1.64 1/m, where the transmission of the red
+LEDs was 0.1 to 0.2 % of I0.
+
+### Features in validation
+
+The background-corrected sums of step 3 (`bgsub_sum_col_val`, `bgsub2_sum_col_val`,
+`sidebg_sum_col_val`), the weighting of the LEDs by their signal-to-noise ratio and the moving
+average of the reference property, which v0.12.0 had, are left out of the releases until they are
+validated. They are kept on the
+[develop](https://github.com/FireDynamics/LEDSmokeAnalysis/tree/develop) branch. A config file that
+still sets one of their options gets a note that the option is ignored.
 
 ## Demo
 
