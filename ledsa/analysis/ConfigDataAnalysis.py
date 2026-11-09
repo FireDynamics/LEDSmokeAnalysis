@@ -10,6 +10,9 @@ DEFAULT_REFERENCE_PROPERTY = 'sum_col_val'
 # Options of config_analysis.ini that a release of LEDSA has removed, with what became of them. A
 # config written by an older version still sets them, and loading it names them.
 REMOVED_OPTIONS = {
+    'num_moving_avg_images': 'LEDSA 0.13.0 removed the moving average of the reference property until '
+                             'it is validated; it is kept on the develop branch of the repository. '
+                             'average_images with n_summarize averages consecutive images instead.',
 }
 
 
@@ -65,8 +68,7 @@ class ConfigDataAnalysis(cp.ConfigParser):
                  average_images=False, n_summarize=2, solver='linear', weighting_preference=-6e-3,
                  weighting_curvature=1e-2,
                  num_iterations=1000, lambda_reg=1e-3, snr_full_weight=DEFAULT_SNR_FULL_WEIGHT,
-                 min_layer_weight=0.5,
-                 num_moving_avg_images=1, reduction_files=None):
+                 min_layer_weight=0.5, reduction_files=None):
         """
         :param load_config_file: Determines whether to load the config file on initialization. Defaults to True.
         :type load_config_file: bool
@@ -116,10 +118,6 @@ class ConfigDataAnalysis(cp.ConfigParser):
         :param min_layer_weight: Linear solver with snr_full_weight only: a layer whose path length
             weighted mean LED weight stays below this value is set to NaN. Defaults to 0.5.
         :type min_layer_weight: float
-        :param num_moving_avg_images: Linear solver only: number of consecutive images over which the
-            reference property is smoothed by a centred moving average, every image keeping its own time.
-            1 leaves it as it is and is the default. Cannot be combined with average_images.
-        :type num_moving_avg_images: int
         :param reduction_files: Path of the reduction factor file of the temperature correction per
             camera channel. Channels without an entry are analysed without the correction, which is
             the default for every channel.
@@ -160,9 +158,6 @@ class ConfigDataAnalysis(cp.ConfigParser):
             self['DEFAULT']['   snr_full_weight'] = str(snr_full_weight)
             self.set('DEFAULT', '   # Layers whose mean LED weight stays below this value become NaN')
             self['DEFAULT']['   min_layer_weight'] = str(min_layer_weight)
-            self.set('DEFAULT', '   # Images for a centred moving average of the reference property, 1 is off.')
-            self.set('DEFAULT', '   # Every image keeps its own time, unlike average_images with n_summarize.')
-            self['DEFAULT']['   num_moving_avg_images'] = str(num_moving_avg_images)
 
             self['experiment_geometry'] = {}
             self.set('experiment_geometry', '# Global X Y Z position of the camera ')

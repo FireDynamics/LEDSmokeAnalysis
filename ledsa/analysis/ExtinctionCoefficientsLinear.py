@@ -20,8 +20,7 @@ class ExtinctionCoefficientsLinear(ExtinctionCoefficients):
     """
 
     def __init__(self, experiment, reference_property='sum_col_val', num_ref_imgs=10, average_images=False, ref_img_indices=None, lambda_reg=1e-3, n_summarize=2, temperature_correction=None,
-                 snr_full_weight=DEFAULT_SNR_FULL_WEIGHT, min_layer_weight=0.5,
-                 num_moving_avg_images=1):
+                 snr_full_weight=DEFAULT_SNR_FULL_WEIGHT, min_layer_weight=0.5):
         """
         Initialize the ExtinctionCoefficientsLinear object.
 
@@ -48,13 +47,10 @@ class ExtinctionCoefficientsLinear(ExtinctionCoefficients):
         :param min_layer_weight: Only with snr_full_weight: a layer is set to NaN if the mean weight of the
             LEDs crossing it, weighted with their path length in the layer, stays below this value.
         :type min_layer_weight: float
-        :param num_moving_avg_images: Number of consecutive images for a centred moving average of the
-            reference property.
-        :type num_moving_avg_images: int
         """
         self.min_layer_weight = min_layer_weight
         super().__init__(experiment, reference_property, num_ref_imgs, ref_img_indices, average_images,
-                         n_summarize, temperature_correction, snr_full_weight, num_moving_avg_images)
+                         n_summarize, temperature_correction, snr_full_weight)
         self.lambda_reg = lambda_reg
         self.solver = 'linear'
 

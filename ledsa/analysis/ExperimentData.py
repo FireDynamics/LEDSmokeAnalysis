@@ -45,9 +45,6 @@ class ExperimentData:
     :ivar min_layer_weight: Only with snr_full_weight: a layer whose path length weighted mean LED weight
         stays below this value is set to NaN.
     :type min_layer_weight: float
-    :ivar num_moving_avg_images: Number of consecutive images for a centred moving average of the reference
-        property. 1 leaves it as it is.
-    :type num_moving_avg_images: int
     :ivar average_images: Intensities are computed as an average from consecutive images.
     :type average_images: bool
     :ivar n_summarize: Number of consecutive images summarized into one when averaging.
@@ -80,7 +77,6 @@ class ExperimentData:
         self.lambda_reg = None
         self.snr_full_weight = DEFAULT_SNR_FULL_WEIGHT
         self.min_layer_weight = 0.5
-        self.num_moving_avg_images = 1
         self.reference_properties = None
         self.reduction_files = {}
         self.merge_led_arrays = None
@@ -133,8 +129,6 @@ class ExperimentData:
                 self.snr_full_weight = None if entry.lower() == 'none' else float(entry)
             if config_analysis.has_option('DEFAULT', 'min_layer_weight'):
                 self.min_layer_weight = float(config_analysis['DEFAULT']['min_layer_weight'])
-            if config_analysis.has_option('DEFAULT', 'num_moving_avg_images'):
-                self.num_moving_avg_images = int(config_analysis['DEFAULT']['num_moving_avg_images'])
         self.reference_properties = config_analysis.get_reference_properties()
         self.reduction_files = {channel: config_analysis.get_reduction_file(channel)
                                 for channel in (self.channels or [])}
