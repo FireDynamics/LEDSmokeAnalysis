@@ -307,9 +307,7 @@ class DataExtractor:
 
     def setup_restart(self) -> None:
         """
-        Setup a restart in case the data extraction process was interrupted earlier.
+        Setup a restart in case the data extraction process was interrupted earlier. Every image that misses the
+        result file of one of the channels is analysed again, for all of them.
         """
-        # if len(self.channels) > 1: #TODO: deactivated for testing
-        #     print('Restart of a run currently only supports one channel. \nExiting...')
-        #     exit(1)
-        ledsa.data_extraction.step_3_functions.find_and_save_not_analysed_imgs(self.channels[0])
+        ledsa.data_extraction.step_3_functions.find_and_save_not_analysed_imgs(self.channels)

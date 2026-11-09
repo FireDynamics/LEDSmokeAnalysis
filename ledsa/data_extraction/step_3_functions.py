@@ -268,19 +268,21 @@ def create_imgs_to_process_file() -> None:
     out_file.close()
 
 
-def find_and_save_not_analysed_imgs(channel: int) -> None:
+def find_and_save_not_analysed_imgs(channels: Sequence[int]) -> None:
     """
-    Find and save filenames of images that have not yet been analyzed.
+    Find and save filenames of images that have not yet been analyzed in all of the channels.
 
-    :param channel: Channel to check for analyzed images.
-    :type channel: int
+    An image is analysed for one channel after the other, so an interrupted run can leave it with the result files
+    of only some of its channels. Such an image is analysed again for all of them.
+
+    :param channels: Channels to check for analyzed images.
+    :type channels: Sequence[int]
     """
     file_path = os.path.join('analysis', 'image_infos_analysis.csv')
     image_infos = read_table(file_path, dtype='str', delim=',', atleast_2d=True)
-    all_imgs = image_infos[:, 1]
-    processed_img_ids = _find_analysed_img_ids(channel)
-    processed_imgs = np.frompyfunc(get_img_name, 1, 1)(processed_img_ids)
-    remaining_imgs = set(all_imgs)-set(processed_imgs)
+    analysed_img_ids = set.intersection(*(set(_find_analysed_img_ids(channel)) for channel in channels))
+    remaining_imgs = [img_filename for img_id, img_filename in image_infos[:, :2]
+                      if int(img_id) not in analysed_img_ids]
 
     _save_list_of_remaining_imgs_needed_to_be_processed(remaining_imgs)
 
