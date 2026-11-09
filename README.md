@@ -185,15 +185,9 @@ solver leaves such LEDs out. Where the transmission reaches the read noise of th
 that remain are those whose noise happened to be positive, and the extinction coefficients come
 out too low: in fog tests by 14 to 31 % at 1.24 and 1.64 1/m, where the transmission of the red
 LEDs was 0.1 to 0.2 % of I0.
-
-### Features in validation
-
-The background-corrected sums of step 3 (`bgsub_sum_col_val`, `bgsub2_sum_col_val`,
-`sidebg_sum_col_val`), the weighting of the LEDs by their signal-to-noise ratio and the moving
-average of the reference property, which v0.12.0 had, are left out of the releases until they are
-validated. They are kept on the
-[develop](https://github.com/FireDynamics/LEDSmokeAnalysis/tree/develop) branch. A config file that
-still sets one of their options gets a note that the option is ignored.
+On the develop branch, the weighting by the signal-to-noise ratio (`snr_full_weight`) downweights
+these LEDs where the read noise is known (RAW images), and a layer whose LEDs carry on average less
+than `min_layer_weight` of the full weight is set to NaN instead.
 
 ## Demo
 
