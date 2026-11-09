@@ -26,7 +26,7 @@ class ConfigDataStacked(cp.ConfigParser):
         camera_channels   = 0 1 2
         num_layers        = 20
         domain_bounds     = 0.0 3.0
-        reference_property = sum_col_val mean_col_val
+        reference_property = sum_col_val bgsub_sum_col_val
         num_ref_images    = 10
         ref_img_indices   = None
         average_images    = False

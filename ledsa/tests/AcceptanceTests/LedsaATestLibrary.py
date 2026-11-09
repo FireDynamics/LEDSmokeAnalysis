@@ -39,7 +39,7 @@ class LedsaATestLibrary:
         os.chdir(new_dir)
 
     @keyword
-    def create_test_data(self, num_of_leds=100, num_of_layers=20, bottom_border=0, top_border=3):
+    def create_test_data(self, num_of_leds=100, num_of_layers=20, bottom_border=0, top_border=3, background=0):
         # Create test_data directory if it doesn't exist
         if not os.path.exists('test_data'):
             os.makedirs('test_data')
@@ -81,7 +81,7 @@ class LedsaATestLibrary:
             for z in np.linspace(bottom_border + 0.05, top_border - 0.05, num_of_leds):
                 ex.add_led(0, 4, z)
             ex.set_extinction_coefficients(extinction_coefficients)
-            create_test_image(image_id, ex)
+            create_test_image(image_id, ex, background=int(background))
 
     # ------------------------------------------------------------------
     # Stacked / multi-camera keywords
@@ -487,6 +487,31 @@ class LedsaATestLibrary:
         file.close()
 
     @keyword
+    def strip_bgsub_column_from_led_position_files(self, channel=0, num_columns=5):
+        """Keep only the first num_columns columns of the step 3 output files to simulate data extracted with
+        an older ledsa version (5: prior to the local background subtraction). The column header is shortened
+        accordingly."""
+        num_columns = int(num_columns)
+        pattern = os.path.join('analysis', f'channel{channel}', '*_led_positions.csv')
+        for path in glob.glob(pattern):
+            with open(path, encoding='utf-8') as file:
+                lines = file.readlines()
+            with open(path, 'w', encoding='utf-8') as file:
+                for line in lines:
+                    if line.startswith('# id,line,'):
+                        file.write(','.join(line.strip().split(',')[:num_columns]) + '\n')
+                    elif not line.strip() or line.lstrip().startswith('#'):
+                        file.write(line)
+                    else:
+                        file.write(','.join(line.strip().split(',')[:num_columns]) + '\n')
+
+    @keyword
+    def check_extinction_coefficient_files_are_identical(self, file_a, file_b):
+        data_a = np.loadtxt(file_a, delimiter=',')
+        data_b = np.loadtxt(file_b, delimiter=',')
+        return bool(np.array_equal(data_a, data_b))
+
+    @keyword
     def corrupt_image(self, img_name, mode='truncate'):
         """Damage a test image and keep a backup, so that it can be restored afterwards.
 
@@ -754,7 +779,7 @@ def load_extinction_coefficients_computed(solver, channel, led_array, reference_
     extinction_coefficients_computed = data[:, 1:]
     return time, extinction_coefficients_computed
 
-def create_test_image(image_id, experiment, img_dir='test_data'):
+def create_test_image(image_id, experiment, img_dir='test_data', background=0):
     """ Creates three test images with black and gray pixels representing 3 leds and sets the exif data needed
     The first image has 100% transmission on all LEDs, the second image has 50% transmission on all LEDs,
     the third has 50%, 70% and 80% transmission on the top, middle and bottom LEDs.
@@ -768,7 +793,7 @@ def create_test_image(image_id, experiment, img_dir='test_data'):
     transmissions = experiment.calc_all_led_transmissions()
 
     # Reverse transmissions because images are created from top down
-    img_array = create_img_array(num_of_leds, list(reversed(transmissions)))
+    img_array = create_img_array(num_of_leds, list(reversed(transmissions)), background=background)
     img = Image.fromarray(img_array, 'RGB')
 
     # Save image without EXIF data
@@ -806,10 +831,12 @@ def turn_img_sideways(path, write_orientation=True):
     turned_img.writeMetadata()
 
 
-def create_img_array(num_of_leds, transmissions):
+def create_img_array(num_of_leds, transmissions, background=0):
     img = np.zeros((num_of_leds * 50 + 50, 50, 3), np.uint8)
     for led_id in range(num_of_leds):
         add_led(img, (1 + led_id) * 50, 25, transmissions[led_id])
+    if background:
+        img = np.clip(img.astype(np.int16) + int(background), 0, 255).astype(np.uint8)
     return img
 
 

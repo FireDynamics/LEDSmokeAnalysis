@@ -689,19 +689,16 @@ NOISE_SUM_COLUMNS = ["noise_sum_col_val"]
 LED_CENTER_COLUMNS = ["led_center_x", "led_center_y"]
 FIT_COLUMNS = ["x", "y", "dx", "dy", "A", "alpha", "wx", "wy", "fit_success", "fit_fun", "fit_nfev", "fit_time"]
 
-# Known layouts by the number of names (including img_id). Step 3 writes the first two; the others are those of
-# earlier versions, whose background-corrected sums and read noise v0.13.0 no longer computes but still reads.
+# known layouts by the number of names (including img_id)
 COLUMN_LAYOUTS = {
-    len(BASE_COLUMNS): BASE_COLUMNS,  # -s3_fast, before v0.11.0 and since v0.13.0
-    len(BASE_COLUMNS + LED_CENTER_COLUMNS + FIT_COLUMNS):
-        BASE_COLUMNS + LED_CENTER_COLUMNS + FIT_COLUMNS,  # -s3 with fit, since v0.13.0
+    len(BASE_COLUMNS): BASE_COLUMNS,  # -s3_fast, before the local background subtraction
     len(BASE_COLUMNS + BGSUB_COLUMNS): BASE_COLUMNS + BGSUB_COLUMNS,  # -s3_fast, before the side band pedestal
-    len(BASE_COLUMNS + BGSUB_COLUMNS + SIDEBG_COLUMNS):
-        BASE_COLUMNS + BGSUB_COLUMNS + SIDEBG_COLUMNS,  # -s3_fast of v0.11.0
+    len(BASE_COLUMNS + BGSUB_COLUMNS + SIDEBG_COLUMNS): BASE_COLUMNS + BGSUB_COLUMNS + SIDEBG_COLUMNS,  # -s3_fast
     len(BASE_COLUMNS + BGSUB_COLUMNS + LED_CENTER_COLUMNS + FIT_COLUMNS):
         BASE_COLUMNS + BGSUB_COLUMNS + LED_CENTER_COLUMNS + FIT_COLUMNS,  # -s3 with fit, before the side band pedestal
     len(BASE_COLUMNS + BGSUB_COLUMNS + SIDEBG_COLUMNS + LED_CENTER_COLUMNS + FIT_COLUMNS):
-        BASE_COLUMNS + BGSUB_COLUMNS + SIDEBG_COLUMNS + LED_CENTER_COLUMNS + FIT_COLUMNS,  # -s3 with fit of v0.11.0
+        BASE_COLUMNS + BGSUB_COLUMNS + SIDEBG_COLUMNS + LED_CENTER_COLUMNS + FIT_COLUMNS,
+        # -s3 with fit, before the optical black
     len(BASE_COLUMNS + BGSUB_COLUMNS + SIDEBG_COLUMNS + NOISE_SUM_COLUMNS):
         BASE_COLUMNS + BGSUB_COLUMNS + SIDEBG_COLUMNS + NOISE_SUM_COLUMNS,  # -s3_fast of v0.12.0
     len(BASE_COLUMNS + BGSUB_COLUMNS + SIDEBG_COLUMNS + NOISE_SUM_COLUMNS + LED_CENTER_COLUMNS

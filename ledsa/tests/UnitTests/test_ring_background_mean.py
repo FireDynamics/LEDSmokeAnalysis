@@ -1,0 +1,146 @@
+import numpy as np
+import pytest
+
+from ledsa.data_extraction.step_3_functions import _estimate_ring_backgrounds, _generate_led_analysis_data
+
+SEARCH_AREA_RADIUS = 8
+CENTER = (40, 40)
+
+
+def ring_median(search_area, channel_mask=None):
+    """The median of the border ring of a single search area."""
+    medians, _ = _estimate_ring_backgrounds(search_area[None], None if channel_mask is None else channel_mask[None])
+    return medians[0]
+
+
+def ring_mean(search_area, channel_mask=None):
+    """The mean of the border ring of a single search area."""
+    _, means = _estimate_ring_backgrounds(search_area[None], None if channel_mask is None else channel_mask[None])
+    return means[0]
+
+
+def make_image(transmission=1.0, pedestal=0.0, noise_sigma=0.0, clip=False, bayer_mask=False, seed=0,
+               amplitude=4000.0, sigma=1.5):
+    """Single Gaussian LED plus constant pedestal and noise, optionally clipped at 0 and with an RGGB green mask."""
+    rng = np.random.default_rng(seed)
+    rows, cols = np.mgrid[0:80, 0:80]
+    led = amplitude * transmission * np.exp(-((rows - CENTER[0]) ** 2 + (cols - CENTER[1]) ** 2) / (2 * sigma ** 2))
+    img = led + pedestal + rng.normal(0.0, noise_sigma, led.shape)
+    if clip:
+        img = np.clip(img, 0.0, None)
+    mask = (rows + cols) % 2 == 1 if bayer_mask else np.ones(img.shape, dtype=bool)
+    return np.where(mask, img, 0.0), mask
+
+
+def analyse(img, mask, floor=None):
+    search_areas = np.array([[0, CENTER[0], CENTER[1]]])
+    return _generate_led_analysis_data(None, 1, img, False, 0, 'test_img', 0, search_areas, SEARCH_AREA_RADIUS,
+                                       fit_leds=False, channel_mask=mask, background_floor=floor)
+
+
+def box(array):
+    r = SEARCH_AREA_RADIUS
+    return array[CENTER[0] - r:CENTER[0] + r, CENTER[1] - r:CENTER[1] + r]
+
+
+class TestRingBackgroundMean:
+    def test_constant_image(self):
+        assert ring_mean(np.full((16, 16), 7.5)) == pytest.approx(7.5)
+
+    def test_foreign_channel_pixels_are_excluded_by_mask(self):
+        img, mask = make_image(pedestal=7.5, bayer_mask=True, amplitude=0.0)
+        assert ring_mean(box(img), box(mask)) == pytest.approx(7.5)
+
+    def test_channel_pixels_with_value_zero_are_included(self):
+        data = np.full((16, 16), 4.0)
+        data[::2, :] = 0.0  # channel pixels clipped at 0
+        ring = np.ones((16, 16), dtype=bool)
+        ring[2:-2, 2:-2] = False
+        assert ring_mean(data) == pytest.approx(data[ring].mean())
+        # both estimators keep the zeros now; only the Bayer mask decides which pixels count
+        assert ring_median(data) == pytest.approx(data[ring].mean())
+
+    def test_too_small_or_empty_gives_nan(self):
+        assert np.isnan(ring_mean(np.ones((4, 4))))
+        assert np.isnan(ring_mean(np.ones((16, 16)), np.zeros((16, 16), dtype=bool)))
+
+
+class TestRingBackgroundsOfAStack:
+    def test_search_areas_with_different_numbers_of_ring_pixels(self):
+        rng = np.random.default_rng(2)
+        boxes = rng.normal(5.0, 2.0, (6, 12, 12)).astype(np.float32)
+        masks = rng.random(boxes.shape) < 0.5
+        masks[4] = False  # no channel pixel at all
+        ring = np.ones((12, 12), dtype=bool)
+        ring[2:-2, 2:-2] = False
+        medians, means = _estimate_ring_backgrounds(boxes, masks)
+        for search_area, mask, median, mean in zip(boxes, masks, medians, means):
+            ring_pixels = search_area[ring & mask]
+            assert median == (np.median(ring_pixels) if ring_pixels.size else 0.0)
+            assert mean == pytest.approx(np.mean(ring_pixels, dtype=np.float64) if ring_pixels.size else np.nan,
+                                         nan_ok=True)
+        assert medians[4] == 0.0 and np.isnan(means[4])
+
+
+class TestBgsub2Sum:
+    @pytest.mark.parametrize('bayer_mask', [False, True])
+    def test_subtraction_is_linear(self, bayer_mask):
+        img, mask = make_image(pedestal=3.0, noise_sigma=2.0, clip=True, bayer_mask=bayer_mask)
+        led_data = analyse(img, mask)
+        num_channel_pixels = np.count_nonzero(box(mask))
+        expected = box(img).sum() - num_channel_pixels * ring_mean(box(img), box(mask))
+        assert led_data.bgsub2_sum_color_value == pytest.approx(expected)
+
+    def _box_sum_below_zero(self):
+        # LED shifted to the corner of the box: its light falls into the ring and N * b exceeds the box sum
+        img, mask = make_image(amplitude=0.0)
+        row, col = CENTER[0] - SEARCH_AREA_RADIUS + 1, CENTER[1] - SEARCH_AREA_RADIUS + 1
+        img[row - 1:row + 2, col - 1:col + 2] = 1000.0
+        num_channel_pixels = np.count_nonzero(box(mask))
+        corrected = box(img).sum() - num_channel_pixels * ring_mean(box(img), box(mask))
+        assert corrected < 0
+        return img, mask, corrected
+
+    def test_without_a_floor_the_corrected_sum_stays_negative(self):
+        # a corrected sum at or below zero says that the signal has vanished, which the solver discards
+        # by its weight; a limit would turn it into a positive value the solver trusts
+        img, mask, corrected = self._box_sum_below_zero()
+        led_data = analyse(img, mask)
+        assert led_data.bgsub2_sum_color_value == pytest.approx(corrected)
+
+    def test_an_explicit_floor_still_limits_the_corrected_sum(self):
+        img, mask, _ = self._box_sum_below_zero()
+        led_data = analyse(img, mask, floor=0.05)
+        assert led_data.bgsub2_sum_color_value == pytest.approx(0.05 * box(img).sum())
+
+    def test_existing_values_are_unchanged(self):
+        img, mask = make_image(pedestal=3.0, noise_sigma=2.0, clip=True, bayer_mask=True)
+        led_data = analyse(img, mask)
+        reference = _generate_led_analysis_data(None, 1, img, False, 0, 'test_img', 0, np.array([[0, *CENTER]]),
+                                                SEARCH_AREA_RADIUS, fit_leds=False)
+        assert led_data.sum_color_value == reference.sum_color_value
+        # bgsub now takes its border ring from the channel mask, so it differs from a run without one
+        assert led_data.bgsub_sum_color_value != reference.bgsub_sum_color_value
+        fields = led_data.get_main_data_string().split(',')
+        # the fields up to max_col_value; bgsub follows and depends on the channel mask
+        assert ','.join(fields[:5]) == ','.join(reference.get_main_data_string().split(',')[:5])
+        assert float(fields[8]) == pytest.approx(led_data.bgsub2_sum_color_value, rel=1e-4)
+
+    def test_optical_depth_bias_with_clipped_noise(self):
+        # LED without halo in the ring: the mean estimator removes the pedestal including the clipped noise,
+        # the median of the pixels > 0 with pixel-wise clipping (bgsub) leaves a bias
+        transmission = 0.01
+        args = dict(pedestal=2.0, noise_sigma=2.0, clip=True, bayer_mask=True)
+        true_depth = -np.log(transmission)
+        depth = {'sum': [], 'bgsub': [], 'bgsub2': []}
+        for seed in range(20):
+            ref = analyse(*make_image(transmission=1.0, seed=2 * seed, **args))
+            img = analyse(*make_image(transmission=transmission, seed=2 * seed + 1, **args))
+            depth['sum'].append(-np.log(img.sum_color_value / ref.sum_color_value))
+            depth['bgsub'].append(-np.log(img.bgsub_sum_color_value / ref.bgsub_sum_color_value))
+            depth['bgsub2'].append(-np.log(img.bgsub2_sum_color_value / ref.bgsub2_sum_color_value))
+        bias = {key: np.mean(values) / true_depth - 1 for key, values in depth.items()}
+        assert abs(bias['bgsub2']) < 0.02
+        # bgsub used to be biased as well, because it dropped the pixels at 0 and clipped pixel by pixel
+        assert abs(bias['bgsub']) < 0.02
+        assert bias['sum'] < -0.1

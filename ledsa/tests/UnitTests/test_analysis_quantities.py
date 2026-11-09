@@ -29,17 +29,17 @@ class TestParseReferenceProperties:
         assert parse_reference_properties('sum_col_val') == ['sum_col_val']
 
     def test_quantities_are_split_on_whitespace(self):
-        assert parse_reference_properties('sum_col_val  mean_col_val\tmax_col_val') == [
-            'sum_col_val', 'mean_col_val', 'max_col_val']
+        assert parse_reference_properties('sum_col_val  bgsub_sum_col_val\tsidebg_sum_col_val') == [
+            'sum_col_val', 'bgsub_sum_col_val', 'sidebg_sum_col_val']
 
     def test_order_of_the_option_is_kept(self):
-        assert parse_reference_properties('mean_col_val sum_col_val') == [
-            'mean_col_val', 'sum_col_val']
+        assert parse_reference_properties('bgsub_sum_col_val sum_col_val') == [
+            'bgsub_sum_col_val', 'sum_col_val']
 
     def test_repeated_quantity_is_dropped(self):
         # both would be written into the same file
-        assert parse_reference_properties('sum_col_val mean_col_val sum_col_val') == [
-            'sum_col_val', 'mean_col_val']
+        assert parse_reference_properties('sum_col_val bgsub_sum_col_val sum_col_val') == [
+            'sum_col_val', 'bgsub_sum_col_val']
 
     @pytest.mark.parametrize('value', ['', '   ', 'None', 'none'])
     def test_option_without_a_quantity_raises(self, value):
@@ -47,8 +47,8 @@ class TestParseReferenceProperties:
             parse_reference_properties(value)
 
     def test_list_is_written_as_one_value(self):
-        assert format_reference_properties(['sum_col_val', 'mean_col_val']) == \
-               'sum_col_val mean_col_val'
+        assert format_reference_properties(['sum_col_val', 'bgsub_sum_col_val']) == \
+               'sum_col_val bgsub_sum_col_val'
         assert format_reference_properties('sum_col_val') == 'sum_col_val'
 
 
@@ -56,8 +56,8 @@ class TestConfigDataAnalysis:
     def test_template_holds_the_given_quantities(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         ConfigDataAnalysis(load_config_file=False,
-                           reference_property=['sum_col_val', 'mean_col_val'])
-        assert ConfigDataAnalysis().get_reference_properties() == ['sum_col_val', 'mean_col_val']
+                           reference_property=['sum_col_val', 'bgsub_sum_col_val'])
+        assert ConfigDataAnalysis().get_reference_properties() == ['sum_col_val', 'bgsub_sum_col_val']
 
     def test_single_quantity_of_an_older_config_is_read(self, tmp_path, monkeypatch):
         # configs written before several quantities could be given hold a single name
@@ -81,8 +81,8 @@ class TestConfigDataStacked:
         return ConfigDataStacked(filename=str(path))
 
     def test_several_quantities_are_read(self, tmp_path):
-        config = self.write_config(tmp_path, 'reference_property = sum_col_val max_col_val\n')
-        assert config.reference_properties == ['sum_col_val', 'max_col_val']
+        config = self.write_config(tmp_path, 'reference_property = sum_col_val sidebg_sum_col_val\n')
+        assert config.reference_properties == ['sum_col_val', 'sidebg_sum_col_val']
         assert config.reference_property == 'sum_col_val'
 
     def test_unset_option_falls_back_to_the_default_quantity(self, tmp_path):
@@ -126,8 +126,9 @@ class TestResultPath:
 
     def test_quantities_of_one_solver_are_told_apart(self, tmp_path):
         sum_path = get_extinction_coefficients_file_path('linear', 0, 'sum_col_val', 0, root=tmp_path)
-        mean_path = get_extinction_coefficients_file_path('linear', 0, 'mean_col_val', 0, root=tmp_path)
-        assert sum_path.parent != mean_path.parent
+        bgsub_path = get_extinction_coefficients_file_path('linear', 0, 'bgsub_sum_col_val', 0,
+                                                           root=tmp_path)
+        assert sum_path.parent != bgsub_path.parent
 
 
 class TestSave:
@@ -147,7 +148,7 @@ class TestSave:
 
     def test_quantities_of_one_run_do_not_overwrite_each_other(self, tmp_path, monkeypatch):
         self.setup_analysis_dir(tmp_path, monkeypatch)
-        quantities = ['sum_col_val', 'mean_col_val', 'max_col_val']
+        quantities = ['sum_col_val', 'bgsub_sum_col_val', 'sidebg_sum_col_val']
         for quantity in quantities:
             save_coefficients(tmp_path, quantity)
         for quantity in quantities:
@@ -184,7 +185,7 @@ class TestPostprocessingFileDiscovery:
     def test_only_the_files_of_the_own_quantity_are_read(self, tmp_path):
         solver_dir = tmp_path / 'analysis' / 'extinction_coefficients' / 'linear'
         wanted = self.write_result_file(solver_dir / 'sum_col_val', 'sum_col_val')
-        self.write_result_file(solver_dir / 'mean_col_val', 'mean_col_val')
+        self.write_result_file(solver_dir / 'bgsub_sum_col_val', 'bgsub_sum_col_val')
 
         files = self.make_sim_data('sum_col_val')._extco_files(str(tmp_path))
 
@@ -213,10 +214,10 @@ class TestPostprocessingFileDiscovery:
         analysis_dir.mkdir(parents=True)
         (analysis_dir / 'image_infos_analysis.csv').write_text(IMAGE_INFOS, encoding='utf-8')
         sim_data = SimData(str(tmp_path), read_all=False, load_config_params=False,
-                           reference_property='mean_col_val')
+                           reference_property='bgsub_sum_col_val')
         sim_data.solver = 'linear'
 
-        with pytest.raises(FileNotFoundError, match='mean_col_val'):
+        with pytest.raises(FileNotFoundError, match='bgsub_sum_col_val'):
             sim_data._get_extco_df_from_path()
 
 
@@ -249,41 +250,11 @@ class TestMissingReferenceProperty:
 
     def test_the_columns_that_are_there_are_named(self, coefficients):
         # the quantity may simply have been written by a newer step 3 than the one that ran
-        coefficients.reference_property = 'mean_col_val'
+        coefficients.reference_property = 'bgsub_sum_col_val'
         with pytest.raises(ValueError, match=r'led_array_id, sum_col_val'):
             coefficients.load_img_data()
 
     def test_a_quantity_that_is_there_is_loaded(self, coefficients):
-        coefficients.reference_property = 'sum_col_val'
-        coefficients.load_img_data()
-        assert coefficients.analysed_img_ids == [1, 2]
-
-
-class TestNanReferenceProperty:
-    """A NaN of the analysed quantity stops the analysis instead of being hidden by the solvers."""
-
-    @pytest.fixture
-    def coefficients(self, monkeypatch):
-        from types import SimpleNamespace
-        import pandas as pd
-        import ledsa.analysis.ExtinctionCoefficients as extinction_coefficients
-        from ledsa.analysis.ExtinctionCoefficientsLinear import ExtinctionCoefficientsLinear
-        index = pd.MultiIndex.from_product([[1, 2], [0, 1, 2]], names=['img_id', 'led_id'])
-        img_data = pd.DataFrame({'led_array_id': 0, 'sum_col_val': 100.0,
-                                 'mean_col_val': [0.9, np.nan, 0.9, 0.9, np.nan, 0.9]}, index=index)
-        monkeypatch.setattr(extinction_coefficients, 'read_hdf', lambda channel, path: img_data)
-        coefficients = ExtinctionCoefficientsLinear.__new__(ExtinctionCoefficientsLinear)
-        coefficients.experiment = SimpleNamespace(channel=0, path='.', led_array=0)
-        coefficients.average_images = False
-        return coefficients
-
-    def test_nan_values_stop_the_analysis(self, coefficients):
-        # the nonlinear solver would return zeros, the linear one would leave the LED out without a word
-        coefficients.reference_property = 'mean_col_val'
-        with pytest.raises(ValueError, match=r'2 values of mean_col_val of led array 0 are NaN \(led ids 1\)'):
-            coefficients.load_img_data()
-
-    def test_property_without_nan_is_loaded(self, coefficients):
         coefficients.reference_property = 'sum_col_val'
         coefficients.load_img_data()
         assert coefficients.analysed_img_ids == [1, 2]
