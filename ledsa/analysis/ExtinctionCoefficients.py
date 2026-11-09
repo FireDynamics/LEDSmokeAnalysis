@@ -65,7 +65,8 @@ class ExtinctionCoefficients(ABC):
 
     def __init__(self, experiment, reference_property='sum_col_val', num_ref_imgs=10, ref_img_indices=None,
                  average_images=False, n_summarize=NUM_IMGS_PER_AVERAGE,
-                 temperature_correction=None, snr_full_weight=DEFAULT_SNR_FULL_WEIGHT):
+                 temperature_correction=None, snr_full_weight=DEFAULT_SNR_FULL_WEIGHT,
+                 num_moving_avg_images=1):
         """
         :param experiment: Object representing the experimental setup.
         :type experiment: Experiment
@@ -88,7 +89,19 @@ class ExtinctionCoefficients(ABC):
             data; where either is missing it is switched off with a note, so that the default does not
             stop an analysis of data that cannot carry it.
         :type snr_full_weight: float or None
+        :param num_moving_avg_images: Number of consecutive images over which the reference property is
+            smoothed by a centred moving average before the normalisation. 1 leaves it as it is. Unlike
+            average_images this keeps every image with its own time and does not renumber the images.
+        :type num_moving_avg_images: int
+        :raises ValueError: If snr_full_weight is given for a reference property without a noise column, or
+            if average_images and num_moving_avg_images are combined.
         """
+        if average_images and int(num_moving_avg_images) > 1:
+            raise ValueError('average_images and num_moving_avg_images cannot be combined. '
+                             'average_images summarizes n_summarize images into one and numbers the '
+                             'result from 1 again, while num_moving_avg_images smooths the reference '
+                             'property over neighbouring images and keeps every image with its own '
+                             'time. Pick the one that suits the time resolution you need.')
         self.coefficients_per_image_and_layer = []
         self.experiment = experiment
         self.reference_property = reference_property
@@ -107,6 +120,7 @@ class ExtinctionCoefficients(ABC):
         self.solver = None
         self.lambda_reg = None
         self.snr_full_weight = snr_full_weight
+        self.num_moving_avg_images = int(num_moving_avg_images)
         self.noise_property = None
         if snr_full_weight is not None:
             if reference_property in NOISE_COLUMNS:
@@ -118,7 +132,7 @@ class ExtinctionCoefficients(ABC):
 
     def __str__(self):
         out = str(self.experiment) + \
-              f'Reference_property: {self.reference_property}, Ref_img_indices: {self.ref_img_indices}, Snr_full_weight: {self.snr_full_weight}, Noise_property: {self.noise_property}, Min_layer_weight: {getattr(self, "min_layer_weight", None) if self.noise_property is not None else None}, Solver: {self.solver}, Lambda_reg: {self.lambda_reg}, Temperature_correction: {self.temperature_correction_info()}, LEDSA {version("ledsa")}\n'
+              f'Reference_property: {self.reference_property}, Ref_img_indices: {self.ref_img_indices}, Snr_full_weight: {self.snr_full_weight}, Noise_property: {self.noise_property}, Min_layer_weight: {getattr(self, "min_layer_weight", None) if self.noise_property is not None else None}, Num_moving_avg_images: {self.num_moving_avg_images}, Solver: {self.solver}, Lambda_reg: {self.lambda_reg}, Temperature_correction: {self.temperature_correction_info()}, LEDSA {version("ledsa")}\n'
         return out
 
     def temperature_correction_info(self) -> str:
@@ -264,6 +278,36 @@ class ExtinctionCoefficients(ABC):
         # gapless range. They are kept to pair every computed coefficient with the time of its own image.
         self.analysed_img_ids = sorted(
             self.calculated_img_data.index.get_level_values('img_id').unique().tolist())
+        if self.num_moving_avg_images > 1:
+            self.apply_moving_average()
+
+    def apply_moving_average(self) -> None:
+        """
+        Replace the reference property of every LED by its centred moving average over
+        num_moving_avg_images consecutive analysed images, fewer at the start and the end of the series.
+        The noise, where it is used, becomes the standard deviation of that mean, so the root of the summed
+        variances divided by the number of images.
+
+        Every image keeps its own time and its own row, so the series is smoothed rather than decimated:
+        the time resolution becomes num_moving_avg_images times the image interval while the number of
+        extinction coefficients stays the same. average_images with n_summarize is the other way round.
+        """
+        n = self.num_moving_avg_images
+        columns = [self.reference_property] + ([self.noise_property] if self.noise_property else [])
+        averaged = {}
+        for column in columns:
+            wide = self.calculated_img_data[column].unstack('led_id')
+            if column == self.noise_property:
+                count = wide.notna().astype(float).rolling(n, center=True, min_periods=1).sum()
+                wide = np.sqrt((wide ** 2).rolling(n, center=True, min_periods=1).sum()) / count
+            else:
+                wide = wide.rolling(n, center=True, min_periods=1).mean()
+            averaged[column] = wide.stack()
+        data = self.calculated_img_data.copy()
+        for column, values in averaged.items():
+            data[column] = values.reindex(data.index).to_numpy()
+        self.calculated_img_data = data
+        print(f'Reference property smoothed over {n} consecutive images (centred moving average).')
 
     def apply_temperature_correction(self) -> None:
         """
