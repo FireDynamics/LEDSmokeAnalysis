@@ -700,14 +700,12 @@ COLUMN_LAYOUTS = {
         BASE_COLUMNS + BGSUB_COLUMNS + SIDEBG_COLUMNS + LED_CENTER_COLUMNS + FIT_COLUMNS,
         # -s3 with fit, before the optical black
     len(BASE_COLUMNS + BGSUB_COLUMNS + SIDEBG_COLUMNS + NOISE_SUM_COLUMNS):
-        BASE_COLUMNS + BGSUB_COLUMNS + SIDEBG_COLUMNS + NOISE_SUM_COLUMNS,  # -s3_fast
+        BASE_COLUMNS + BGSUB_COLUMNS + SIDEBG_COLUMNS + NOISE_SUM_COLUMNS,  # -s3_fast of v0.12.0
     len(BASE_COLUMNS + BGSUB_COLUMNS + SIDEBG_COLUMNS + NOISE_SUM_COLUMNS + LED_CENTER_COLUMNS
         + FIT_COLUMNS):
         BASE_COLUMNS + BGSUB_COLUMNS + SIDEBG_COLUMNS + NOISE_SUM_COLUMNS + LED_CENTER_COLUMNS
-        + FIT_COLUMNS,  # -s3 with fit
+        + FIT_COLUMNS,  # -s3 with fit of v0.12.0
 }
-# noise column of a reference property, used to weight the LEDs in the linear solver
-NOISE_COLUMNS = {"sum_col_val": "noise_sum_col_val"}
 # Fitted files written before the delimiter between the main and the fit part was added: max_col_value and
 # led_center_x are glued into one field, so the file has one column less and the names are shifted from there on.
 LEGACY_FIT_COLUMNS = BASE_COLUMNS + LED_CENTER_COLUMNS + FIT_COLUMNS[:-1]

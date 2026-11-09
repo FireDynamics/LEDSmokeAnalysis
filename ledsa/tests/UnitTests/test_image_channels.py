@@ -20,8 +20,6 @@ from ledsa.data_extraction.DataExtractor import DataExtractor
 # RGGB pattern as in rawpy raw_colors_visible: 0 red, 1 and 3 green, 2 blue
 FILTER_ARRAY = np.tile(np.array([[0, 1], [3, 2]]), (2, 3))
 CHANNEL_COLORS = {0: [0], 1: [1, 3], 2: [2]}
-# different per Bayer color, so that a test can tell the noise of one channel from that of another
-READ_NOISE = np.array([1.0, 2.0, 3.0, 4.0])
 SIDEWAYS = 6
 
 
@@ -41,7 +39,7 @@ def raw_reads(monkeypatch, stored):
 
         def read_raw_image(filename):
             reads.append(filename)
-            return RawImage(stored, FILTER_ARRAY, np.zeros(4), 255.0, orientation, READ_NOISE)
+            return RawImage(stored, FILTER_ARRAY, np.zeros(4), 255.0, orientation)
 
         monkeypatch.setattr(image_reading, '_read_raw_image', read_raw_image)
         return reads
@@ -55,26 +53,25 @@ class TestImageChannels:
         img_channels = ImageChannels('img.CR3')
         upright = image_reading.ORIENTATION_TRANSFORMATIONS[orientation]
         for channel, colors in CHANNEL_COLORS.items():
-            channel_array, channel_mask, pixel_noise = img_channels.channel_data_mask_and_noise(channel)
+            channel_array, channel_mask = img_channels.channel_data_and_mask(channel)
             mask = upright(np.isin(FILTER_ARRAY, colors))
             np.testing.assert_array_equal(channel_mask, mask)
             np.testing.assert_array_equal(channel_array, np.where(mask, upright(stored), 0))
-            np.testing.assert_array_equal(pixel_noise, np.where(mask, upright(READ_NOISE[FILTER_ARRAY]), 0))
         assert reads == ['img.CR3']
 
     def test_raw_channels_are_those_of_a_read_per_channel(self, raw_reads):
         raw_reads(SIDEWAYS)
         img_channels = ImageChannels('img.CR3')
         for channel in CHANNEL_COLORS:
-            for once, per_channel in zip(img_channels.channel_data_mask_and_noise(channel),
-                                         image_reading.read_channel_data_mask_and_noise_from_img('img.CR3', channel)):
+            for once, per_channel in zip(img_channels.channel_data_and_mask(channel),
+                                         image_reading.read_channel_data_and_mask_from_img('img.CR3', channel)):
                 np.testing.assert_array_equal(once, per_channel)
-            np.testing.assert_array_equal(img_channels.channel_data_mask_and_noise(channel)[0],
+            np.testing.assert_array_equal(img_channels.channel_data_and_mask(channel)[0],
                                           image_reading.read_channel_data_from_img('img.CR3', channel))
 
     def test_rotation_option_overrides_the_raw_metadata(self, raw_reads, stored):
         raw_reads(SIDEWAYS)
-        channel_array, _, _ = ImageChannels('img.CR3', rotation=0).channel_data_mask_and_noise(0)
+        channel_array, _ = ImageChannels('img.CR3', rotation=0).channel_data_and_mask(0)
         np.testing.assert_array_equal(channel_array, np.where(FILTER_ARRAY == 0, stored, 0))
 
     def test_png_channels_are_the_color_planes(self, tmp_path):
@@ -82,17 +79,16 @@ class TestImageChannels:
         plt.imsave(path, np.random.default_rng(0).random((6, 8, 3)))
         img_channels = ImageChannels(path)
         for channel in CHANNEL_COLORS:
-            channel_array, channel_mask, pixel_noise = img_channels.channel_data_mask_and_noise(channel)
+            channel_array, channel_mask = img_channels.channel_data_and_mask(channel)
             np.testing.assert_array_equal(channel_array, image_reading.read_channel_data_from_img(path, channel))
             assert channel_mask.shape == channel_array.shape and channel_mask.all()
-            assert pixel_noise is None  # a PNG has no optical black
 
     def test_missing_channel_is_reported_as_corrupted_image(self, tmp_path):
         path = str(tmp_path / 'gray.png')
         Image.fromarray(np.zeros((6, 8), dtype=np.uint8)).save(path)  # read as a 2D array without color planes
         img_channels = ImageChannels(path)
         with pytest.raises(CorruptedImageError, match='gray.png'):
-            img_channels.channel_data_mask_and_noise(1)
+            img_channels.channel_data_and_mask(1)
 
     def test_unreadable_image_raises_when_it_is_read(self, tmp_path):
         with pytest.raises(CorruptedImageError, match='missing.CR3'):
@@ -110,8 +106,8 @@ class TestSelectedPixels:
         img_channels = ImageChannels('img.CR3')
         pixels = (np.array([0, 3, 1, 1]), np.array([2, 0, 3, 3]))  # in the upright image, one of them twice
         for channel in CHANNEL_COLORS:
-            for selected, whole in zip(img_channels.channel_data_mask_and_noise(channel, pixels),
-                                       img_channels.channel_data_mask_and_noise(channel)):
+            for selected, whole in zip(img_channels.channel_data_and_mask(channel, pixels),
+                                       img_channels.channel_data_and_mask(channel)):
                 np.testing.assert_array_equal(selected, whole[pixels])
 
     def test_png_pixels_are_those_of_the_color_planes(self, tmp_path):
@@ -120,10 +116,9 @@ class TestSelectedPixels:
         img_channels = ImageChannels(path)
         pixels = (np.array([[0, 5], [2, 2]]), np.array([[7, 0], [3, 4]]))  # index arrays of any shape
         for channel in CHANNEL_COLORS:
-            channel_array, channel_mask, pixel_noise = img_channels.channel_data_mask_and_noise(channel, pixels)
-            np.testing.assert_array_equal(channel_array, img_channels.channel_data_mask_and_noise(channel)[0][pixels])
+            channel_array, channel_mask = img_channels.channel_data_and_mask(channel, pixels)
+            np.testing.assert_array_equal(channel_array, img_channels.channel_data_and_mask(channel)[0][pixels])
             assert channel_mask.shape == channel_array.shape == (2, 2) and channel_mask.all()
-            assert pixel_noise is None
 
     def test_the_calibration_is_kept_for_the_same_selection_only(self, raw_reads, monkeypatch):
         raw_reads()
@@ -134,12 +129,12 @@ class TestSelectedPixels:
         img_channels = ImageChannels('img.CR3')
         pixels = (np.array([0, 1]), np.array([2, 3]))
         for channel in CHANNEL_COLORS:
-            img_channels.channel_data_mask_and_noise(channel, pixels)
+            img_channels.channel_data_and_mask(channel, pixels)
         assert calibrated == [(2,)]
         # another selection, even of the same pixels, and the whole image are calibrated anew
-        img_channels.channel_data_mask_and_noise(0, (pixels[0].copy(), pixels[1].copy()))
-        img_channels.channel_data_mask_and_noise(0)
-        img_channels.channel_data_mask_and_noise(1)
+        img_channels.channel_data_and_mask(0, (pixels[0].copy(), pixels[1].copy()))
+        img_channels.channel_data_and_mask(0)
+        img_channels.channel_data_and_mask(1)
         assert calibrated == [(2,), (2,), FILTER_ARRAY.shape]
 
     def test_shape_is_that_of_the_upright_image(self, raw_reads):
@@ -170,7 +165,7 @@ class TestStep3ReadsEveryImageOnce:
 
         def generate_analysis_data(img_filename, channel, *args, img_channels=None, **kwargs):
             analysed.append(channel)
-            return img_channels.channel_data_mask_and_noise(channel)
+            return img_channels.channel_data_and_mask(channel)
 
         monkeypatch.setattr(step_3_functions, 'generate_analysis_data', generate_analysis_data)
         monkeypatch.setattr(step_3_functions, 'create_fit_result_file',
