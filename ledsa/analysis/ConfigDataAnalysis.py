@@ -3,18 +3,13 @@ from typing import Iterable, List, Optional, Union
 
 from ledsa.analysis.temperature_correction import TEMPERATURE_CORRECTION_CHANNELS
 from ledsa.core.config_file import report_removed_options, save_config
+from ledsa.analysis.ExtinctionCoefficients import DEFAULT_SNR_FULL_WEIGHT
 
 DEFAULT_REFERENCE_PROPERTY = 'sum_col_val'
 
 # Options of config_analysis.ini that a release of LEDSA has removed, with what became of them. A
 # config written by an older version still sets them, and loading it names them.
 REMOVED_OPTIONS = {
-    'snr_full_weight': 'LEDSA 0.13.0 removed the weighting of the LEDs by their signal-to-noise ratio '
-                       'until it is validated; it is kept on the develop branch of the repository. The '
-                       'linear solver weights all LEDs equally and leaves out those at or below zero.',
-    'min_layer_weight': 'It belonged to the weighting of the LEDs by their signal-to-noise ratio, which '
-                        'LEDSA 0.13.0 removed until it is validated; it is kept on the develop branch of '
-                        'the repository.',
     'num_moving_avg_images': 'LEDSA 0.13.0 removed the moving average of the reference property until '
                              'it is validated; it is kept on the develop branch of the repository. '
                              'average_images with n_summarize averages consecutive images instead.',
@@ -72,7 +67,8 @@ class ConfigDataAnalysis(cp.ConfigParser):
                  reference_property='sum_col_val',
                  average_images=False, n_summarize=2, solver='linear', weighting_preference=-6e-3,
                  weighting_curvature=1e-2,
-                 num_iterations=1000, lambda_reg=1e-3, reduction_files=None):
+                 num_iterations=1000, lambda_reg=1e-3, snr_full_weight=DEFAULT_SNR_FULL_WEIGHT,
+                 min_layer_weight=0.5, reduction_files=None):
         """
         :param load_config_file: Determines whether to load the config file on initialization. Defaults to True.
         :type load_config_file: bool
@@ -113,6 +109,15 @@ class ConfigDataAnalysis(cp.ConfigParser):
         :type num_iterations: int
         :param lambda_reg: Regularization parameter for the linear solver. Defaults to 1e-3.
         :type lambda_reg: float
+        :param snr_full_weight: Linear solver only: signal-to-noise ratio from which on an LED gets the
+            full weight. Below it the weight falls linearly to zero at a signal of zero. None weights all
+            LEDs equally. The weighting needs a reference property with a noise column, which only
+            sum_col_val has, and noise values in the data; where either is missing it is switched off with
+            a note.
+        :type snr_full_weight: float or None
+        :param min_layer_weight: Linear solver with snr_full_weight only: a layer whose path length
+            weighted mean LED weight stays below this value is set to NaN. Defaults to 0.5.
+        :type min_layer_weight: float
         :param reduction_files: Path of the reduction factor file of the temperature correction per
             camera channel. Channels without an entry are analysed without the correction, which is
             the default for every channel.
@@ -147,6 +152,12 @@ class ConfigDataAnalysis(cp.ConfigParser):
             self['DEFAULT']['   num_iterations'] = str(num_iterations)
             self.set('DEFAULT', '   # Options for linear solver (ignored when nonlinear solver is used) ')
             self['DEFAULT']['   lambda_reg'] = str(lambda_reg)
+            self.set('DEFAULT', '   # SNR from which on an LED gets the full weight, None for equal weights.')
+            self.set('DEFAULT', '   # Needs a reference property with a noise column (sum_col_val) and')
+            self.set('DEFAULT', '   # noise values in the data, otherwise the LEDs are weighted equally.')
+            self['DEFAULT']['   snr_full_weight'] = str(snr_full_weight)
+            self.set('DEFAULT', '   # Layers whose mean LED weight stays below this value become NaN')
+            self['DEFAULT']['   min_layer_weight'] = str(min_layer_weight)
 
             self['experiment_geometry'] = {}
             self.set('experiment_geometry', '# Global X Y Z position of the camera ')

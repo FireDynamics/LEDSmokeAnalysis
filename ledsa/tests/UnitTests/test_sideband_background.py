@@ -296,6 +296,8 @@ class TestNanReferenceProperty:
         coefficients = ExtinctionCoefficientsLinear.__new__(ExtinctionCoefficientsLinear)
         coefficients.experiment = SimpleNamespace(channel=0, path='.', led_array=0)
         coefficients.average_images = False
+        # set in __init__: the property analysed here has no noise column
+        coefficients.noise_property = None
         return coefficients
 
     def test_nan_values_stop_the_analysis(self, coefficients):
@@ -324,10 +326,10 @@ class TestChannelMask:
         # mocked at the one pass over the RAW file, so that every reader derived from it stays consistent.
         # A black level of 0 and a white level of 255 leave the stored values as they are.
         raw = image_reading.RawImage(data, self.FILTER_ARRAY, np.zeros(4), 255.0,
-                                     image_reading.UPRIGHT_ORIENTATION)
+                                     image_reading.UPRIGHT_ORIENTATION, None)
         monkeypatch.setattr(image_reading, '_read_raw_image', lambda filename: raw)
-        channel_array, mask = \
-            image_reading.read_channel_data_and_mask_from_img('img.CR3', 1)
+        channel_array, mask, _ = \
+            image_reading.read_channel_data_mask_and_noise_from_img('img.CR3', 1)
         np.testing.assert_array_equal(mask, np.isin(self.FILTER_ARRAY, [1, 3]))
         np.testing.assert_array_equal(channel_array, np.where(mask, data, 0))
         np.testing.assert_array_equal(channel_array, image_reading._read_channel_data_from_raw_file('img.CR3', 1))
@@ -336,12 +338,13 @@ class TestChannelMask:
         import matplotlib.pyplot as plt
         path = tmp_path / 'img.png'
         plt.imsave(path, np.random.default_rng(0).random((6, 8, 3)))
-        channel_array, mask = \
-            image_reading.read_channel_data_and_mask_from_img(str(path), 1)
+        channel_array, mask, pixel_noise = \
+            image_reading.read_channel_data_mask_and_noise_from_img(str(path), 1)
+        assert pixel_noise is None  # a PNG has no optical black
         np.testing.assert_array_equal(channel_array, image_reading.read_channel_data_from_img(str(path), 1))
         assert mask.shape == channel_array.shape and mask.all()
 
     def test_unsupported_format_raises(self):
         from ledsa.core.image_integrity import CorruptedImageError
         with pytest.raises(CorruptedImageError, match='unsupported file extension'):
-            image_reading.read_channel_data_and_mask_from_img('img.xyz', 0)
+            image_reading.read_channel_data_mask_and_noise_from_img('img.xyz', 0)

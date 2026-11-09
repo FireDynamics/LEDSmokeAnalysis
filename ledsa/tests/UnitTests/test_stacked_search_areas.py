@@ -26,7 +26,7 @@ SIDEWAYS = 6
 SEARCH_AREAS = np.array([[0, 8, 20], [1, 16, 20], [2, 24, 20], [3, 32, 20], [4, 38, 20], [5, 20, 38]])
 LINE_INDICES = [np.array([0, 1, 2, 3, 4]), np.array([5])]
 QUANTITIES = ['sum_color_value', 'mean_color_value', 'max_color_value', 'bgsub_sum_color_value',
-              'sidebg_sum_color_value', 'sidebg_pedestal', 'bgsub2_sum_color_value']
+              'sidebg_sum_color_value', 'sidebg_pedestal', 'bgsub2_sum_color_value', 'noise_sum_color_value']
 
 
 def make_config():
@@ -46,16 +46,17 @@ def sideband_pixels_of(img_channels, config):
 
 @pytest.fixture(params=[image_reading.UPRIGHT_ORIENTATION, SIDEWAYS])
 def img_channels(request, monkeypatch):
-    """A RAW image with a black level of its own for every Bayer color."""
+    """A RAW image with a black level and a read noise of its own for every Bayer color."""
     stored = np.random.default_rng(0).integers(1900, 4000, IMG_SHAPE).astype(np.uint16)
-    raw = RawImage(stored, FILTER_ARRAY, np.array([2040.3, 2041.7, 2042.1, 2043.9]), 16383.0, request.param)
+    raw = RawImage(stored, FILTER_ARRAY, np.array([2040.3, 2041.7, 2042.1, 2043.9]), 16383.0, request.param,
+                   np.array([1.5, 2.5, 3.5, 4.5]))
     monkeypatch.setattr(image_reading, '_read_raw_image', lambda filename: raw)
     return ImageChannels('img.CR3')
 
 
 def quantities_by_definition(img_channels, channel, row, col, sideband_pixels):
     """The quantities of one LED, from their definitions on the arrays of the whole image."""
-    data, mask = img_channels.channel_data_and_mask(channel)
+    data, mask, noise = img_channels.channel_data_mask_and_noise(channel)
     box = np.s_[row - SEARCH_AREA_RADIUS:row + SEARCH_AREA_RADIUS, col - SEARCH_AREA_RADIUS:col + SEARCH_AREA_RADIUS]
     values, in_channel = data[box], mask[box]
     ring = np.ones(values.shape, dtype=bool)
@@ -70,7 +71,8 @@ def quantities_by_definition(img_channels, channel, row, col, sideband_pixels):
             'bgsub_sum_color_value': np.sum(values.astype(np.float64) - np.median(ring_pixels) * in_channel),
             'sidebg_sum_color_value': box_sum - num_channel_pixels * sideband_background,
             'sidebg_pedestal': num_channel_pixels * sideband_background,
-            'bgsub2_sum_color_value': box_sum - num_channel_pixels * np.mean(ring_pixels, dtype=np.float64)}
+            'bgsub2_sum_color_value': box_sum - num_channel_pixels * np.mean(ring_pixels, dtype=np.float64),
+            'noise_sum_color_value': np.sqrt(np.sum(noise[box].astype(np.float64) ** 2))}
 
 
 class TestStackedAnalysis:
