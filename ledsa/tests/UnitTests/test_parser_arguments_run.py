@@ -32,3 +32,27 @@ def test_channel_flags_run_step_three_once(tmp_path, monkeypatch, flags, channel
     extractor.assert_called_once_with(**kwargs)
     extractor.return_value.setup_step3.assert_called_once_with()
     extractor.return_value.process_image_data.assert_called_once_with()
+
+
+@pytest.mark.parametrize('flags, channels', [
+    ([], [0]),
+    (['-r'], [0]),
+    (['-g'], [1]),
+    (['-b'], [2]),
+    (['-rgb'], [0, 1, 2]),
+    (['-g', '-b'], [1, 2]),
+])
+def test_restart_resumes_the_selected_channels_without_step_three(tmp_path, monkeypatch, flags, channels):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / 'config.ini').touch()
+    extractor = Mock()
+    monkeypatch.setattr(parser_arguments_run, 'DataExtractor', extractor)
+    parser = add_parser_arguments_data_extraction(argparse.ArgumentParser())
+    args = parser.parse_args(['-re'] + flags)
+
+    parser_arguments_run.run_data_extraction_arguments(args)
+
+    extractor.assert_called_once_with(build_experiment_infos=False, channels=channels, fit_leds=False)
+    extractor.return_value.setup_restart.assert_called_once_with()
+    extractor.return_value.setup_step3.assert_not_called()
+    extractor.return_value.process_image_data.assert_called_once_with()

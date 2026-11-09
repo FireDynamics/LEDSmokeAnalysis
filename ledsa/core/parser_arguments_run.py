@@ -57,7 +57,8 @@ def run_data_extraction_arguments(args: argparse.Namespace) -> None:
     if len(channels) == 0:
         channels.append(0)
 
-    if (args.red or args.green or args.blue or args.rgb) and not args.step_3_fast:
+    # A colour flag on its own runs step 3. With -s3_fast or -re it only selects the channels of that run.
+    if (args.red or args.green or args.blue or args.rgb) and not (args.step_3_fast or args.restart):
         args.step_3 = True
 
     if args.step_1 or args.step_2:
