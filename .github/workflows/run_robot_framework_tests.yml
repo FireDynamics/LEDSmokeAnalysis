@@ -1,11 +1,13 @@
 # GitHub Actions workflow to run Robot Framework acceptance tests and upload logs
 name: Run Robot Framework Tests
 
-# Trigger workflow on pushes and PRs to master, except when only README.md changes
+# Trigger workflow on pushes to master and develop and on PRs, except when only README.md changes.
+# develop carries the features held back from the releases until they are validated.
 on:
   push:
     branches:
       - master
+      - develop
     paths-ignore:
       - 'README.md'
   pull_request:
