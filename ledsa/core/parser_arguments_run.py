@@ -15,6 +15,7 @@ import numpy as np
 from ledsa.core.ConfigData import ConfigData
 from ledsa.core.file_handling import get_extinction_coefficients_file_path
 from ledsa.data_extraction.DataExtractor import DataExtractor
+from ledsa.data_extraction.step_3_functions import find_fit_leds_for_restart
 
 
 
@@ -57,7 +58,8 @@ def run_data_extraction_arguments(args: argparse.Namespace) -> None:
     if len(channels) == 0:
         channels.append(0)
 
-    if args.red or args.green or args.blue or args.rgb and not args.step_3_fast:
+    # A colour flag on its own runs step 3. With -s3_fast or -re it only selects the channels of that run.
+    if (args.red or args.green or args.blue or args.rgb) and not (args.step_3_fast or args.restart):
         args.step_3 = True
 
     if args.step_1 or args.step_2:
@@ -78,8 +80,10 @@ def run_data_extraction_arguments(args: argparse.Namespace) -> None:
         de.process_image_data()
 
     if args.restart:
-        # Use the channels determined earlier in the function
-        de = DataExtractor(build_experiment_infos=False, channels=channels, fit_leds=False)
+        # Resume in the mode of the interrupted run, which the headers of its result files tell: with the LED fits
+        # after -s3, without them after -s3_fast. The analysis cannot load a channel with the columns of both modes.
+        fit_leds = find_fit_leds_for_restart(channels)
+        de = DataExtractor(build_experiment_infos=False, channels=channels, fit_leds=fit_leds)
         de.setup_restart()
         de.process_image_data()
 

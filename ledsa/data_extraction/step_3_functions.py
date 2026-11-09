@@ -268,21 +268,73 @@ def create_imgs_to_process_file() -> None:
     out_file.close()
 
 
-def find_and_save_not_analysed_imgs(channel: int) -> None:
+def find_and_save_not_analysed_imgs(channels: Sequence[int]) -> None:
     """
-    Find and save filenames of images that have not yet been analyzed.
+    Find and save filenames of images that have not yet been analyzed in all of the channels.
 
-    :param channel: Channel to check for analyzed images.
-    :type channel: int
+    An image is analysed for one channel after the other, so an interrupted run can leave it with the result files
+    of only some of its channels. Such an image is analysed again for all of them.
+
+    :param channels: Channels to check for analyzed images.
+    :type channels: Sequence[int]
     """
     file_path = os.path.join('analysis', 'image_infos_analysis.csv')
     image_infos = read_table(file_path, dtype='str', delim=',', atleast_2d=True)
-    all_imgs = image_infos[:, 1]
-    processed_img_ids = _find_analysed_img_ids(channel)
-    processed_imgs = np.frompyfunc(get_img_name, 1, 1)(processed_img_ids)
-    remaining_imgs = set(all_imgs)-set(processed_imgs)
+    analysed_img_ids = set.intersection(*(set(_find_analysed_img_ids(channel)) for channel in channels))
+    remaining_imgs = [img_filename for img_id, img_filename in image_infos[:, :2]
+                      if int(img_id) not in analysed_img_ids]
 
     _save_list_of_remaining_imgs_needed_to_be_processed(remaining_imgs)
+
+
+def find_fit_leds_for_restart(channels: Sequence[int]) -> bool:
+    """
+    Find whether the restart of an interrupted step 3 fits the LEDs: if the interrupted run did (-s3), not if it
+    did not (-s3_fast). The analysis loads all result files of a channel with the same columns, so the resumed
+    images need the columns of the images analysed before. The mode is read from the headers of the result files,
+    not from their number of columns, which differs between LEDSA versions. If none of the channels has a result
+    file yet, the LEDs are not fitted.
+
+    :param channels: Channels to be resumed.
+    :type channels: Sequence[int]
+    :return: True if the restart fits the LEDs, False if not.
+    :rtype: bool
+    :raises ValueError: If the result files of a channel, or those of different channels, were written both with
+        and without the fits.
+    """
+    fit_leds_of_channels = {}
+    for channel in channels:
+        files_by_fit_leds = {True: [], False: []}
+        for _, file_path in _find_result_files(channel):
+            has_fits = _result_file_has_fits(file_path)
+            if has_fits is not None:
+                files_by_fit_leds[has_fits].append(file_path)
+        fitted_files, unfitted_files = files_by_fit_leds[True], files_by_fit_leds[False]
+        if fitted_files and unfitted_files:
+            raise ValueError(f'The result files of channel {channel} were written both with the LED fits (-s3, '
+                             f'{len(fitted_files)} files, e.g. {fitted_files[0]}) and without them (-s3_fast, '
+                             f'{len(unfitted_files)} files, e.g. {unfitted_files[0]}), so the restart cannot tell '
+                             f'in which mode to resume. Delete the files of the mode you do not want and run -re '
+                             f'again, or run -s3 or -s3_fast for the channel again.')
+        if fitted_files or unfitted_files:
+            fit_leds_of_channels[channel] = bool(fitted_files)
+
+    if len(set(fit_leds_of_channels.values())) > 1:
+        modes = ', '.join(f'channel {channel} {"with" if fit_leds else "without"}'
+                          for channel, fit_leds in fit_leds_of_channels.items())
+        raise ValueError(f'The channels were analysed with and without the LED fits ({modes}), but a restart '
+                         f'resumes all of its channels in one mode. Restart these channels separately, selecting '
+                         f'them with -r, -g or -b.')
+    fit_leds = True in fit_leds_of_channels.values()
+    if not fit_leds_of_channels:
+        print('There are no result files of an interrupted run yet, so step 3 runs without the LED fits, as by '
+              '-s3_fast.')
+    elif fit_leds:
+        print('The result files of the interrupted run have LED fits, so step 3 is resumed with them, as by -s3.')
+    else:
+        print('The result files of the interrupted run have no LED fits, so step 3 is resumed without them, as by '
+              '-s3_fast.')
+    return fit_leds
 
 
 def _generate_led_analysis_data(conf: ConfigData, channel: int, data: np.ndarray, debug: bool, iled: int, img_filename: str, led_array_idx: int, search_areas: np.ndarray, search_area_radius: int, fit_leds: bool = True,
@@ -506,20 +558,58 @@ def _save_results_in_file(channel: int, img_data: LEDAnalysisData, img_filename:
 
 def _find_analysed_img_ids(channel):
     """
-    Find and save filenames of images that have not yet been analyzed.
+    Find the IDs of the images that have a result file in a channel.
 
     :param channel: Channel to check for analyzed images.
     :return: List of IDs of analyzed images.
     :rtype: List[int]
     """
-    processed_imgs = []
+    return [img_id for img_id, _ in _find_result_files(channel)]
+
+
+def _find_result_files(channel: int) -> List[Tuple[int, str]]:
+    """
+    Find the result files of step 3 in a channel.
+
+    :param channel: Channel whose result files are searched.
+    :type channel: int
+    :return: Image ID and path of every result file, sorted by image ID. Empty if the channel has no directory yet.
+    :rtype: List[Tuple[int, str]]
+    """
     dir_path = os.path.join('analysis', f'channel{channel}')
-    directory_content = os.listdir(dir_path)
-    for file_name in directory_content:
+    if not os.path.isdir(dir_path):
+        return []
+    result_files = []
+    for file_name in os.listdir(dir_path):
         img = re.search(r"(\d+)_led_positions.csv", file_name)
         if img is not None:
-            processed_imgs.append(int(img.group(1)))
-    return processed_imgs
+            result_files.append((int(img.group(1)), os.path.join(dir_path, file_name)))
+    return sorted(result_files)
+
+
+def _result_file_has_fits(file_path: str) -> Optional[bool]:
+    """
+    Tell from its header whether a result file of step 3 was written with the LED fits.
+
+    Only a file written with the fits names their columns in the header line of the column names, see
+    _create_header. fit_success is one of them in every version of the header.
+
+    :param file_path: Path of the result file.
+    :type file_path: str
+    :return: True if the file was written with the fits, False if without them, None if it has no header line of
+        the column names, for example because it is empty.
+    :rtype: Optional[bool]
+    """
+    # only the column names are of interest, a directory or image name in another encoding must not stop the restart
+    with open(file_path, 'r', encoding='utf-8', errors='replace') as result_file:
+        for line in result_file:
+            if not line.startswith('#'):
+                break
+            # the fit columns are followed by a comment after //
+            column_names = [name.strip() for name in line.lstrip('#').split('//')[0].split(',')]
+            if column_names[0] == 'id':
+                return 'fit_success' in column_names
+    return None
 
 
 def _save_list_of_remaining_imgs_needed_to_be_processed(remaining_imgs): # TODO: Why extra function needed?
