@@ -24,7 +24,9 @@ def add_parser_arguments_data_extraction(parser: argparse.ArgumentParser) -> arg
                              'reference_img, number_of_cores.')
     parser.add_argument('-re', '--restart', action='store_true',
                         help='Restarts step 3 of the analysis after the program was terminated before it finished. '
-                             'Give the channel flags of the interrupted run, e.g. -re -rgb.')
+                             'Give the channel flags of the interrupted run, e.g. -re -rgb. It resumes with the LED '
+                             'fits after -s3 and without them after -s3_fast, as the result files of the interrupted '
+                             'run tell.')
     parser.add_argument('-r', '--red', action='store_true',
                         help='Use the red channel for step3. Default value.')
     parser.add_argument('-g', '--green', action='store_true',

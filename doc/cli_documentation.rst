@@ -37,7 +37,7 @@ Data Extraction
      - Step 3: Analyse all images to extract pixel values and calculate the accumulated values inside the search areas (FAST!). Besides the plain sum, the background-corrected sums ``bgsub_sum_col_val``, ``bgsub2_sum_col_val`` and ``sidebg_sum_col_val`` are written (see ``reference_property`` in the analysis configuration).
      - Channel flags as for ``-s3``
    * - ``-re``, ``--restart``
-     - Restart step 3 if it was previously interrupted. Only the images that have not been analysed are taken into account.
+     - Restart step 3 if it was previously interrupted. Only the images that have not been analysed are taken into account. The restart resumes in the mode of the interrupted run, with the LED fits after ``-s3`` and without them after ``-s3_fast``, as the headers of its result files tell. If there are no result files yet, it runs without the fits. If the result files were written in both modes, it stops, because it cannot tell which mode to resume.
      - The channel flags of the interrupted run, as for ``-s3``
 
 
