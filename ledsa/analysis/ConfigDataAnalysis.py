@@ -2,10 +2,15 @@ import configparser as cp
 from typing import Iterable, List, Optional, Union
 
 from ledsa.analysis.temperature_correction import TEMPERATURE_CORRECTION_CHANNELS
-from ledsa.core.config_file import save_config
+from ledsa.core.config_file import report_removed_options, save_config
 from ledsa.analysis.ExtinctionCoefficients import DEFAULT_SNR_FULL_WEIGHT
 
 DEFAULT_REFERENCE_PROPERTY = 'sum_col_val'
+
+# Options of config_analysis.ini that a release of LEDSA has removed, with what became of them. A
+# config written by an older version still sets them, and loading it names them.
+REMOVED_OPTIONS = {
+}
 
 
 def parse_reference_properties(value: str) -> List[str]:
@@ -205,6 +210,7 @@ class ConfigDataAnalysis(cp.ConfigParser):
                 'config_analysis.ini not found in working directory! Please create it with argument "--config_analysis".')
             exit(1)
         print('config_analysis.ini loaded!')
+        report_removed_options(self, 'config_analysis.ini', REMOVED_OPTIONS)
 
     def save(self) -> None:
         """

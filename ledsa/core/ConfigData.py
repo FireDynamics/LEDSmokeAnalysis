@@ -5,8 +5,13 @@ from typing import List, Optional
 
 import numpy as np
 
-from ledsa.core.config_file import save_config
+from ledsa.core.config_file import report_removed_options, save_config
 from ledsa.core.image_reading import AUTO_ROTATION, get_exif_datetime
+
+# Options of config.ini that a release of LEDSA has removed, with what became of them. A config
+# written by an older version still sets them, and loading it names them.
+REMOVED_OPTIONS = {
+}
 
 
 class ConfigData(cp.ConfigParser):
@@ -221,6 +226,7 @@ class ConfigData(cp.ConfigParser):
         except FileNotFoundError:
             print('config.ini not found in working directory! Please create it with argument "--config".')
         print('config.ini loaded')
+        report_removed_options(self, 'config.ini', REMOVED_OPTIONS)
 
     def save(self) -> None:
         """
