@@ -121,10 +121,10 @@ class TestValues:
 
     def test_option_added_to_the_parser_is_appended_to_its_section(self, tmp_path, monkeypatch):
         config = write_config(tmp_path, monkeypatch)
-        config['analyse_photo']['background_floor'] = '0.05'
+        config['analyse_photo']['first_img_analysis_id'] = '5'
         config.save()
         saved = (tmp_path / 'config.ini').read_text(encoding='utf-8')
-        assert saved.splitlines()[-1] == 'background_floor = 0.05'
+        assert saved.splitlines()[-1] == 'first_img_analysis_id = 5'
         assert comment_lines(saved) == comment_lines(HAND_WRITTEN)
 
     def test_option_overriding_a_default_is_written_into_its_section(self, tmp_path, monkeypatch):

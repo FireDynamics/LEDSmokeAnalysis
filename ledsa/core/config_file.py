@@ -9,12 +9,48 @@ image, which left the user with a config that no longer explains any of its opti
 only the values of the options are replaced with the ones the parser holds now. Options and
 sections the parser has gained in the meantime are appended, options it no longer holds are
 dropped.
+
+:func:`report_removed_options` names the options of a loaded file that a release of LEDSA has
+removed, which a config written by an older version still sets.
 """
 
 import os
 from typing import Dict, List, Optional, Sequence, Tuple
 
 COMMENT_PREFIXES = ('#', ';')
+
+# The removed options already named in this process, as (file name, option) pairs: a run loads
+# its config files several times, and the note is needed once.
+_reported_removed_options = set()
+
+
+def report_removed_options(parser, file_name: str, removed_options: Dict[str, str]) -> List[str]:
+    """Name the options of a loaded config file that LEDSA no longer has.
+
+    A config file keeps the options of the version it was written with, and the parser reads
+    every option the file sets, whether or not LEDSA uses it. An option a release has removed
+    would therefore stop taking effect without a word, and with it the result of an analysis
+    would change unnoticed. Each such option is named once per process, with what became of it.
+
+    :param parser: The loaded configuration.
+    :type parser: configparser.RawConfigParser
+    :param file_name: Name of the config file, used in the note.
+    :type file_name: str
+    :param removed_options: What became of every removed option, by option name.
+    :type removed_options: Dict[str, str]
+    :return: The removed options the file still sets, in alphabetical order.
+    :rtype: List[str]
+    """
+    set_options = set(parser.defaults())
+    for section in parser.sections():
+        set_options.update(parser[section])
+    found = sorted(name for name in removed_options if parser.optionxform(name) in set_options)
+    for name in found:
+        if (file_name, name) not in _reported_removed_options:
+            _reported_removed_options.add((file_name, name))
+            print(f'Note: {file_name} sets {name}, which is ignored. {removed_options[name]} '
+                  f'Delete the option to silence this note.')
+    return found
 
 
 def save_config(parser, file_path: str) -> None:

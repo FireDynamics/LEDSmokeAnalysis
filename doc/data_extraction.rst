@@ -10,11 +10,3 @@ Data Extraction
    :members:
    :undoc-members:
    :show-inheritance:
-
-Side Band Pedestal
-------------------
-
-.. automodule:: ledsa.data_extraction.sideband_background
-   :members:
-   :undoc-members:
-   :show-inheritance:
