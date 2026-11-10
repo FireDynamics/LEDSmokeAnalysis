@@ -39,12 +39,20 @@ class LedsaATestLibrary:
         os.chdir(new_dir)
 
     @keyword
-    def create_test_data(self, num_of_leds=100, num_of_layers=20, bottom_border=0, top_border=3):
+    def create_test_data(self, num_of_leds=100, num_of_layers=20, bottom_border=0, top_border=3,
+                         pane_distance=None):
+        """Create the test images of four extinction profiles, seen by a camera at (0, 0, 2).
+
+        :param pane_distance: Distance [m] between the camera and a window pane it looks through into
+            the smoke, so that the smoke dims the LEDs only behind the pane. None for smoke up to the
+            camera.
+        """
         # Create test_data directory if it doesn't exist
         if not os.path.exists('test_data'):
             os.makedirs('test_data')
 
         camera = Camera(0, 0, 2)
+        pane_distance = None if pane_distance is None else float(pane_distance)
         layers = Layers(num_of_layers, bottom_border, top_border)
         extinction_coefficients_set = []
 
@@ -76,7 +84,7 @@ class LedsaATestLibrary:
         extinction_coefficients_set.append(extco_quad(z_range))
 
         for image_id, extinction_coefficients in enumerate(extinction_coefficients_set):
-            ex = TestExperiment(camera=camera, layers=layers)
+            ex = TestExperiment(camera=camera, layers=layers, pane_distance=pane_distance)
             np.savetxt(os.path.join('test_data', f'test_extinction_coefficients_input_{image_id + 1}.csv'), extinction_coefficients)
             for z in np.linspace(bottom_border + 0.05, top_border - 0.05, num_of_leds):
                 ex.add_led(0, 4, z)
@@ -398,6 +406,15 @@ class LedsaATestLibrary:
         return rmse
 
     @keyword
+    def mean_ratio_of_computed_to_input_extinction_coefficients(self, image_id, solver, led_array=0, channel=0):
+        """Return the mean computed extinction coefficient of an image over the mean of its input."""
+        _, extinction_coefficients_computed = load_extinction_coefficients_computed(solver, channel, led_array)
+        extinction_coefficients_input = np.loadtxt(
+            os.path.join('test_data', f'test_extinction_coefficients_input_{image_id}.csv'), delimiter=',')
+        return float(np.mean(extinction_coefficients_computed[int(image_id) - 1, :]) /
+                     np.mean(extinction_coefficients_input))
+
+    @keyword
     def create_and_fill_config(self, first=1, last=4):
         # Create test_data directory if it doesn't exist
         if not os.path.exists('test_data'):
@@ -418,11 +435,13 @@ class LedsaATestLibrary:
 
     @keyword
     def create_and_fill_config_analysis(self, solver, reference_property='sum_col_val', num_ref_images=1,
-                                        average_images=False, n_summarize=2):
+                                        average_images=False, n_summarize=2, pane_distance=None):
         """Write config_analysis.ini. num_ref_images lets a test take the reference from another image than the first.
 
         :param average_images: Summarize the images after the reference images.
         :param n_summarize: Number of consecutive images summarized into one.
+        :param pane_distance: Distance [m] between the camera and the window pane in front of it, None
+            without a pane.
         """
         average_images = str(average_images).lower() == 'true'
         conf = ConfigDataAnalysis(load_config_file=False, camera_position=None, num_layers=20, domain_bounds=None,
@@ -431,7 +450,7 @@ class LedsaATestLibrary:
                                   average_images=average_images, n_summarize=int(n_summarize), solver=solver,
                                   weighting_preference=-6e-3,
                                   weighting_curvature=1e-2,
-                                  num_iterations=1000, lambda_reg=1e-3)
+                                  num_iterations=1000, lambda_reg=1e-3, pane_distance=pane_distance)
         conf.set('experiment_geometry', '   camera_position', '0 0 2')
         conf.set('model_parameters', '   domain_bounds', '0 3')
         conf.save()

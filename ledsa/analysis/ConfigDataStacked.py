@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from ledsa.analysis.ConfigDataAnalysis import DEFAULT_REFERENCE_PROPERTY, parse_reference_properties
+from ledsa.analysis.Experiment import read_pane_distance
 from ledsa.analysis.temperature_correction import TEMPERATURE_CORRECTION_CHANNELS
 from ledsa.core.config_file import save_config
 
@@ -38,6 +39,8 @@ class ConfigDataStacked(cp.ConfigParser):
         [simulation_0]
         path             = /data/exp01/cam0
         camera_position  = 1.0 0.0 1.5
+        # distance to the window pane this camera looks through into the smoke, optional
+        pane_distance    = 0.5
 
         [simulation_1]
         path             = /data/exp01/cam1
@@ -143,6 +146,14 @@ class ConfigDataStacked(cp.ConfigParser):
     def get_camera_position(self, sim_idx: int) -> List[float]:
         """Camera position ``[x, y, z]`` for simulation *sim_idx*."""
         return self.get_list_of_values(f'simulation_{sim_idx}', 'camera_position', dtype=float)
+
+    def get_pane_distance(self, sim_idx: int) -> Optional[float]:
+        """Distance [m] between camera *sim_idx* and the window pane it looks
+        through into the smoke, ``None`` if the smoke reaches the camera.
+
+        :raises ValueError: if ``pane_distance`` is not a finite number of at least 0.
+        """
+        return read_pane_distance(self, f'simulation_{sim_idx}', self._filename)
 
     def get_ref_img_indices(self, sim_idx: int) -> Optional[List[int]]:
         """Reference image IDs of simulation *sim_idx*; ``None`` means use
@@ -364,6 +375,9 @@ class ConfigDataStacked(cp.ConfigParser):
             cfg[section]['path'] = f'/path/to/sim{i}'
             cfg.set(section, '# Global X Y Z position [m] of camera')
             cfg[section]['camera_position'] = '0.0 0.0 1.5'
+            cfg.set(section, '# Distance [m] between the camera and the window pane it looks through into')
+            cfg.set(section, '# the smoke (optional). Only the lines of sight behind the pane are in the smoke.')
+            cfg.set(section, '# pane_distance = 0.5')
             cfg.set(section, '# Reference images of this camera; both options override the ones above')
             cfg.set(section, '# Image IDs are counted per camera, so choose images from the same time')
             cfg.set(section, '# window before the fire in every camera')

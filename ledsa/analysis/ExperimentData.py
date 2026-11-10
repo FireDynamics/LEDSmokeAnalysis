@@ -136,7 +136,7 @@ class ExperimentData:
         camera_position = config_analysis.get_list_of_values('experiment_geometry', 'camera_position', dtype=float)
 
         self.layers = Layers(num_layers, *domain_bounds)
-        self.camera = Camera(*camera_position)
+        self.camera = Camera(*camera_position, pane_distance=config_analysis.get_pane_distance())
         self.n_cpus = int(config_analysis['DEFAULT']['num_cores'])
         self.merge_led_arrays = str(self.config['analyse_positions']['merge_led_array_indices'])
 
