@@ -30,7 +30,7 @@ class ConfigData(cp.ConfigParser):
                  first_img_experiment_id=None, last_img_experiment_id=None, ref_img_id=None, ignore_led_indices=None,
                  led_array_edge_indices=None, led_array_edge_coordinates=None, first_img_analysis_id=None,
                  last_img_analysis_id=None, num_skip_imgs=0, ref_img_experiment_ids=None, num_skip_leds=0,
-                 merge_led_array_indices=None):  # TODO: merge LED arrays
+                 merge_led_array_indices=None, farfield_distances=None):  # TODO: merge LED arrays
         """
         :param load_config_file: Determines whether to load the config file on initialization. Defaults to True.
         :type load_config_file: bool
@@ -93,6 +93,10 @@ class ConfigData(cp.ConfigParser):
         :type num_skip_leds: int
         :param merge_led_array_indices: Flag to merge LED arrays for analysis. Defaults to None. TODO: not a flag but list of arrays to merge?
         :type merge_led_array_indices: bool or None
+        :param farfield_distances: Inner and outer distance in pixels across the LED strip of the far-field bands
+            the pedestal of farbg_sum_col_val is estimated in, e.g. '150 300'. None, the default, estimates no
+            pedestal: step 3 writes sum_col_val, mean_col_val and max_col_val only.
+        :type farfield_distances: str or None
         """
         cp.ConfigParser.__init__(self, allow_no_value=True)
         if load_config_file:
@@ -177,6 +181,11 @@ class ConfigData(cp.ConfigParser):
             self['analyse_photo']['   ref_img_experiment_ids'] = str(ref_img_experiment_ids)
             self.set('analyse_photo', '   # In the analysis, only LEDs are considered with id dividable by skip_leds + 1.')
             self['analyse_photo']['   num_skip_leds'] = str(num_skip_leds)
+            self.set('analyse_photo', '   # Pedestal of the search areas from the far field of the LED strips (farbg_sum_col_val):')
+            self.set('analyse_photo', '   # inner and outer distance in pixels across the strip of the bands on both of its sides,')
+            self.set('analyse_photo', '   # e.g. 150 300. The bands have to lie beyond the light of the LEDs and of their halo.')
+            self.set('analyse_photo', '   # None: no pedestal is estimated.')
+            self['analyse_photo']['   farfield_distances'] = str(farfield_distances)
 
             with open('config.ini', 'w', encoding='utf-8') as configfile:
                 self.write(configfile)

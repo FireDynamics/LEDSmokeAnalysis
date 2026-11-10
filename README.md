@@ -192,8 +192,42 @@ The intensities are not clipped at zero after the black level of the sensor is s
 LED that has vanished in dense smoke can give a relative intensity at or below zero. The linear
 solver leaves such LEDs out. Where the transmission reaches the read noise of the sensor, the LEDs
 that remain are those whose noise happened to be positive, and the extinction coefficients come
-out too low: in fog tests by 14 to 31 % at 1.24 and 1.64 1/m, where the transmission of the red
-LEDs was 0.1 to 0.2 % of I0.
+out too low. With `sum_col_val` this hardly happens, because the pedestal of the search areas (see
+below) keeps the relative intensities above zero and limits the extinction coefficients first: in
+a fog test, single images came out 21 to 27 % too low at 1.24 1/m and 36 to 42 % at 1.64 1/m.
+With the pedestal subtracted (`farbg_sum_col_val`) the read noise limits, by 5 to 6 % and 24 to
+26 %, where the transmission of the red LEDs was 0.02 to 0.15 % of I0 and the noise of a single
+image about 0.2 % of I0. Averaging seven images (`average_images`) lowered this to 13 to 17 % at
+1.64 1/m.
+
+### Pedestal from the far field of the LED strips (optional)
+
+The sum over a search area holds light that does not dim with the LED: the dark level of the
+sensor where it differs from the optical black, ambient light and light that smoke scatters into
+the line of sight. In dense smoke this pedestal saturates the extinction coefficients. With
+
+```ini
+[analyse_photo]
+farfield_distances = 150 300
+```
+
+in `config.ini`, step 3 estimates the pedestal for every image in two bands parallel to each LED
+strip, 150 to 300 px away from it on both sides and at least 150 px away from every LED, smooths
+the levels along the strip, takes the lower side and writes two more quantities:
+`farbg_sum_col_val`, the sum minus the pedestal of the search area, and `farbg_pedestal`, the
+pedestal itself. `reference_property = farbg_sum_col_val` analyses the corrected sum. The bands
+have to lie beyond the light of the LEDs and of their halo; `farbg_pedestal / sum_col_val` of the
+reference images shows whether they do, it stays below about 1 % there. An LED whose bands hold
+no pixel on either side, and no neighbour on its strip within the smoothing that has one, keeps
+its plain sum with a pedestal of 0. The default `None` estimates no pedestal and leaves the
+result files as they are.
+
+For the dark level of the sensor and for stray light that peaks at the strip, the far-field level
+is a lower bound of the pedestal, so the corrected sum lies between the plain sum and the light
+of the LED in the search area. Ambient light on a background that is brighter beside the strip
+than behind the LEDs breaks this bound; it has been tested in dark rooms only. It does
+not correct a search area that loses light of the LED, as behind a fogged window, which is an
+error of the opposite sign.
 
 ### Features in validation
 

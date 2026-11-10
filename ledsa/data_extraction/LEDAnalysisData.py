@@ -18,6 +18,11 @@ class LEDAnalysisData:
     :vartype sum_color_value: float
     :ivar max_color_value: Maximum color value observed for the LED.
     :vartype max_color_value: float
+    :ivar farbg_sum_color_value: Integrated color value minus the far-field pedestal of the search area, None if
+        the pedestal is not estimated.
+    :vartype farbg_sum_color_value: float or None
+    :ivar farbg_pedestal: Far-field pedestal of the search area, None if the pedestal is not estimated.
+    :vartype farbg_pedestal: float or None
     :ivar fit_results: Fit results after fitting.
     :vartype fit_results: OptimizeResult
     :ivar fit_time: Time taken for fitting.
@@ -41,6 +46,8 @@ class LEDAnalysisData:
         self.mean_color_value = None
         self.sum_color_value = None
         self.max_color_value = None
+        self.farbg_sum_color_value = None
+        self.farbg_pedestal = None
         self.fit_leds = fit_leds
         self.fit_results = None
         self.fit_time = None
@@ -68,6 +75,8 @@ class LEDAnalysisData:
         """
         out_str = f'{self.led_id:4d},{self.led_array:2d},'
         out_str += f'{self.sum_color_value:10.4e},{self.mean_color_value:10.4e},{self.max_color_value}'
+        if self.farbg_sum_color_value is not None:
+            out_str += f',{self.farbg_sum_color_value:10.4e},{self.farbg_pedestal:10.4e}'
         return out_str
 
     def get_fit_data_string(self) -> str:
