@@ -1,4 +1,4 @@
-# GitHub Actions workflow to build and deploy Sphinx documentation to GitHub Pages
+# GitHub Actions workflow to build the Sphinx documentation and deploy it to GitHub Pages
 name: Docs
 
 # Trigger the workflow on pushes, pull requests, or manual dispatch events,
@@ -13,19 +13,19 @@ on:
   workflow_dispatch: # 3. Allow manual triggers from the GitHub UI
 
 permissions:
-  contents: write   # Required so the deploy step can push to gh-pages
+  contents: read    # Building only needs to read the repository
 
 jobs:
-  docs:
+  build:
     runs-on: ubuntu-latest   # Use the latest Ubuntu runner provided by GitHub
     steps:
       # 1. Check out the repository contents
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
 
-      # 2. Set up a Python environment (defaults to latest 3.x)
+      # 2. Set up a Python environment
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -40,12 +40,30 @@ jobs:
         run: |
           sphinx-build doc _build
 
-      # 5. Deploy the docs to the gh-pages branch (only on push to master)
-      - name: Deploy
-        uses: peaceiris/actions-gh-pages@v3
+      # 5. Package the built HTML for GitHub Pages (only on push to master)
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v5
         if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' }}
         with:
-          publish_branch: gh-pages         # Target branch for the published site
-          github_token: ${{ secrets.GITHUB_TOKEN }} # Auth token provided by GitHub
-          publish_dir: _build/             # Directory containing the built HTML
-          force_orphan: true               # Create branch history from scratch each deployment
+          path: _build/
+
+  # The Pages source of this repository is "GitHub Actions" (Settings > Pages), so the
+  # site is what this job deploys. Pushing the HTML to a gh-pages branch would not
+  # publish it.
+  deploy:
+    needs: build
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' }}
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write      # Deploy to GitHub Pages
+      id-token: write   # Prove that the deployment comes from this repository
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:        # One deployment at a time, and never cancel one halfway
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
