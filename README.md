@@ -91,35 +91,6 @@ For a complete list of options, run:
 python -m ledsa --help
 ```
 
-### Analysed quantities and result files
-
-`reference_property` in `config_analysis.ini` names the quantity of step 3 the extinction
-coefficients are computed from. Several quantities, separated by spaces, are analysed one after
-another, each solver and quantity writing into a directory of its own:
-
-```ini
-[DEFAULT]
-reference_property = sum_col_val mean_col_val
-```
-
-```
-analysis/extinction_coefficients/<solver>/<reference_property>/extinction_coefficients_<solver>_channel_0_<reference_property>_led_array_0.csv
-```
-
-### Reference images of the normalization
-
-The extinction coefficients are computed from the relative intensities I/I0. The images I0 is
-averaged over are named by the first of these options that is set:
-
-| Option | File | Names the images by |
-| --- | --- | --- |
-| `ref_img_indices` | `config_analysis.ini` | analysis ID |
-| `ref_img_experiment_ids` | `config.ini` | experiment ID, the number the file name is built from |
-| `num_ref_images` | `config_analysis.ini` | the number of images at the beginning of the experiment |
-
-Use `ref_img_experiment_ids` whenever `num_skip_imgs` or `average_images` is set: the images it
-names are always analysed and never averaged. Set it before step 3.
-
 ### Stacked multi-camera analysis
 
 Several cameras that watch the same LED arrays can be inverted jointly:
