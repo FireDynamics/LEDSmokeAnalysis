@@ -58,8 +58,10 @@ class ExtinctionCoefficientsLinear(ExtinctionCoefficients):
 
         Known limitation: where the transmission approaches the read noise of the sensor, the LEDs that
         are left are those whose noise happened to be positive, so the extinction coefficients come out
-        too low. On the Warsaw tests V008 and V009 this was 14 to 31 % at 1.24 and 1.64 1/m, where the
-        transmission of the red LEDs was 0.1 to 0.2 % of I0.
+        too low. In single images of the Warsaw fog test V008 this was 5 to 6 % at 1.24 1/m and 24 to 26 %
+        at 1.64 1/m for farbg_sum_col_val, where the transmission of the red LEDs was 0.02 to 0.15 % of I0.
+        For sum_col_val the pedestal of the search areas keeps the relative intensities above zero and
+        limits first, by 21 to 27 % and 36 to 42 %.
 
         :param rel_intensities: Array of relative (normalized) LED intensities (I_e/I_0).
         :type rel_intensities: np.ndarray

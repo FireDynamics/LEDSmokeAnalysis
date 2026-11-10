@@ -192,8 +192,13 @@ The intensities are not clipped at zero after the black level of the sensor is s
 LED that has vanished in dense smoke can give a relative intensity at or below zero. The linear
 solver leaves such LEDs out. Where the transmission reaches the read noise of the sensor, the LEDs
 that remain are those whose noise happened to be positive, and the extinction coefficients come
-out too low: in fog tests by 14 to 31 % at 1.24 and 1.64 1/m, where the transmission of the red
-LEDs was 0.1 to 0.2 % of I0.
+out too low. With `sum_col_val` this hardly happens, because the pedestal of the search areas (see
+below) keeps the relative intensities above zero and limits the extinction coefficients first: in
+a fog test, single images came out 21 to 27 % too low at 1.24 1/m and 36 to 42 % at 1.64 1/m.
+With the pedestal subtracted (`farbg_sum_col_val`) the read noise limits, by 5 to 6 % and 24 to
+26 %, where the transmission of the red LEDs was 0.02 to 0.15 % of I0 and the noise of a single
+image about 0.2 % of I0. Averaging seven images (`average_images`) lowered this to 13 to 17 % at
+1.64 1/m.
 
 ### Pedestal from the far field of the LED strips (optional)
 
