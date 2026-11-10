@@ -686,15 +686,20 @@ BASE_COLUMNS = ["img_id", "led_id", "led_array_id", "sum_col_val", "mean_col_val
 BGSUB_COLUMNS = ["bgsub_sum_col_val"]
 SIDEBG_COLUMNS = ["sidebg_sum_col_val", "sidebg_pedestal", "bgsub2_sum_col_val"]
 NOISE_SUM_COLUMNS = ["noise_sum_col_val"]
+FARBG_COLUMNS = ["farbg_sum_col_val", "farbg_pedestal"]
 LED_CENTER_COLUMNS = ["led_center_x", "led_center_y"]
 FIT_COLUMNS = ["x", "y", "dx", "dy", "A", "alpha", "wx", "wy", "fit_success", "fit_fun", "fit_nfev", "fit_time"]
 
-# Known layouts by the number of names (including img_id). Step 3 writes the first two; the others are those of
-# earlier versions, whose background-corrected sums and read noise v0.13.0 no longer computes but still reads.
+# Known layouts by the number of names (including img_id). Step 3 writes the first four, the two with the
+# far-field pedestal if farfield_distances is set; the others are those of earlier versions, whose
+# background-corrected sums and read noise v0.13.0 no longer computes but still reads.
 COLUMN_LAYOUTS = {
     len(BASE_COLUMNS): BASE_COLUMNS,  # -s3_fast, before v0.11.0 and since v0.13.0
     len(BASE_COLUMNS + LED_CENTER_COLUMNS + FIT_COLUMNS):
         BASE_COLUMNS + LED_CENTER_COLUMNS + FIT_COLUMNS,  # -s3 with fit, since v0.13.0
+    len(BASE_COLUMNS + FARBG_COLUMNS): BASE_COLUMNS + FARBG_COLUMNS,  # -s3_fast with the far-field pedestal
+    len(BASE_COLUMNS + FARBG_COLUMNS + LED_CENTER_COLUMNS + FIT_COLUMNS):
+        BASE_COLUMNS + FARBG_COLUMNS + LED_CENTER_COLUMNS + FIT_COLUMNS,  # -s3 with fit and the far-field pedestal
     len(BASE_COLUMNS + BGSUB_COLUMNS): BASE_COLUMNS + BGSUB_COLUMNS,  # -s3_fast, before the side band pedestal
     len(BASE_COLUMNS + BGSUB_COLUMNS + SIDEBG_COLUMNS):
         BASE_COLUMNS + BGSUB_COLUMNS + SIDEBG_COLUMNS,  # -s3_fast of v0.11.0

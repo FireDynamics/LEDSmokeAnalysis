@@ -103,6 +103,7 @@ class TestColumnNames:
 
     @pytest.mark.parametrize('num_columns, last_main', [
         (5, 'max_col_val'), (19, 'max_col_val'),  # written since v0.13.0, without and with the fit
+        (7, 'farbg_pedestal'), (21, 'farbg_pedestal'),  # with the far-field pedestal (farfield_distances)
         (6, 'bgsub_sum_col_val'), (20, 'bgsub_sum_col_val'),  # local background subtraction
         (9, 'bgsub2_sum_col_val'), (23, 'bgsub2_sum_col_val'),  # v0.11.0
         (10, 'noise_sum_col_val'), (24, 'noise_sum_col_val')])  # v0.12.0
@@ -147,7 +148,7 @@ class TestColumnNames:
         assert columns[:4] == first_names
         assert len(columns) == num_columns + 1 + 2
 
-    @pytest.mark.parametrize('num_columns', [7, 21, 22])
+    @pytest.mark.parametrize('num_columns', [8, 22, 25])
     def test_unknown_layout_raises(self, tmp_path, monkeypatch, num_columns):
         self._write_led_positions_csv(tmp_path, num_columns)
         monkeypatch.chdir(tmp_path)

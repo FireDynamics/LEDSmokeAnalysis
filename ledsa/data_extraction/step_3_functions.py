@@ -12,6 +12,9 @@ from ledsa.core.file_handling import read_table
 from ledsa.core.image_handling import get_img_name
 from ledsa.core.image_reading import ImageChannels
 from ledsa.data_extraction.LEDAnalysisData import LEDAnalysisData
+from ledsa.data_extraction.farfield_background import (FarfieldGeometry, farfield_pedestals,
+                                                       get_farfield_geometry, mean_of_channel_pixels,
+                                                       parse_farfield_distances)
 from ledsa.data_extraction.model import target_function
 
 
@@ -60,9 +63,18 @@ def generate_analysis_data(img_filename: str, channel: int, search_areas: np.nda
     led_ids = np.array([iled for iled, _ in leds], dtype=int)
     led_array_ids = np.array([led_array_idx for _, led_array_idx in leds], dtype=int)
 
-    # only the pixels of the search areas are read, which are a few percent of the image
-    analysis_pixels = _get_analysis_pixels(search_areas, led_ids, img_channels.shape, search_area_radius)
-    data, _ = img_channels.channel_data_and_mask(channel, analysis_pixels.pixels)
+    farfield = _get_farfield_geometry(conf, search_areas, line_indices, img_channels.shape, search_area_radius)
+
+    # only the pixels of the search areas and of the far-field bands are read, which are a few percent of the image
+    analysis_pixels = _get_analysis_pixels(search_areas, led_ids, img_channels.shape, search_area_radius, farfield)
+    data, channel_mask = img_channels.channel_data_and_mask(channel, analysis_pixels.pixels)
+    pedestals = None
+    if farfield is not None:
+        bands = np.s_[analysis_pixels.num_box_pixels:]
+        band_levels = mean_of_channel_pixels(data[bands], channel_mask[bands],
+                                             analysis_pixels.num_band_pixels.ravel()).reshape(-1, 2)
+        pedestals = farfield_pedestals(band_levels, farfield.strip_of_led[led_ids],
+                                       farfield.position_on_strip[led_ids])
 
     img_analysis_data = [None] * len(leds)
     for positions, shape, start in analysis_pixels.box_groups:
@@ -70,7 +82,8 @@ def generate_analysis_data(img_filename: str, channel: int, search_areas: np.nda
         stack_shape = (positions.size,) + shape
         group_data = _analyse_search_areas(
             conf, channel, img_filename, led_ids[positions], led_array_ids[positions],
-            analysis_pixels.centers[positions], search_area_radius, fit_leds, data[boxes].reshape(stack_shape))
+            analysis_pixels.centers[positions], search_area_radius, fit_leds, data[boxes].reshape(stack_shape),
+            channel_mask[boxes].reshape(stack_shape), None if pedestals is None else pedestals[positions])
         for position, led_analysis_data in zip(positions, group_data):
             img_analysis_data[position] = led_analysis_data
     return img_analysis_data
@@ -79,7 +92,8 @@ def generate_analysis_data(img_filename: str, channel: int, search_areas: np.nda
 class AnalysisPixels(NamedTuple):
     """
     The pixels step 3 reads from an image, in one selection so that the image calibrates them once for all
-    channels: the search areas of the analysed LEDs, stacked by their shape.
+    channels: the search areas of the analysed LEDs, stacked by their shape, followed by their far-field bands
+    if the pedestal is estimated.
     """
 
     pixels: Tuple[np.ndarray, np.ndarray]   # row and column indices
@@ -87,6 +101,8 @@ class AnalysisPixels(NamedTuple):
     # per shape of the search areas: the positions of their LEDs in the analysis, the shape and the index of the
     # first pixel of the stack in pixels
     box_groups: List[Tuple[np.ndarray, Tuple[int, int], int]]
+    num_box_pixels: int                     # the band pixels follow the search areas, LED after LED, side after side
+    num_band_pixels: np.ndarray             # number of pixels of the two far-field bands of every analysed LED
 
 
 # pixels of the analysis, cached per process because they only depend on the LED positions
@@ -94,7 +110,7 @@ _analysis_pixels_cache = {}
 
 
 def _get_analysis_pixels(search_areas: np.ndarray, led_ids: np.ndarray, img_shape: Tuple[int, int],
-                         search_area_radius: int) -> AnalysisPixels:
+                         search_area_radius: int, farfield: Optional[FarfieldGeometry] = None) -> AnalysisPixels:
     """
     Cached _build_analysis_pixels. The same object is returned for every image and channel, which lets the image
     keep the pixels it calibrated for the next channel.
@@ -102,16 +118,19 @@ def _get_analysis_pixels(search_areas: np.ndarray, led_ids: np.ndarray, img_shap
     :return: See _build_analysis_pixels.
     """
     key = (search_areas.tobytes(), search_areas.shape, led_ids.tobytes(), tuple(img_shape), search_area_radius)
-    if key not in _analysis_pixels_cache:
+    # the far-field geometry comes from a cache of its own, which builds a new one when its key changes; it is
+    # kept with the entry, so that its identity cannot pass to another one
+    if key not in _analysis_pixels_cache or _analysis_pixels_cache[key][0] is not farfield:
         _analysis_pixels_cache.clear()
-        _analysis_pixels_cache[key] = _build_analysis_pixels(search_areas, led_ids, img_shape, search_area_radius)
-    return _analysis_pixels_cache[key]
+        _analysis_pixels_cache[key] = (farfield, _build_analysis_pixels(search_areas, led_ids, img_shape,
+                                                                        search_area_radius, farfield))
+    return _analysis_pixels_cache[key][1]
 
 
 def _build_analysis_pixels(search_areas: np.ndarray, led_ids: np.ndarray, img_shape: Tuple[int, int],
-                           search_area_radius: int) -> AnalysisPixels:
+                           search_area_radius: int, farfield: Optional[FarfieldGeometry] = None) -> AnalysisPixels:
     """
-    Collect the pixels of the search areas of the analysed LEDs.
+    Collect the pixels of the search areas of the analysed LEDs and, if given, of their far-field bands.
 
     The search area is cut from the image as data[row - R:row + R, col - R:col + R], so an area at the border
     of the image is cut short as the slice is. Its shape differs from that of the others, and the search areas
@@ -125,7 +144,9 @@ def _build_analysis_pixels(search_areas: np.ndarray, led_ids: np.ndarray, img_sh
     :type img_shape: tuple[int, int]
     :param search_area_radius: Radius R of the search areas.
     :type search_area_radius: int
-    :return: The pixels and where the analysis finds the search area of every LED in them.
+    :param farfield: The far-field bands of the LEDs, None if the pedestal is not estimated.
+    :type farfield: FarfieldGeometry or None
+    :return: The pixels and where the analysis finds the search area and the bands of every LED in them.
     :rtype: AnalysisPixels
     """
     centers = search_areas[led_ids, 1:3].astype(int)
@@ -147,7 +168,73 @@ def _build_analysis_pixels(search_areas: np.ndarray, led_ids: np.ndarray, img_sh
         cols.append(np.broadcast_to(first_cols[:, None, None] + np.arange(shape[1]), stack_shape).ravel())
         box_groups.append((positions, shape, start))
         start += positions.size * shape[0] * shape[1]
-    return AnalysisPixels((np.concatenate(rows), np.concatenate(cols)), centers, box_groups)
+
+    num_band_pixels = np.zeros((led_ids.size, 2), dtype=np.intp)
+    if farfield is not None:
+        for position, led_id in enumerate(led_ids):
+            if farfield.pixels[led_id] is None:
+                continue
+            for side, (band_rows, band_cols) in enumerate(farfield.pixels[led_id]):
+                rows.append(band_rows)
+                cols.append(band_cols)
+                num_band_pixels[position, side] = band_rows.size
+    return AnalysisPixels((np.concatenate(rows), np.concatenate(cols)), centers, box_groups, start,
+                          num_band_pixels)
+
+
+def _get_farfield_geometry(conf: ConfigData, search_areas: np.ndarray, line_indices: List[List[int]],
+                           img_shape: Tuple[int, int], search_area_radius: int) -> Optional[FarfieldGeometry]:
+    """
+    The far-field bands of the LEDs if farfield_distances of the config asks for the pedestal. Config files
+    written before the option existed do not contain it, the pedestal is not estimated then.
+
+    :param conf: Configuration data.
+    :type conf: ConfigData
+    :param search_areas: Array with rows (LED id, pixel row, pixel column), the row index equals the LED id.
+    :type search_areas: np.ndarray
+    :param line_indices: LED ids of the LED arrays used in the analysis.
+    :type line_indices: List[List[int]]
+    :param img_shape: Shape of the image.
+    :type img_shape: tuple[int, int]
+    :param search_area_radius: Radius R of the search areas.
+    :type search_area_radius: int
+    :return: The far-field geometry, None if the pedestal is not estimated.
+    :rtype: FarfieldGeometry or None
+    """
+    distances = parse_farfield_distances(conf.get('analyse_photo', 'farfield_distances', fallback='None'),
+                                         search_area_radius)
+    if distances is None:
+        return None
+    return get_farfield_geometry(search_areas, _get_unmerged_led_arrays(conf, line_indices), img_shape,
+                                 search_area_radius, distances)
+
+
+def _get_unmerged_led_arrays(conf: ConfigData, line_indices: List[List[int]]) -> List[List[int]]:
+    """
+    Return the LED arrays as found in step 2. If LED arrays are merged for the analysis, the merged arrays may
+    contain several strips, which would spoil the strip direction and the smoothing along the strip.
+
+    :param conf: Configuration data.
+    :type conf: ConfigData
+    :param line_indices: LED ids of the (possibly merged) LED arrays used in the analysis.
+    :type line_indices: List[List[int]]
+    :return: LED ids of the LED arrays as found in step 2.
+    :rtype: List[List[int]]
+    """
+    if conf.get('analyse_positions', 'merge_led_array_indices', fallback='None') == 'None':
+        return line_indices
+    led_arrays = []
+    for i in range(int(conf['analyse_positions']['num_arrays'])):
+        file_path = os.path.join('analysis', f'led_array_indices_{i:03}.csv')
+        # read_table stays silent, it would report every file of every image; its error message is unspecific
+        try:
+            led_arrays.append(read_table(file_path, dtype='int', silent=True))
+        except OSError as error:
+            raise OSError(f'{file_path} could not be read ({error}). The LED arrays of step 2 are needed for '
+                          f'the far-field pedestal (farbg_sum_col_val), because merge_led_array_indices merges '
+                          f'LED arrays that may contain several strips. Run step 2 again to write the files, '
+                          f'or unset merge_led_array_indices or farfield_distances.') from error
+    return led_arrays
 
 
 def create_fit_result_file(img_data: List[LEDAnalysisData], img_id: int, channel: int) -> None: # TODO: rename because misleading
@@ -291,7 +378,8 @@ def _generate_led_analysis_data(conf: ConfigData, channel: int, data: np.ndarray
 
 def _analyse_search_areas(conf: ConfigData, channel: int, img_filename: str, led_ids: Sequence[int],
                           led_array_ids: Sequence[int], centers: np.ndarray, search_area_radius: int, fit_leds: bool,
-                          boxes: np.ndarray) -> List[LEDAnalysisData]:
+                          boxes: np.ndarray, box_masks: Optional[np.ndarray] = None,
+                          pedestals: Optional[np.ndarray] = None) -> List[LEDAnalysisData]:
     """
     Generate the analysis data of the LEDs of a stack of search areas of one shape.
 
@@ -317,12 +405,22 @@ def _analyse_search_areas(conf: ConfigData, channel: int, img_filename: str, led
     :param boxes: Channel values of the search areas, 0 outside the channel, of shape (number of LEDs, rows,
         columns).
     :type boxes: np.ndarray
+    :param box_masks: Whether each pixel of the search areas belongs to the channel, of the shape of boxes. Only
+        needed with pedestals.
+    :type box_masks: np.ndarray or None
+    :param pedestals: Far-field pedestal per channel pixel of every LED, NaN for an LED without one, see
+        farfield_pedestals. None if the pedestal is not estimated.
+    :type pedestals: np.ndarray or None
     :return: Analysis data for every LED.
     :rtype: List[LEDAnalysisData]
     """
     means = np.mean(boxes, axis=(1, 2))
     sums = np.sum(boxes, axis=(1, 2))
     maxima = np.amax(boxes, axis=(1, 2))
+    if pedestals is not None:
+        # the pedestal of the search area is N * b with N its number of channel pixels; an LED without a far
+        # field keeps its plain sum, so that the corrected sum is a number for every LED
+        box_pedestals = np.sum(box_masks, axis=(1, 2)) * np.where(np.isfinite(pedestals), pedestals, 0.0)
 
     img_analysis_data = []
     for i, led_id in enumerate(led_ids):
@@ -342,6 +440,9 @@ def _analyse_search_areas(conf: ConfigData, channel: int, img_filename: str, led
         led_data.mean_color_value = means[i]
         led_data.sum_color_value = sums[i]
         led_data.max_color_value = maxima[i]
+        if pedestals is not None:
+            led_data.farbg_pedestal = float(box_pedestals[i])
+            led_data.farbg_sum_color_value = float(sums[i]) - led_data.farbg_pedestal
         img_analysis_data.append(led_data)
     return img_analysis_data
 
@@ -365,7 +466,8 @@ def _save_results_in_file(channel: int, img_data: LEDAnalysisData, img_filename:
     """
     file_path = os.path.join('analysis', f'channel{channel}', f'{img_id}_led_positions.csv')
     out_file = open(file_path, 'w', encoding='utf-8')
-    header = _create_header(channel, img_id, img_filename, img_infos, basename, img_data[0].fit_leds)
+    header = _create_header(channel, img_id, img_filename, img_infos, basename, img_data[0].fit_leds,
+                            img_data[0].farbg_sum_color_value is not None)
     out_file.write(header)
     for led_data in img_data:
         out_file.write(str(led_data))
@@ -502,7 +604,8 @@ def _log_warnings(img_filename, channel, led_data, cx, cy, size_of_search_area, 
     logfile.close()
 
 
-def _create_header(channel: int, img_id: str, img_filename: str, img_infos: np.ndarray, basename: str, fit_leds: str):
+def _create_header(channel: int, img_id: str, img_filename: str, img_infos: np.ndarray, basename: str, fit_leds: str,
+                   farfield: bool = False):
     """
     Create a header for the analysis result file.
 
@@ -518,6 +621,8 @@ def _create_header(channel: int, img_id: str, img_filename: str, img_infos: np.n
     :type basename: str
     :param fit_leds: If True, includes fit data in the header.
     :type fit_leds: bool
+    :param farfield: If True, includes the far-field pedestal columns in the header.
+    :type farfield: bool
     :return: String of the header.
     :rtype: str
     """
@@ -526,6 +631,8 @@ def _create_header(channel: int, img_id: str, img_filename: str, img_infos: np.n
     out_str += f"time[s] = {img_infos[int(img_id) - 1][3]}, "
     out_str += f"LEDSA {version('ledsa')}\n"
     out_str += "# id,line,sum_col_value,average_col_value,max_col_value"
+    if farfield:
+        out_str += ",farbg_sum_col_value,farbg_pedestal"
     if fit_leds:
         out_str += ",led_center_x, led_center_y"
         out_str += ",x,y,dx,dy,A,alpha,wx,wy,fit_success,fit_fun,fit_nfev,fit_time"
