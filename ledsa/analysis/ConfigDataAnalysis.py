@@ -1,6 +1,7 @@
 import configparser as cp
 from typing import Iterable, List, Optional, Union
 
+from ledsa.analysis.Experiment import read_pane_distance
 from ledsa.analysis.temperature_correction import TEMPERATURE_CORRECTION_CHANNELS
 from ledsa.core.config_file import report_removed_options, save_config
 from ledsa.analysis.ExtinctionCoefficients import DEFAULT_SNR_FULL_WEIGHT
@@ -66,7 +67,7 @@ class ConfigDataAnalysis(cp.ConfigParser):
                  weighting_curvature=1e-2,
                  num_iterations=1000, lambda_reg=1e-3, snr_full_weight=DEFAULT_SNR_FULL_WEIGHT,
                  min_layer_weight=0.5,
-                 num_moving_avg_images=1, reduction_files=None):
+                 num_moving_avg_images=1, reduction_files=None, pane_distance=None):
         """
         :param load_config_file: Determines whether to load the config file on initialization. Defaults to True.
         :type load_config_file: bool
@@ -124,6 +125,9 @@ class ConfigDataAnalysis(cp.ConfigParser):
             camera channel. Channels without an entry are analysed without the correction, which is
             the default for every channel.
         :type reduction_files: dict[int, str] or None
+        :param pane_distance: Distance [m] between the camera and the window pane it looks through
+            into the smoke. Defaults to None, for a camera without a pane.
+        :type pane_distance: float or None
         """
         cp.ConfigParser.__init__(self, allow_no_value=True)
         if load_config_file:
@@ -167,6 +171,11 @@ class ConfigDataAnalysis(cp.ConfigParser):
             self['experiment_geometry'] = {}
             self.set('experiment_geometry', '# Global X Y Z position of the camera ')
             self['experiment_geometry']['   camera_position'] = str(camera_position)
+            self.set('experiment_geometry', '   # Distance [m] between the camera and the window pane it looks through into the')
+            self.set('experiment_geometry', '   # smoke, None without a pane. The pane is taken as normal to the line of sight:')
+            self.set('experiment_geometry', '   # the first pane_distance of every line of sight is free of smoke, so only the')
+            self.set('experiment_geometry', '   # part behind the pane is distributed over the layers.')
+            self['experiment_geometry']['   pane_distance'] = str(pane_distance)
 
             self['model_parameters'] = {}
             self.set('model_parameters', '# Parameters regarding the discretization of the spatial domain ')
@@ -289,6 +298,17 @@ class ConfigDataAnalysis(cp.ConfigParser):
         if raw.lower() == 'none' or raw == '':
             return None
         return raw
+
+    def get_pane_distance(self) -> Optional[float]:
+        """
+        Return the distance between the camera and the window pane it looks through into the smoke.
+
+        :return: The distance [m], None if the smoke reaches the camera, which is also the case for a
+            config file written before the option.
+        :rtype: Optional[float]
+        :raises ValueError: If pane_distance is not a finite number of at least 0.
+        """
+        return read_pane_distance(self, 'experiment_geometry', 'config_analysis.ini')
 
     def in_camera_channels(self) -> None:
         """
