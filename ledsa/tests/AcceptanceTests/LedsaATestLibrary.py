@@ -40,12 +40,14 @@ class LedsaATestLibrary:
 
     @keyword
     def create_test_data(self, num_of_leds=100, num_of_layers=20, bottom_border=0, top_border=3,
-                         pane_distance=None):
+                         pane_distance=None, img_width=50, pedestal=0):
         """Create the test images of four extinction profiles, seen by a camera at (0, 0, 2).
 
         :param pane_distance: Distance [m] between the camera and a window pane it looks through into
             the smoke, so that the smoke dims the LEDs only behind the pane. None for smoke up to the
             camera.
+        :param img_width: Width of the images in pixels, the LED strip runs down their middle.
+        :param pedestal: Pixel value added to the whole image, light that does not dim with the LEDs.
         """
         # Create test_data directory if it doesn't exist
         if not os.path.exists('test_data'):
@@ -89,7 +91,7 @@ class LedsaATestLibrary:
             for z in np.linspace(bottom_border + 0.05, top_border - 0.05, num_of_leds):
                 ex.add_led(0, 4, z)
             ex.set_extinction_coefficients(extinction_coefficients)
-            create_test_image(image_id, ex)
+            create_test_image(image_id, ex, img_width=int(img_width), pedestal=int(pedestal))
 
     # ------------------------------------------------------------------
     # Stacked / multi-camera keywords
@@ -406,16 +408,18 @@ class LedsaATestLibrary:
         return rmse
 
     @keyword
-    def mean_ratio_of_computed_to_input_extinction_coefficients(self, image_id, solver, led_array=0, channel=0):
+    def mean_ratio_of_computed_to_input_extinction_coefficients(self, image_id, solver, led_array=0, channel=0,
+                                                                reference_property='sum_col_val'):
         """Return the mean computed extinction coefficient of an image over the mean of its input."""
-        _, extinction_coefficients_computed = load_extinction_coefficients_computed(solver, channel, led_array)
+        _, extinction_coefficients_computed = load_extinction_coefficients_computed(solver, channel, led_array,
+                                                                                    reference_property)
         extinction_coefficients_input = np.loadtxt(
             os.path.join('test_data', f'test_extinction_coefficients_input_{image_id}.csv'), delimiter=',')
         return float(np.mean(extinction_coefficients_computed[int(image_id) - 1, :]) /
                      np.mean(extinction_coefficients_input))
 
     @keyword
-    def create_and_fill_config(self, first=1, last=4):
+    def create_and_fill_config(self, first=1, last=4, farfield_distances=None):
         # Create test_data directory if it doesn't exist
         if not os.path.exists('test_data'):
             os.makedirs('test_data')
@@ -427,7 +431,7 @@ class LedsaATestLibrary:
                           last_img_experiment_id=last, ref_img_id=1, ignore_led_indices=None,
                           led_array_edge_indices=None, led_array_edge_coordinates=None,
                           first_img_analysis_id=first, last_img_analysis_id=last, num_skip_imgs=0, num_skip_leds=0,
-                          merge_led_array_indices=None)
+                          merge_led_array_indices=None, farfield_distances=farfield_distances)
         conf.set('analyse_positions', '   led_array_edge_indices', '49 0')
         conf.set('analyse_positions', '   led_array_edge_coordinates', '0 4 0.05 0 4 2.95')
         conf.set('DEFAULT', '   date', '2018:11:27')
@@ -728,6 +732,27 @@ class LedsaATestLibrary:
             return len([line for line in config_file if line.strip().startswith(('#', ';'))])
 
     @keyword
+    def farfield_pedestal_per_pixel_should_be(self, img_id, expected, tolerance, channel=0):
+        """Fail unless the far-field pedestal step 3 wrote for every LED of an image, divided by the number of
+        pixels of its search area, lies within tolerance of expected."""
+        file_path = os.path.join('analysis', f'channel{channel}', f'{img_id}_led_positions.csv')
+        with open(file_path, encoding='utf-8') as result_file:
+            header = [line for line in result_file if line.startswith('#')][-1]
+        columns = [name.strip() for name in header.lstrip('#').split(',')]
+        if 'farbg_pedestal' not in columns:
+            raise AssertionError(f'{file_path} has no column farbg_pedestal: {columns}')
+        data = np.atleast_2d(np.loadtxt(file_path, delimiter=',', comments='#'))
+        num_pixels = (2 * int(ConfigData()['find_search_areas']['search_area_radius'])) ** 2
+        pedestals = data[:, columns.index('farbg_pedestal')] / num_pixels
+        corrected = data[:, columns.index('sum_col_value')] - data[:, columns.index('farbg_pedestal')]
+        if not np.allclose(data[:, columns.index('farbg_sum_col_value')], corrected, rtol=1e-4):
+            raise AssertionError('farbg_sum_col_value is not sum_col_value minus farbg_pedestal')
+        deviation = np.abs(pedestals - float(expected))
+        if np.max(deviation) > float(tolerance):
+            raise AssertionError(f'Pedestals per pixel range from {pedestals.min():.3f} to {pedestals.max():.3f}, '
+                                 f'expected {expected} +- {tolerance}')
+
+    @keyword
     def analysed_image_names_should_be(self, *expected_img_names):
         """Fail unless exactly the given images are listed in 'image_infos_analysis.csv'."""
         file_path = os.path.join('analysis', 'image_infos_analysis.csv')
@@ -773,7 +798,7 @@ def load_extinction_coefficients_computed(solver, channel, led_array, reference_
     extinction_coefficients_computed = data[:, 1:]
     return time, extinction_coefficients_computed
 
-def create_test_image(image_id, experiment, img_dir='test_data'):
+def create_test_image(image_id, experiment, img_dir='test_data', img_width=50, pedestal=0):
     """ Creates three test images with black and gray pixels representing 3 leds and sets the exif data needed
     The first image has 100% transmission on all LEDs, the second image has 50% transmission on all LEDs,
     the third has 50%, 70% and 80% transmission on the top, middle and bottom LEDs.
@@ -787,7 +812,7 @@ def create_test_image(image_id, experiment, img_dir='test_data'):
     transmissions = experiment.calc_all_led_transmissions()
 
     # Reverse transmissions because images are created from top down
-    img_array = create_img_array(num_of_leds, list(reversed(transmissions)))
+    img_array = create_img_array(num_of_leds, list(reversed(transmissions)), img_width, pedestal)
     img = Image.fromarray(img_array, 'RGB')
 
     # Save image without EXIF data
@@ -825,21 +850,21 @@ def turn_img_sideways(path, write_orientation=True):
     turned_img.writeMetadata()
 
 
-def create_img_array(num_of_leds, transmissions):
-    img = np.zeros((num_of_leds * 50 + 50, 50, 3), np.uint8)
+def create_img_array(num_of_leds, transmissions, img_width=50, pedestal=0):
+    img = np.full((num_of_leds * 50 + 50, img_width, 3), pedestal, np.uint8)
     for led_id in range(num_of_leds):
-        add_led(img, (1 + led_id) * 50, 25, transmissions[led_id])
+        add_led(img, (1 + led_id) * 50, img_width // 2, transmissions[led_id], pedestal)
     return img
 
 
-def add_led(img, x_pos, y_pos, transmission):
+def add_led(img, x_pos, y_pos, transmission, pedestal=0):
     rv = norm()
     size = 20
     led = np.zeros((size, size))
     for x in range(size):
         for y in range(size):
             led[x, y] = calc_color_val(x, y, size, rv) * transmission
-    img[x_pos - size // 2:x_pos + size // 2, y_pos - size // 2:y_pos + size // 2, 0] = led
+    img[x_pos - size // 2:x_pos + size // 2, y_pos - size // 2:y_pos + size // 2, 0] = led + pedestal
     img[:, :, 1] = img[:, :, 0]
     img[:, :, 2] = img[:, :, 0]
 
