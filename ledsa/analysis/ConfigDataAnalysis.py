@@ -1,6 +1,7 @@
 import configparser as cp
 from typing import Iterable, List, Optional, Union
 
+from ledsa.analysis.Experiment import Pane, read_pane
 from ledsa.analysis.temperature_correction import TEMPERATURE_CORRECTION_CHANNELS
 from ledsa.core.config_file import report_removed_options, save_config
 
@@ -62,6 +63,13 @@ def format_reference_properties(reference_property: Union[str, Iterable[str]]) -
     return ' '.join(str(name) for name in reference_property)
 
 
+def _format_coordinates(coordinates) -> str:
+    """Write coordinates given as a sequence of numbers, a string or None as the value of an option."""
+    if coordinates is None or isinstance(coordinates, str):
+        return str(coordinates)
+    return ' '.join(str(value) for value in coordinates)
+
+
 class ConfigDataAnalysis(cp.ConfigParser):
     """
     Class responsible for handling the configuration data related to LEDSA's data analysis.
@@ -72,7 +80,8 @@ class ConfigDataAnalysis(cp.ConfigParser):
                  reference_property='sum_col_val',
                  average_images=False, n_summarize=2, solver='linear', weighting_preference=-6e-3,
                  weighting_curvature=1e-2,
-                 num_iterations=1000, lambda_reg=1e-3, reduction_files=None):
+                 num_iterations=1000, lambda_reg=1e-3, reduction_files=None, pane_point=None,
+                 pane_normal=None):
         """
         :param load_config_file: Determines whether to load the config file on initialization. Defaults to True.
         :type load_config_file: bool
@@ -115,6 +124,11 @@ class ConfigDataAnalysis(cp.ConfigParser):
             camera channel. Channels without an entry are analysed without the correction, which is
             the default for every channel.
         :type reduction_files: dict[int, str] or None
+        :param pane_point: Global X, Y, Z coordinates [m] of a point on the window pane the camera
+            looks through into the smoke. Defaults to None, for a camera without a pane.
+        :type pane_point: list[float] or None
+        :param pane_normal: Normal vector X, Y, Z of the window pane. Defaults to None.
+        :type pane_normal: list[float] or None
         """
         cp.ConfigParser.__init__(self, allow_no_value=True)
         if load_config_file:
@@ -149,6 +163,13 @@ class ConfigDataAnalysis(cp.ConfigParser):
             self['experiment_geometry'] = {}
             self.set('experiment_geometry', '# Global X Y Z position of the camera ')
             self['experiment_geometry']['   camera_position'] = str(camera_position)
+            self.set('experiment_geometry', '   # Window pane the camera looks through into the smoke, None without a pane:')
+            self.set('experiment_geometry', '   # the plane through the global X Y Z point pane_point [m] with the normal')
+            self.set('experiment_geometry', '   # X Y Z pane_normal, pointing to either side. The line of sight between the')
+            self.set('experiment_geometry', '   # camera and the pane is free of smoke, so only its part behind the pane is')
+            self.set('experiment_geometry', '   # distributed over the layers.')
+            self['experiment_geometry']['   pane_point'] = _format_coordinates(pane_point)
+            self['experiment_geometry']['   pane_normal'] = _format_coordinates(pane_normal)
 
             self['model_parameters'] = {}
             self.set('model_parameters', '# Parameters regarding the discretization of the spatial domain ')
@@ -271,6 +292,18 @@ class ConfigDataAnalysis(cp.ConfigParser):
         if raw.lower() == 'none' or raw == '':
             return None
         return raw
+
+    def get_pane(self) -> Optional[Pane]:
+        """
+        Return the window pane the camera looks through into the smoke.
+
+        :return: The pane, None if the smoke reaches the camera, which is also the case for a config
+            file written before the options of the pane.
+        :rtype: Optional[Pane]
+        :raises ValueError: If only one of pane_point and pane_normal is set, or one of them is not
+            three numbers, or the normal is the zero vector.
+        """
+        return read_pane(self, 'experiment_geometry', 'config_analysis.ini')
 
     def in_camera_channels(self) -> None:
         """

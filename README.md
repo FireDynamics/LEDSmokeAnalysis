@@ -135,6 +135,29 @@ individual runs. Since image IDs are counted per run, `num_ref_images` and `ref_
 be set per `[simulation_N]` section; pick the reference images of all cameras from the same time
 window before the fire.
 
+### Camera behind a window pane (optional)
+
+A camera that looks into the smoke through a window pane, for example from outside the test
+room, sees the LEDs along lines of sight whose part between the camera and the pane is free of
+smoke. Only the part behind the pane belongs in the layers; counted from the camera, the light
+paths are too long and the extinction coefficients come out too low. The pane is the plane
+through `pane_point` with the normal `pane_normal`, in the global coordinates of
+`camera_position`:
+
+```ini
+[experiment_geometry]
+   camera_position = 0 -0.5 1.5
+   pane_point = 0 0 0
+   pane_normal = 0 1 0
+```
+
+The normal may point to either side, and the pane has to separate the camera from every LED. In
+`config_stacked.ini`, every `[simulation_N]` section takes a pane of its own. Without the two
+options, or with `None`, the light paths reach the camera as before. The camera may then stand
+outside `domain_bounds`, as long as the layers hold the light paths behind the pane. Only the
+geometry is corrected: a pane whose transmission changes during the test, for example by soot or
+condensate, dims the LEDs like smoke. The header of each result file names the pane.
+
 ### Temperature correction (optional)
 
 LEDs lose radiant power as they heat up, which would otherwise be read as extinction. Reduction

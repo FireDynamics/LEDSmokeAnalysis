@@ -110,7 +110,7 @@ class StackedExtinctionCoefficients:
             exp = Experiment(
                 layers=self.layers,
                 led_array=arr_id,
-                camera=Camera(*cam_pos),
+                camera=Camera(*cam_pos, pane=config.get_pane(sim_idx)),
                 path=config.get_simulation_path(sim_idx),
                 channel=channel,
                 merge_led_arrays='None',
@@ -493,7 +493,7 @@ class StackedExtinctionCoefficients:
             f'sim{idx}:arr{arr}' for idx, arr in sorted(self.led_array_mapping.items())
         )
         header = (
-            f'Stacked inversion | {sim_info} | solver: {self.solver} | '
+            f'Stacked inversion | {sim_info} | {self._pane_info()}solver: {self.solver} | '
             f'ref_prop: {self.reference_property} | '
             f'ref_imgs: {self._ref_img_info()} | '
             f'temperature_correction: {self._sub_solvers[0].temperature_correction_info()} | '
@@ -538,6 +538,20 @@ class StackedExtinctionCoefficients:
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+
+    def _pane_info(self) -> str:
+        """Header entries of the cameras behind a window pane.
+
+        Only a camera behind a pane is named, so the header of a run without panes stays as it was.
+
+        :return: One entry per camera behind a pane, each ending in a separator, or an empty string.
+        :rtype: str
+        """
+        return ''.join(
+            f'sim{idx} behind the {exp.camera.pane} | '
+            for idx, exp in zip(sorted(self.led_array_mapping), self.sub_experiments)
+            if exp.camera.pane is not None
+        )
 
     def _ref_img_info(self) -> str:
         """Describe the reference images of every simulation, e.g. ``sim0 first 10, sim1 [385, 386]``.
