@@ -52,13 +52,6 @@ class Camera:
 
 
 @dataclass
-class Pane:
-    """Window pane between the camera and the smoke: the plane through point with the normal normal."""
-    point: tuple
-    normal: tuple
-
-
-@dataclass
 class LED:
     id: int
     pos_x: float
@@ -67,10 +60,10 @@ class LED:
 
 
 class TestExperiment:
-    def __init__(self, layers: Layers, camera: Camera, pane: Pane = None):
+    def __init__(self, layers: Layers, camera: Camera, pane_distance: float = None):
         self.layers = layers
         self.camera = camera
-        self.pane = pane
+        self.pane_distance = pane_distance
         self.leds = []
         self.extinction_coefficients = np.zeros(layers.amount)
 
@@ -82,7 +75,7 @@ class TestExperiment:
         self.extinction_coefficients = extinction_coefficients_array
 
     def calc_traversed_dist_per_layer(self, led: LED) -> np.ndarray:
-        if self.pane is not None:
+        if self.pane_distance is not None:
             return self.calc_traversed_dist_per_layer_behind_pane(led)
         horizontal_dist = np.sqrt((self.camera.pos_x - led.pos_x) ** 2 + (self.camera.pos_y - led.pos_y) ** 2)
         alpha = np.arctan((led.pos_z - self.camera.pos_z) / horizontal_dist)
@@ -98,16 +91,15 @@ class TestExperiment:
     def calc_traversed_dist_per_layer_behind_pane(self, led: LED) -> np.ndarray:
         """Distances in the layers of the part of the line of sight between the pane and the LED.
 
-        Only that part runs through the smoke. It is cut at the layer borders by the share of its
-        height each layer holds, so that this does not repeat how LEDSA computes the light paths.
+        The first pane_distance of the line of sight is free of smoke, so only the rest runs through
+        the smoke. It is cut at the layer borders by the share of its height each layer holds, so
+        that this does not repeat how LEDSA computes the light paths.
         """
         camera = np.array([self.camera.pos_x, self.camera.pos_y, self.camera.pos_z], dtype=float)
         led_pos = np.array([led.pos_x, led.pos_y, led.pos_z], dtype=float)
-        point = np.array(self.pane.point, dtype=float)
-        normal = np.array(self.pane.normal, dtype=float)
-        crossing = np.dot(point - camera, normal) / np.dot(led_pos - camera, normal)
-        start = camera + crossing * (led_pos - camera)
-        length = np.linalg.norm(led_pos - start)
+        led_distance = np.linalg.norm(led_pos - camera)
+        start = camera + self.pane_distance / led_distance * (led_pos - camera)
+        length = led_distance - self.pane_distance
         z_low, z_high = sorted((start[2], led_pos[2]))
         distance_per_layer = np.zeros(self.layers.amount)
         for layer in range(self.layers.amount):

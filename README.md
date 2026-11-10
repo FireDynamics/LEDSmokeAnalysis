@@ -140,23 +140,24 @@ window before the fire.
 A camera that looks into the smoke through a window pane, for example from outside the test
 room, sees the LEDs along lines of sight whose part between the camera and the pane is free of
 smoke. Only the part behind the pane belongs in the layers; counted from the camera, the light
-paths are too long and the extinction coefficients come out too low. The pane is the plane
-through `pane_point` with the normal `pane_normal`, in the global coordinates of
-`camera_position`:
+paths are too long and the extinction coefficients come out too low. `pane_distance` is the
+distance in m between the camera and the pane:
 
 ```ini
 [experiment_geometry]
    camera_position = 0 -0.5 1.5
-   pane_point = 0 0 0
-   pane_normal = 0 1 0
+   pane_distance = 0.5
 ```
 
-The normal may point to either side, and the pane has to separate the camera from every LED. In
-`config_stacked.ini`, every `[simulation_N]` section takes a pane of its own. Without the two
-options, or with `None`, the light paths reach the camera as before. The camera may then stand
+The pane is taken as normal to the line of sight, so the light path of every LED starts
+`pane_distance` away from the camera. A flat pane normal to the optical axis is crossed by a line
+of sight at an angle θ to the axis `pane_distance / cos θ` away from the camera, at 15° 3.5 %
+farther, which is negligible as long as the pane is close to the camera compared to the LEDs. In
+`config_stacked.ini`, every `[simulation_N]` section takes a `pane_distance` of its own. Without
+the option, or with `None`, the light paths reach the camera as before. The camera may then stand
 outside `domain_bounds`, as long as the layers hold the light paths behind the pane. Only the
 geometry is corrected: a pane whose transmission changes during the test, for example by soot or
-condensate, dims the LEDs like smoke. The header of each result file names the pane.
+condensate, dims the LEDs like smoke. The header of each result file names the distance.
 
 ### Temperature correction (optional)
 

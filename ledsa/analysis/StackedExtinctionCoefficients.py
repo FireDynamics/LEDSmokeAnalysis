@@ -110,7 +110,7 @@ class StackedExtinctionCoefficients:
             exp = Experiment(
                 layers=self.layers,
                 led_array=arr_id,
-                camera=Camera(*cam_pos, pane=config.get_pane(sim_idx)),
+                camera=Camera(*cam_pos, pane_distance=config.get_pane_distance(sim_idx)),
                 path=config.get_simulation_path(sim_idx),
                 channel=channel,
                 merge_led_arrays='None',
@@ -540,18 +540,19 @@ class StackedExtinctionCoefficients:
     # ------------------------------------------------------------------
 
     def _pane_info(self) -> str:
-        """Header entries of the cameras behind a window pane.
+        """Header entry of the cameras behind a window pane, e.g. ``pane_distance: sim0 0.5 | ``.
 
         Only a camera behind a pane is named, so the header of a run without panes stays as it was.
 
-        :return: One entry per camera behind a pane, each ending in a separator, or an empty string.
+        :return: The entry, ending in a separator, or an empty string if no camera is behind a pane.
         :rtype: str
         """
-        return ''.join(
-            f'sim{idx} behind the {exp.camera.pane} | '
+        distances = [
+            f'sim{idx} {exp.camera.pane_distance}'
             for idx, exp in zip(sorted(self.led_array_mapping), self.sub_experiments)
-            if exp.camera.pane is not None
-        )
+            if exp.camera.pane_distance is not None
+        ]
+        return f'pane_distance: {", ".join(distances)} | ' if distances else ''
 
     def _ref_img_info(self) -> str:
         """Describe the reference images of every simulation, e.g. ``sim0 first 10, sim1 [385, 386]``.

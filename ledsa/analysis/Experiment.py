@@ -6,9 +6,6 @@ from typing import List, Optional, Tuple
 
 import numpy as np
 
-# options of a camera section that describe the window pane in front of the camera
-PANE_OPTIONS = ('pane_point', 'pane_normal')
-
 
 class InconsistentDistanceError(ValueError):
     """The light path of an LED does not add up to its distance from the camera.
@@ -22,8 +19,9 @@ class InconsistentDistanceError(ValueError):
 class PaneGeometryError(ValueError):
     """The window pane in front of the camera does not lie between the camera and an LED.
 
-    The light path of an LED through the smoke starts where its line of sight crosses the pane.
-    An LED on the camera's side of the pane, or on the pane itself, has no such crossing.
+    The light path of an LED through the smoke starts where its line of sight crosses the pane,
+    pane_distance away from the camera. An LED that is not farther away from the camera than the
+    pane has no such crossing.
     """
 
 
@@ -88,42 +86,6 @@ class Layers:
         return f'Layers(amount={self.amount}, bottom_border={self.bottom_border}, top_border={self.top_border})'
 
 
-@dataclass(frozen=True)
-class Pane:
-    """
-    Window pane the camera looks through into the smoke.
-
-    The pane is the plane through ``point`` with the normal ``normal``; which of the two directions
-    the normal points to does not matter. The part of a line of sight between the camera and the
-    pane is free of smoke, so the light path of an LED through the smoke starts where its line of
-    sight crosses the pane. The transmission of the pane itself is the same in the reference images
-    and cancels in I/I0, and the refraction in a pane with parallel faces shifts the line of sight by
-    less than the thickness of the pane, so neither is taken into account.
-
-    :ivar point: Global X, Y, Z coordinates [m] of a point on the pane
-    :vartype point: Tuple[float, float, float]
-    :ivar normal: Normal vector of the pane, of any length but zero
-    :vartype normal: Tuple[float, float, float]
-    """
-    point: Tuple[float, float, float]
-    normal: Tuple[float, float, float]
-
-    def __post_init__(self):
-        for name in ('point', 'normal'):
-            given = getattr(self, name)
-            coordinates = tuple(float(value) for value in given)
-            if len(coordinates) != 3 or not np.isfinite(coordinates).all():
-                raise ValueError(f'The {name} of the pane needs three finite coordinates X Y Z, got {given}.')
-            object.__setattr__(self, name, coordinates)
-        if not any(self.normal):
-            raise ValueError('The normal of the pane must not be the zero vector.')
-
-    def __str__(self):
-        point = ', '.join(f'{value:g}' for value in self.point)
-        normal = ', '.join(f'{value:g}' for value in self.normal)
-        return f'pane through ({point}) with the normal ({normal})'
-
-
 @dataclass
 class Camera:
     """
@@ -135,22 +97,34 @@ class Camera:
     :vartype pos_y: float
     :ivar pos_z: The z-coordinate of the camera
     :vartype pos_z: float
-    :ivar pane: Window pane the camera looks through into the smoke, None if the smoke reaches the
-        camera
-    :vartype pane: Pane or None
+    :ivar pane_distance: Distance [m] between the camera and the window pane it looks through into
+        the smoke, None if the smoke reaches the camera. The pane is taken as normal to the line of
+        sight, so the first pane_distance of every line of sight is free of smoke. The transmission
+        of the pane itself is the same in the reference images and cancels in I/I0, and the
+        refraction in a pane with parallel faces shifts the line of sight by less than the thickness
+        of the pane, so neither is taken into account.
+    :vartype pane_distance: float or None
     """
     pos_x: float
     pos_y: float
     pos_z: float
-    pane: Optional[Pane] = None
+    pane_distance: Optional[float] = None
+
+    def __post_init__(self):
+        if self.pane_distance is not None:
+            distance = float(self.pane_distance)
+            if not np.isfinite(distance) or distance < 0:
+                raise ValueError(f'The distance between the camera and the pane has to be a finite number of '
+                                 f'at least 0, got {self.pane_distance}.')
+            self.pane_distance = distance
 
     def __str__(self):
-        if self.pane is None:
+        if self.pane_distance is None:
             return f'Camera: ({self.pos_x}, {self.pos_y}, {self.pos_z})\n'
-        return f'Camera: ({self.pos_x}, {self.pos_y}, {self.pos_z}), behind the {self.pane}\n'
+        return f'Camera: ({self.pos_x}, {self.pos_y}, {self.pos_z}), pane_distance: {self.pane_distance}\n'
 
     def __repr__(self):
-        pane = '' if self.pane is None else f', pane={self.pane!r}'
+        pane = '' if self.pane_distance is None else f', pane_distance={self.pane_distance}'
         return f'Camera(pos_x={self.pos_x}, pos_y={self.pos_y}, pos_z={self.pos_z}{pane})'
 
 
@@ -236,32 +210,34 @@ class Experiment:
         Find the point where the light path between an LED and the camera enters the smoke.
 
         Without a pane, the smoke reaches the camera and the light path starts there. Behind a pane,
-        it starts where the line of sight of the LED crosses the pane, because the part between the
-        pane and the camera is free of smoke.
+        it starts where the line of sight of the LED crosses the pane, pane_distance away from the
+        camera, because the part between the camera and the pane is free of smoke. The pane is taken
+        as normal to the line of sight. A flat pane normal to the optical axis of the camera is
+        crossed by a line of sight at an angle theta to the axis pane_distance / cos(theta) away
+        from the camera, at 15 degrees 3.5 % farther; this is negligible as long as the pane is
+        close to the camera compared to the LEDs.
 
         :param led: The LED light source
         :type led: LED
         :return: Global X, Y, Z coordinates of the start of the light path through the smoke
         :rtype: Tuple[float, float, float]
-        :raises PaneGeometryError: If the pane does not lie between the camera and the LED.
+        :raises PaneGeometryError: If the LED is not farther away from the camera than the pane.
         """
         camera = (self.camera.pos_x, self.camera.pos_y, self.camera.pos_z)
-        pane = self.camera.pane
-        if pane is None:
+        pane_distance = self.camera.pane_distance
+        if pane_distance is None:
             return camera
         camera_pos = np.array(camera, dtype=float)
         led_pos = np.array([led.pos_x, led.pos_y, led.pos_z], dtype=float)
-        # distances from the pane, signed by the side and in units of the length of the normal
-        camera_side = np.dot(camera_pos - pane.point, pane.normal)
-        led_side = np.dot(led_pos - pane.point, pane.normal)
-        if led_side == 0 or camera_side * led_side > 0:
+        led_distance = np.linalg.norm(led_pos - camera_pos)
+        if pane_distance >= led_distance:
             raise PaneGeometryError(
                 f'LED {led.id} of LED array {self.led_array} at ({led.pos_x}, {led.pos_y}, {led.pos_z}) '
-                f'is not behind the {pane} as seen from the camera at {camera}, so its line of sight '
-                f'does not cross the pane into the smoke. Check pane_point and pane_normal in the '
-                f'analysis configuration: the pane has to separate the camera from every LED.')
-        fraction = camera_side / (camera_side - led_side)
-        return tuple(camera_pos + fraction * (led_pos - camera_pos))
+                f'is {led_distance:.6g} away from the camera at {camera}, so it is not behind the pane '
+                f'{pane_distance:g} away from the camera and its line of sight does not pass the pane '
+                f'into the smoke. Check pane_distance and camera_position in the analysis '
+                f'configuration: the pane has to lie between the camera and every LED.')
+        return tuple(camera_pos + pane_distance / led_distance * (led_pos - camera_pos))
 
     def calc_traversed_dist_per_layer(self, led: LED) -> np.ndarray:
         """
@@ -276,7 +252,7 @@ class Experiment:
         :rtype: np.ndarray
         :raises InconsistentDistanceError: If the distances do not add up to the length of the light
                                            path through the smoke.
-        :raises PaneGeometryError: If the pane does not lie between the camera and the LED.
+        :raises PaneGeometryError: If the LED is not farther away from the camera than the pane.
         """
         start = self.calc_smoke_path_start(led)
         start_x, start_y, start_z = start
@@ -291,13 +267,13 @@ class Experiment:
             path_length = np.sqrt((start_x - led.pos_x) ** 2 +
                                   (start_y - led.pos_y) ** 2 +
                                   (start_z - led.pos_z) ** 2)
-            if self.camera.pane is None:
+            if self.camera.pane_distance is None:
                 path_end = f'while the LED is {path_length:.6g} away from the camera'
                 range_end = 'the camera'
             else:
                 path_end = (f'while the LED is {path_length:.6g} away from the point ({start_x:.6g}, '
-                            f'{start_y:.6g}, {start_z:.6g}) where its line of sight crosses the '
-                            f'{self.camera.pane}')
+                            f'{start_y:.6g}, {start_z:.6g}) where its line of sight crosses the pane, '
+                            f'{self.camera.pane_distance:g} away from the camera')
                 range_end = 'the points where the lines of sight cross the pane'
             raise InconsistentDistanceError(
                 f'The light path of LED {led.id} of LED array {self.led_array} traverses the layers '
@@ -458,11 +434,11 @@ class Experiment:
         return [search_areas_led_array[:, 3], search_areas_led_array[:, 4], search_areas_led_array[:, 5]]
 
 
-def read_pane(config: cp.ConfigParser, section: str, file_name: str) -> Optional[Pane]:
+def read_pane_distance(config: cp.ConfigParser, section: str, file_name: str) -> Optional[float]:
     """
-    Read the window pane in front of a camera from the options pane_point and pane_normal.
+    Read the distance between a camera and the window pane it looks through into the smoke.
 
-    Both options are optional, so a config file written before them, or one that sets them to
+    The option pane_distance is optional, so a config file written before it, or one that sets it to
     None, keeps the light paths reaching the camera through the smoke.
 
     :param config: The loaded config file
@@ -471,31 +447,20 @@ def read_pane(config: cp.ConfigParser, section: str, file_name: str) -> Optional
     :type section: str
     :param file_name: Name of the config file, for the error messages
     :type file_name: str
-    :return: The pane, None if neither option is set
-    :rtype: Optional[Pane]
-    :raises ValueError: If only one of the options is set, if one of them is not three numbers or if
-        the normal is the zero vector.
+    :return: The distance [m], None if the option is not set
+    :rtype: Optional[float]
+    :raises ValueError: If the value is not a finite number of at least 0.
     """
-    values = {}
-    for option in PANE_OPTIONS:
-        raw = config.get(section, option, fallback=None)
-        raw = '' if raw is None else raw.strip()
-        values[option] = None if raw.lower() in ('', 'none') else raw
-    if all(value is None for value in values.values()):
+    raw = config.get(section, 'pane_distance', fallback=None)
+    raw = '' if raw is None else raw.strip()
+    if raw.lower() in ('', 'none'):
         return None
-    if any(value is None for value in values.values()):
-        set_option, unset_option = PANE_OPTIONS if values[PANE_OPTIONS[0]] is not None else PANE_OPTIONS[::-1]
-        raise ValueError(f'[{section}] of {file_name} sets {set_option} but not {unset_option}. A pane needs '
-                         f'both, a point on the pane and its normal.')
-    coordinates = {}
-    for option, raw in values.items():
-        try:
-            coordinates[option] = [float(item) for item in raw.split()]
-        except ValueError:
-            coordinates[option] = []
-        if len(coordinates[option]) != 3:
-            raise ValueError(f'{option} = {raw} in [{section}] of {file_name} is not three numbers X Y Z.')
     try:
-        return Pane(*(coordinates[option] for option in PANE_OPTIONS))
-    except ValueError as err:
-        raise ValueError(f'[{section}] of {file_name}: {err}') from None
+        distance = float(raw)
+    except ValueError:
+        distance = np.nan
+    if not np.isfinite(distance) or distance < 0:
+        raise ValueError(f'pane_distance = {raw} in [{section}] of {file_name} is not a distance: give the '
+                         f'distance [m] between the camera and the window pane as a number of at least 0, or '
+                         f'None for a camera without a pane.')
+    return distance
