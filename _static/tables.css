@@ -1,0 +1,12 @@
+/* Restrict table width to 100% of the container */
+.rst-content table.docutils {
+    width: 100%;
+    table-layout: auto;
+    max-width: 100%; /* Ensure table doesn't expand beyond container */
+}
+
+/* Ensure table cell content wraps between words */
+.rst-content table.docutils td,
+.rst-content table.docutils th {
+    white-space: normal; /* This ensures content will wrap between words */
+}

@@ -1,0 +1,626 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ledsa.analysis.Experiment &mdash; LEDSmokeAnalysis 0.13.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/tables.css?v=aab0db92" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=1019fba8"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            LEDSmokeAnalysis
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">LEDSA:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../description.html">Description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_documentation.html">CLI Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ledsa.html">LEDSA Module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">Demo</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">LEDSmokeAnalysis</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ledsa.analysis.Experiment</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ledsa.analysis.Experiment</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">configparser</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">cp</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+
+<div class="viewcode-block" id="InconsistentDistanceError">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.Experiment.InconsistentDistanceError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">InconsistentDistanceError</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""The light path of an LED does not add up to its distance from the camera.</span>
+
+<span class="sd">    The traversed distances are accumulated per layer, so the part of a light path that lies</span>
+<span class="sd">    outside the layers is lost. Computing extinction coefficients from such a path would</span>
+<span class="sd">    attribute the dimming of the whole path to the layers covering a part of it.</span>
+<span class="sd">    """</span></div>
+
+
+
+<div class="viewcode-block" id="PaneGeometryError">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.Experiment.PaneGeometryError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PaneGeometryError</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""The window pane in front of the camera does not lie between the camera and an LED.</span>
+
+<span class="sd">    The light path of an LED through the smoke starts where its line of sight crosses the pane,</span>
+<span class="sd">    pane_distance away from the camera. An LED that is not farther away from the camera than the</span>
+<span class="sd">    pane has no such crossing.</span>
+<span class="sd">    """</span></div>
+
+
+
+<div class="viewcode-block" id="Layer">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.Experiment.Layer">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Layer</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Represents a spatial layer with a bottom and top border.</span>
+
+<span class="sd">    :ivar bottom_border: The z-coordinate of the bottom border of the layer</span>
+<span class="sd">    :vartype bottom_border: float</span>
+<span class="sd">    :ivar top_border: The z-coordinate of the top border of the layer</span>
+<span class="sd">    :vartype top_border: float</span>
+<span class="sd">    """</span>
+    <span class="n">bottom_border</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">top_border</span><span class="p">:</span> <span class="nb">float</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__contains__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Check if a given object's z-coordinate falls within this layer.</span>
+
+<span class="sd">        :param obj: The object to check</span>
+<span class="sd">        :type obj: object with attribute 'pos_z'</span>
+<span class="sd">        :return: True if object is contained within the layer, False otherwise</span>
+<span class="sd">        :rtype: bool</span>
+<span class="sd">        """</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">bottom_border</span> <span class="o">&lt;=</span> <span class="n">obj</span><span class="o">.</span><span class="n">pos_z</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">top_border</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="kc">False</span></div>
+
+
+
+<div class="viewcode-block" id="Layers">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.Experiment.Layers">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Layers</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Represents a collection of spatial layers.</span>
+
+<span class="sd">    :ivar amount: The number of layers</span>
+<span class="sd">    :vartype amount: int</span>
+<span class="sd">    :ivar bottom_border: The z-coordinate of the bottom-most border of the layers</span>
+<span class="sd">    :vartype bottom_border: float</span>
+<span class="sd">    :ivar top_border: The z-coordinate of the top-most border of the layers</span>
+<span class="sd">    :vartype top_border: float</span>
+<span class="sd">    """</span>
+    <span class="n">amount</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">bottom_border</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">top_border</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">layers</span><span class="p">:</span> <span class="p">[</span><span class="n">Layer</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">borders</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layers</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">borders</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bottom_border</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">top_border</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">amount</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">amount</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Layer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">borders</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">borders</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]))</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">layer</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="n">layer</span><span class="p">]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s1">'num_of_layers: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">amount</span><span class="si">}</span><span class="s1">, bottom_border: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">bottom_border</span><span class="si">}</span><span class="s1">, top_border: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">top_border</span><span class="si">}</span><span class="se">\n</span><span class="s1">'</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s1">'Layers(amount=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">amount</span><span class="si">}</span><span class="s1">, bottom_border=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">bottom_border</span><span class="si">}</span><span class="s1">, top_border=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">top_border</span><span class="si">}</span><span class="s1">)'</span></div>
+
+
+
+<div class="viewcode-block" id="Camera">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.Experiment.Camera">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Camera</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Contains a camera's position in 3D space.</span>
+
+<span class="sd">    :ivar pos_x: The x-coordinate of the camera</span>
+<span class="sd">    :vartype pos_x: float</span>
+<span class="sd">    :ivar pos_y: The y-coordinate of the camera</span>
+<span class="sd">    :vartype pos_y: float</span>
+<span class="sd">    :ivar pos_z: The z-coordinate of the camera</span>
+<span class="sd">    :vartype pos_z: float</span>
+<span class="sd">    :ivar pane_distance: Distance [m] between the camera and the window pane it looks through into</span>
+<span class="sd">        the smoke, None if the smoke reaches the camera. The pane is taken as normal to the line of</span>
+<span class="sd">        sight, so the first pane_distance of every line of sight is free of smoke. The transmission</span>
+<span class="sd">        of the pane itself is the same in the reference images and cancels in I/I0, and the</span>
+<span class="sd">        refraction in a pane with parallel faces shifts the line of sight by less than the thickness</span>
+<span class="sd">        of the pane, so neither is taken into account.</span>
+<span class="sd">    :vartype pane_distance: float or None</span>
+<span class="sd">    """</span>
+    <span class="n">pos_x</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">pos_y</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">pos_z</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">pane_distance</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">pane_distance</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">distance</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pane_distance</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">distance</span><span class="p">)</span> <span class="ow">or</span> <span class="n">distance</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">'The distance between the camera and the pane has to be a finite number of '</span>
+                                 <span class="sa">f</span><span class="s1">'at least 0, got </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">pane_distance</span><span class="si">}</span><span class="s1">.'</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">pane_distance</span> <span class="o">=</span> <span class="n">distance</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">pane_distance</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="sa">f</span><span class="s1">'Camera: (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">pos_x</span><span class="si">}</span><span class="s1">, </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">pos_y</span><span class="si">}</span><span class="s1">, </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">pos_z</span><span class="si">}</span><span class="s1">)</span><span class="se">\n</span><span class="s1">'</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s1">'Camera: (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">pos_x</span><span class="si">}</span><span class="s1">, </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">pos_y</span><span class="si">}</span><span class="s1">, </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">pos_z</span><span class="si">}</span><span class="s1">), pane_distance: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">pane_distance</span><span class="si">}</span><span class="se">\n</span><span class="s1">'</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">pane</span> <span class="o">=</span> <span class="s1">''</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">pane_distance</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="sa">f</span><span class="s1">', pane_distance=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">pane_distance</span><span class="si">}</span><span class="s1">'</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s1">'Camera(pos_x=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">pos_x</span><span class="si">}</span><span class="s1">, pos_y=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">pos_y</span><span class="si">}</span><span class="s1">, pos_z=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">pos_z</span><span class="si">}{</span><span class="n">pane</span><span class="si">}</span><span class="s1">)'</span></div>
+
+
+
+<div class="viewcode-block" id="LED">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.Experiment.LED">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">LED</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Represents a LED light source in 3D space.</span>
+
+<span class="sd">    :ivar id: The identifier for the LED</span>
+<span class="sd">    :vartype id: int</span>
+<span class="sd">    :ivar pos_x: The x-coordinate of the LED</span>
+<span class="sd">    :vartype pos_x: float</span>
+<span class="sd">    :ivar pos_y: The y-coordinate of the LED</span>
+<span class="sd">    :vartype pos_y: float</span>
+<span class="sd">    :ivar pos_z: The z-coordinate of the LED</span>
+<span class="sd">    :vartype pos_z: float</span>
+<span class="sd">    """</span>
+    <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">pos_x</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">pos_y</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">pos_z</span><span class="p">:</span> <span class="nb">float</span></div>
+
+
+
+<div class="viewcode-block" id="Experiment">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.Experiment.Experiment">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">Experiment</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Represents an experimental setup involving layers, an LED array, and a camera.</span>
+
+<span class="sd">    :ivar layers: The spatial layers involved in the experiment.</span>
+<span class="sd">    :vartype layers: Layers</span>
+<span class="sd">    :ivar led_array: The identifier for the LED array.</span>
+<span class="sd">    :vartype led_array: int</span>
+<span class="sd">    :ivar camera: The camera involved in the experiment.</span>
+<span class="sd">    :vartype camera: Camera</span>
+<span class="sd">    :ivar leds: List of LED light sources.</span>
+<span class="sd">    :vartype leds: List[LED]</span>
+<span class="sd">    :ivar led_number: Number of LEDs on LED array.</span>
+<span class="sd">    :vartype led_number: int</span>
+<span class="sd">    :ivar path: File path for experiment data.</span>
+<span class="sd">    :vartype path: Path</span>
+<span class="sd">    :ivar channel: The camera channel to be analysed.</span>
+<span class="sd">    :vartype channel: int</span>
+<span class="sd">    :ivar merge_led_arrays: Whether to merge LED arrays.</span>
+<span class="sd">    :vartype merge_led_arrays: bool</span>
+<span class="sd">    """</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">layers</span><span class="p">:</span> <span class="n">Layers</span><span class="p">,</span> <span class="n">led_array</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">camera</span><span class="p">:</span> <span class="n">Camera</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s1">'.'</span><span class="p">),</span> <span class="n">channel</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                 <span class="n">merge_led_arrays</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        :param layers: The spatial layers involved in the experiment.</span>
+<span class="sd">        :type layers: Layers</span>
+<span class="sd">        :param led_array: The identifier for the LED array.</span>
+<span class="sd">        :type led_array: int</span>
+<span class="sd">        :param camera: The camera involved in the experiment.</span>
+<span class="sd">        :type camera: Camera</span>
+<span class="sd">        :param path: The file path for experiment data, defaults to current directory.</span>
+<span class="sd">        :type path: Path, optional</span>
+<span class="sd">        :param channel: The camera channel to be analysed, defaults to 0.</span>
+<span class="sd">        :type channel: int, optional</span>
+<span class="sd">        :param merge_led_arrays: Whether to merge LED arrays, defaults to False.</span>
+<span class="sd">        :type merge_led_arrays: bool, optional</span>
+<span class="sd">        """</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_leds</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layers</span> <span class="o">=</span> <span class="n">layers</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">led_array</span> <span class="o">=</span> <span class="n">led_array</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">camera</span> <span class="o">=</span> <span class="n">camera</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">leds</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">path</span> <span class="o">=</span> <span class="n">path</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">channel</span> <span class="o">=</span> <span class="n">channel</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">merge_led_arrays</span> <span class="o">=</span> <span class="n">merge_led_arrays</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set_leds</span><span class="p">()</span>
+        <span class="k">except</span> <span class="ne">IOError</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">err</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">'channel: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">channel</span><span class="si">}</span><span class="s1">, led_array: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">led_array</span><span class="si">}</span><span class="se">\n</span><span class="s1">'</span> <span class="o">+</span> \
+              <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">layers</span><span class="p">)</span> <span class="o">+</span> \
+              <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">camera</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">out</span>
+
+<div class="viewcode-block" id="Experiment.calc_smoke_path_start">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.Experiment.Experiment.calc_smoke_path_start">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">calc_smoke_path_start</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">led</span><span class="p">:</span> <span class="n">LED</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Find the point where the light path between an LED and the camera enters the smoke.</span>
+
+<span class="sd">        Without a pane, the smoke reaches the camera and the light path starts there. Behind a pane,</span>
+<span class="sd">        it starts where the line of sight of the LED crosses the pane, pane_distance away from the</span>
+<span class="sd">        camera, because the part between the camera and the pane is free of smoke. The pane is taken</span>
+<span class="sd">        as normal to the line of sight. A flat pane normal to the optical axis of the camera is</span>
+<span class="sd">        crossed by a line of sight at an angle theta to the axis pane_distance / cos(theta) away</span>
+<span class="sd">        from the camera, at 15 degrees 3.5 % farther; this is negligible as long as the pane is</span>
+<span class="sd">        close to the camera compared to the LEDs.</span>
+
+<span class="sd">        :param led: The LED light source</span>
+<span class="sd">        :type led: LED</span>
+<span class="sd">        :return: Global X, Y, Z coordinates of the start of the light path through the smoke</span>
+<span class="sd">        :rtype: Tuple[float, float, float]</span>
+<span class="sd">        :raises PaneGeometryError: If the LED is not farther away from the camera than the pane.</span>
+<span class="sd">        """</span>
+        <span class="n">camera</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">camera</span><span class="o">.</span><span class="n">pos_x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">camera</span><span class="o">.</span><span class="n">pos_y</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">camera</span><span class="o">.</span><span class="n">pos_z</span><span class="p">)</span>
+        <span class="n">pane_distance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">camera</span><span class="o">.</span><span class="n">pane_distance</span>
+        <span class="k">if</span> <span class="n">pane_distance</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">camera</span>
+        <span class="n">camera_pos</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">camera</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+        <span class="n">led_pos</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">led</span><span class="o">.</span><span class="n">pos_x</span><span class="p">,</span> <span class="n">led</span><span class="o">.</span><span class="n">pos_y</span><span class="p">,</span> <span class="n">led</span><span class="o">.</span><span class="n">pos_z</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+        <span class="n">led_distance</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">led_pos</span> <span class="o">-</span> <span class="n">camera_pos</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">pane_distance</span> <span class="o">&gt;=</span> <span class="n">led_distance</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">PaneGeometryError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s1">'LED </span><span class="si">{</span><span class="n">led</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s1"> of LED array </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">led_array</span><span class="si">}</span><span class="s1"> at (</span><span class="si">{</span><span class="n">led</span><span class="o">.</span><span class="n">pos_x</span><span class="si">}</span><span class="s1">, </span><span class="si">{</span><span class="n">led</span><span class="o">.</span><span class="n">pos_y</span><span class="si">}</span><span class="s1">, </span><span class="si">{</span><span class="n">led</span><span class="o">.</span><span class="n">pos_z</span><span class="si">}</span><span class="s1">) '</span>
+                <span class="sa">f</span><span class="s1">'is </span><span class="si">{</span><span class="n">led_distance</span><span class="si">:</span><span class="s1">.6g</span><span class="si">}</span><span class="s1"> away from the camera at </span><span class="si">{</span><span class="n">camera</span><span class="si">}</span><span class="s1">, so it is not behind the pane '</span>
+                <span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="n">pane_distance</span><span class="si">:</span><span class="s1">g</span><span class="si">}</span><span class="s1"> away from the camera and its line of sight does not pass the pane '</span>
+                <span class="sa">f</span><span class="s1">'into the smoke. Check pane_distance and camera_position in the analysis '</span>
+                <span class="sa">f</span><span class="s1">'configuration: the pane has to lie between the camera and every LED.'</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">camera_pos</span> <span class="o">+</span> <span class="n">pane_distance</span> <span class="o">/</span> <span class="n">led_distance</span> <span class="o">*</span> <span class="p">(</span><span class="n">led_pos</span> <span class="o">-</span> <span class="n">camera_pos</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="Experiment.calc_traversed_dist_per_layer">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.Experiment.Experiment.calc_traversed_dist_per_layer">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">calc_traversed_dist_per_layer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">led</span><span class="p">:</span> <span class="n">LED</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Calculate the distance traversed by light from an LED through each layer to the camera.</span>
+
+<span class="sd">        Behind a pane, only the part of the light path between the pane and the LED is traversed in</span>
+<span class="sd">        the smoke, see calc_smoke_path_start.</span>
+
+<span class="sd">        :param led: The LED light source</span>
+<span class="sd">        :type led: LED</span>
+<span class="sd">        :return: Array of distances traversed in each layer</span>
+<span class="sd">        :rtype: np.ndarray</span>
+<span class="sd">        :raises InconsistentDistanceError: If the distances do not add up to the length of the light</span>
+<span class="sd">                                           path through the smoke.</span>
+<span class="sd">        :raises PaneGeometryError: If the LED is not farther away from the camera than the pane.</span>
+<span class="sd">        """</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calc_smoke_path_start</span><span class="p">(</span><span class="n">led</span><span class="p">)</span>
+        <span class="n">start_x</span><span class="p">,</span> <span class="n">start_y</span><span class="p">,</span> <span class="n">start_z</span> <span class="o">=</span> <span class="n">start</span>
+        <span class="n">horizontal_dist</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">start_x</span> <span class="o">-</span> <span class="n">led</span><span class="o">.</span><span class="n">pos_x</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">start_y</span> <span class="o">-</span> <span class="n">led</span><span class="o">.</span><span class="n">pos_y</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="n">alpha</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arctan</span><span class="p">((</span><span class="n">led</span><span class="o">.</span><span class="n">pos_z</span> <span class="o">-</span> <span class="n">start_z</span><span class="p">)</span> <span class="o">/</span> <span class="n">horizontal_dist</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">alpha</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">distance_per_layer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calc_traversed_dist_in_plane</span><span class="p">(</span><span class="n">led</span><span class="p">,</span> <span class="n">start</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">distance_per_layer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calc_traversed_dist_per_layer_with_nonzero_alpha</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">led</span><span class="p">,</span> <span class="n">start</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">distance_calculation_is_consistent</span><span class="p">(</span><span class="n">distance_per_layer</span><span class="p">,</span> <span class="n">led</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="n">start</span><span class="p">):</span>
+            <span class="n">path_length</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">start_x</span> <span class="o">-</span> <span class="n">led</span><span class="o">.</span><span class="n">pos_x</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span>
+                                  <span class="p">(</span><span class="n">start_y</span> <span class="o">-</span> <span class="n">led</span><span class="o">.</span><span class="n">pos_y</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span>
+                                  <span class="p">(</span><span class="n">start_z</span> <span class="o">-</span> <span class="n">led</span><span class="o">.</span><span class="n">pos_z</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">camera</span><span class="o">.</span><span class="n">pane_distance</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">path_end</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">'while the LED is </span><span class="si">{</span><span class="n">path_length</span><span class="si">:</span><span class="s1">.6g</span><span class="si">}</span><span class="s1"> away from the camera'</span>
+                <span class="n">range_end</span> <span class="o">=</span> <span class="s1">'the camera'</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">path_end</span> <span class="o">=</span> <span class="p">(</span><span class="sa">f</span><span class="s1">'while the LED is </span><span class="si">{</span><span class="n">path_length</span><span class="si">:</span><span class="s1">.6g</span><span class="si">}</span><span class="s1"> away from the point (</span><span class="si">{</span><span class="n">start_x</span><span class="si">:</span><span class="s1">.6g</span><span class="si">}</span><span class="s1">, '</span>
+                            <span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="n">start_y</span><span class="si">:</span><span class="s1">.6g</span><span class="si">}</span><span class="s1">, </span><span class="si">{</span><span class="n">start_z</span><span class="si">:</span><span class="s1">.6g</span><span class="si">}</span><span class="s1">) where its line of sight crosses the pane, '</span>
+                            <span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">camera</span><span class="o">.</span><span class="n">pane_distance</span><span class="si">:</span><span class="s1">g</span><span class="si">}</span><span class="s1"> away from the camera'</span><span class="p">)</span>
+                <span class="n">range_end</span> <span class="o">=</span> <span class="s1">'the points where the lines of sight cross the pane'</span>
+            <span class="k">raise</span> <span class="n">InconsistentDistanceError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s1">'The light path of LED </span><span class="si">{</span><span class="n">led</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s1"> of LED array </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">led_array</span><span class="si">}</span><span class="s1"> traverses the layers '</span>
+                <span class="sa">f</span><span class="s1">'over </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">distance_per_layer</span><span class="p">)</span><span class="si">:</span><span class="s1">.6g</span><span class="si">}</span><span class="s1">, </span><span class="si">{</span><span class="n">path_end</span><span class="si">}</span><span class="s1">. LED position: (</span><span class="si">{</span><span class="n">led</span><span class="o">.</span><span class="n">pos_x</span><span class="si">}</span><span class="s1">, '</span>
+                <span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="n">led</span><span class="o">.</span><span class="n">pos_y</span><span class="si">}</span><span class="s1">, </span><span class="si">{</span><span class="n">led</span><span class="o">.</span><span class="n">pos_z</span><span class="si">}</span><span class="s1">), camera position: (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">camera</span><span class="o">.</span><span class="n">pos_x</span><span class="si">}</span><span class="s1">, </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">camera</span><span class="o">.</span><span class="n">pos_y</span><span class="si">}</span><span class="s1">, '</span>
+                <span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">camera</span><span class="o">.</span><span class="n">pos_z</span><span class="si">}</span><span class="s1">), layers: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">bottom_border</span><span class="si">}</span><span class="s1"> to </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">top_border</span><span class="si">}</span><span class="s1">. '</span>
+                <span class="sa">f</span><span class="s1">'The part of the light path outside the layers belongs to no layer, so set domain_bounds '</span>
+                <span class="sa">f</span><span class="s1">'in the analysis configuration to a range that holds </span><span class="si">{</span><span class="n">range_end</span><span class="si">}</span><span class="s1"> and every LED of the '</span>
+                <span class="sa">f</span><span class="s1">'array.'</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">distance_per_layer</span></div>
+
+
+<div class="viewcode-block" id="Experiment.calc_traversed_dist_in_plane">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.Experiment.Experiment.calc_traversed_dist_in_plane">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">calc_traversed_dist_in_plane</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">led</span><span class="p">:</span> <span class="n">LED</span><span class="p">,</span>
+                                     <span class="n">start</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Calculate the distance traversed by light from an LED in a plane to the camera.</span>
+
+<span class="sd">        :param led: The LED light source</span>
+<span class="sd">        :type led: LED</span>
+<span class="sd">        :param start: Start of the light path through the smoke, the camera position if None</span>
+<span class="sd">        :type start: Tuple[float, float, float] or None</span>
+<span class="sd">        :return: Array of distances traversed in each layer within the plane</span>
+<span class="sd">        :rtype: np.ndarray</span>
+<span class="sd">        """</span>
+        <span class="n">start_x</span><span class="p">,</span> <span class="n">start_y</span><span class="p">,</span> <span class="n">start_z</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_camera_position_if_none</span><span class="p">(</span><span class="n">start</span><span class="p">)</span>
+        <span class="n">distance_per_layer</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">amount</span><span class="p">)</span>
+        <span class="n">horizontal_dist</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">start_x</span> <span class="o">-</span> <span class="n">led</span><span class="o">.</span><span class="n">pos_x</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">start_y</span> <span class="o">-</span> <span class="n">led</span><span class="o">.</span><span class="n">pos_y</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">amount</span><span class="p">):</span>
+            <span class="n">layer_bottom</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">borders</span><span class="p">[</span><span class="n">layer</span><span class="p">]</span>
+            <span class="n">layer_top</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">borders</span><span class="p">[</span><span class="n">layer</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">layer_bottom</span> <span class="o">&lt;=</span> <span class="n">start_z</span> <span class="o">&lt;</span> <span class="n">layer_top</span><span class="p">:</span>
+                <span class="n">distance_per_layer</span><span class="p">[</span><span class="n">layer</span><span class="p">]</span> <span class="o">=</span> <span class="n">horizontal_dist</span>
+        <span class="k">return</span> <span class="n">distance_per_layer</span></div>
+
+
+<div class="viewcode-block" id="Experiment.calc_traversed_dist_per_layer_with_nonzero_alpha">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.Experiment.Experiment.calc_traversed_dist_per_layer_with_nonzero_alpha">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">calc_traversed_dist_per_layer_with_nonzero_alpha</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span> <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">led</span><span class="p">:</span> <span class="n">LED</span><span class="p">,</span> <span class="n">start</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Calculate the distance traversed by light from an LED through each layer to the camera,</span>
+<span class="sd">        taking into account a non-zero angle of incidence.</span>
+
+<span class="sd">        :param alpha: The angle of incidence</span>
+<span class="sd">        :type alpha: float</span>
+<span class="sd">        :param led: The LED light source</span>
+<span class="sd">        :type led: LED</span>
+<span class="sd">        :param start: Start of the light path through the smoke, the camera position if None</span>
+<span class="sd">        :type start: Tuple[float, float, float] or None</span>
+<span class="sd">        :return: Array of distances traversed in each layer considering the angle</span>
+<span class="sd">        :rtype: np.ndarray</span>
+<span class="sd">        """</span>
+        <span class="n">start_z</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_camera_position_if_none</span><span class="p">(</span><span class="n">start</span><span class="p">)[</span><span class="mi">2</span><span class="p">]</span>
+        <span class="n">distance_per_layer</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">amount</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">amount</span><span class="p">):</span>
+            <span class="n">layer_bottom</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">borders</span><span class="p">[</span><span class="n">layer</span><span class="p">]</span>
+            <span class="n">layer_top</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">borders</span><span class="p">[</span><span class="n">layer</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+            <span class="n">th</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calc_traversed_height_in_layer</span><span class="p">(</span><span class="n">led</span><span class="o">.</span><span class="n">pos_z</span><span class="p">,</span> <span class="n">layer_bottom</span><span class="p">,</span> <span class="n">layer_top</span><span class="p">,</span> <span class="n">start_z</span><span class="p">)</span>
+            <span class="n">distance_per_layer</span><span class="p">[</span><span class="n">layer</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">th</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">alpha</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">distance_per_layer</span></div>
+
+
+<div class="viewcode-block" id="Experiment.calc_traversed_height_in_layer">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.Experiment.Experiment.calc_traversed_height_in_layer">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">calc_traversed_height_in_layer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">led_height</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">layer_bot</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">layer_top</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+                                       <span class="n">start_height</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Calculate the vertical distance (height) traversed by light from an LED within a layer.</span>
+
+<span class="sd">        :param led_height: The z-coordinate of the LED</span>
+<span class="sd">        :type led_height: float</span>
+<span class="sd">        :param layer_bot: The z-coordinate of the bottom of the layer</span>
+<span class="sd">        :type layer_bot: float</span>
+<span class="sd">        :param layer_top: The z-coordinate of the top of the layer</span>
+<span class="sd">        :type layer_top: float</span>
+<span class="sd">        :param start_height: The z-coordinate of the start of the light path through the smoke, that</span>
+<span class="sd">            of the camera if None</span>
+<span class="sd">        :type start_height: float or None</span>
+<span class="sd">        :return: The vertical distance traversed within the layer</span>
+<span class="sd">        :rtype: float</span>
+<span class="sd">        """</span>
+        <span class="k">if</span> <span class="n">start_height</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">start_height</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">camera</span><span class="o">.</span><span class="n">pos_z</span>
+        <span class="n">top_end</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">start_height</span><span class="p">,</span> <span class="n">led_height</span><span class="p">)</span>
+        <span class="n">bot_end</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">start_height</span><span class="p">,</span> <span class="n">led_height</span><span class="p">)</span>
+        <span class="n">bot</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">bot_end</span><span class="p">,</span> <span class="n">layer_bot</span><span class="p">)</span>
+        <span class="n">top</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">top_end</span><span class="p">,</span> <span class="n">layer_top</span><span class="p">)</span>
+        <span class="n">h</span> <span class="o">=</span> <span class="n">top</span> <span class="o">-</span> <span class="n">bot</span>
+        <span class="k">if</span> <span class="n">h</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">h</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">return</span> <span class="n">h</span></div>
+
+
+<div class="viewcode-block" id="Experiment.distance_calculation_is_consistent">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.Experiment.Experiment.distance_calculation_is_consistent">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">distance_calculation_is_consistent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">distance_per_layer</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">led</span><span class="p">:</span> <span class="n">LED</span><span class="p">,</span> <span class="n">silent</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                                           <span class="n">start</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Check if the computed distance values for each layer are consistent with the Euclidean distance.</span>
+
+<span class="sd">        :param distance_per_layer: Array of distances traversed in each layer</span>
+<span class="sd">        :type distance_per_layer: np.ndarray</span>
+<span class="sd">        :param led: The LED light source</span>
+<span class="sd">        :type led: LED</span>
+<span class="sd">        :param silent: If set to False, prints out debugging information, defaults to True</span>
+<span class="sd">        :type silent: bool, optional</span>
+<span class="sd">        :param start: Start of the light path through the smoke, the camera position if None</span>
+<span class="sd">        :type start: Tuple[float, float, float] or None</span>
+<span class="sd">        :return: True if computations are consistent, False otherwise</span>
+<span class="sd">        :rtype: bool</span>
+<span class="sd">        """</span>
+        <span class="n">start_x</span><span class="p">,</span> <span class="n">start_y</span><span class="p">,</span> <span class="n">start_z</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_camera_position_if_none</span><span class="p">(</span><span class="n">start</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">distance_per_layer</span><span class="p">)</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">start_x</span> <span class="o">-</span> <span class="n">led</span><span class="o">.</span><span class="n">pos_x</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span>
+                                                       <span class="p">(</span><span class="n">start_y</span> <span class="o">-</span> <span class="n">led</span><span class="o">.</span><span class="n">pos_y</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span>
+                                                       <span class="p">(</span><span class="n">start_z</span> <span class="o">-</span> <span class="n">led</span><span class="o">.</span><span class="n">pos_z</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mf">1e-6</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">silent</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">"error in distance computation, start_x: </span><span class="si">{}</span><span class="s2">, start_y: </span><span class="si">{}</span><span class="s2"> start_z: </span><span class="si">{}</span><span class="s2">, led_x: </span><span class="si">{}</span><span class="s2">, led_y: </span><span class="si">{}</span><span class="s2">, "</span>
+                      <span class="s2">"led_z: </span><span class="si">{}</span><span class="s2">"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">start_x</span><span class="p">,</span> <span class="n">start_y</span><span class="p">,</span> <span class="n">start_z</span><span class="p">,</span> <span class="n">led</span><span class="o">.</span><span class="n">pos_x</span><span class="p">,</span> <span class="n">led</span><span class="o">.</span><span class="n">pos_y</span><span class="p">,</span> <span class="n">led</span><span class="o">.</span><span class="n">pos_z</span><span class="p">))</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_camera_position_if_none</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">"""Return start, or the position of the camera if start is None."""</span>
+        <span class="k">if</span> <span class="n">start</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">camera</span><span class="o">.</span><span class="n">pos_x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">camera</span><span class="o">.</span><span class="n">pos_y</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">camera</span><span class="o">.</span><span class="n">pos_z</span>
+        <span class="k">return</span> <span class="n">start</span>
+
+<div class="viewcode-block" id="Experiment.set_leds">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.Experiment.Experiment.set_leds">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">set_leds</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Initialize the LED instances involved in the experiment based on loaded data.</span>
+
+<span class="sd">        """</span>
+        <span class="n">ids</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_led_ids</span><span class="p">()</span>
+        <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_led_positions</span><span class="p">(</span><span class="n">ids</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">ids</span><span class="p">)):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">leds</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">LED</span><span class="p">(</span><span class="n">ids</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">x</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">y</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">z</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_leds</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">ids</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Experiment.get_led_ids">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.Experiment.Experiment.get_led_ids">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_led_ids</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Retrieve the IDs for the LEDs involved in the experiment.</span>
+
+<span class="sd">        :return: Array of LED IDs</span>
+<span class="sd">        :rtype: np.ndarray</span>
+<span class="sd">        """</span>
+        <span class="n">file_name_extension</span> <span class="o">=</span> <span class="s1">'_merge'</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">merge_led_arrays</span> <span class="o">!=</span> <span class="s1">'None'</span> <span class="k">else</span> <span class="s1">''</span>
+        <span class="n">file_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">'led_array_indices_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">led_array</span><span class="si">:</span><span class="s1">03d</span><span class="si">}{</span><span class="n">file_name_extension</span><span class="si">}</span><span class="s1">.csv'</span>
+        <span class="n">file_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="s1">'analysis'</span><span class="p">,</span> <span class="n">file_name</span><span class="p">)</span>
+
+        <span class="n">led_array_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">led_array_indices</span></div>
+
+
+<div class="viewcode-block" id="Experiment.get_led_positions">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.Experiment.Experiment.get_led_positions">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_led_positions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ids</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Retrieve the 3D positions for a set of LEDs.</span>
+
+<span class="sd">        :param ids: Array of LED identifiers</span>
+<span class="sd">        :type ids: np.ndarray</span>
+<span class="sd">        :return: List of arrays containing x, y, and z coordinates for each LED</span>
+<span class="sd">        :rtype: List[np.ndarray]</span>
+<span class="sd">        """</span>
+        <span class="n">file_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="s1">'analysis'</span><span class="p">,</span> <span class="s1">'led_search_areas_with_coordinates.csv'</span><span class="p">)</span>
+        <span class="n">search_areas_all</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">delimiter</span><span class="o">=</span><span class="s1">','</span><span class="p">)</span>
+        <span class="n">search_areas_led_array</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">led_id</span> <span class="ow">in</span> <span class="n">ids</span><span class="p">:</span>
+            <span class="n">search_areas_led_array</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">search_areas_all</span><span class="p">[</span><span class="n">led_id</span><span class="p">])</span>
+        <span class="n">search_areas_led_array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">search_areas_led_array</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">search_areas_led_array</span><span class="p">[:,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">search_areas_led_array</span><span class="p">[:,</span> <span class="mi">4</span><span class="p">],</span> <span class="n">search_areas_led_array</span><span class="p">[:,</span> <span class="mi">5</span><span class="p">]]</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="read_pane_distance">
+<a class="viewcode-back" href="../../../analysis.html#ledsa.analysis.Experiment.read_pane_distance">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">read_pane_distance</span><span class="p">(</span><span class="n">config</span><span class="p">:</span> <span class="n">cp</span><span class="o">.</span><span class="n">ConfigParser</span><span class="p">,</span> <span class="n">section</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">file_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Read the distance between a camera and the window pane it looks through into the smoke.</span>
+
+<span class="sd">    The option pane_distance is optional, so a config file written before it, or one that sets it to</span>
+<span class="sd">    None, keeps the light paths reaching the camera through the smoke.</span>
+
+<span class="sd">    :param config: The loaded config file</span>
+<span class="sd">    :type config: configparser.ConfigParser</span>
+<span class="sd">    :param section: Section holding the options of the camera</span>
+<span class="sd">    :type section: str</span>
+<span class="sd">    :param file_name: Name of the config file, for the error messages</span>
+<span class="sd">    :type file_name: str</span>
+<span class="sd">    :return: The distance [m], None if the option is not set</span>
+<span class="sd">    :rtype: Optional[float]</span>
+<span class="sd">    :raises ValueError: If the value is not a finite number of at least 0.</span>
+<span class="sd">    """</span>
+    <span class="n">raw</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">section</span><span class="p">,</span> <span class="s1">'pane_distance'</span><span class="p">,</span> <span class="n">fallback</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="n">raw</span> <span class="o">=</span> <span class="s1">''</span> <span class="k">if</span> <span class="n">raw</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">raw</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">raw</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">''</span><span class="p">,</span> <span class="s1">'none'</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">distance</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">raw</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+        <span class="n">distance</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">distance</span><span class="p">)</span> <span class="ow">or</span> <span class="n">distance</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">'pane_distance = </span><span class="si">{</span><span class="n">raw</span><span class="si">}</span><span class="s1"> in [</span><span class="si">{</span><span class="n">section</span><span class="si">}</span><span class="s1">] of </span><span class="si">{</span><span class="n">file_name</span><span class="si">}</span><span class="s1"> is not a distance: give the '</span>
+                         <span class="sa">f</span><span class="s1">'distance [m] between the camera and the window pane as a number of at least 0, or '</span>
+                         <span class="sa">f</span><span class="s1">'None for a camera without a pane.'</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">distance</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, CCE.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

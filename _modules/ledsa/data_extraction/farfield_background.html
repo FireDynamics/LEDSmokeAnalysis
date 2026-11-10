@@ -1,0 +1,428 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ledsa.data_extraction.farfield_background &mdash; LEDSmokeAnalysis 0.13.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/tables.css?v=aab0db92" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=1019fba8"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            LEDSmokeAnalysis
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">LEDSA:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../description.html">Description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_documentation.html">CLI Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ledsa.html">LEDSA Module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">Demo</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">LEDSmokeAnalysis</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ledsa.data_extraction.farfield_background</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ledsa.data_extraction.farfield_background</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""</span>
+<span class="sd">Pedestal of the LED search areas, estimated in the far field of the LED strips.</span>
+
+<span class="sd">The sum over a search area (sum_col_val) holds, besides the light of the LED, light that does not dim with the</span>
+<span class="sd">LED: the dark level of the sensor where it differs from the optical black the black level is taken from, ambient</span>
+<span class="sd">light, and light that smoke scatters into the line of sight. In dense smoke the LED dims while this pedestal</span>
+<span class="sd">stays, so the plain sum overestimates the transmission and the extinction coefficients saturate.</span>
+
+<span class="sd">The pedestal is estimated for every image where no light of an LED is expected, in the far field of the strips:</span>
+
+<span class="sd">1. Two bands run parallel to the strip, one on each side, over +-R along the strip (R = search_area_radius) and</span>
+<span class="sd">   from the inner to the outer far-field distance across it. Pixels closer than the inner distance to any LED of</span>
+<span class="sd">   any strip are left out, so neighbouring strips do not enter the bands.</span>
+<span class="sd">2. The level of a band is the mean of its pixels of the color channel.</span>
+<span class="sd">3. The levels of each side are smoothed along the strip, with a running median and a running mean over the LEDs.</span>
+<span class="sd">   The pedestal varies slowly along the strip, so this removes the noise of the estimate without changing it:</span>
+<span class="sd">   the pedestal corrected sum is as noisy as the plain sum.</span>
+<span class="sd">4. The pedestal of an LED is the lower of the levels of its two sides. An object in one of the bands, another</span>
+<span class="sd">   light source or the brighter side of a gradient can only raise a level, so the lower side is the safe one.</span>
+<span class="sd">5. N times this pedestal is subtracted from the sum of the search area, with N the number of pixels of the color</span>
+<span class="sd">   channel in the search area.</span>
+
+<span class="sd">Why the far field and not the neighbourhood of the LED: around an LED there is light of the LED itself, the wings</span>
+<span class="sd">of its image and, behind a window or in hot gases, a halo that can reach a hundred pixels and more. A pedestal</span>
+<span class="sd">measured there subtracts transmitted light and raises the extinction coefficients, the more the denser the smoke.</span>
+<span class="sd">The far field holds none of it. Stray light that peaks at the strip is brighter at the LED than in the far field, so</span>
+<span class="sd">the far-field level is a lower bound of the pedestal: the corrected sum lies between the plain sum and the light</span>
+<span class="sd">of the LED in the search area. The bound holds for the dark level and for scattered light. Ambient light on a</span>
+<span class="sd">background that is brighter beside the strip than behind the LED would raise the far-field level above the</span>
+<span class="sd">pedestal of the search area.</span>
+
+<span class="sd">What the correction does not do: where the image of an LED widens beyond its search area, the search area loses</span>
+<span class="sd">light of the LED. That error has the opposite sign and is no pedestal; the correction leaves it as it is.</span>
+<span class="sd">"""</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">NamedTuple</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">Tuple</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.spatial</span><span class="w"> </span><span class="kn">import</span> <span class="n">cKDTree</span>
+
+<span class="c1"># LEDs the levels are smoothed over along the strip: running median, then running mean</span>
+<span class="n">SMOOTHING_MEDIAN_LEDS</span> <span class="o">=</span> <span class="mi">15</span>
+<span class="n">SMOOTHING_MEAN_LEDS</span> <span class="o">=</span> <span class="mi">5</span>
+<span class="n">NUM_DIRECTION_NEIGHBOURS</span> <span class="o">=</span> <span class="mi">4</span>
+
+
+<div class="viewcode-block" id="FarfieldGeometry">
+<a class="viewcode-back" href="../../../data_extraction.html#ledsa.data_extraction.farfield_background.FarfieldGeometry">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">FarfieldGeometry</span><span class="p">(</span><span class="n">NamedTuple</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""The far-field bands of the LEDs of an image and the place of every LED on its strip."""</span>
+
+    <span class="c1"># per LED id the row and column indices of the pixels of the band on each of the two sides of the strip,</span>
+    <span class="c1"># None for an LED without a strip direction</span>
+    <span class="n">pixels</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]]]</span>
+    <span class="n">strip_of_led</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>        <span class="c1"># per LED id the index of its strip, -1 for an LED on no strip</span>
+    <span class="n">position_on_strip</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>   <span class="c1"># per LED id its coordinate along the strip in pixels</span></div>
+
+
+
+<span class="c1"># geometry of the bands, cached per process because it only depends on the LED positions</span>
+<span class="n">_farfield_cache</span> <span class="o">=</span> <span class="p">{}</span>
+
+
+<div class="viewcode-block" id="parse_farfield_distances">
+<a class="viewcode-back" href="../../../data_extraction.html#ledsa.data_extraction.farfield_background.parse_farfield_distances">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">parse_farfield_distances</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">search_area_radius</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Read the far-field distances from their config value.</span>
+
+<span class="sd">    :param value: Value of farfield_distances: the inner and the outer distance of the bands across the strip in</span>
+<span class="sd">        pixels, or None.</span>
+<span class="sd">    :type value: str or None</span>
+<span class="sd">    :param search_area_radius: Radius R of the search areas.</span>
+<span class="sd">    :type search_area_radius: int</span>
+<span class="sd">    :return: The distances (inner, outer), None if the pedestal is not estimated.</span>
+<span class="sd">    :rtype: tuple[float, float] or None</span>
+<span class="sd">    :raises ValueError: If the value is neither None nor two distances R &lt;= inner &lt; outer.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">'none'</span><span class="p">,</span> <span class="s1">''</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">distances</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">distance</span><span class="p">)</span> <span class="k">for</span> <span class="n">distance</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">())</span>
+    <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+        <span class="n">distances</span> <span class="o">=</span> <span class="p">()</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">distances</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">search_area_radius</span> <span class="o">&lt;=</span> <span class="n">distances</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">distances</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"farfield_distances of config.ini holds '</span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2">', while it takes the inner and the "</span>
+                         <span class="sa">f</span><span class="s2">"outer distance of the far-field bands across the LED strip in pixels, with "</span>
+                         <span class="sa">f</span><span class="s2">"search_area_radius (</span><span class="si">{</span><span class="n">search_area_radius</span><span class="si">}</span><span class="s2">) &lt;= inner &lt; outer, or None."</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">distances</span></div>
+
+
+
+<div class="viewcode-block" id="estimate_strip_directions">
+<a class="viewcode-back" href="../../../data_extraction.html#ledsa.data_extraction.farfield_background.estimate_strip_directions">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">estimate_strip_directions</span><span class="p">(</span><span class="n">search_areas</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">led_arrays</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]],</span>
+                              <span class="n">num_neighbours</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">NUM_DIRECTION_NEIGHBOURS</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Estimate the local direction of the LED strip at each LED from its nearest neighbours in the same LED array.</span>
+
+<span class="sd">    The direction is the principal axis of the positions of the LED and its num_neighbours nearest neighbours of the</span>
+<span class="sd">    same array. It is oriented such that the row component is positive (or, for horizontal strips, the column</span>
+<span class="sd">    component), so the two sides of a strip are the same for all of its LEDs.</span>
+
+<span class="sd">    :param search_areas: Array with rows (LED id, pixel row, pixel column), the row index equals the LED id.</span>
+<span class="sd">    :type search_areas: np.ndarray</span>
+<span class="sd">    :param led_arrays: LED ids of each LED array.</span>
+<span class="sd">    :type led_arrays: Sequence[Sequence[int]]</span>
+<span class="sd">    :param num_neighbours: Number of neighbours used to estimate the direction.</span>
+<span class="sd">    :type num_neighbours: int</span>
+<span class="sd">    :return: Array of shape (number of LEDs, 2) with the unit vector (row, column) along the strip, NaN for LEDs</span>
+<span class="sd">        that are not part of an array with at least two LEDs.</span>
+<span class="sd">    :rtype: np.ndarray</span>
+<span class="sd">    """</span>
+    <span class="n">directions</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="n">search_areas</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">2</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">led_ids</span> <span class="ow">in</span> <span class="n">led_arrays</span><span class="p">:</span>
+        <span class="n">led_ids</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">atleast_1d</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">led_ids</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">led_ids</span><span class="o">.</span><span class="n">size</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">positions</span> <span class="o">=</span> <span class="n">search_areas</span><span class="p">[</span><span class="n">led_ids</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span><span class="mi">3</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="n">num_points</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">num_neighbours</span><span class="p">,</span> <span class="n">led_ids</span><span class="o">.</span><span class="n">size</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">led_id</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">led_ids</span><span class="p">):</span>
+            <span class="n">distances</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hypot</span><span class="p">(</span><span class="o">*</span><span class="p">(</span><span class="n">positions</span> <span class="o">-</span> <span class="n">positions</span><span class="p">[</span><span class="n">i</span><span class="p">])</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+            <span class="n">nearest</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">distances</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s1">'stable'</span><span class="p">)[:</span><span class="n">num_points</span><span class="p">]</span>
+            <span class="n">points</span> <span class="o">=</span> <span class="n">positions</span><span class="p">[</span><span class="n">nearest</span><span class="p">]</span> <span class="o">-</span> <span class="n">positions</span><span class="p">[</span><span class="n">nearest</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+            <span class="n">direction</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">svd</span><span class="p">(</span><span class="n">points</span><span class="p">,</span> <span class="n">full_matrices</span><span class="o">=</span><span class="kc">False</span><span class="p">)[</span><span class="mi">2</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">direction</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="p">(</span><span class="n">direction</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">direction</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">):</span>
+                <span class="n">direction</span> <span class="o">=</span> <span class="o">-</span><span class="n">direction</span>
+            <span class="n">directions</span><span class="p">[</span><span class="n">led_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">direction</span>
+    <span class="k">return</span> <span class="n">directions</span></div>
+
+
+
+<div class="viewcode-block" id="build_farfield_geometry">
+<a class="viewcode-back" href="../../../data_extraction.html#ledsa.data_extraction.farfield_background.build_farfield_geometry">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">build_farfield_geometry</span><span class="p">(</span><span class="n">search_areas</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">led_arrays</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]],</span>
+                            <span class="n">img_shape</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">search_area_radius</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+                            <span class="n">distances</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">FarfieldGeometry</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Determine the pixels of the two far-field bands of each LED and the place of each LED on its strip.</span>
+
+<span class="sd">    With t the coordinate along the strip and s the coordinate across it, both relative to the center of the</span>
+<span class="sd">    search area, a pixel belongs to the band of one side if ``-R &lt;= t &lt; R`` and ``inner &lt;= s &lt; outer``, and to that</span>
+<span class="sd">    of the other side if ``-outer &lt;= s &lt; -inner``. For a vertical strip these are the rows r-R..r+R-1 and the</span>
+<span class="sd">    columns c+inner..c+outer-1 and c-outer..c-inner-1. Pixels outside the image and pixels closer than the inner</span>
+<span class="sd">    distance to the center of any search area are left out.</span>
+
+<span class="sd">    :param search_areas: Array with rows (LED id, pixel row, pixel column), the row index equals the LED id.</span>
+<span class="sd">    :type search_areas: np.ndarray</span>
+<span class="sd">    :param led_arrays: LED ids of each LED strip, as found in step 2.</span>
+<span class="sd">    :type led_arrays: Sequence[Sequence[int]]</span>
+<span class="sd">    :param img_shape: Shape of the image.</span>
+<span class="sd">    :type img_shape: tuple[int, int]</span>
+<span class="sd">    :param search_area_radius: Radius R of the search areas.</span>
+<span class="sd">    :type search_area_radius: int</span>
+<span class="sd">    :param distances: Inner and outer distance of the bands across the strip in pixels.</span>
+<span class="sd">    :type distances: tuple[float, float]</span>
+<span class="sd">    :return: The band pixels and the place on its strip of every LED.</span>
+<span class="sd">    :rtype: FarfieldGeometry</span>
+<span class="sd">    """</span>
+    <span class="n">radius</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">search_area_radius</span><span class="p">)</span>
+    <span class="n">inner</span><span class="p">,</span> <span class="n">outer</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">distances</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">distances</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">directions</span> <span class="o">=</span> <span class="n">estimate_strip_directions</span><span class="p">(</span><span class="n">search_areas</span><span class="p">,</span> <span class="n">led_arrays</span><span class="p">)</span>
+    <span class="n">centers</span> <span class="o">=</span> <span class="n">search_areas</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">:</span><span class="mi">3</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">tree</span> <span class="o">=</span> <span class="n">cKDTree</span><span class="p">(</span><span class="n">centers</span><span class="p">)</span>
+    <span class="n">reach</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">hypot</span><span class="p">(</span><span class="n">outer</span><span class="p">,</span> <span class="n">radius</span><span class="p">)))</span> <span class="o">+</span> <span class="mi">1</span>
+    <span class="n">d_row</span><span class="p">,</span> <span class="n">d_col</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mgrid</span><span class="p">[</span><span class="o">-</span><span class="n">reach</span><span class="p">:</span><span class="n">reach</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="n">reach</span><span class="p">:</span><span class="n">reach</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+
+    <span class="n">num_leds</span> <span class="o">=</span> <span class="n">search_areas</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">pixels</span> <span class="o">=</span> <span class="p">[</span><span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">num_leds</span>
+    <span class="n">strip_of_led</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">num_leds</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+    <span class="n">position_on_strip</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">num_leds</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">strip</span><span class="p">,</span> <span class="n">led_ids</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">led_arrays</span><span class="p">):</span>
+        <span class="n">led_ids</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">atleast_1d</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">led_ids</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">led_ids</span><span class="o">.</span><span class="n">size</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="c1"># one direction for the coordinate along the strip, so that it orders the LEDs of a curved strip as well</span>
+        <span class="n">mean_direction</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmean</span><span class="p">(</span><span class="n">directions</span><span class="p">[</span><span class="n">led_ids</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">strip_of_led</span><span class="p">[</span><span class="n">led_ids</span><span class="p">]</span> <span class="o">=</span> <span class="n">strip</span>
+        <span class="n">position_on_strip</span><span class="p">[</span><span class="n">led_ids</span><span class="p">]</span> <span class="o">=</span> <span class="n">centers</span><span class="p">[</span><span class="n">led_ids</span><span class="p">]</span> <span class="o">@</span> <span class="n">mean_direction</span>
+    <span class="k">for</span> <span class="n">led_id</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_leds</span><span class="p">):</span>
+        <span class="n">along</span> <span class="o">=</span> <span class="n">directions</span><span class="p">[</span><span class="n">led_id</span><span class="p">]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">along</span><span class="p">)):</span>
+            <span class="k">continue</span>
+        <span class="n">across</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="o">-</span><span class="n">along</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">along</span><span class="p">[</span><span class="mi">0</span><span class="p">]])</span>
+        <span class="c1"># rounding avoids that pixels exactly on a band border flip due to floating point errors</span>
+        <span class="n">t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">d_row</span> <span class="o">*</span> <span class="n">along</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">d_col</span> <span class="o">*</span> <span class="n">along</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mi">6</span><span class="p">)</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">d_row</span> <span class="o">*</span> <span class="n">across</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">d_col</span> <span class="o">*</span> <span class="n">across</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mi">6</span><span class="p">)</span>
+        <span class="n">in_window</span> <span class="o">=</span> <span class="p">(</span><span class="n">t</span> <span class="o">&gt;=</span> <span class="o">-</span><span class="n">radius</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">t</span> <span class="o">&lt;</span> <span class="n">radius</span><span class="p">)</span>
+        <span class="n">sides</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">in_band</span> <span class="ow">in</span> <span class="p">(</span><span class="n">in_window</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">s</span> <span class="o">&gt;=</span> <span class="n">inner</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">s</span> <span class="o">&lt;</span> <span class="n">outer</span><span class="p">),</span> <span class="n">in_window</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">s</span> <span class="o">&gt;=</span> <span class="o">-</span><span class="n">outer</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">s</span> <span class="o">&lt;</span> <span class="o">-</span><span class="n">inner</span><span class="p">)):</span>
+            <span class="n">rows</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">centers</span><span class="p">[</span><span class="n">led_id</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span> <span class="o">+</span> <span class="n">d_row</span><span class="p">[</span><span class="n">in_band</span><span class="p">]</span>
+            <span class="n">cols</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">centers</span><span class="p">[</span><span class="n">led_id</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span> <span class="o">+</span> <span class="n">d_col</span><span class="p">[</span><span class="n">in_band</span><span class="p">]</span>
+            <span class="n">keep</span> <span class="o">=</span> <span class="p">(</span><span class="n">rows</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">rows</span> <span class="o">&lt;</span> <span class="n">img_shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">cols</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">cols</span> <span class="o">&lt;</span> <span class="n">img_shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+            <span class="n">rows</span><span class="p">,</span> <span class="n">cols</span> <span class="o">=</span> <span class="n">rows</span><span class="p">[</span><span class="n">keep</span><span class="p">],</span> <span class="n">cols</span><span class="p">[</span><span class="n">keep</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">rows</span><span class="o">.</span><span class="n">size</span><span class="p">:</span>
+                <span class="n">distance_to_nearest_led</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">tree</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">column_stack</span><span class="p">((</span><span class="n">rows</span><span class="p">,</span> <span class="n">cols</span><span class="p">)))</span>
+                <span class="n">keep</span> <span class="o">=</span> <span class="n">distance_to_nearest_led</span> <span class="o">&gt;=</span> <span class="n">inner</span>
+                <span class="n">rows</span><span class="p">,</span> <span class="n">cols</span> <span class="o">=</span> <span class="n">rows</span><span class="p">[</span><span class="n">keep</span><span class="p">],</span> <span class="n">cols</span><span class="p">[</span><span class="n">keep</span><span class="p">]</span>
+            <span class="n">sides</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">rows</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span><span class="p">),</span> <span class="n">cols</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span><span class="p">)))</span>
+        <span class="n">pixels</span><span class="p">[</span><span class="n">led_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">sides</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">sides</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">FarfieldGeometry</span><span class="p">(</span><span class="n">pixels</span><span class="p">,</span> <span class="n">strip_of_led</span><span class="p">,</span> <span class="n">position_on_strip</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="get_farfield_geometry">
+<a class="viewcode-back" href="../../../data_extraction.html#ledsa.data_extraction.farfield_background.get_farfield_geometry">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_farfield_geometry</span><span class="p">(</span><span class="n">search_areas</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">led_arrays</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]],</span> <span class="n">img_shape</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span>
+                          <span class="n">search_area_radius</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">distances</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">FarfieldGeometry</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Cached build_farfield_geometry. The geometry only depends on the LED positions and is therefore computed once</span>
+<span class="sd">    per process and reused for all images.</span>
+
+<span class="sd">    :return: See build_farfield_geometry.</span>
+<span class="sd">    """</span>
+    <span class="n">key</span> <span class="o">=</span> <span class="p">(</span><span class="n">search_areas</span><span class="o">.</span><span class="n">tobytes</span><span class="p">(),</span> <span class="n">search_areas</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span>
+           <span class="nb">tuple</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">atleast_1d</span><span class="p">(</span><span class="n">led_ids</span><span class="p">))</span> <span class="k">for</span> <span class="n">led_ids</span> <span class="ow">in</span> <span class="n">led_arrays</span><span class="p">),</span>
+           <span class="nb">tuple</span><span class="p">(</span><span class="n">img_shape</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">search_area_radius</span><span class="p">),</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">distances</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_farfield_cache</span><span class="p">:</span>
+        <span class="n">_farfield_cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="n">_farfield_cache</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">build_farfield_geometry</span><span class="p">(</span><span class="n">search_areas</span><span class="p">,</span> <span class="n">led_arrays</span><span class="p">,</span> <span class="n">img_shape</span><span class="p">,</span> <span class="n">search_area_radius</span><span class="p">,</span>
+                                                       <span class="n">distances</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">_farfield_cache</span><span class="p">[</span><span class="n">key</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="mean_of_channel_pixels">
+<a class="viewcode-back" href="../../../data_extraction.html#ledsa.data_extraction.farfield_background.mean_of_channel_pixels">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">mean_of_channel_pixels</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">channel_mask</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">num_pixels</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Mean over the pixels of the color channel in every band, from the pixels of all bands.</span>
+
+<span class="sd">    :param values: Channel values of the pixels of all bands, the pixels of one band after those of the previous</span>
+<span class="sd">        one.</span>
+<span class="sd">    :type values: np.ndarray</span>
+<span class="sd">    :param channel_mask: Whether each of these pixels belongs to the channel.</span>
+<span class="sd">    :type channel_mask: np.ndarray</span>
+<span class="sd">    :param num_pixels: Number of pixels of every band.</span>
+<span class="sd">    :type num_pixels: Sequence[int]</span>
+<span class="sd">    :return: Mean per channel pixel of every band, NaN for a band without a pixel of the channel.</span>
+<span class="sd">    :rtype: np.ndarray</span>
+<span class="sd">    """</span>
+    <span class="n">num_pixels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">num_pixels</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span><span class="p">)</span>
+    <span class="n">means</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">num_pixels</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+    <span class="c1"># reduceat cannot sum an empty segment, and the segments left are contiguous without the empty ones</span>
+    <span class="n">has_pixels</span> <span class="o">=</span> <span class="n">num_pixels</span> <span class="o">&gt;</span> <span class="mi">0</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">has_pixels</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+        <span class="k">return</span> <span class="n">means</span>
+    <span class="n">starts</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">num_pixels</span><span class="p">)</span> <span class="o">-</span> <span class="n">num_pixels</span><span class="p">)[</span><span class="n">has_pixels</span><span class="p">]</span>
+    <span class="n">sums</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">add</span><span class="o">.</span><span class="n">reduceat</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">channel_mask</span><span class="p">,</span> <span class="n">values</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">starts</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">add</span><span class="o">.</span><span class="n">reduceat</span><span class="p">(</span><span class="n">channel_mask</span><span class="p">,</span> <span class="n">starts</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">np</span><span class="o">.</span><span class="n">errstate</span><span class="p">(</span><span class="n">invalid</span><span class="o">=</span><span class="s1">'ignore'</span><span class="p">,</span> <span class="n">divide</span><span class="o">=</span><span class="s1">'ignore'</span><span class="p">):</span>
+        <span class="n">means</span><span class="p">[</span><span class="n">has_pixels</span><span class="p">]</span> <span class="o">=</span> <span class="n">sums</span> <span class="o">/</span> <span class="n">counts</span>  <span class="c1"># 0 / 0 is NaN</span>
+    <span class="k">return</span> <span class="n">means</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_running</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">size</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">function</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""A centred running statistic that ignores NaN and takes fewer values at the ends, NaN where it has none."""</span>
+    <span class="n">half</span> <span class="o">=</span> <span class="n">size</span> <span class="o">//</span> <span class="mi">2</span>
+    <span class="n">padded</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">((</span><span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">half</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">),</span> <span class="n">values</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">half</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)))</span>
+    <span class="n">windows</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">lib</span><span class="o">.</span><span class="n">stride_tricks</span><span class="o">.</span><span class="n">sliding_window_view</span><span class="p">(</span><span class="n">padded</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">half</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">values</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+    <span class="n">has_values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">windows</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">result</span><span class="p">[</span><span class="n">has_values</span><span class="p">]</span> <span class="o">=</span> <span class="n">function</span><span class="p">(</span><span class="n">windows</span><span class="p">[</span><span class="n">has_values</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">result</span>
+
+
+<div class="viewcode-block" id="smooth_along_strip">
+<a class="viewcode-back" href="../../../data_extraction.html#ledsa.data_extraction.farfield_background.smooth_along_strip">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">smooth_along_strip</span><span class="p">(</span><span class="n">levels</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">median_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">SMOOTHING_MEDIAN_LEDS</span><span class="p">,</span>
+                       <span class="n">mean_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">SMOOTHING_MEAN_LEDS</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Smooth the band levels of one side of a strip along the strip: a running median, which drops the outliers of</span>
+<span class="sd">    single LEDs, followed by a running mean. An LED without a level takes the one of its neighbours. At the ends</span>
+<span class="sd">    of the strip the windows are cut short.</span>
+
+<span class="sd">    :param levels: Level of every LED of the strip, in their order along the strip, NaN for an LED without one.</span>
+<span class="sd">    :type levels: np.ndarray</span>
+<span class="sd">    :param median_size: Number of LEDs of the running median.</span>
+<span class="sd">    :type median_size: int</span>
+<span class="sd">    :param mean_size: Number of LEDs of the running mean.</span>
+<span class="sd">    :type mean_size: int</span>
+<span class="sd">    :return: The smoothed levels, NaN where no LED within reach has a level.</span>
+<span class="sd">    :rtype: np.ndarray</span>
+<span class="sd">    """</span>
+    <span class="n">levels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">levels</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">levels</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">levels</span>
+    <span class="k">return</span> <span class="n">_running</span><span class="p">(</span><span class="n">_running</span><span class="p">(</span><span class="n">levels</span><span class="p">,</span> <span class="n">median_size</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmedian</span><span class="p">),</span> <span class="n">mean_size</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmean</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="farfield_pedestals">
+<a class="viewcode-back" href="../../../data_extraction.html#ledsa.data_extraction.farfield_background.farfield_pedestals">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">farfield_pedestals</span><span class="p">(</span><span class="n">band_levels</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">strip_of_led</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+                       <span class="n">position_on_strip</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    The pedestal per channel pixel of every LED: the levels of the two sides, smoothed along the strip, and of</span>
+<span class="sd">    them the lower one.</span>
+
+<span class="sd">    :param band_levels: Level of the band on each of the two sides of every LED, shape (number of LEDs, 2), NaN</span>
+<span class="sd">        for a band without a pixel of the channel.</span>
+<span class="sd">    :type band_levels: np.ndarray</span>
+<span class="sd">    :param strip_of_led: Index of the strip of every LED, -1 for an LED on no strip.</span>
+<span class="sd">    :type strip_of_led: np.ndarray</span>
+<span class="sd">    :param position_on_strip: Coordinate of every LED along its strip.</span>
+<span class="sd">    :type position_on_strip: np.ndarray</span>
+<span class="sd">    :return: Pedestal per channel pixel of every LED, NaN for an LED without a level on either side.</span>
+<span class="sd">    :rtype: np.ndarray</span>
+<span class="sd">    """</span>
+    <span class="n">band_levels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">band_levels</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">pedestals</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">band_levels</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">strip</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">strip_of_led</span><span class="p">[</span><span class="n">strip_of_led</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">]):</span>
+        <span class="n">leds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">flatnonzero</span><span class="p">(</span><span class="n">strip_of_led</span> <span class="o">==</span> <span class="n">strip</span><span class="p">)</span>
+        <span class="n">leds</span> <span class="o">=</span> <span class="n">leds</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">position_on_strip</span><span class="p">[</span><span class="n">leds</span><span class="p">],</span> <span class="n">kind</span><span class="o">=</span><span class="s1">'stable'</span><span class="p">)]</span>
+        <span class="n">smoothed</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">column_stack</span><span class="p">([</span><span class="n">smooth_along_strip</span><span class="p">(</span><span class="n">band_levels</span><span class="p">[</span><span class="n">leds</span><span class="p">,</span> <span class="n">side</span><span class="p">])</span> <span class="k">for</span> <span class="n">side</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)])</span>
+        <span class="c1"># fmin takes the side that has a level where the other has none</span>
+        <span class="n">pedestals</span><span class="p">[</span><span class="n">leds</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fmin</span><span class="p">(</span><span class="n">smoothed</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">smoothed</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">pedestals</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, CCE.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

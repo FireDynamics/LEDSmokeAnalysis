@@ -1,0 +1,540 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Data Extraction &mdash; LEDSmokeAnalysis 0.13.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="_static/tables.css?v=aab0db92" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=1019fba8"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="_static/copybutton.js?v=f281be69"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Analysis" href="analysis.html" />
+    <link rel="prev" title="Configuration" href="config.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            LEDSmokeAnalysis
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">LEDSA:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="description.html">Description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cli_documentation.html">CLI Documentation</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="ledsa.html">LEDSA Module</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="config.html">Configuration</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Data Extraction</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#ledsa.data_extraction.DataExtractor.DataExtractor"><code class="docutils literal notranslate"><span class="pre">DataExtractor</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#ledsa.data_extraction.DataExtractor.DataExtractor.find_search_areas"><code class="docutils literal notranslate"><span class="pre">DataExtractor.find_search_areas()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ledsa.data_extraction.DataExtractor.DataExtractor.load_led_array_indices"><code class="docutils literal notranslate"><span class="pre">DataExtractor.load_led_array_indices()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ledsa.data_extraction.DataExtractor.DataExtractor.load_search_areas"><code class="docutils literal notranslate"><span class="pre">DataExtractor.load_search_areas()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ledsa.data_extraction.DataExtractor.DataExtractor.match_leds_to_led_arrays"><code class="docutils literal notranslate"><span class="pre">DataExtractor.match_leds_to_led_arrays()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ledsa.data_extraction.DataExtractor.DataExtractor.plot_led_arrays"><code class="docutils literal notranslate"><span class="pre">DataExtractor.plot_led_arrays()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ledsa.data_extraction.DataExtractor.DataExtractor.plot_search_areas"><code class="docutils literal notranslate"><span class="pre">DataExtractor.plot_search_areas()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ledsa.data_extraction.DataExtractor.DataExtractor.process_image_data"><code class="docutils literal notranslate"><span class="pre">DataExtractor.process_image_data()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ledsa.data_extraction.DataExtractor.DataExtractor.process_img_file"><code class="docutils literal notranslate"><span class="pre">DataExtractor.process_img_file()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ledsa.data_extraction.DataExtractor.DataExtractor.setup_restart"><code class="docutils literal notranslate"><span class="pre">DataExtractor.setup_restart()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ledsa.data_extraction.DataExtractor.DataExtractor.setup_step3"><code class="docutils literal notranslate"><span class="pre">DataExtractor.setup_step3()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ledsa.data_extraction.DataExtractor.DataExtractor.write_search_areas"><code class="docutils literal notranslate"><span class="pre">DataExtractor.write_search_areas()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#ledsa.data_extraction.LEDAnalysisData.LEDAnalysisData"><code class="docutils literal notranslate"><span class="pre">LEDAnalysisData</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#ledsa.data_extraction.LEDAnalysisData.LEDAnalysisData.get_fit_data_string"><code class="docutils literal notranslate"><span class="pre">LEDAnalysisData.get_fit_data_string()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ledsa.data_extraction.LEDAnalysisData.LEDAnalysisData.get_main_data_string"><code class="docutils literal notranslate"><span class="pre">LEDAnalysisData.get_main_data_string()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#ledsa.data_extraction.farfield_background.FarfieldGeometry"><code class="docutils literal notranslate"><span class="pre">FarfieldGeometry</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#ledsa.data_extraction.farfield_background.FarfieldGeometry.pixels"><code class="docutils literal notranslate"><span class="pre">FarfieldGeometry.pixels</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ledsa.data_extraction.farfield_background.FarfieldGeometry.position_on_strip"><code class="docutils literal notranslate"><span class="pre">FarfieldGeometry.position_on_strip</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ledsa.data_extraction.farfield_background.FarfieldGeometry.strip_of_led"><code class="docutils literal notranslate"><span class="pre">FarfieldGeometry.strip_of_led</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#ledsa.data_extraction.farfield_background.build_farfield_geometry"><code class="docutils literal notranslate"><span class="pre">build_farfield_geometry()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ledsa.data_extraction.farfield_background.estimate_strip_directions"><code class="docutils literal notranslate"><span class="pre">estimate_strip_directions()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ledsa.data_extraction.farfield_background.farfield_pedestals"><code class="docutils literal notranslate"><span class="pre">farfield_pedestals()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ledsa.data_extraction.farfield_background.get_farfield_geometry"><code class="docutils literal notranslate"><span class="pre">get_farfield_geometry()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ledsa.data_extraction.farfield_background.mean_of_channel_pixels"><code class="docutils literal notranslate"><span class="pre">mean_of_channel_pixels()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ledsa.data_extraction.farfield_background.parse_farfield_distances"><code class="docutils literal notranslate"><span class="pre">parse_farfield_distances()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ledsa.data_extraction.farfield_background.smooth_along_strip"><code class="docutils literal notranslate"><span class="pre">smooth_along_strip()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="analysis.html">Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="led_positions.html">LED Positions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="postprocessing.html">Postprocessing</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="demo.html">Demo</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">LEDSmokeAnalysis</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="ledsa.html">LEDSA Module</a></li>
+      <li class="breadcrumb-item active">Data Extraction</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/data_extraction.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-ledsa.data_extraction.DataExtractor">
+<span id="data-extraction"></span><h1>Data Extraction<a class="headerlink" href="#module-ledsa.data_extraction.DataExtractor" title="Link to this heading"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="ledsa.data_extraction.DataExtractor.DataExtractor">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">ledsa.data_extraction.DataExtractor.</span></span><span class="sig-name descname"><span class="pre">DataExtractor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">channels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">load_config_file</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">build_experiment_infos</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fit_leds</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ledsa/data_extraction/DataExtractor.html#DataExtractor"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ledsa.data_extraction.DataExtractor.DataExtractor" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>A class responsible for extracting data from experiment images.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Variables<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>config</strong> (<a class="reference internal" href="config.html#ledsa.core.ConfigData.ConfigData" title="ledsa.core.ConfigData.ConfigData"><em>ConfigData</em></a>) – Configuration data object.</p></li>
+<li><p><strong>channels</strong> (<em>Tuple</em>) – Channels to be processed.</p></li>
+<li><p><strong>fit_leds</strong> (<em>bool
+:ivar fit_leds: Whether to fit LEDs</em><em> or </em><em>not.</em>) – Whether to fit LEDs or not.</p></li>
+<li><p><strong>threshold</strong> (<em>float</em><em>, </em><em>optional</em>) – The threshold value used for LED detection.</p></li>
+<li><p><strong>line_indices</strong> (<em>list</em><em>[</em><em>list</em><em>[</em><em>int</em><em>]</em><em>]</em><em>, </em><em>optional</em>) – 2D list with dimension (# of LED arrays) x (# of LEDs per array) or None.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="ledsa.data_extraction.DataExtractor.DataExtractor.find_search_areas">
+<span class="sig-name descname"><span class="pre">find_search_areas</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/ledsa/data_extraction/DataExtractor.html#DataExtractor.find_search_areas"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ledsa.data_extraction.DataExtractor.DataExtractor.find_search_areas" title="Link to this definition"></a></dt>
+<dd><p>Identify all LEDs in the reference image and define the areas where LEDs will be searched in the experiment images.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ledsa.data_extraction.DataExtractor.DataExtractor.load_led_array_indices">
+<span class="sig-name descname"><span class="pre">load_led_array_indices</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/ledsa/data_extraction/DataExtractor.html#DataExtractor.load_led_array_indices"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ledsa.data_extraction.DataExtractor.DataExtractor.load_led_array_indices" title="Link to this definition"></a></dt>
+<dd><p>Load LED array indices from the ‘led_array_indices_{…}.csv’ files.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ledsa.data_extraction.DataExtractor.DataExtractor.load_search_areas">
+<span class="sig-name descname"><span class="pre">load_search_areas</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/ledsa/data_extraction/DataExtractor.html#DataExtractor.load_search_areas"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ledsa.data_extraction.DataExtractor.DataExtractor.load_search_areas" title="Link to this definition"></a></dt>
+<dd><p>Load LED search areas from the ‘led_search_areas.csv’ file. #TODO be consistent with search areas and ROIS</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ledsa.data_extraction.DataExtractor.DataExtractor.match_leds_to_led_arrays">
+<span class="sig-name descname"><span class="pre">match_leds_to_led_arrays</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/ledsa/data_extraction/DataExtractor.html#DataExtractor.match_leds_to_led_arrays"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ledsa.data_extraction.DataExtractor.DataExtractor.match_leds_to_led_arrays" title="Link to this definition"></a></dt>
+<dd><p>Analyze which LEDs belong to which LED array and save this mapping.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ledsa.data_extraction.DataExtractor.DataExtractor.plot_led_arrays">
+<span class="sig-name descname"><span class="pre">plot_led_arrays</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">merge_led_arrays</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/ledsa/data_extraction/DataExtractor.html#DataExtractor.plot_led_arrays"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ledsa.data_extraction.DataExtractor.DataExtractor.plot_led_arrays" title="Link to this definition"></a></dt>
+<dd><p>Plots the arrangement of LEDs as identified in the LED arrays and saves the plot as a PDF file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>merge_led_arrays</strong> (<em>bool</em>) – A flag indicating whether LED arrays have been merged. Affects the naming of the output file.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ledsa.data_extraction.DataExtractor.DataExtractor.plot_search_areas">
+<span class="sig-name descname"><span class="pre">plot_search_areas</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">reorder_leds</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/ledsa/data_extraction/DataExtractor.html#DataExtractor.plot_search_areas"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ledsa.data_extraction.DataExtractor.DataExtractor.plot_search_areas" title="Link to this definition"></a></dt>
+<dd><p>Plot the identified LED search areas with their ID labels.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>reorder_leds</strong> (<em>bool</em>) – A flag indicating whether the LED IDs have been reordered. Affects the name of the output file.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ledsa.data_extraction.DataExtractor.DataExtractor.process_image_data">
+<span class="sig-name descname"><span class="pre">process_image_data</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/ledsa/data_extraction/DataExtractor.html#DataExtractor.process_image_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ledsa.data_extraction.DataExtractor.DataExtractor.process_image_data" title="Link to this definition"></a></dt>
+<dd><p>Process all the image data to detect changes in light intensity in the search areas across the images.
+Removes ‘images_to_process.csv’ file afterward.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ledsa.data_extraction.DataExtractor.DataExtractor.process_img_file">
+<span class="sig-name descname"><span class="pre">process_img_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img_filename</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CorruptedImageError</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="reference internal" href="_modules/ledsa/data_extraction/DataExtractor.html#DataExtractor.process_img_file"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ledsa.data_extraction.DataExtractor.DataExtractor.process_img_file" title="Link to this definition"></a></dt>
+<dd><p>Process a single image file to extract relevant data. This is a workaround for pool.map.</p>
+<p>An image that cannot be read is skipped instead of aborting the analysis of the remaining images. The
+error is returned rather than reported here, because the multicore analysis processes the images in
+worker processes, which would write to the report file concurrently.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>img_filename</strong> (<em>str</em>) – The name of the image file to be processed.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The error raised for a skipped image, or None if the image was processed.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Optional[CorruptedImageError]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ledsa.data_extraction.DataExtractor.DataExtractor.setup_restart">
+<span class="sig-name descname"><span class="pre">setup_restart</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/ledsa/data_extraction/DataExtractor.html#DataExtractor.setup_restart"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ledsa.data_extraction.DataExtractor.DataExtractor.setup_restart" title="Link to this definition"></a></dt>
+<dd><p>Setup a restart in case the data extraction process was interrupted earlier. Every image that misses the
+result file of one of the channels is analysed again, for all of them.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ledsa.data_extraction.DataExtractor.DataExtractor.setup_step3">
+<span class="sig-name descname"><span class="pre">setup_step3</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/ledsa/data_extraction/DataExtractor.html#DataExtractor.setup_step3"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ledsa.data_extraction.DataExtractor.DataExtractor.setup_step3" title="Link to this definition"></a></dt>
+<dd><p>Setup the third step of the data extraction process by creating ‘image_infos_analysis.csv’ and ‘images_to_process.csv’ files.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ledsa.data_extraction.DataExtractor.DataExtractor.write_search_areas">
+<span class="sig-name descname"><span class="pre">write_search_areas</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">reorder_leds</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/ledsa/data_extraction/DataExtractor.html#DataExtractor.write_search_areas"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ledsa.data_extraction.DataExtractor.DataExtractor.write_search_areas" title="Link to this definition"></a></dt>
+<dd><p>Writes LED search areas to a CSV file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>reorder_leds</strong> (<em>bool</em>) – A flag indicating whether the LED IDs have been reordered. Affects the header of the output file.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class" id="module-ledsa.data_extraction.LEDAnalysisData">
+<dt class="sig sig-object py" id="ledsa.data_extraction.LEDAnalysisData.LEDAnalysisData">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">ledsa.data_extraction.LEDAnalysisData.</span></span><span class="sig-name descname"><span class="pre">LEDAnalysisData</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">led_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">led_array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fit_leds</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ledsa/data_extraction/LEDAnalysisData.html#LEDAnalysisData"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ledsa.data_extraction.LEDAnalysisData.LEDAnalysisData" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Represents LED analysis data, including its physical properties and fit results.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Variables<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>led_id</strong> (<em>int</em>) – The ID of the LED.</p></li>
+<li><p><strong>led_array</strong> (<em>int</em>) – The array index the LED belongs to.</p></li>
+<li><p><strong>fit_leds</strong> (<em>bool</em>) – Indicates whether to fit LEDs or not.</p></li>
+<li><p><strong>led_center_x</strong> (<em>float</em>) – X-coordinate of LED’s center.</p></li>
+<li><p><strong>led_center_y</strong> (<em>float</em>) – Y-coordinate of LED’s center.</p></li>
+<li><p><strong>mean_color_value</strong> (<em>float</em>) – Mean color value of the LED over the search area.</p></li>
+<li><p><strong>sum_color_value</strong> (<em>float</em>) – Integrated color value of the LED over the search area.</p></li>
+<li><p><strong>max_color_value</strong> (<em>float</em>) – Maximum color value observed for the LED.</p></li>
+<li><p><strong>farbg_sum_color_value</strong> (<em>float</em><em> or </em><em>None</em>) – Integrated color value minus the far-field pedestal of the search area, None if
+the pedestal is not estimated.</p></li>
+<li><p><strong>farbg_pedestal</strong> (<em>float</em><em> or </em><em>None</em>) – Far-field pedestal of the search area, None if the pedestal is not estimated.</p></li>
+<li><p><strong>fit_results</strong> (<em>OptimizeResult</em>) – Fit results after fitting.</p></li>
+<li><p><strong>fit_time</strong> (<em>float</em>) – Time taken for fitting.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="ledsa.data_extraction.LEDAnalysisData.LEDAnalysisData.get_fit_data_string">
+<span class="sig-name descname"><span class="pre">get_fit_data_string</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="_modules/ledsa/data_extraction/LEDAnalysisData.html#LEDAnalysisData.get_fit_data_string"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ledsa.data_extraction.LEDAnalysisData.LEDAnalysisData.get_fit_data_string" title="Link to this definition"></a></dt>
+<dd><p>Provides the fitted LED data as a formatted string.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Formatted string of fitted LED data.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ledsa.data_extraction.LEDAnalysisData.LEDAnalysisData.get_main_data_string">
+<span class="sig-name descname"><span class="pre">get_main_data_string</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="_modules/ledsa/data_extraction/LEDAnalysisData.html#LEDAnalysisData.get_main_data_string"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ledsa.data_extraction.LEDAnalysisData.LEDAnalysisData.get_main_data_string" title="Link to this definition"></a></dt>
+<dd><p>Provides the main LED data as a formatted string.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Formatted string containing led_id, led_array and pixel values.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<p id="module-ledsa.data_extraction.farfield_background">Pedestal of the LED search areas, estimated in the far field of the LED strips.</p>
+<p>The sum over a search area (sum_col_val) holds, besides the light of the LED, light that does not dim with the
+LED: the dark level of the sensor where it differs from the optical black the black level is taken from, ambient
+light, and light that smoke scatters into the line of sight. In dense smoke the LED dims while this pedestal
+stays, so the plain sum overestimates the transmission and the extinction coefficients saturate.</p>
+<p>The pedestal is estimated for every image where no light of an LED is expected, in the far field of the strips:</p>
+<ol class="arabic simple">
+<li><p>Two bands run parallel to the strip, one on each side, over +-R along the strip (R = search_area_radius) and
+from the inner to the outer far-field distance across it. Pixels closer than the inner distance to any LED of
+any strip are left out, so neighbouring strips do not enter the bands.</p></li>
+<li><p>The level of a band is the mean of its pixels of the color channel.</p></li>
+<li><p>The levels of each side are smoothed along the strip, with a running median and a running mean over the LEDs.
+The pedestal varies slowly along the strip, so this removes the noise of the estimate without changing it:
+the pedestal corrected sum is as noisy as the plain sum.</p></li>
+<li><p>The pedestal of an LED is the lower of the levels of its two sides. An object in one of the bands, another
+light source or the brighter side of a gradient can only raise a level, so the lower side is the safe one.</p></li>
+<li><p>N times this pedestal is subtracted from the sum of the search area, with N the number of pixels of the color
+channel in the search area.</p></li>
+</ol>
+<p>Why the far field and not the neighbourhood of the LED: around an LED there is light of the LED itself, the wings
+of its image and, behind a window or in hot gases, a halo that can reach a hundred pixels and more. A pedestal
+measured there subtracts transmitted light and raises the extinction coefficients, the more the denser the smoke.
+The far field holds none of it. Stray light that peaks at the strip is brighter at the LED than in the far field, so
+the far-field level is a lower bound of the pedestal: the corrected sum lies between the plain sum and the light
+of the LED in the search area. The bound holds for the dark level and for scattered light. Ambient light on a
+background that is brighter beside the strip than behind the LED would raise the far-field level above the
+pedestal of the search area.</p>
+<p>What the correction does not do: where the image of an LED widens beyond its search area, the search area loses
+light of the LED. That error has the opposite sign and is no pedestal; the correction leaves it as it is.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="ledsa.data_extraction.farfield_background.FarfieldGeometry">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">ledsa.data_extraction.farfield_background.</span></span><span class="sig-name descname"><span class="pre">FarfieldGeometry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pixels</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">ndarray</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">ndarray</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">ndarray</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">ndarray</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">strip_of_led</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">position_on_strip</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ledsa/data_extraction/farfield_background.html#FarfieldGeometry"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ledsa.data_extraction.farfield_background.FarfieldGeometry" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">NamedTuple</span></code></p>
+<p>The far-field bands of the LEDs of an image and the place of every LED on its strip.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ledsa.data_extraction.farfield_background.FarfieldGeometry.pixels">
+<span class="sig-name descname"><span class="pre">pixels</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">ndarray</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">ndarray</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">ndarray</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">ndarray</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#ledsa.data_extraction.farfield_background.FarfieldGeometry.pixels" title="Link to this definition"></a></dt>
+<dd><p>Alias for field number 0</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ledsa.data_extraction.farfield_background.FarfieldGeometry.position_on_strip">
+<span class="sig-name descname"><span class="pre">position_on_strip</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ndarray</span></span><a class="headerlink" href="#ledsa.data_extraction.farfield_background.FarfieldGeometry.position_on_strip" title="Link to this definition"></a></dt>
+<dd><p>Alias for field number 2</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ledsa.data_extraction.farfield_background.FarfieldGeometry.strip_of_led">
+<span class="sig-name descname"><span class="pre">strip_of_led</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ndarray</span></span><a class="headerlink" href="#ledsa.data_extraction.farfield_background.FarfieldGeometry.strip_of_led" title="Link to this definition"></a></dt>
+<dd><p>Alias for field number 1</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ledsa.data_extraction.farfield_background.build_farfield_geometry">
+<span class="sig-prename descclassname"><span class="pre">ledsa.data_extraction.farfield_background.</span></span><span class="sig-name descname"><span class="pre">build_farfield_geometry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">search_areas</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">led_arrays</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">img_shape</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">search_area_radius</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">distances</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#ledsa.data_extraction.farfield_background.FarfieldGeometry" title="ledsa.data_extraction.farfield_background.FarfieldGeometry"><span class="pre">FarfieldGeometry</span></a></span></span><a class="reference internal" href="_modules/ledsa/data_extraction/farfield_background.html#build_farfield_geometry"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ledsa.data_extraction.farfield_background.build_farfield_geometry" title="Link to this definition"></a></dt>
+<dd><p>Determine the pixels of the two far-field bands of each LED and the place of each LED on its strip.</p>
+<p>With t the coordinate along the strip and s the coordinate across it, both relative to the center of the
+search area, a pixel belongs to the band of one side if <code class="docutils literal notranslate"><span class="pre">-R</span> <span class="pre">&lt;=</span> <span class="pre">t</span> <span class="pre">&lt;</span> <span class="pre">R</span></code> and <code class="docutils literal notranslate"><span class="pre">inner</span> <span class="pre">&lt;=</span> <span class="pre">s</span> <span class="pre">&lt;</span> <span class="pre">outer</span></code>, and to that
+of the other side if <code class="docutils literal notranslate"><span class="pre">-outer</span> <span class="pre">&lt;=</span> <span class="pre">s</span> <span class="pre">&lt;</span> <span class="pre">-inner</span></code>. For a vertical strip these are the rows r-R..r+R-1 and the
+columns c+inner..c+outer-1 and c-outer..c-inner-1. Pixels outside the image and pixels closer than the inner
+distance to the center of any search area are left out.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>search_areas</strong> (<em>np.ndarray</em>) – Array with rows (LED id, pixel row, pixel column), the row index equals the LED id.</p></li>
+<li><p><strong>led_arrays</strong> (<em>Sequence</em><em>[</em><em>Sequence</em><em>[</em><em>int</em><em>]</em><em>]</em>) – LED ids of each LED strip, as found in step 2.</p></li>
+<li><p><strong>img_shape</strong> (<em>tuple</em><em>[</em><em>int</em><em>, </em><em>int</em><em>]</em>) – Shape of the image.</p></li>
+<li><p><strong>search_area_radius</strong> (<em>int</em>) – Radius R of the search areas.</p></li>
+<li><p><strong>distances</strong> (<em>tuple</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em>) – Inner and outer distance of the bands across the strip in pixels.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The band pixels and the place on its strip of every LED.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#ledsa.data_extraction.farfield_background.FarfieldGeometry" title="ledsa.data_extraction.farfield_background.FarfieldGeometry">FarfieldGeometry</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ledsa.data_extraction.farfield_background.estimate_strip_directions">
+<span class="sig-prename descclassname"><span class="pre">ledsa.data_extraction.farfield_background.</span></span><span class="sig-name descname"><span class="pre">estimate_strip_directions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">search_areas</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">led_arrays</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_neighbours</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">4</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="reference internal" href="_modules/ledsa/data_extraction/farfield_background.html#estimate_strip_directions"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ledsa.data_extraction.farfield_background.estimate_strip_directions" title="Link to this definition"></a></dt>
+<dd><p>Estimate the local direction of the LED strip at each LED from its nearest neighbours in the same LED array.</p>
+<p>The direction is the principal axis of the positions of the LED and its num_neighbours nearest neighbours of the
+same array. It is oriented such that the row component is positive (or, for horizontal strips, the column
+component), so the two sides of a strip are the same for all of its LEDs.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>search_areas</strong> (<em>np.ndarray</em>) – Array with rows (LED id, pixel row, pixel column), the row index equals the LED id.</p></li>
+<li><p><strong>led_arrays</strong> (<em>Sequence</em><em>[</em><em>Sequence</em><em>[</em><em>int</em><em>]</em><em>]</em>) – LED ids of each LED array.</p></li>
+<li><p><strong>num_neighbours</strong> (<em>int</em>) – Number of neighbours used to estimate the direction.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Array of shape (number of LEDs, 2) with the unit vector (row, column) along the strip, NaN for LEDs
+that are not part of an array with at least two LEDs.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ledsa.data_extraction.farfield_background.farfield_pedestals">
+<span class="sig-prename descclassname"><span class="pre">ledsa.data_extraction.farfield_background.</span></span><span class="sig-name descname"><span class="pre">farfield_pedestals</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">band_levels</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">strip_of_led</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">position_on_strip</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="reference internal" href="_modules/ledsa/data_extraction/farfield_background.html#farfield_pedestals"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ledsa.data_extraction.farfield_background.farfield_pedestals" title="Link to this definition"></a></dt>
+<dd><p>The pedestal per channel pixel of every LED: the levels of the two sides, smoothed along the strip, and of
+them the lower one.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>band_levels</strong> (<em>np.ndarray</em>) – Level of the band on each of the two sides of every LED, shape (number of LEDs, 2), NaN
+for a band without a pixel of the channel.</p></li>
+<li><p><strong>strip_of_led</strong> (<em>np.ndarray</em>) – Index of the strip of every LED, -1 for an LED on no strip.</p></li>
+<li><p><strong>position_on_strip</strong> (<em>np.ndarray</em>) – Coordinate of every LED along its strip.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Pedestal per channel pixel of every LED, NaN for an LED without a level on either side.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ledsa.data_extraction.farfield_background.get_farfield_geometry">
+<span class="sig-prename descclassname"><span class="pre">ledsa.data_extraction.farfield_background.</span></span><span class="sig-name descname"><span class="pre">get_farfield_geometry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">search_areas</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">led_arrays</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">img_shape</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">search_area_radius</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">distances</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#ledsa.data_extraction.farfield_background.FarfieldGeometry" title="ledsa.data_extraction.farfield_background.FarfieldGeometry"><span class="pre">FarfieldGeometry</span></a></span></span><a class="reference internal" href="_modules/ledsa/data_extraction/farfield_background.html#get_farfield_geometry"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ledsa.data_extraction.farfield_background.get_farfield_geometry" title="Link to this definition"></a></dt>
+<dd><p>Cached build_farfield_geometry. The geometry only depends on the LED positions and is therefore computed once
+per process and reused for all images.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>See build_farfield_geometry.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ledsa.data_extraction.farfield_background.mean_of_channel_pixels">
+<span class="sig-prename descclassname"><span class="pre">ledsa.data_extraction.farfield_background.</span></span><span class="sig-name descname"><span class="pre">mean_of_channel_pixels</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">values</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">channel_mask</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_pixels</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="reference internal" href="_modules/ledsa/data_extraction/farfield_background.html#mean_of_channel_pixels"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ledsa.data_extraction.farfield_background.mean_of_channel_pixels" title="Link to this definition"></a></dt>
+<dd><p>Mean over the pixels of the color channel in every band, from the pixels of all bands.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>values</strong> (<em>np.ndarray</em>) – Channel values of the pixels of all bands, the pixels of one band after those of the previous
+one.</p></li>
+<li><p><strong>channel_mask</strong> (<em>np.ndarray</em>) – Whether each of these pixels belongs to the channel.</p></li>
+<li><p><strong>num_pixels</strong> (<em>Sequence</em><em>[</em><em>int</em><em>]</em>) – Number of pixels of every band.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Mean per channel pixel of every band, NaN for a band without a pixel of the channel.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ledsa.data_extraction.farfield_background.parse_farfield_distances">
+<span class="sig-prename descclassname"><span class="pre">ledsa.data_extraction.farfield_background.</span></span><span class="sig-name descname"><span class="pre">parse_farfield_distances</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">search_area_radius</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="reference internal" href="_modules/ledsa/data_extraction/farfield_background.html#parse_farfield_distances"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ledsa.data_extraction.farfield_background.parse_farfield_distances" title="Link to this definition"></a></dt>
+<dd><p>Read the far-field distances from their config value.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>value</strong> (<em>str</em><em> or </em><em>None</em>) – Value of farfield_distances: the inner and the outer distance of the bands across the strip in
+pixels, or None.</p></li>
+<li><p><strong>search_area_radius</strong> (<em>int</em>) – Radius R of the search areas.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The distances (inner, outer), None if the pedestal is not estimated.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple[float, float] or None</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If the value is neither None nor two distances R &lt;= inner &lt; outer.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ledsa.data_extraction.farfield_background.smooth_along_strip">
+<span class="sig-prename descclassname"><span class="pre">ledsa.data_extraction.farfield_background.</span></span><span class="sig-name descname"><span class="pre">smooth_along_strip</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">levels</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">median_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">15</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mean_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="reference internal" href="_modules/ledsa/data_extraction/farfield_background.html#smooth_along_strip"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ledsa.data_extraction.farfield_background.smooth_along_strip" title="Link to this definition"></a></dt>
+<dd><p>Smooth the band levels of one side of a strip along the strip: a running median, which drops the outliers of
+single LEDs, followed by a running mean. An LED without a level takes the one of its neighbours. At the ends
+of the strip the windows are cut short.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>levels</strong> (<em>np.ndarray</em>) – Level of every LED of the strip, in their order along the strip, NaN for an LED without one.</p></li>
+<li><p><strong>median_size</strong> (<em>int</em>) – Number of LEDs of the running median.</p></li>
+<li><p><strong>mean_size</strong> (<em>int</em>) – Number of LEDs of the running mean.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The smoothed levels, NaN where no LED within reach has a level.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="config.html" class="btn btn-neutral float-left" title="Configuration" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="analysis.html" class="btn btn-neutral float-right" title="Analysis" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, CCE.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
