@@ -164,32 +164,26 @@ warning. The header of each result file states the correction applied.
 
 ### Pedestal from the far field of the LED strips (optional)
 
-The sum over a search area holds light that does not dim with the LED: the dark level of the
-sensor where it differs from the optical black, ambient light and light that smoke scatters into
-the line of sight. In dense smoke this pedestal saturates the extinction coefficients. With
+The sum over a search area also holds light that does not dim with the LED: the residual dark
+level of the sensor, ambient light and light that smoke scatters into the line of sight. In dense
+smoke this pedestal saturates the extinction coefficients. With
 
 ```ini
 [analyse_photo]
 farfield_distances = 150 300
 ```
 
-in `config.ini`, step 3 estimates the pedestal for every image in two bands parallel to each LED
-strip, 150 to 300 px away from it on both sides and at least 150 px away from every LED, smooths
-the levels along the strip, takes the lower side and writes two more quantities:
-`farbg_sum_col_val`, the sum minus the pedestal of the search area, and `farbg_pedestal`, the
-pedestal itself. `reference_property = farbg_sum_col_val` analyses the corrected sum. The bands
-have to lie beyond the light of the LEDs and of their halo; `farbg_pedestal / sum_col_val` of the
-reference images shows whether they do, it stays below about 1 % there. An LED whose bands hold
-no pixel on either side, and no neighbour on its strip within the smoothing that has one, keeps
-its plain sum with a pedestal of 0. The default `None` estimates no pedestal and leaves the
-result files as they are.
+in `config.ini`, step 3 takes the pedestal from two bands beside each LED, 150 to 300 px across the
+strip and at least 150 px from any LED, using the lower of the two sides after smoothing both
+along the strip. It writes the sum minus the pedestal as `farbg_sum_col_val` and the pedestal as
+`farbg_pedestal`; `reference_property = farbg_sum_col_val` analyses the corrected sum.
 
-For the dark level of the sensor and for stray light that peaks at the strip, the far-field level
-is a lower bound of the pedestal, so the corrected sum lies between the plain sum and the light
-of the LED in the search area. Ambient light on a background that is brighter beside the strip
-than behind the LEDs breaks this bound; it has been tested in dark rooms only. It does
-not correct a search area that loses light of the LED, as behind a fogged window, which is an
-error of the opposite sign.
+![The far-field bands of a search area: two bands as long as the search area, 150 to 300 px on both sides of the LED strip, without the pixels within 150 px of any LED](https://raw.githubusercontent.com/FireDynamics/LEDSmokeAnalysis/master/doc/images/farfield_bands.svg)
+
+The bands have to lie beyond the light of the LEDs and their halo, which holds if
+`farbg_pedestal / sum_col_val` stays below about 1 % in the reference images. The correction has
+been tested in dark rooms only: ambient light that is brighter beside the strip than behind the
+LEDs makes it subtract too much.
 
 ## Demo
 
