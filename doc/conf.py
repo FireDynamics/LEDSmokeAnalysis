@@ -13,6 +13,10 @@
 import os
 import sys
 from importlib.metadata import version as get_version
+try:
+    import tomllib  # Python 3.11 and newer
+except ModuleNotFoundError:
+    tomllib = None
 sys.path.insert(0, os.path.abspath('..'))
 
 # -- Project information -----------------------------------------------------
@@ -21,7 +25,13 @@ sys.path.insert(0, os.path.abspath('..'))
 project = 'LEDSmokeAnalysis'
 copyright = '2026, CCE'
 author = 'CCE'
-release = get_version('ledsa')
+# The version of the source tree these docs document, as its pyproject.toml states it. The metadata of an
+# installed ledsa can be older: an editable install keeps the version it was installed with.
+if tomllib is not None:
+    with open(os.path.join(os.path.abspath('..'), 'pyproject.toml'), 'rb') as f:
+        release = tomllib.load(f)['project']['version']
+else:
+    release = get_version('ledsa')
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
