@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1136" height="744" viewBox="0 0 1136 744" role="img" aria-labelledby="title desc">
+  <title id="title">Far-field bands of a search area</title>
+  <desc id="desc">Two bands as long as the search area of an LED, 150 to 300 px away from the LED strip on both sides, give the pedestal of the search area. Pixels within 150 px of any LED are left out, which cuts short the band next to a neighbouring strip.</desc>
+  <style>
+    :root {
+      --bg: #ffffff; --border: #d1d9e0; --text: #1f2328; --muted: #6e7781;
+      --led: #f6b08f; --led-stroke: #c2522c; --led-sel: #c2522c; --box: #c2522c;
+      --nb: #d8dee4; --nb-stroke: #6e7781; --band: #bfe8dc; --band-stroke: #1a7f64;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0d1117; --border: #3d444d; --text: #e6edf3; --muted: #9198a1;
+        --led: #d9774f; --led-stroke: #f4a98a; --led-sel: #8f3b22; --box: #e8653a;
+        --nb: #6b6f75; --nb-stroke: #b9bec4; --band: #0b5244; --band-stroke: #3aa58a;
+      }
+    }
+    .bg { fill: var(--bg); stroke: var(--border); stroke-width: 1.5; }
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial,
+           sans-serif; font-size: 21px; fill: var(--text); }
+    .mid { text-anchor: middle; }
+    .led { fill: var(--led); stroke: var(--led-stroke); stroke-width: 1.6; }
+    .led-sel { fill: var(--led-sel); stroke: var(--led-stroke); stroke-width: 1.6; }
+    .box { fill: none; stroke: var(--box); stroke-width: 2.6; }
+    .nb { fill: var(--nb); stroke: var(--nb-stroke); stroke-width: 1.6; }
+    .band { fill: var(--band); stroke: var(--band-stroke); stroke-width: 1.6; }
+    .dashed { fill: none; stroke: var(--muted); stroke-width: 1.4; stroke-dasharray: 7 6; }
+    .lead { fill: none; stroke: var(--muted); stroke-width: 1.3; stroke-dasharray: 6 5; }
+    .axis { fill: none; stroke: var(--muted); stroke-width: 1.5; }
+  </style>
+  <rect class="bg" x="0.75" y="0.75" width="1134.5" height="742.5" rx="14"/>
+
+  <!-- analysed strip with the search area of one LED -->
+  <text class="mid" x="300" y="50">LED strip</text>
+  <circle class="led" cx="300" cy="87" r="8.5"/>
+  <circle class="led" cx="300" cy="127" r="8.5"/>
+  <circle class="led" cx="300" cy="167" r="8.5"/>
+  <circle class="led" cx="300" cy="207" r="8.5"/>
+  <circle class="led" cx="300" cy="247" r="8.5"/>
+  <circle class="led" cx="300" cy="287" r="8.5"/>
+  <circle class="led-sel" cx="300" cy="327" r="10.5"/>
+  <circle class="led" cx="300" cy="367" r="8.5"/>
+  <circle class="led" cx="300" cy="407" r="8.5"/>
+  <circle class="led" cx="300" cy="447" r="8.5"/>
+  <circle class="led" cx="300" cy="487" r="8.5"/>
+  <circle class="led" cx="300" cy="527" r="8.5"/>
+  <circle class="led" cx="300" cy="567" r="8.5"/>
+  <rect class="box" x="282" y="309" width="36" height="36"/>
+
+  <!-- neighbouring strip and the zone within 150 px of its LEDs -->
+  <rect class="dashed" x="500" y="75" width="240" height="503" rx="20"/>
+  <circle class="nb" cx="620" cy="107" r="8.5"/>
+  <circle class="nb" cx="620" cy="147" r="8.5"/>
+  <circle class="nb" cx="620" cy="187" r="8.5"/>
+  <circle class="nb" cx="620" cy="227" r="8.5"/>
+  <circle class="nb" cx="620" cy="267" r="8.5"/>
+  <circle class="nb" cx="620" cy="307" r="8.5"/>
+  <circle class="nb" cx="620" cy="347" r="8.5"/>
+  <circle class="nb" cx="620" cy="387" r="8.5"/>
+  <circle class="nb" cx="620" cy="427" r="8.5"/>
+  <circle class="nb" cx="620" cy="467" r="8.5"/>
+  <circle class="nb" cx="620" cy="507" r="8.5"/>
+  <circle class="nb" cx="620" cy="547" r="8.5"/>
+
+  <!-- far-field bands: 150 to 300 px across the strip, as long as the search area -->
+  <rect class="band" x="60" y="309" width="120" height="36"/>
+  <rect class="band" x="420" y="309" width="80" height="36"/>
+  <rect class="dashed" x="500" y="309" width="40" height="36"/>
+  <text class="mid" x="120" y="386">Left band</text>
+  <text class="mid" x="120" y="418">150 to 300 px</text>
+
+  <!-- labels on the right -->
+  <line class="lead" x1="628.5" y1="107" x2="780" y2="107"/>
+  <text x="790" y="114">Neighbouring strip</text>
+  <line class="lead" x1="740" y1="207" x2="780" y2="207"/>
+  <text x="790" y="197">Exclusion zone: within</text>
+  <text x="790" y="229">150 px of any LED</text>
+  <line class="lead" x1="318" y1="311" x2="780" y2="277"/>
+  <text x="790" y="284">Search area 2R × 2R, sum S</text>
+  <line class="lead" x1="460" y1="345" x2="780" y2="467"/>
+  <text x="790" y="458">Right band, cut short</text>
+  <text x="790" y="490">by the exclusion zone</text>
+
+  <!-- axis across the strip -->
+  <line class="axis" x1="60" y1="622" x2="540" y2="622"/>
+  <line class="axis" x1="60" y1="614" x2="60" y2="630"/>
+  <text class="mid" x="60" y="663">−300</text>
+  <line class="axis" x1="180" y1="614" x2="180" y2="630"/>
+  <text class="mid" x="180" y="663">−150</text>
+  <line class="axis" x1="300" y1="614" x2="300" y2="630"/>
+  <text class="mid" x="300" y="663">0</text>
+  <line class="axis" x1="420" y1="614" x2="420" y2="630"/>
+  <text class="mid" x="420" y="663">150</text>
+  <line class="axis" x1="540" y1="614" x2="540" y2="630"/>
+  <text class="mid" x="540" y="663">300</text>
+  <text class="mid" x="300" y="706">Distance across the strip in px</text>
+</svg>

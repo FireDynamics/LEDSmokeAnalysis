@@ -91,35 +91,6 @@ For a complete list of options, run:
 python -m ledsa --help
 ```
 
-### Analysed quantities and result files
-
-`reference_property` in `config_analysis.ini` names the quantity of step 3 the extinction
-coefficients are computed from. Several quantities, separated by spaces, are analysed one after
-another, each solver and quantity writing into a directory of its own:
-
-```ini
-[DEFAULT]
-reference_property = sum_col_val mean_col_val
-```
-
-```
-analysis/extinction_coefficients/<solver>/<reference_property>/extinction_coefficients_<solver>_channel_0_<reference_property>_led_array_0.csv
-```
-
-### Reference images of the normalization
-
-The extinction coefficients are computed from the relative intensities I/I0. The images I0 is
-averaged over are named by the first of these options that is set:
-
-| Option | File | Names the images by |
-| --- | --- | --- |
-| `ref_img_indices` | `config_analysis.ini` | analysis ID |
-| `ref_img_experiment_ids` | `config.ini` | experiment ID, the number the file name is built from |
-| `num_ref_images` | `config_analysis.ini` | the number of images at the beginning of the experiment |
-
-Use `ref_img_experiment_ids` whenever `num_skip_imgs` or `average_images` is set: the images it
-names are always analysed and never averaged. Set it before step 3.
-
 ### Stacked multi-camera analysis
 
 Several cameras that watch the same LED arrays can be inverted jointly:
@@ -134,30 +105,6 @@ section per camera and a `[led_arrays]` section mapping virtual array IDs to the
 individual runs. Since image IDs are counted per run, `num_ref_images` and `ref_img_indices` can
 be set per `[simulation_N]` section; pick the reference images of all cameras from the same time
 window before the fire.
-
-### Camera behind a window pane (optional)
-
-A camera that looks into the smoke through a window pane, for example from outside the test
-room, sees the LEDs along lines of sight whose part between the camera and the pane is free of
-smoke. Only the part behind the pane belongs in the layers; counted from the camera, the light
-paths are too long and the extinction coefficients come out too low. `pane_distance` is the
-distance in m between the camera and the pane:
-
-```ini
-[experiment_geometry]
-   camera_position = 0 -0.5 1.5
-   pane_distance = 0.5
-```
-
-The pane is taken as normal to the line of sight, so the light path of every LED starts
-`pane_distance` away from the camera. A flat pane normal to the optical axis is crossed by a line
-of sight at an angle θ to the axis `pane_distance / cos θ` away from the camera, at 15° 3.5 %
-farther, which is negligible as long as the pane is close to the camera compared to the LEDs. In
-`config_stacked.ini`, every `[simulation_N]` section takes a `pane_distance` of its own. Without
-the option, or with `None`, the light paths reach the camera as before. The camera may then stand
-outside `domain_bounds`, as long as the layers hold the light paths behind the pane. Only the
-geometry is corrected: a pane whose transmission changes during the test, for example by soot or
-condensate, dims the LEDs like smoke. The header of each result file names the distance.
 
 ### Temperature correction (optional)
 
@@ -186,57 +133,28 @@ The time counts from `start_time` of `config.ini`, like `Experiment_Time[s]` in
 factors before I0 is computed; images and LEDs outside the table stay uncorrected, with a
 warning. The header of each result file states the correction applied.
 
-### Dense smoke and the read noise of the sensor
-
-The intensities are not clipped at zero after the black level of the sensor is subtracted, so an
-LED that has vanished in dense smoke can give a relative intensity at or below zero. The linear
-solver leaves such LEDs out. Where the transmission reaches the read noise of the sensor, the LEDs
-that remain are those whose noise happened to be positive, and the extinction coefficients come
-out too low. With `sum_col_val` this hardly happens, because the pedestal of the search areas (see
-below) keeps the relative intensities above zero and limits the extinction coefficients first: in
-a fog test, single images came out 21 to 27 % too low at 1.24 1/m and 36 to 42 % at 1.64 1/m.
-With the pedestal subtracted (`farbg_sum_col_val`) the read noise limits, by 5 to 6 % and 24 to
-26 %, where the transmission of the red LEDs was 0.02 to 0.15 % of I0 and the noise of a single
-image about 0.2 % of I0. Averaging seven images (`average_images`) lowered this to 13 to 17 % at
-1.64 1/m.
-
 ### Pedestal from the far field of the LED strips (optional)
 
-The sum over a search area holds light that does not dim with the LED: the dark level of the
-sensor where it differs from the optical black, ambient light and light that smoke scatters into
-the line of sight. In dense smoke this pedestal saturates the extinction coefficients. With
+The sum over a search area also holds light that does not dim with the LED: the residual dark
+level of the sensor, ambient light and light that smoke scatters into the line of sight. In dense
+smoke this pedestal saturates the extinction coefficients. With
 
 ```ini
 [analyse_photo]
 farfield_distances = 150 300
 ```
 
-in `config.ini`, step 3 estimates the pedestal for every image in two bands parallel to each LED
-strip, 150 to 300 px away from it on both sides and at least 150 px away from every LED, smooths
-the levels along the strip, takes the lower side and writes two more quantities:
-`farbg_sum_col_val`, the sum minus the pedestal of the search area, and `farbg_pedestal`, the
-pedestal itself. `reference_property = farbg_sum_col_val` analyses the corrected sum. The bands
-have to lie beyond the light of the LEDs and of their halo; `farbg_pedestal / sum_col_val` of the
-reference images shows whether they do, it stays below about 1 % there. An LED whose bands hold
-no pixel on either side, and no neighbour on its strip within the smoothing that has one, keeps
-its plain sum with a pedestal of 0. The default `None` estimates no pedestal and leaves the
-result files as they are.
+in `config.ini`, step 3 takes the pedestal from two bands beside each LED, 150 to 300 px across the
+strip and at least 150 px from any LED, using the lower of the two sides after smoothing both
+along the strip. It writes the sum minus the pedestal as `farbg_sum_col_val` and the pedestal as
+`farbg_pedestal`; `reference_property = farbg_sum_col_val` analyses the corrected sum.
 
-For the dark level of the sensor and for stray light that peaks at the strip, the far-field level
-is a lower bound of the pedestal, so the corrected sum lies between the plain sum and the light
-of the LED in the search area. Ambient light on a background that is brighter beside the strip
-than behind the LEDs breaks this bound; it has been tested in dark rooms only. It does
-not correct a search area that loses light of the LED, as behind a fogged window, which is an
-error of the opposite sign.
+![The far-field bands of a search area: two bands as long as the search area, 150 to 300 px on both sides of the LED strip, without the pixels within 150 px of any LED](https://raw.githubusercontent.com/FireDynamics/LEDSmokeAnalysis/master/doc/images/farfield_bands.svg)
 
-### Features in validation
-
-The background-corrected sums of step 3 (`bgsub_sum_col_val`, `bgsub2_sum_col_val`,
-`sidebg_sum_col_val`), the weighting of the LEDs by their signal-to-noise ratio and the moving
-average of the reference property, which v0.12.0 had, are left out of the releases until they are
-validated. They are kept on the
-[develop](https://github.com/FireDynamics/LEDSmokeAnalysis/tree/develop) branch. A config file that
-still sets one of their options gets a note that the option is ignored.
+The bands have to lie beyond the light of the LEDs and their halo, which holds if
+`farbg_pedestal / sum_col_val` stays below about 1 % in the reference images. The correction has
+been tested in dark rooms only: ambient light that is brighter beside the strip than behind the
+LEDs makes it subtract too much.
 
 ## Demo
 
