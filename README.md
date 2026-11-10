@@ -135,30 +135,6 @@ individual runs. Since image IDs are counted per run, `num_ref_images` and `ref_
 be set per `[simulation_N]` section; pick the reference images of all cameras from the same time
 window before the fire.
 
-### Camera behind a window pane (optional)
-
-A camera that looks into the smoke through a window pane, for example from outside the test
-room, sees the LEDs along lines of sight whose part between the camera and the pane is free of
-smoke. Only the part behind the pane belongs in the layers; counted from the camera, the light
-paths are too long and the extinction coefficients come out too low. `pane_distance` is the
-distance in m between the camera and the pane:
-
-```ini
-[experiment_geometry]
-   camera_position = 0 -0.5 1.5
-   pane_distance = 0.5
-```
-
-The pane is taken as normal to the line of sight, so the light path of every LED starts
-`pane_distance` away from the camera. A flat pane normal to the optical axis is crossed by a line
-of sight at an angle θ to the axis `pane_distance / cos θ` away from the camera, at 15° 3.5 %
-farther, which is negligible as long as the pane is close to the camera compared to the LEDs. In
-`config_stacked.ini`, every `[simulation_N]` section takes a `pane_distance` of its own. Without
-the option, or with `None`, the light paths reach the camera as before. The camera may then stand
-outside `domain_bounds`, as long as the layers hold the light paths behind the pane. Only the
-geometry is corrected: a pane whose transmission changes during the test, for example by soot or
-condensate, dims the LEDs like smoke. The header of each result file names the distance.
-
 ### Temperature correction (optional)
 
 LEDs lose radiant power as they heat up, which would otherwise be read as extinction. Reduction
@@ -185,20 +161,6 @@ The time counts from `start_time` of `config.ini`, like `Experiment_Time[s]` in
 `analysis/image_infos_analysis.csv`. The intensities are divided by the bilinearly interpolated
 factors before I0 is computed; images and LEDs outside the table stay uncorrected, with a
 warning. The header of each result file states the correction applied.
-
-### Dense smoke and the read noise of the sensor
-
-The intensities are not clipped at zero after the black level of the sensor is subtracted, so an
-LED that has vanished in dense smoke can give a relative intensity at or below zero. The linear
-solver leaves such LEDs out. Where the transmission reaches the read noise of the sensor, the LEDs
-that remain are those whose noise happened to be positive, and the extinction coefficients come
-out too low. With `sum_col_val` this hardly happens, because the pedestal of the search areas (see
-below) keeps the relative intensities above zero and limits the extinction coefficients first: in
-a fog test, single images came out 21 to 27 % too low at 1.24 1/m and 36 to 42 % at 1.64 1/m.
-With the pedestal subtracted (`farbg_sum_col_val`) the read noise limits, by 5 to 6 % and 24 to
-26 %, where the transmission of the red LEDs was 0.02 to 0.15 % of I0 and the noise of a single
-image about 0.2 % of I0. Averaging seven images (`average_images`) lowered this to 13 to 17 % at
-1.64 1/m.
 
 ### Pedestal from the far field of the LED strips (optional)
 
@@ -228,15 +190,6 @@ of the LED in the search area. Ambient light on a background that is brighter be
 than behind the LEDs breaks this bound; it has been tested in dark rooms only. It does
 not correct a search area that loses light of the LED, as behind a fogged window, which is an
 error of the opposite sign.
-
-### Features in validation
-
-The background-corrected sums of step 3 (`bgsub_sum_col_val`, `bgsub2_sum_col_val`,
-`sidebg_sum_col_val`), the weighting of the LEDs by their signal-to-noise ratio and the moving
-average of the reference property, which v0.12.0 had, are left out of the releases until they are
-validated. They are kept on the
-[develop](https://github.com/FireDynamics/LEDSmokeAnalysis/tree/develop) branch. A config file that
-still sets one of their options gets a note that the option is ignored.
 
 ## Demo
 
