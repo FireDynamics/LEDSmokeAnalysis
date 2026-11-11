@@ -2,12 +2,16 @@
 Installation
 ============
 
-LEDSA is easiest installed via ::
+LEDSA needs Python 3.9 to 3.12.
 
-   pip install ledsa
+It is easiest installed from PyPI via ::
+
+   python -m pip install ledsa
 
 
-or can be obtained by cloning the GitHub repository: ::
+or from source, by cloning the GitHub repository and installing the package: ::
 
-   https://github.com/FireDynamics/LEDSmokeAnalysis.git
+   git clone https://github.com/FireDynamics/LEDSmokeAnalysis.git
+   cd LEDSmokeAnalysis
+   pip install .
 

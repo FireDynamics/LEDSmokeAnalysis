@@ -24,16 +24,16 @@ Data Extraction
    * - ``-conf``, ``--config``
      - Create the data extraction configuration file.
      - --
-   * - ``--s1``, ``--step_1``, ``--find_search_areas``
+   * - ``-s1``, ``--step_1``, ``--find_search_areas``
      - Step 1: Analyze a reference image to find the LEDs and create a labeled plot with the search areas.
      - --
    * - ``-s2``,  ``--step_2``,  ``--analyse_positions``
      - Step 2: Match the LEDs to the arrays according to the line edge indices in the config file.
      - --
-   * - ``-s3``, ``--step_3`, ``--analyse_photo``
+   * - ``-s3``, ``--step_3``, ``--analyse_photo``
      - Step 3: Analyse all images to extract pixel values inside the search areas and fit them to an LED model (SLOW!).
      - ``-r`` (Use the red channel, default), ``-g`` (Use the green channel), ``-b`` (Use the blue channel), ``-rgb`` (Run for each channel)
-   * - ``-s3_fast``, ``--step_3_fast`, ``--analyse_photo_fast``
+   * - ``-s3_fast``, ``--step_3_fast``, ``--analyse_photo_fast``
      - Step 3: Analyse all images to extract pixel values and calculate the accumulated values inside the search areas (FAST!).
      - Channel flags as for ``-s3``
    * - ``-re``, ``--restart``
@@ -57,7 +57,7 @@ Analysis
    * - ``-a``, ``--analysis``
      - Computes the extinction coefficients of every quantity ``reference_property`` names in ``config_analysis.ini``, each into ``analysis/extinction_coefficients/<solver>/<quantity>/``.
      - --
-   * - ``--cc``
+   * - ``--cc``, ``--color_correction``
      - Applies the color correction matrix before calculating the extinction coefficients. Use only if the reference property is not already color corrected.
      - --
    * - ``--cc_channels``
@@ -111,10 +111,10 @@ Testing
    * - Argument
      - Description
      - Options
-   * - ``-atest``, ``--acceptance-test``
+   * - ``-atest``, ``--acceptance_test``
      - Run the acceptance test suite.
      - --
-   * - ``-atest_debug``, ``--acceptance-test_debug``
+   * - ``-atest_debug``, ``--acceptance_test_debug``
      - Run the acceptance test suite in debug mode.
      - --
 
@@ -131,9 +131,12 @@ Demo
    * - ``-d``, ``--demo``
      - Flag to indicate that the LEDSA demo should be run.
      - Must be used with ``--setup`` or ``--run``
-   * - ``--setup``
-     - Create the required directories for the simulations and download images and config files.
-     - Optional: Path to setup simulation and image directories. Default to ``'.'``
+   * - ``--setup PATH``
+     - Create the directories ``image_data`` and ``simulation`` in ``PATH``, download the images (about 5 GB) and write the config files.
+     - ``PATH`` is required, e.g. ``.`` for the current directory.
    * - ``--run``
-     - Run the LEDSA demo in the current working directory.
-     - --
+     - Run the demo set up in the current working directory. Without a ``simulation`` directory there, it asks for the demo directory.
+     - ``--n_cores N`` sets the number of cores (default: 1).
+   * - ``--n_cores N``
+     - Number of cores the demo runs on. Only used together with ``--run``.
+     - Default: 1
