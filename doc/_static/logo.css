@@ -1,0 +1,18 @@
+/* Sidebar header behind the logo. The logo switches its ink between dark and light with the
+   colour scheme, so the header switches with it; on the theme's blue the blue arm of the E
+   would vanish. */
+.wy-side-nav-search {
+    background-color: #fcfcfc;
+}
+
+/* Let the logo follow the reader's colour scheme even in browsers that take it from the
+   embedding element, as the header below does. */
+.wy-side-nav-search img.logo {
+    color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+    .wy-side-nav-search {
+        background-color: #1c2230;
+    }
+}

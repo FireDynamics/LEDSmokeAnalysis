@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 58 14" width="580" height="140" shape-rendering="crispEdges">
+  <title>LEDSA</title>
+  <desc>LEDSA (LEDSmokeAnalysis) wordmark in 8-bit style. The D carries the diode symbol as a negative-space triangle: the counter of the D is the LED. The E stem is the diode bar; its three arms are the red, green and blue channels, their lengths showing the transmission through smoke.</desc>
+  <style>@media (prefers-color-scheme: dark) { .ink { fill: #e8ecf3 } }</style>
+  <g id="L">
+    <path class="ink" fill="#1c2230" d="M0 0h3v1h-3zM0 1h3v1h-3zM0 2h3v1h-3zM0 3h3v1h-3zM0 4h3v1h-3zM0 5h3v1h-3zM0 6h3v1h-3zM0 7h3v1h-3zM0 8h3v1h-3zM0 9h3v1h-3zM0 10h3v1h-3zM0 11h3v1h-3zM0 12h9v1h-9zM0 13h9v1h-9z"/>
+  </g>
+  <g id="E-rgb">
+    <path class="ink" fill="#1c2230" d="M12 0h3v1h-3zM12 1h3v1h-3zM12 2h3v1h-3zM12 3h3v1h-3zM12 4h3v1h-3zM12 5h3v1h-3zM12 6h3v1h-3zM12 7h3v1h-3zM12 8h3v1h-3zM12 9h3v1h-3zM12 10h3v1h-3zM12 11h3v1h-3zM12 12h3v1h-3zM12 13h3v1h-3z"/>
+    <path fill="#f0443a" d="M15 0h8v1h-8zM15 1h8v1h-8z"/>
+    <path fill="#2fbf6b" d="M15 6h6v1h-6zM15 7h6v1h-6z"/>
+    <path fill="#3a7ff2" d="M15 12h4v1h-4zM15 13h4v1h-4z"/>
+  </g>
+  <g id="D-diode">
+    <path class="ink" fill="#1c2230" d="M25 0h9v1h-9zM25 1h10v1h-10zM25 2h3v1h-3zM29 2h7v1h-7zM25 3h3v1h-3zM30 3h6v1h-6zM25 4h3v1h-3zM31 4h5v1h-5zM25 5h3v1h-3zM32 5h4v1h-4zM25 6h3v1h-3zM33 6h3v1h-3zM25 7h3v1h-3zM33 7h3v1h-3zM25 8h3v1h-3zM32 8h4v1h-4zM25 9h3v1h-3zM31 9h5v1h-5zM25 10h3v1h-3zM30 10h6v1h-6zM25 11h3v1h-3zM29 11h7v1h-7zM25 12h10v1h-10zM25 13h9v1h-9z"/>
+  </g>
+  <g id="S">
+    <path class="ink" fill="#1c2230" d="M39 0h8v1h-8zM38 1h9v1h-9zM38 2h3v1h-3zM38 3h3v1h-3zM38 4h3v1h-3zM38 5h3v1h-3zM38 6h8v1h-8zM39 7h8v1h-8zM44 8h3v1h-3zM44 9h3v1h-3zM44 10h3v1h-3zM44 11h3v1h-3zM38 12h9v1h-9zM38 13h8v1h-8z"/>
+  </g>
+  <g id="A">
+    <path class="ink" fill="#1c2230" d="M50 0h7v1h-7zM49 1h9v1h-9zM49 2h3v1h-3zM55 2h3v1h-3zM49 3h3v1h-3zM55 3h3v1h-3zM49 4h3v1h-3zM55 4h3v1h-3zM49 5h3v1h-3zM55 5h3v1h-3zM49 6h9v1h-9zM49 7h9v1h-9zM49 8h3v1h-3zM55 8h3v1h-3zM49 9h3v1h-3zM55 9h3v1h-3zM49 10h3v1h-3zM55 10h3v1h-3zM49 11h3v1h-3zM55 11h3v1h-3zM49 12h3v1h-3zM55 12h3v1h-3zM49 13h3v1h-3zM55 13h3v1h-3z"/>
+  </g>
+</svg>
